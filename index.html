@@ -815,36 +815,10 @@ function getAccountNetTotal(accId) {
 }
 
 function getGrandTotalPrincipal() {
-  try {
-    // 1. ACCOUNTS 자체가 없거나 배열이 아닐 때
-    if (!Array.isArray(ACCOUNTS)) return 0;
-
-    let total = 0;
-
-    for (let i = 0; i < ACCOUNTS.length; i++) {
-      const acc = ACCOUNTS[i];
-
-      // 2. acc 구조가 이상할 때 방어
-      if (!acc || !acc.id) continue;
-
-      // 3. 함수 호출 안전 처리
-      let value = 0;
-      try {
-        value = getAccountNetTotal(acc.id);
-      } catch (e) {
-        value = 0;
-      }
-
-      // 4. 숫자 변환 안전 처리
-      total += Number(value) || 0;
-    }
-
-    return total;
-
-  } catch (e) {
-    console.error('getGrandTotalPrincipal error:', e);
-    return 0;
-  }
+  const totPrincipal = ACCOUNTS.reduce((sum, acc) => {
+  		return sum + getAccountNetTotal(acc.id);
+		}, 0);
+    return totPrincipal;
 }
 
 // ===== 계좌 입출금 메인 모달 =====
@@ -1670,10 +1644,10 @@ function render() {
   const stockValue = items.reduce((s, x) => s + x.currentValue, 0);
   const totalValue = stockValue + totalCash;
 
-  //const totalCost = getGrandTotalPrincipal();
+  const totalGrandPricipal = getGrandTotalPrincipal();
 
-  const totalProfit = items.reduce((s, x) => s + (x.hasCost ? x.profit : 0), 0);
-  const totalProfitRate = totalCost > 0 ? (totalProfit / totalCost) * 100 : null;
+  const totalProfit = totalValue - totalGrandPricipal; // items.reduce((s, x) => s + (x.hasCost ? x.profit : 0), 0);
+  const totalProfitRate = totalGrandPricipal > 0 ? (totalProfit / totalGrandPricipal) * 100 : null;
 
   statusText.textContent = `보유종목 ${holdings.length}개 · 현금 ${formatKRW(totalCash)} · 총 평가 ${formatKRW(totalValue)}`;
 
@@ -1703,8 +1677,8 @@ function render() {
   let html = `
     <div class="detail-summary">
       <div class="stat">
-        <div class="stat-label">매입액 합계 (백만원)</div>
-        <div class="stat-value">${totalCost > 0 ? formatMil(totalCost) : '-'}</div>
+        <div class="stat-label">원금 합계 (백만원)</div>
+        <div class="stat-value">${totalGrandPricipal > 0 ? formatMil(totalGrandPricipal) : '-'}</div>
       </div>
       <div class="stat">
         <div class="stat-label">평가금액 합계 (백만원)</div>
@@ -1712,7 +1686,7 @@ function render() {
       </div>
       <div class="stat">
         <div class="stat-label">손익 (백만원)</div>
-        <div class="stat-value ${profitCls}">${totalCost > 0 ? formatMilSigned(totalProfit) : '-'}</div>
+        <div class="stat-value ${profitCls}">${totalGrandPricipal > 0 ? formatMilSigned(totalProfit) : '-'}</div>
       </div>
       <div class="stat">
         <div class="stat-label">손익률</div>
@@ -1846,8 +1820,34 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// ===== 초기 렌더 =====
-render();
+
+// ===== 초기 렌더 및 실행 제어 =====
+function init() {
+  // 1. localStorage에서 입출금 기록을 먼저 확실히 로드
+  const savedLogs = localStorage.getItem('pension_trans_logs');
+  if (savedLogs) {
+    try {
+      transLogs = JSON.parse(savedLogs);
+    } catch (e) {
+      console.error("데이터 로딩 실패:", e);
+      transLogs = {}; 
+    }
+  } else {
+    transLogs = {};
+  }
+
+  // 2. 데이터가 준비된 후 첫 렌더링 수행
+  render();
+
+  // 3. 종목 정보 업데이트 (비동기)
+  if (holdings && holdings.length > 0) {
+    refreshAll(); // 기존에 구현된 전체 새로고침 함수 호출
+  }
+}
+
+// 기존의 render(); 대신 init(); 을 호출
+init();  //render();
+
 // 페이지 로드 시 종목이 있으면 자동 새로고침
 if (holdings.length) {
   setTimeout(() => {
