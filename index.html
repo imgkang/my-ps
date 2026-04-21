@@ -287,99 +287,140 @@
   .diff-negative { color: var(--minus); }
   .detail-empty { padding: 40px 20px; text-align: center; color: var(--muted); }
 
-  /* 계좌 입금 모달 */
+  /* 계좌 입출금 모달 */
   .modal-deposit {
-    max-width: 98vw;
-    padding: 14px 14px 12px;
+    max-width: 720px;
+    padding: 18px 18px 14px;
   }
-  .modal-deposit .modal-header { margin-bottom: 10px; }
-  .modal-deposit .modal-header h2 { font-size: 15px; }
-  .modal-deposit .modal-header .modal-subtitle { font-size: 11px; margin-top: 2px; }
-  .modal-deposit .modal-header .close-btn { font-size: 20px; }
-  .modal-deposit .modal-actions { margin-top: 8px; }
-  .deposit-controls {
-    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
-    margin-bottom: 8px; padding: 5px 8px;
-    background: #f9fafb; border-radius: 5px;
+  .modal-deposit .modal-header { margin-bottom: 12px; }
+  .modal-deposit .modal-header h2 { font-size: 17px; }
+  .modal-deposit .modal-actions { margin-top: 12px; }
+  .deposit-grand {
+    background: #ecfdf5; border: 1px solid #10b981;
+    border-radius: 8px; padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
   }
-  .deposit-controls label { font-size: 10px; color: var(--text); font-weight: 500; }
-  .deposit-controls input[type="number"] {
-    padding: 2px 5px; border: 1px solid var(--border);
-    border-radius: 3px; font-size: 8px; width: 64px;
+  .deposit-grand .grand-label {
+    font-size: 12px; color: #065f46; font-weight: 700;
   }
-  .deposit-controls .btn-primary {
-    padding: 3px 8px; font-size: 8px;
+  .deposit-grand .grand-amount {
+    font-size: 16px; color: #065f46; font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
-  .deposit-table-wrap {
-    overflow-x: auto; margin-bottom: 6px;
-    border: 1px solid var(--border); border-radius: 5px;
-    max-height: 60vh;
+  .deposit-totals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px; margin-bottom: 10px;
+    padding: 10px;
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: 8px;
   }
-  .deposit-table {
-    width: 100%; border-collapse: collapse; font-size: 8px;
-    table-layout: fixed;
+  .deposit-total-card {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px;
+    display: flex; flex-direction: column; gap: 2px;
   }
-  .deposit-table th, .deposit-table td {
-    padding: 2px 3px; border-bottom: 1px solid var(--border);
-    text-align: right; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis;
+  .deposit-total-card .acc-name {
+    font-size: 11px; color: var(--muted); font-weight: 500;
   }
-  .deposit-table th {
-    font-size: 10px; color: var(--muted); background: #f9fafb;
-    font-weight: 600; position: sticky; top: 0; z-index: 2;
+  .deposit-total-card .acc-amount {
+    font-size: 13px; font-weight: 700; color: var(--text);
+    text-align: right; font-variant-numeric: tabular-nums;
   }
-  .deposit-table th:first-child,
-  .deposit-table td:first-child {
-    text-align: left; padding-left: 6px; font-weight: 600;
-    position: sticky; left: 0; background: #fff; z-index: 1;
-    width: 90px; min-width: 90px; max-width: 90px;
+  .deposit-total-card.is-zero .acc-amount { color: var(--muted); }
+  .deposit-total-card.is-negative .acc-amount { color: var(--minus); }
+
+  .deposit-toolbar {
+    display: flex; justify-content: flex-end; align-items: center;
+    gap: 8px; margin-bottom: 12px;
   }
-  .deposit-table thead th:first-child { z-index: 3; background: #f9fafb; }
-  /* 7개 계좌 행: 입력칸 크기 25% 축소 */
-  .deposit-table tbody td {
-    padding: 1px 2px;
-    line-height: 1.05;
-  }
-  .deposit-table .year-cell {
-    position: relative;
-  }
-  .deposit-table .year-label {
-    display: inline-flex; align-items: center; gap: 1px;
-  }
-  .btn-year-remove {
-    background: transparent; border: none; color: #ef4444;
-    cursor: pointer; font-size: 11px; padding: 0 1px; line-height: 1;
-    opacity: 0.55;
-  }
-  .btn-year-remove:hover { opacity: 1; }
-  .deposit-input {
-    width: 100%;
-    border: 1px solid transparent; background: transparent;
-    padding: 0 2px; border-radius: 3px;
-    text-align: right; font-size: 6.5px; font-family: inherit;
-    box-sizing: border-box; color: inherit;
-    line-height: 1.15;
+  .deposit-toolbar .btn-primary {
+    padding: 8px 16px; font-size: 13px; font-weight: 600;
   }
 
-  .deposit-input:hover { background: #fff; border-color: var(--border); }
-  .deposit-input:focus { background: #fff; border-color: var(--primary); outline: none; }
-  .deposit-table .row-total-col,
-  .deposit-table .row-total-cell {
-    background: #fff7ed; font-weight: 700;
-    width: 100px; min-width: 100px;
+  .deposit-list-header {
+    display: grid;
+    grid-template-columns: 140px 1.2fr 1.3fr 36px;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    text-transform: uppercase; letter-spacing: 0.3px;
   }
-  .deposit-table tfoot td {
-    font-weight: 700; border-top: 2px solid var(--border);
+  .deposit-list-header > span:nth-child(3) { text-align: right; }
+  .deposit-list-wrap {
+    border: 1px solid var(--border);
+    border-radius: 0 0 8px 8px;
+    max-height: 300px; overflow-y: auto;
+    background: #fff;
   }
-  .deposit-table tfoot tr.col-total-row td { background: #fef7ec; }
-  .deposit-table tfoot tr.cum-total-row td { background: #eff6ff; }
-  .deposit-table tfoot tr.grand-total-row td { background: #f0fdf4; font-size: 10px; }
-  .deposit-table tfoot td:first-child {
-    background: inherit;
+  #depositList .txn-row {
+    display: grid;
+    grid-template-columns: 140px 1.2fr 1.3fr 36px;
+    gap: 8px;
+    padding: 8px 12px;
+    align-items: center;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
   }
+  #depositList .txn-row:last-child { border-bottom: none; }
+  #depositList .txn-row:hover { background: #fafafa; }
+  #depositList .txn-acc { font-weight: 500; color: var(--text); }
+  #depositList .txn-date {
+    border: 1px solid transparent; background: transparent;
+    color: var(--text); font-size: 12px;
+    padding: 3px 6px; border-radius: 4px;
+    font-family: inherit; box-sizing: border-box;
+    width: 100%;
+  }
+  #depositList .txn-date:hover { background: #f3f4f6; border-color: var(--border); }
+  #depositList .txn-date:focus { background: #fff; border-color: var(--primary); outline: none; }
+  #depositList .txn-amount {
+    text-align: right; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  #depositList .txn-amount.pos { color: var(--plus); }
+  #depositList .txn-amount.neg { color: var(--minus); }
+  #depositList .txn-delete {
+    background: transparent; border: none; color: var(--muted);
+    cursor: pointer; font-size: 16px; padding: 2px 4px; line-height: 1;
+    justify-self: end;
+  }
+  #depositList .txn-delete:hover { color: #ef4444; }
   .deposit-empty {
-    padding: 20px 14px; text-align: center; color: var(--muted);
-    font-size: 11px;
+    padding: 26px 16px; text-align: center; color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* 입출금 편집 서브 모달 */
+  .txn-form {
+    display: flex; flex-direction: column; gap: 12px;
+    margin-bottom: 6px;
+  }
+  .txn-form label {
+    display: grid; grid-template-columns: 90px 1fr; align-items: center;
+    gap: 10px; font-size: 13px; color: var(--text);
+  }
+  .txn-form label > span { font-weight: 500; color: var(--muted); }
+  .txn-form select,
+  .txn-form input[type="date"],
+  .txn-form input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    box-sizing: border-box;
+  }
+  .txn-form input:focus, .txn-form select:focus {
+    outline: none; border-color: var(--primary);
   }
 
   /* 모바일 테이블 */
@@ -408,7 +449,8 @@
     <div class="status-bar">
       <span id="statusText">보유종목 0개</span>
       <div class="actions">
-        <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입금</button>
+        <button class="btn-secondary" onclick="openRecordsModal()">📒 계좌 기록</button>
+        <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
         <button class="btn-secondary" onclick="refreshAll()">🔄 현재가 새로고침</button>
       </div>
     </div>
@@ -512,24 +554,123 @@
   </div>
 </div>
 
-<!-- 계좌 입금 모달 -->
+<!-- 계좌 입출금 모달 -->
 <div class="modal-backdrop" id="accountDepositModal" onclick="handleDepositBackdropClick(event)">
   <div class="modal modal-wide modal-deposit">
     <div class="modal-header">
       <div>
-        <h2>💰 계좌 입금 관리</h2>
-        <div class="modal-subtitle">연도별 · 계좌별 입금 내역 (단위: 원)</div>
+        <h2>💰 계좌 입출금 관리</h2>
+        <div class="modal-subtitle">계좌별 입금·출금 내역 (단위: 원)</div>
       </div>
       <button class="close-btn" onclick="closeDepositModal()" aria-label="닫기">×</button>
     </div>
-    <div class="deposit-controls">
-      <label for="newDepositYear">연도 추가:</label>
-      <input type="number" id="newDepositYear" placeholder="예: 2025" min="1900" max="2100">
-      <button class="btn-primary" onclick="addDepositYear()">+ 연도 추가</button>
+    <div class="deposit-grand" id="depositGrand"></div>
+    <div class="deposit-totals" id="depositTotals"></div>
+    <div class="deposit-toolbar">
+      <button class="btn-primary" onclick="openTxnEditor()">➕ 입출금 추가</button>
     </div>
-    <div id="depositBody"></div>
+    <div class="deposit-list-header">
+      <span>입출금일</span><span>계좌</span><span>금액</span><span></span>
+    </div>
+    <div class="deposit-list-wrap">
+      <div id="depositList"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeDepositModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 입출금 편집 서브 모달 -->
+<div class="modal-backdrop" id="txnEditorModal" onclick="handleTxnBackdropClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2 id="txnEditorTitle">입출금 추가</h2>
+        <div class="modal-subtitle">계좌 · 날짜 · 금액을 입력하세요</div>
+      </div>
+      <button class="close-btn" onclick="closeTxnEditor()" aria-label="닫기">×</button>
+    </div>
+    <div class="txn-form">
+      <label>
+        <span>계좌</span>
+        <select id="txnAccount"></select>
+      </label>
+      <label>
+        <span>구분</span>
+        <select id="txnType">
+          <option value="deposit">입금 (+)</option>
+          <option value="withdraw">출금 (−)</option>
+        </select>
+      </label>
+      <label>
+        <span>입출금일</span>
+        <input type="date" id="txnDate">
+      </label>
+      <label>
+        <span>금액 (원)</span>
+        <input type="text" id="txnAmount" inputmode="numeric" placeholder="예: 1,000,000">
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeTxnEditor()">취소</button>
+      <button class="btn-primary" onclick="saveTxn()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 계좌 기록 모달 (월별 스냅샷 목록) -->
+<div class="modal-backdrop" id="accountRecordsModal" onclick="handleRecordsBackdropClick(event)">
+  <div class="modal modal-wide modal-records">
+    <div class="modal-header">
+      <div>
+        <h2>📒 계좌 기록 관리</h2>
+        <div class="modal-subtitle">월별 계좌 상태 스냅샷 (주식수 · 주가)</div>
+      </div>
+      <button class="close-btn" onclick="closeRecordsModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="records-toolbar">
+      <button class="btn-primary" onclick="saveCurrentSnapshot()">💾 현재값 저장</button>
+      <button class="btn-secondary" onclick="openMonthEditorForNew()">➕ 월 추가</button>
+    </div>
+    <div class="records-list-header">
+      <span>월</span><span>계좌 수</span><span>총 평가금액</span><span></span><span></span>
+    </div>
+    <div class="records-list-wrap">
+      <div id="recordsList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeRecordsModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 월별 스냅샷 편집 서브 모달 -->
+<div class="modal-backdrop" id="monthEditorModal" onclick="handleMonthEditorBackdropClick(event)">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div>
+        <h2 id="monthEditorTitle">월 기록 편집</h2>
+        <div class="modal-subtitle">각 계좌별 주식수와 그 때의 주가를 입력</div>
+      </div>
+      <button class="close-btn" onclick="closeMonthEditor()" aria-label="닫기">×</button>
+    </div>
+    <div class="month-editor-top">
+      <label>
+        <span>월</span>
+        <input type="month" id="monthEditorYM">
+      </label>
+      <button class="btn-secondary" onclick="addHoldingRow()">➕ 종목 추가</button>
+    </div>
+    <div class="month-editor-rows-header">
+      <span>계좌</span><span>종목코드</span><span>종목명</span><span>주식수</span><span>주가 (원)</span><span></span>
+    </div>
+    <div class="month-editor-rows-wrap">
+      <div class="month-editor-rows" id="monthEditorRows"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeMonthEditor()">취소</button>
+      <button class="btn-primary" onclick="saveMonthEdit()">저장</button>
     </div>
   </div>
 </div>
@@ -614,42 +755,103 @@ function getTotalCash() {
   return Object.values(cashAccounts).reduce((s, v) => s + (Number(v) || 0), 0);
 }
 
-// ===== 입금 내역 저장/불러오기 =====
+// ===== 입출금 내역 저장/불러오기 =====
+// 데이터 구조: depositData = { transactions: [{ id, accId, date, amount }] }
+//   amount 양수 = 입금, 음수 = 출금
 function loadDeposits() {
-  const empty = { years: [], entries: {} };
-  for (const a of ACCOUNTS) empty.entries[a.id] = {};
+  const empty = { transactions: [] };
   try {
     const raw = localStorage.getItem(DEPOSITS_KEY);
     if (!raw) return empty;
     const parsed = JSON.parse(raw);
-    const years = Array.isArray(parsed.years)
-      ? parsed.years.map(y => Number(y)).filter(y => !isNaN(y))
-      : [];
-    const entries = {};
-    for (const a of ACCOUNTS) {
-      entries[a.id] = {};
-      const src = (parsed.entries && parsed.entries[a.id]) || {};
-      for (const y of years) {
-        const v = Number(src[y]);
-        if (!isNaN(v) && v !== 0) entries[a.id][y] = v;
-      }
+
+    // 신형식: transactions 배열
+    if (Array.isArray(parsed.transactions)) {
+      const txns = parsed.transactions
+        .map(t => ({
+          id: t.id || generateTxnId(),
+          accId: String(t.accId || ''),
+          date: String(t.date || ''),
+          amount: Number(t.amount) || 0
+        }))
+        .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
+      return { transactions: txns };
     }
-    years.sort((x, y) => x - y);
-    return { years, entries };
+
+    // 구형식(연도·계좌별 행렬) 마이그레이션: 각 (accId, year)의 금액을 year-12-31 날짜의 거래로 변환
+    if (Array.isArray(parsed.years) && parsed.entries) {
+      const txns = [];
+      for (const acc of ACCOUNTS) {
+        const src = parsed.entries[acc.id] || {};
+        for (const y of parsed.years) {
+          const v = Number(src[y]);
+          if (!isNaN(v) && v !== 0) {
+            txns.push({
+              id: generateTxnId(),
+              accId: acc.id,
+              date: `${y}-12-31`,
+              amount: v
+            });
+          }
+        }
+      }
+      return { transactions: txns };
+    }
+
+    return empty;
   } catch (e) { return empty; }
 }
 function saveDeposits() {
   localStorage.setItem(DEPOSITS_KEY, JSON.stringify(depositData));
 }
+function generateTxnId() {
+  return 'tx_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
 
-// ===== 계좌 입금 모달 =====
+function getAccountNetTotal(accId) {
+  return depositData.transactions
+    .filter(t => t.accId === accId)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+}
+
+function getGrandTotalPrincipal() {
+  try {
+    // 1. ACCOUNTS 자체가 없거나 배열이 아닐 때
+    if (!Array.isArray(ACCOUNTS)) return 0;
+
+    let total = 0;
+
+    for (let i = 0; i < ACCOUNTS.length; i++) {
+      const acc = ACCOUNTS[i];
+
+      // 2. acc 구조가 이상할 때 방어
+      if (!acc || !acc.id) continue;
+
+      // 3. 함수 호출 안전 처리
+      let value = 0;
+      try {
+        value = getAccountNetTotal(acc.id);
+      } catch (e) {
+        value = 0;
+      }
+
+      // 4. 숫자 변환 안전 처리
+      total += Number(value) || 0;
+    }
+
+    return total;
+
+  } catch (e) {
+    console.error('getGrandTotalPrincipal error:', e);
+    return 0;
+  }
+}
+
+// ===== 계좌 입출금 메인 모달 =====
 function openDepositModal() {
-  renderDepositTable();
+  renderDepositTotals();
+  renderDepositList();
   document.getElementById('accountDepositModal').classList.add('open');
-  setTimeout(() => {
-    const input = document.getElementById('newDepositYear');
-    if (input) input.focus();
-  }, 30);
 }
 function closeDepositModal() {
   document.getElementById('accountDepositModal').classList.remove('open');
@@ -658,152 +860,131 @@ function handleDepositBackdropClick(e) {
   if (e.target.id === 'accountDepositModal') closeDepositModal();
 }
 
-function addDepositYear() {
-  const input = document.getElementById('newDepositYear');
-  const yv = Number(input.value);
-  if (!yv || isNaN(yv) || yv < 1900 || yv > 2100) {
-    alert('유효한 연도를 입력해 주세요 (예: 2025)');
-    return;
-  }
-  if (depositData.years.includes(yv)) {
-    alert(`${yv}년은 이미 추가되어 있습니다.`);
-    input.value = '';
-    return;
-  }
-  depositData.years.push(yv);
-  depositData.years.sort((a, b) => a - b);
-  saveDeposits();
-  input.value = '';
-  renderDepositTable();
-}
-
-function removeDepositYear(year) {
-  year = Number(year);
-  if (!confirm(`${year}년 입금 내역을 삭제할까요? 해당 연도의 모든 계좌 입금액이 제거됩니다.`)) return;
-  depositData.years = depositData.years.filter(y => y !== year);
-  for (const a of ACCOUNTS) {
-    if (depositData.entries[a.id]) delete depositData.entries[a.id][year];
-  }
-  saveDeposits();
-  renderDepositTable();
-}
-
-function handleDepositInputChange(e) {
-  const accId = e.target.dataset.acc;
-  const year = Number(e.target.dataset.year);
-  if (!accId || !year) return;
-  const raw = String(e.target.value || '').replace(/[^\d.-]/g, '');
-  const val = Number(raw);
-  if (!depositData.entries[accId]) depositData.entries[accId] = {};
-  if (isNaN(val) || val === 0) {
-    delete depositData.entries[accId][year];
-  } else {
-    depositData.entries[accId][year] = val;
-  }
-  saveDeposits();
-  updateDepositTotals();
-}
-
-function renderDepositTable() {
-  const body = document.getElementById('depositBody');
-  const years = depositData.years.slice().sort((a, b) => a - b);
-
-  if (years.length === 0) {
-    body.innerHTML = `<div class="deposit-empty">아직 추가된 연도가 없습니다.<br>위 입력란에 연도를 입력하고 "+ 연도 추가"를 눌러 시작하세요.</div>`;
-    return;
-  }
-
-  let html = '<div class="deposit-table-wrap"><table class="deposit-table">';
-
-  // thead
-  html += '<thead><tr>';
-  html += '<th>입금</th>';
-  for (const y of years) {
-    html += `<th class="year-cell"><span class="year-label">${y}<button class="btn-year-remove" onclick="removeDepositYear(${y})" title="${y}년 삭제">×</button></span></th>`;
-  }
-  html += '<th class="row-total-col">계좌별 총액</th>';
-  html += '</tr></thead>';
-
-  // tbody
-  html += '<tbody>';
-  for (const acc of ACCOUNTS) {
-    const entries = depositData.entries[acc.id] || {};
-    html += `<tr><td>${acc.name}</td>`;
-    let rowTotal = 0;
-    for (const y of years) {
-      const v = Number(entries[y]) || 0;
-      rowTotal += v;
-      const display = v ? v.toLocaleString('ko-KR') : '';
-      html += `<td><input type="text" class="deposit-input" data-acc="${acc.id}" data-year="${y}" value="${display}" inputmode="numeric" placeholder="0"></td>`;
-    }
-    html += `<td class="row-total-cell" id="rowTotal_${acc.id}">${rowTotal ? '₩' + rowTotal.toLocaleString('ko-KR') : '-'}</td>`;
-    html += '</tr>';
-  }
-  html += '</tbody>';
-
-  // tfoot
-  html += '<tfoot>';
-  html += '<tr class="col-total-row"><td>연추가총액</td>';
-  for (const y of years) {
-    html += `<td id="colTotal_${y}">-</td>`;
-  }
-  html += '<td id="grandTotal">-</td></tr>';
-  html += '<tr class="cum-total-row"><td>누적총액</td>';
-  for (const y of years) {
-    html += `<td id="cumTotal_${y}">-</td>`;
-  }
-  html += '<td></td></tr>';
-  html += '</tfoot>';
-
-  html += '</table></div>';
-  body.innerHTML = html;
-
-  // Attach input handlers
-  body.querySelectorAll('.deposit-input').forEach(el => {
-    el.addEventListener('input', (ev) => {
-      // Live reformat of commas: allow user typing
-      const val = ev.target.value.replace(/[^\d]/g, '');
-      if (val) ev.target.value = Number(val).toLocaleString('ko-KR');
-      else ev.target.value = '';
-      handleDepositInputChange(ev);
-    });
-  });
-
-  updateDepositTotals();
-}
-
-function updateDepositTotals() {
-  const years = depositData.years.slice().sort((a, b) => a - b);
-  const colTotals = {};
-  for (const y of years) colTotals[y] = 0;
-
-  // Row totals
-  for (const acc of ACCOUNTS) {
-    const entries = depositData.entries[acc.id] || {};
-    let rowTotal = 0;
-    for (const y of years) {
-      const v = Number(entries[y]) || 0;
-      rowTotal += v;
-      colTotals[y] += v;
-    }
-    const el = document.getElementById('rowTotal_' + acc.id);
-    if (el) el.textContent = rowTotal ? '₩' + rowTotal.toLocaleString('ko-KR') : '-';
-  }
-
-  // Column totals + cumulative
-  let cumulative = 0;
+function renderDepositTotals() {
+  const el = document.getElementById('depositTotals');
   let grand = 0;
-  for (const y of years) {
-    const colT = colTotals[y];
-    grand += colT;
-    cumulative += colT;
-    const ctEl = document.getElementById('colTotal_' + y);
-    if (ctEl) ctEl.textContent = colT ? '₩' + colT.toLocaleString('ko-KR') : '-';
-    const cuEl = document.getElementById('cumTotal_' + y);
-    if (cuEl) cuEl.textContent = cumulative ? '₩' + cumulative.toLocaleString('ko-KR') : '-';
+  let html = '';
+  for (const acc of ACCOUNTS) {
+    const total = getAccountNetTotal(acc.id);
+    grand += total;
+    const cls = total === 0 ? 'is-zero' : (total < 0 ? 'is-negative' : '');
+    const display = total === 0 ? '-' : total.toLocaleString('ko-KR') + ' 원';
+    html += `
+      <div class="deposit-total-card ${cls}">
+        <span class="acc-name">${acc.name}</span>
+        <span class="acc-amount">${display}</span>
+      </div>`;
   }
-  const gtEl = document.getElementById('grandTotal');
-  if (gtEl) gtEl.textContent = grand ? '₩' + grand.toLocaleString('ko-KR') : '-';
+  el.innerHTML = html;
+
+  // 전체 순입금 합계 (상단 별도 배너)
+  const grandEl = document.getElementById('depositGrand');
+  grandEl.innerHTML = `
+    <span class="grand-label">전체 순입금 합계</span>
+    <span class="grand-amount">${grand === 0 ? '-' : grand.toLocaleString('ko-KR') + ' 원'}</span>`;
+}
+
+function renderDepositList() {
+  const list = document.getElementById('depositList');
+  const txns = depositData.transactions.slice()
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));  // 최신 날짜 먼저
+
+  if (txns.length === 0) {
+    list.innerHTML = `<div class="deposit-empty">아직 등록된 입출금 내역이 없습니다.<br>위 "➕ 입출금 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+
+  list.innerHTML = txns.map(t => {
+    const acc = ACCOUNTS.find(a => a.id === t.accId);
+    const accName = acc ? acc.name : t.accId;
+    const amt = Number(t.amount) || 0;
+    const amountCls = amt >= 0 ? 'pos' : 'neg';
+    const amountStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
+    return `
+      <div class="txn-row">
+        <input type="date" class="txn-date" value="${t.date}" data-txnid="${t.id}" onchange="updateTxnDate('${t.id}', this.value)" title="입출금일 수정">
+        <span class="txn-acc">${accName}</span>
+        <span class="txn-amount ${amountCls}">${amountStr}</span>
+        <button class="txn-delete" onclick="deleteTxn('${t.id}')" title="삭제">×</button>
+      </div>`;
+  }).join('');
+}
+
+function updateTxnDate(id, newDate) {
+  const t = depositData.transactions.find(x => x.id === id);
+  if (!t) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+    alert('유효한 날짜 형식이 아닙니다.');
+    renderDepositList();
+    return;
+  }
+  t.date = newDate;
+  saveDeposits();
+  renderDepositList();  // 정렬 재반영
+}
+
+function deleteTxn(id) {
+  const t = depositData.transactions.find(x => x.id === id);
+  if (!t) return;
+  const acc = ACCOUNTS.find(a => a.id === t.accId);
+  const accName = acc ? acc.name : t.accId;
+  const amt = Number(t.amount) || 0;
+  const amtStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
+  if (!confirm(`다음 내역을 삭제할까요?\n\n${accName} · ${t.date} · ${amtStr}`)) return;
+  depositData.transactions = depositData.transactions.filter(x => x.id !== id);
+  saveDeposits();
+  renderDepositTotals();
+  renderDepositList();
+}
+
+// ===== 입출금 추가 서브 모달 =====
+function openTxnEditor() {
+  const selAcc = document.getElementById('txnAccount');
+  selAcc.innerHTML = ACCOUNTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+  document.getElementById('txnType').value = 'deposit';
+
+  // 오늘 날짜 기본값
+  const now = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  document.getElementById('txnDate').value = today;
+
+  document.getElementById('txnAmount').value = '';
+
+  document.getElementById('txnEditorModal').classList.add('open');
+  setTimeout(() => { selAcc.focus(); }, 30);
+}
+
+function closeTxnEditor() {
+  document.getElementById('txnEditorModal').classList.remove('open');
+}
+function handleTxnBackdropClick(e) {
+  if (e.target.id === 'txnEditorModal') closeTxnEditor();
+}
+
+function saveTxn() {
+  const accId = document.getElementById('txnAccount').value;
+  const type = document.getElementById('txnType').value;
+  const date = document.getElementById('txnDate').value;
+  const rawAmt = String(document.getElementById('txnAmount').value || '').replace(/[^\d]/g, '');
+  const amount = Number(rawAmt);
+
+  if (!accId || !ACCOUNTS.find(a => a.id === accId)) { alert('계좌를 선택해 주세요.'); return; }
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('유효한 입출금일을 선택해 주세요.'); return; }
+  if (!amount || amount <= 0) { alert('금액을 올바르게 입력해 주세요 (0보다 큰 숫자).'); return; }
+
+  const signedAmount = type === 'withdraw' ? -amount : amount;
+  depositData.transactions.push({
+    id: generateTxnId(),
+    accId,
+    date,
+    amount: signedAmount
+  });
+  saveDeposits();
+  closeTxnEditor();
+  renderDepositTotals();
+  renderDepositList();
 }
 
 // ===== 계좌별 수량 입력 모달 =====
@@ -918,21 +1099,27 @@ function saveAccountQuantities() {
   render();
 }
 
-// ESC 키로 열려 있는 모달 닫기
+// ESC 키로 열려 있는 모달 닫기 (가장 상위의 서브 모달부터 우선 닫기)
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (document.getElementById('accountModal').classList.contains('open')) closeAccountModal();
-  if (document.getElementById('accountDetailModal').classList.contains('open')) closeAccountDetail();
-  if (document.getElementById('cashAccountModal').classList.contains('open')) closeCashAccountModal();
-  if (document.getElementById('accountDepositModal').classList.contains('open')) closeDepositModal();
+  // 서브 모달 먼저
+  if (document.getElementById('txnEditorModal').classList.contains('open')) { closeTxnEditor(); return; }
+  if (document.getElementById('accountModal').classList.contains('open')) { closeAccountModal(); return; }
+  if (document.getElementById('accountDetailModal').classList.contains('open')) { closeAccountDetail(); return; }
+  if (document.getElementById('cashAccountModal').classList.contains('open')) { closeCashAccountModal(); return; }
+  if (document.getElementById('accountDepositModal').classList.contains('open')) { closeDepositModal(); return; }
 });
 
-// 연도 추가 입력란: Enter 키로도 추가 가능
+// 금액 입력란 자동 콤마 포맷
 document.addEventListener('DOMContentLoaded', () => {
-  const newYearInput = document.getElementById('newDepositYear');
-  if (newYearInput) {
-    newYearInput.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter') { ev.preventDefault(); addDepositYear(); }
+  const amt = document.getElementById('txnAmount');
+  if (amt) {
+    amt.addEventListener('input', (ev) => {
+      const digits = String(ev.target.value || '').replace(/[^\d]/g, '');
+      ev.target.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+    });
+    amt.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); saveTxn(); }
     });
   }
 });
@@ -979,8 +1166,9 @@ function openAccountDetail(accId) {
   const stockValue = items.reduce((s, x) => s + x.currentValue, 0);
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
   const totalValue = stockValue + accCash;
-  const totalProfit = totalValue - totalCost - accCash; // 현금은 손익에서 제외
-  const profitBase = totalCost; // 손익률 분모는 매입액만
+  const totalPrincipal = getAccountNetTotal(accId);
+  const totalProfit = totalValue - totalPrincipal;  //const totalProfit = totalValue - totalCost - accCash; // 현금은 손익에서 제외
+  const profitBase = totalPrincipal; // 손익률 분모는 매입액만
   const totalProfitRate = profitBase > 0 ? (totalProfit / profitBase) * 100 : null;
 
   document.getElementById('detailTitle').textContent = '💼 ' + acc.name;
@@ -990,8 +1178,8 @@ function openAccountDetail(accId) {
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
   document.getElementById('detailSummary').innerHTML = `
     <div class="stat">
-      <div class="stat-label">매입액 합계</div>
-      <div class="stat-value">${formatKRW(totalCost)}</div>
+      <div class="stat-label">원금 합계</div>
+      <div class="stat-value">${formatKRW(totalPrincipal)}</div>
     </div>
     <div class="stat">
       <div class="stat-label">평가금액 합계</div>
@@ -1166,11 +1354,11 @@ function saveCashAccounts() {
 // ===== 파일 저장 / 불러오기 =====
 function exportToFile() {
   const payload = {
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     cashAccounts: cashAccounts,
     holdings: holdings,
-    deposits: depositData
+    deposits: depositData  // { transactions: [...] }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1212,27 +1400,39 @@ function importFromFile(event) {
         if (typeof h.quantity !== 'number' || h.quantity < 0) throw new Error('수량 형식 오류');
       }
 
-      // 입금 내역 마이그레이션
-      let newDeposits = { years: [], entries: {} };
-      for (const a of ACCOUNTS) newDeposits.entries[a.id] = {};
+      // 입출금 내역 마이그레이션 (신형식: transactions / 구형식: years+entries)
+      let newDeposits = { transactions: [] };
       if (data.deposits && typeof data.deposits === 'object') {
-        const ys = Array.isArray(data.deposits.years)
-          ? data.deposits.years.map(y => Number(y)).filter(y => !isNaN(y))
-          : [];
-        ys.sort((x, y) => x - y);
-        newDeposits.years = ys;
-        const srcEntries = (data.deposits.entries && typeof data.deposits.entries === 'object') ? data.deposits.entries : {};
-        for (const a of ACCOUNTS) {
-          const src = srcEntries[a.id] || {};
-          for (const y of ys) {
-            const v = Number(src[y]);
-            if (!isNaN(v) && v !== 0) newDeposits.entries[a.id][y] = v;
+        if (Array.isArray(data.deposits.transactions)) {
+          newDeposits.transactions = data.deposits.transactions
+            .map(t => ({
+              id: t.id || generateTxnId(),
+              accId: String(t.accId || ''),
+              date: String(t.date || ''),
+              amount: Number(t.amount) || 0
+            }))
+            .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
+        } else if (Array.isArray(data.deposits.years) && data.deposits.entries) {
+          // 구형식 → 신형식 변환
+          for (const acc of ACCOUNTS) {
+            const src = data.deposits.entries[acc.id] || {};
+            for (const y of data.deposits.years) {
+              const v = Number(src[y]);
+              if (!isNaN(v) && v !== 0) {
+                newDeposits.transactions.push({
+                  id: generateTxnId(),
+                  accId: acc.id,
+                  date: `${y}-12-31`,
+                  amount: v
+                });
+              }
+            }
           }
         }
       }
-      const newDepositYears = newDeposits.years.length;
+      const newDepositCount = newDeposits.transactions.length;
 
-      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입금내역 ${newDepositYears}개 연도\n\n현재 데이터를 덮어쓸까요?`;
+      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n\n현재 데이터를 덮어쓸까요?`;
       if (!confirm(summary)) { event.target.value = ''; return; }
 
       holdings = newHoldings.map(h => ({
@@ -1465,10 +1665,13 @@ function render() {
     };
   }).sort((a, b) => b.currentValue - a.currentValue);
 
-  // 전체 합계
+   // 전체 합계
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
   const stockValue = items.reduce((s, x) => s + x.currentValue, 0);
   const totalValue = stockValue + totalCash;
+
+  //const totalCost = getGrandTotalPrincipal();
+
   const totalProfit = items.reduce((s, x) => s + (x.hasCost ? x.profit : 0), 0);
   const totalProfitRate = totalCost > 0 ? (totalProfit / totalCost) * 100 : null;
 
@@ -1665,3 +1868,4 @@ if (holdings.length) {
 </script>
 </body>
 </html>
+  
