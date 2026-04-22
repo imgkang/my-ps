@@ -2164,6 +2164,51 @@ function formatMilSigned(n) {
   return sign + (n / 1000000).toFixed(1);
 }
 
+// ===== XIRR (내부수익률) =====
+function xirrCalc(cashflows) {
+  // cashflows: [{date: Date, amount: number}]
+  // 투자자 기준: 입금 → 음수, 현재가치(회수) → 양수
+  if (!cashflows || cashflows.length < 2) return null;
+  const t0 = cashflows[0].date.getTime();
+  const days = cashflows.map(cf => (cf.date.getTime() - t0) / 86400000);
+  const amounts = cashflows.map(cf => cf.amount);
+
+  // 모든 금액이 같은 부호면 계산 불가
+  const hasPos = amounts.some(a => a > 0);
+  const hasNeg = amounts.some(a => a < 0);
+  if (!hasPos || !hasNeg) return null;
+
+  let rate = 0.1;
+  for (let iter = 0; iter < 200; iter++) {
+    let npv = 0, dnpv = 0;
+    for (let i = 0; i < amounts.length; i++) {
+      const t = days[i] / 365;
+      const factor = Math.pow(1 + rate, t);
+      npv  += amounts[i] / factor;
+      dnpv -= amounts[i] * t / (factor * (1 + rate));
+    }
+    if (Math.abs(npv) < 1e-6) break;
+    if (Math.abs(dnpv) < 1e-15) break;
+    const delta = npv / dnpv;
+    rate -= delta;
+    if (rate <= -1) rate = -0.9999;
+    if (Math.abs(delta) < 1e-9) break;
+  }
+  return isFinite(rate) && rate > -1 ? rate : null;
+}
+
+function calcXIRR(totalCurrentValue) {
+  const txns = depositData.transactions;
+  if (!txns.length || totalCurrentValue <= 0) return null;
+  const sorted = txns.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const cashflows = sorted.map(t => ({
+    date: new Date(t.date),
+    amount: -(Number(t.amount) || 0)  // 입금(+) → 투자자 관점 지출(-), 출금(-) → 회수(+)
+  }));
+  cashflows.push({ date: new Date(), amount: totalCurrentValue });
+  return xirrCalc(cashflows);
+}
+
 function render() {
   const container = document.getElementById('holdingsContainer');
   const statusText = document.getElementById('statusText');
@@ -2228,10 +2273,16 @@ function render() {
   const profitSign = totalProfit >= 0 ? '+' : '';
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
 
+  // 내부수익률(XIRR) 계산
+  const xirrRate = calcXIRR(totalValue);
+  const xirrSign = xirrRate != null && xirrRate >= 0 ? '+' : '';
+  const xirrCls  = xirrRate != null && xirrRate >= 0 ? 'diff-positive' : 'diff-negative';
+  const xirrText = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
+
   // 오늘의 손익액 전체 합계
   const totalDayChange = holdings.reduce((s, h) => s + ((Number(h.change) || 0) * (Number(h.quantity) || 0)), 0);
 
-  // 상단 요약 카드 4개 (매입액 / 평가금액 / 손익 / 손익률) - 백만원 단위
+  // 상단 요약 카드 5개 (매입액 / 평가금액 / 손익 / 누적순익률 / 내부수익률) - 백만원 단위
   let html = `
     <div class="detail-summary">
       <div class="stat">
@@ -2247,8 +2298,12 @@ function render() {
         <div class="stat-value ${profitCls}">${totalGrandPricipal > 0 ? formatMilSigned(totalProfit) : '-'}</div>
       </div>
       <div class="stat">
-        <div class="stat-label">손익률</div>
+        <div class="stat-label">누적순익률</div>
         <div class="stat-value ${profitCls}">${totalProfitRate != null ? profitSign + totalProfitRate.toFixed(2) + '%' : '-'}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">내부수익률 (XIRR)</div>
+        <div class="stat-value ${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</div>
       </div>
     </div>
     <div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">${updateText} · 금액 단위: 백만원(소수1)</div>
