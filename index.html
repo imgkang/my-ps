@@ -568,12 +568,21 @@
   <header>
     <div>
       <h1>📊 My PM</h1>
-       <!--<div class="subtitle">국내 주식/ETF 보유량을 입력하면 네이버 금융에서 현재가를 조회합니다</div> -->
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <label class="auto-refresh-label" title="자동 새로고침 간격(분). 0 입력 시 자동 새로고침이 꺼집니다. 브라우저 새로고침(F5) 시 즉시 현재가가 갱신됩니다.">
+        🔄 자동
+        <input type="number" id="autoRefreshMinutes" min="0" step="1" value="30" onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()">
+        분
+      </label>
+      <span id="refreshStatus"></span>
     </div>
   </header>
 
   <div class="toolbar">
     <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
+    <button class="btn-secondary" onclick="openRecordsModal()">📒 계좌 기록</button>
+    <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
     <button class="btn-secondary" onclick="exportToFile()">💾 파일로 저장</button>
     <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
@@ -582,16 +591,6 @@
   <div class="card">
     <div class="status-bar">
       <span id="statusText">보유종목 0개</span>
-      <div class="actions">
-        <button class="btn-secondary" onclick="openRecordsModal()">📒 계좌 기록</button>
-        <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
-        <label class="auto-refresh-label" title="자동 새로고침 간격(분). 0 입력 시 자동 새로고침이 꺼집니다. 브라우저 새로고침(F5) 시 즉시 현재가가 갱신됩니다.">
-          🔄 자동
-          <input type="number" id="autoRefreshMinutes" min="0" step="1" value="30" onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()">
-          분
-        </label>
-        <span id="refreshStatus"></span>
-      </div>
     </div>
     <div id="holdingsContainer">
       <div class="empty-state">
