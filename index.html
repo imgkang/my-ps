@@ -1309,6 +1309,12 @@ function openAccountDetail(accId) {
 
   const profitSign = totalProfit >= 0 ? '+' : '';
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
+
+  const accXirrRate = calcXIRR(totalValue, accId);
+  const accXirrSign = accXirrRate != null && accXirrRate >= 0 ? '+' : '';
+  const accXirrCls  = accXirrRate != null && accXirrRate >= 0 ? 'diff-positive' : 'diff-negative';
+  const accXirrText = accXirrRate != null ? accXirrSign + (accXirrRate * 100).toFixed(2) + '%' : '-';
+
   document.getElementById('detailSummary').innerHTML = `
     <div class="stat">
       <div class="stat-label">원금 합계</div>
@@ -1323,8 +1329,12 @@ function openAccountDetail(accId) {
       <div class="stat-value ${profitCls}">${profitSign}${formatKRW(totalProfit)}</div>
     </div>
     <div class="stat">
-      <div class="stat-label">손익률</div>
+      <div class="stat-label">누적순익률</div>
       <div class="stat-value ${profitCls}">${totalProfitRate != null ? profitSign + totalProfitRate.toFixed(2) + '%' : '-'}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">내부수익률 (XIRR)</div>
+      <div class="stat-value ${accXirrCls}" title="이 계좌의 입출금 내역 기준 연환산 내부수익률">${accXirrText}</div>
     </div>
   `;
 
@@ -2197,8 +2207,10 @@ function xirrCalc(cashflows) {
   return isFinite(rate) && rate > -1 ? rate : null;
 }
 
-function calcXIRR(totalCurrentValue) {
-  const txns = depositData.transactions;
+function calcXIRR(totalCurrentValue, accId = null) {
+  const txns = accId
+    ? depositData.transactions.filter(t => t.accId === accId)
+    : depositData.transactions;
   if (!txns.length || totalCurrentValue <= 0) return null;
   const sorted = txns.slice().sort((a, b) => a.date.localeCompare(b.date));
   const cashflows = sorted.map(t => ({
