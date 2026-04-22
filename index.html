@@ -552,6 +552,7 @@
   </header>
 
   <div class="toolbar">
+    <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     <button class="btn-secondary" onclick="exportToFile()">💾 파일로 저장</button>
     <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
@@ -574,7 +575,7 @@
     <div id="holdingsContainer">
       <div class="empty-state">
         <div class="icon">📈</div>
-        <div>아래에서 종목을 추가해 주세요</div>
+        <div>'+ 종목 추가' 버튼을 눌러 종목을 추가해 주세요</div>
       </div>
     </div>
   </div>
@@ -585,16 +586,6 @@
   </div>
 
   <div class="card">
-    <h2>종목 추가</h2>
-    <div class="add-form">
-      <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off">
-      <input type="text" id="stockName" placeholder="종목명 (자동입력)" autocomplete="off">
-      <input type="number" id="quantity" placeholder="수량" min="0" step="1" autocomplete="off">
-      <button class="btn-primary" onclick="addStock()">+ 추가</button>
-    </div>
-  </div>
-
-  <div class="card">
     <h2>📈 월별 입금액·평가총액 추이 (백만원)</h2>
     <div class="chart-subtitle">진한 녹색 = 누적 입금액(원금), 연한 녹색 = 평가총액</div>
     <div class="chart-wrap">
@@ -602,6 +593,24 @@
     </div>
     <div id="chartEmpty" class="chart-empty" style="display:none">
       계좌 기록이 아직 없습니다. 상단의 '📒 계좌 기록'에서 월별 평가금액을 먼저 추가해 주세요.
+    </div>
+  </div>
+</div>
+
+<!-- 종목 추가 모달 -->
+<div class="modal-backdrop" id="addStockModal" onclick="handleAddStockBackdropClick(event)">
+  <div class="modal" style="max-width: 480px;">
+    <div class="modal-header">
+      <div>
+        <h2>종목 추가</h2>
+      </div>
+      <button class="close-btn" onclick="closeAddStockModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="add-form" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+      <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off" style="grid-column: 1 / -1;">
+      <input type="text" id="stockName" placeholder="종목명 (자동입력)" autocomplete="off" style="grid-column: 1 / -1;">
+      <input type="number" id="quantity" placeholder="수량" min="0" step="1" autocomplete="off">
+      <button class="btn-primary" onclick="addStock()">+ 추가</button>
     </div>
   </div>
 </div>
@@ -1645,6 +1654,18 @@ async function fetchStockInfo(code) {
   };
 }
 
+// ===== 종목 추가 모달 =====
+function openAddStockModal() {
+  document.getElementById('addStockModal').classList.add('open');
+  setTimeout(() => document.getElementById('stockCode').focus(), 50);
+}
+function closeAddStockModal() {
+  document.getElementById('addStockModal').classList.remove('open');
+}
+function handleAddStockBackdropClick(e) {
+  if (e.target === document.getElementById('addStockModal')) closeAddStockModal();
+}
+
 // ===== UI: 종목 추가 =====
 async function addStock() {
   const codeEl = document.getElementById('stockCode');
@@ -1680,7 +1701,7 @@ async function addStock() {
   render();
 
   codeEl.value = ''; nameEl.value = ''; qtyEl.value = '';
-  codeEl.focus();
+  closeAddStockModal();
 }
 
 // 종목코드 입력 시 종목명 자동완성
