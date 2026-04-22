@@ -1328,7 +1328,7 @@ function openAccountDetail(accId) {
       <div class="stat-value ${profitCls}">${profitSign}${formatKRW(totalProfit)}</div>
     </div>
     <div class="stat">
-      <div class="stat-label">누적순익률</div>
+      <div class="stat-label">누적수익률</div>
       <div class="stat-value ${profitCls}">${totalProfitRate != null ? profitSign + totalProfitRate.toFixed(2) + '%' : '-'}</div>
     </div>
     <div class="stat">
@@ -2293,7 +2293,7 @@ function render() {
   // 오늘의 손익액 전체 합계
   const totalDayChange = holdings.reduce((s, h) => s + ((Number(h.change) || 0) * (Number(h.quantity) || 0)), 0);
 
-  // 상단 요약 카드 5개 (매입액 / 평가금액 / 손익 / 누적순익률 / 내부수익률) - 백만원 단위
+  // 상단 요약 카드 5개 (매입액 / 평가금액 / 손익 / 누적수익률 / 내부수익률) - 백만원 단위
   let html = `
     <div class="detail-summary">
       <div class="stat">
@@ -2309,7 +2309,7 @@ function render() {
         <div class="stat-value ${profitCls}">${totalGrandPricipal > 0 ? formatMilSigned(totalProfit) : '-'}</div>
       </div>
       <div class="stat">
-        <div class="stat-label">누적순익률</div>
+        <div class="stat-label">누적수익률</div>
         <div class="stat-value ${profitCls}">${totalProfitRate != null ? profitSign + totalProfitRate.toFixed(2) + '%' : '-'}</div>
       </div>
       <div class="stat">
