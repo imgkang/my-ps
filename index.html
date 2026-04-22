@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>연금계좌 포트폴리오 관리</title>
+<title>My PM</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --primary: #03c75a;
@@ -110,7 +111,20 @@
     display: flex; justify-content: space-between; align-items: center;
     padding: 8px 4px; font-size: 12px; color: var(--muted);
   }
-  .actions { display: flex; gap: 8px; }
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .auto-refresh-label {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 13px; color: var(--text);
+    padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 6px; background: #f9fafb;
+    white-space: nowrap;
+  }
+  .auto-refresh-label input[type="number"] {
+    width: 56px; padding: 2px 4px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 4px;
+    text-align: center;
+  }
+  #refreshStatus { font-size: 12px; color: var(--muted); margin-left: 4px; }
 
   .help {
     background: #eff6ff;
@@ -246,6 +260,104 @@
 
   /* 계좌 상세 모달 */
   .modal-wide { max-width: 1200px; }
+
+  /* 월별 추이 차트 */
+  .chart-subtitle {
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .detail-chart-title {
+    font-size: 15px; margin: 18px 0 8px 0;
+    color: var(--text);
+  }
+  .chart-wrap {
+    position: relative;
+    height: 360px;
+    width: 100%;
+  }
+  .chart-empty {
+    padding: 40px 20px; text-align: center;
+    color: var(--muted); font-size: 14px;
+    background: #f9fafb; border-radius: 8px;
+  }
+
+  /* 계좌 기록(월별 평가금액) 모달 */
+  .modal-records { max-width: 1200px; }
+  .records-input-card {
+    background: #f9fafb; border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+  }
+  .records-input-top {
+    display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .records-input-top label {
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 12px; color: var(--muted);
+  }
+  .records-input-top input[type="number"] {
+    width: 100px; padding: 6px 8px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .records-input-accounts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px; margin-bottom: 12px;
+  }
+  .records-input-accounts .acc-field {
+    display: flex; flex-direction: column; gap: 4px;
+    background: white; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .records-input-accounts .acc-field label {
+    font-size: 11px; color: var(--muted); font-weight: 600;
+  }
+  .records-input-accounts .acc-field input {
+    width: 100%; padding: 4px 6px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 4px;
+    text-align: right;
+  }
+  .records-input-total {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #eff6ff; padding: 8px 12px; border-radius: 6px;
+    font-size: 14px; margin-bottom: 12px;
+  }
+  .records-input-total strong { font-size: 16px; color: #1e40af; }
+  .records-input-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .records-list-wrap {
+    overflow-x: auto; border: 1px solid var(--border);
+    border-radius: 8px; max-height: 400px;
+  }
+  .records-table-header,
+  .records-row {
+    display: grid;
+    gap: 8px; padding: 8px 10px; font-size: 12px;
+    align-items: center;
+  }
+  .records-table-header {
+    background: #f9fafb; font-weight: 600; color: var(--muted);
+    position: sticky; top: 0; z-index: 1;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .records-row {
+    border-bottom: 1px solid var(--border);
+  }
+  .records-row:last-child { border-bottom: none; }
+  .records-row .amount { text-align: right; }
+  .records-row .total { text-align: right; font-weight: 700; color: #1e40af; }
+  .records-row .del-btn {
+    background: #fee2e2; color: #991b1b; border: none;
+    padding: 4px 8px; border-radius: 4px; cursor: pointer;
+    font-size: 11px;
+  }
+  .records-row .del-btn:hover { background: #fecaca; }
+  .records-empty {
+    padding: 30px 20px; text-align: center; color: var(--muted);
+    font-size: 13px;
+  }
   .detail-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -434,8 +546,8 @@
 <div class="container">
   <header>
     <div>
-      <h1>📊 연금계좌 포트폴리오</h1>
-      <div class="subtitle">국내 주식/ETF 보유량을 입력하면 네이버 금융에서 현재가를 조회합니다</div>
+      <h1>📊 My PM</h1>
+       <!--<div class="subtitle">국내 주식/ETF 보유량을 입력하면 네이버 금융에서 현재가를 조회합니다</div> -->
     </div>
   </header>
 
@@ -451,7 +563,12 @@
       <div class="actions">
         <button class="btn-secondary" onclick="openRecordsModal()">📒 계좌 기록</button>
         <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
-        <button class="btn-secondary" onclick="refreshAll()">🔄 현재가 새로고침</button>
+        <label class="auto-refresh-label" title="자동 새로고침 간격(분). 0 입력 시 자동 새로고침이 꺼집니다. 브라우저 새로고침(F5) 시 즉시 현재가가 갱신됩니다.">
+          🔄 자동
+          <input type="number" id="autoRefreshMinutes" min="0" step="1" value="30" onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()">
+          분
+        </label>
+        <span id="refreshStatus"></span>
       </div>
     </div>
     <div id="holdingsContainer">
@@ -474,6 +591,17 @@
       <input type="text" id="stockName" placeholder="종목명 (자동입력)" autocomplete="off">
       <input type="number" id="quantity" placeholder="수량" min="0" step="1" autocomplete="off">
       <button class="btn-primary" onclick="addStock()">+ 추가</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📈 월별 입금액·평가총액 추이 (백만원)</h2>
+    <div class="chart-subtitle">진한 녹색 = 누적 입금액(원금), 연한 녹색 = 평가총액</div>
+    <div class="chart-wrap">
+      <canvas id="portfolioChart"></canvas>
+    </div>
+    <div id="chartEmpty" class="chart-empty" style="display:none">
+      계좌 기록이 아직 없습니다. 상단의 '📒 계좌 기록'에서 월별 평가금액을 먼저 추가해 주세요.
     </div>
   </div>
 </div>
@@ -515,6 +643,15 @@
     <div class="detail-table-wrap">
       <table class="detail-table" id="detailTable"></table>
     </div>
+
+    <h3 class="detail-chart-title">📈 월별 원금·평가금액 추이 (백만원)</h3>
+    <div class="chart-wrap">
+      <canvas id="accountDetailChart"></canvas>
+    </div>
+    <div id="accountDetailChartEmpty" class="chart-empty" style="display:none">
+      계좌 기록이 아직 없습니다. '📒 계좌 기록'에서 월별 평가금액을 먼저 추가해 주세요.
+    </div>
+
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeAccountDetail()">닫기</button>
     </div>
@@ -619,58 +756,47 @@
   </div>
 </div>
 
-<!-- 계좌 기록 모달 (월별 스냅샷 목록) -->
+<!-- 계좌 기록 모달 (월별 평가금액 기록) -->
 <div class="modal-backdrop" id="accountRecordsModal" onclick="handleRecordsBackdropClick(event)">
   <div class="modal modal-wide modal-records">
     <div class="modal-header">
       <div>
         <h2>📒 계좌 기록 관리</h2>
-        <div class="modal-subtitle">월별 계좌 상태 스냅샷 (주식수 · 주가)</div>
+        <div class="modal-subtitle">월별 계좌 평가금액 기록 (연도·월 + 계좌별 평가금액)</div>
       </div>
       <button class="close-btn" onclick="closeRecordsModal()" aria-label="닫기">×</button>
     </div>
-    <div class="records-toolbar">
-      <button class="btn-primary" onclick="saveCurrentSnapshot()">💾 현재값 저장</button>
-      <button class="btn-secondary" onclick="openMonthEditorForNew()">➕ 월 추가</button>
+
+    <div class="records-input-card">
+      <div class="records-input-top">
+        <label>
+          <span>연도</span>
+          <input type="number" id="recYear" min="2000" max="2100" step="1" placeholder="YYYY">
+        </label>
+        <label>
+          <span>월</span>
+          <input type="number" id="recMonth" min="1" max="12" step="1" placeholder="M">
+        </label>
+        <button class="btn-secondary" onclick="fillCurrentValues()">💾 현재값 저장</button>
+      </div>
+      <div class="records-input-accounts" id="recAccountInputs"></div>
+      <div class="records-input-total">
+        <span>전체 총합</span>
+        <strong id="recTotal">0 원</strong>
+      </div>
+      <div class="records-input-actions">
+        <button class="btn-secondary" onclick="clearRecordInputs()">입력 초기화</button>
+        <button class="btn-primary" onclick="addMonthlyRecord()">➕ 추가</button>
+      </div>
     </div>
-    <div class="records-list-header">
-      <span>월</span><span>계좌 수</span><span>총 평가금액</span><span></span><span></span>
-    </div>
+
     <div class="records-list-wrap">
+      <div class="records-table-header" id="recordsTableHeader"></div>
       <div id="recordsList"></div>
     </div>
+
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeRecordsModal()">닫기</button>
-    </div>
-  </div>
-</div>
-
-<!-- 월별 스냅샷 편집 서브 모달 -->
-<div class="modal-backdrop" id="monthEditorModal" onclick="handleMonthEditorBackdropClick(event)">
-  <div class="modal modal-wide">
-    <div class="modal-header">
-      <div>
-        <h2 id="monthEditorTitle">월 기록 편집</h2>
-        <div class="modal-subtitle">각 계좌별 주식수와 그 때의 주가를 입력</div>
-      </div>
-      <button class="close-btn" onclick="closeMonthEditor()" aria-label="닫기">×</button>
-    </div>
-    <div class="month-editor-top">
-      <label>
-        <span>월</span>
-        <input type="month" id="monthEditorYM">
-      </label>
-      <button class="btn-secondary" onclick="addHoldingRow()">➕ 종목 추가</button>
-    </div>
-    <div class="month-editor-rows-header">
-      <span>계좌</span><span>종목코드</span><span>종목명</span><span>주식수</span><span>주가 (원)</span><span></span>
-    </div>
-    <div class="month-editor-rows-wrap">
-      <div class="month-editor-rows" id="monthEditorRows"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeMonthEditor()">취소</button>
-      <button class="btn-primary" onclick="saveMonthEdit()">저장</button>
     </div>
   </div>
 </div>
@@ -895,6 +1021,7 @@ function updateTxnDate(id, newDate) {
   t.date = newDate;
   saveDeposits();
   renderDepositList();  // 정렬 재반영
+  renderPortfolioChart();
 }
 
 function deleteTxn(id) {
@@ -909,6 +1036,7 @@ function deleteTxn(id) {
   saveDeposits();
   renderDepositTotals();
   renderDepositList();
+  renderPortfolioChart();
 }
 
 // ===== 입출금 추가 서브 모달 =====
@@ -959,6 +1087,7 @@ function saveTxn() {
   closeTxnEditor();
   renderDepositTotals();
   renderDepositList();
+  renderPortfolioChart();
 }
 
 // ===== 계좌별 수량 입력 모달 =====
@@ -1173,6 +1302,8 @@ function openAccountDetail(accId) {
   if (!items.length && accCash <= 0) {
     tableEl.innerHTML = `<tbody><tr><td class="detail-empty">이 계좌에 등록된 종목이나 현금이 없습니다.<br>메인 화면에서 <strong>📂 계좌별</strong> 버튼으로 수량/매입단가/현금을 먼저 입력해 주세요.</td></tr></tbody>`;
     document.getElementById('accountDetailModal').classList.add('open');
+    // 빈 계좌라도 월별 기록이 있으면 차트 표시 가능
+    setTimeout(() => renderAccountDetailChart(accId), 50);
     return;
   }
 
@@ -1263,10 +1394,13 @@ function openAccountDetail(accId) {
   `;
 
   document.getElementById('accountDetailModal').classList.add('open');
+  // 모달이 표시된 뒤 캔버스 크기가 확정되므로 약간 지연 후 렌더
+  setTimeout(() => renderAccountDetailChart(accId), 50);
 }
 
 function closeAccountDetail() {
   document.getElementById('accountDetailModal').classList.remove('open');
+  if (_accountDetailChart) { _accountDetailChart.destroy(); _accountDetailChart = null; }
 }
 
 function handleDetailBackdropClick(e) {
@@ -1562,9 +1696,8 @@ function editQuantity(code) {
 // ===== 전체 새로고침 =====
 async function refreshAll() {
   if (!holdings.length) return;
-  const btn = event.target;
-  const origText = btn.textContent;
-  btn.disabled = true; btn.textContent = '⏳ 조회 중...';
+  const statusEl = document.getElementById('refreshStatus');
+  if (statusEl) statusEl.textContent = '⏳ 조회 중...';
 
   // 개별 시도 (한 종목 실패해도 나머지 진행)
   await Promise.all(holdings.map(async h => {
@@ -1582,7 +1715,365 @@ async function refreshAll() {
 
   saveHoldings();
   render();
-  btn.disabled = false; btn.textContent = origText;
+  if (statusEl) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    statusEl.textContent = `최근 갱신 ${hh}:${mm}:${ss}`;
+  }
+}
+
+// ===== 자동 새로고침 제어 =====
+const AUTO_REFRESH_KEY = 'autoRefreshMinutes';
+let autoRefreshTimer = null;
+
+function updateAutoRefresh() {
+  const input = document.getElementById('autoRefreshMinutes');
+  if (!input) return;
+  let minutes = parseInt(input.value, 10);
+  if (isNaN(minutes) || minutes < 0) minutes = 0;
+  input.value = minutes;
+  try { localStorage.setItem(AUTO_REFRESH_KEY, String(minutes)); } catch (_) {}
+
+  // 기존 타이머 제거
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+  // 0보다 크면 새 타이머 설정
+  if (minutes > 0) {
+    autoRefreshTimer = setInterval(() => {
+      if (holdings.length) refreshAll();
+    }, minutes * 60 * 1000);
+  }
+}
+
+function initAutoRefresh() {
+  const input = document.getElementById('autoRefreshMinutes');
+  if (!input) return;
+  let saved = 0;
+  try {
+    const v = localStorage.getItem(AUTO_REFRESH_KEY);
+    if (v != null) saved = parseInt(v, 10) || 0;
+  } catch (_) {}
+  input.value = saved;
+  updateAutoRefresh();
+}
+
+// ===== 계좌 기록 (월별 평가금액) =====
+const MONTHLY_RECORDS_KEY = 'pension_monthly_records_v1';
+let monthlyRecords = loadMonthlyRecords();
+
+function loadMonthlyRecords() {
+  try {
+    const raw = localStorage.getItem(MONTHLY_RECORDS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map(r => ({
+      id: String(r.id || (Date.now() + Math.random())),
+      year: parseInt(r.year, 10) || 0,
+      month: parseInt(r.month, 10) || 0,
+      accounts: (r.accounts && typeof r.accounts === 'object') ? r.accounts : {}
+    }));
+  } catch (_) { return []; }
+}
+function saveMonthlyRecords() {
+  try { localStorage.setItem(MONTHLY_RECORDS_KEY, JSON.stringify(monthlyRecords)); } catch (_) {}
+}
+
+function openRecordsModal() {
+  const modal = document.getElementById('accountRecordsModal');
+  if (!modal) return;
+  // 입력 폼 초기화: 현재 연/월을 기본값으로
+  const now = new Date();
+  document.getElementById('recYear').value = now.getFullYear();
+  document.getElementById('recMonth').value = now.getMonth() + 1;
+  renderRecordInputs(); // 계좌별 입력칸 생성 (빈값)
+  renderRecordsTableHeader();
+  renderRecordsList();
+  modal.classList.add('open');
+}
+function closeRecordsModal() {
+  const modal = document.getElementById('accountRecordsModal');
+  if (modal) modal.classList.remove('open');
+}
+function handleRecordsBackdropClick(event) {
+  if (event.target.id === 'accountRecordsModal') closeRecordsModal();
+}
+
+function renderRecordInputs(values) {
+  const wrap = document.getElementById('recAccountInputs');
+  if (!wrap) return;
+  wrap.innerHTML = ACCOUNTS.map(a => {
+    const v = values && values[a.id] != null ? values[a.id] : '';
+    return `
+      <div class="acc-field">
+        <label>${a.name}</label>
+        <input type="number" min="0" step="1" data-acc-id="${a.id}" value="${v}" oninput="updateRecordTotal()" placeholder="0">
+      </div>
+    `;
+  }).join('');
+  updateRecordTotal();
+}
+
+function getRecordInputAmounts() {
+  const result = {};
+  document.querySelectorAll('#recAccountInputs input[data-acc-id]').forEach(inp => {
+    const id = inp.getAttribute('data-acc-id');
+    const v = Number(inp.value);
+    result[id] = isNaN(v) ? 0 : v;
+  });
+  return result;
+}
+
+function updateRecordTotal() {
+  const amounts = getRecordInputAmounts();
+  const total = Object.values(amounts).reduce((s, v) => s + (Number(v) || 0), 0);
+  const el = document.getElementById('recTotal');
+  if (el) el.textContent = formatKRW(total);
+}
+
+function clearRecordInputs() {
+  document.querySelectorAll('#recAccountInputs input[data-acc-id]').forEach(inp => { inp.value = ''; });
+  updateRecordTotal();
+}
+
+function fillCurrentValues() {
+  // 현재 포트폴리오 상태로 계좌별 평가금액 자동 채움
+  const values = {};
+  for (const a of ACCOUNTS) {
+    values[a.id] = Math.round(computeAccountValue(a.id));
+  }
+  renderRecordInputs(values);
+}
+
+function addMonthlyRecord() {
+  const year = parseInt(document.getElementById('recYear').value, 10);
+  const month = parseInt(document.getElementById('recMonth').value, 10);
+  if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
+  if (!month || month < 1 || month > 12) { alert('월을 1~12 사이로 입력해 주세요.'); return; }
+
+  const accounts = getRecordInputAmounts();
+  const hasAny = Object.values(accounts).some(v => (Number(v) || 0) > 0);
+  if (!hasAny) {
+    if (!confirm('모든 계좌 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
+  }
+
+  monthlyRecords.push({
+    id: String(Date.now()) + Math.floor(Math.random() * 1000),
+    year, month, accounts
+  });
+  saveMonthlyRecords();
+  renderRecordsList();
+  renderPortfolioChart();
+  // 입력 폼 유지 (연속 입력 편의)
+}
+
+function deleteMonthlyRecord(id) {
+  const rec = monthlyRecords.find(r => r.id === id);
+  if (!rec) return;
+  if (!confirm(`${rec.year}년 ${rec.month}월 기록을 삭제하시겠습니까?`)) return;
+  monthlyRecords = monthlyRecords.filter(r => r.id !== id);
+  saveMonthlyRecords();
+  renderRecordsList();
+  renderPortfolioChart();
+}
+
+function renderRecordsTableHeader() {
+  const header = document.getElementById('recordsTableHeader');
+  if (!header) return;
+  // 컬럼: 연/월 + 계좌들 + 총합 + 삭제
+  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 60px`;
+  header.style.gridTemplateColumns = cols;
+  header.innerHTML = `
+    <span>연/월</span>
+    ${ACCOUNTS.map(a => `<span style="text-align:right">${a.name}<br><small>(백만원)</small></span>`).join('')}
+    <span style="text-align:right">총합<br><small>(백만원)</small></span>
+    <span></span>
+  `;
+}
+
+function renderRecordsList() {
+  const list = document.getElementById('recordsList');
+  if (!list) return;
+
+  if (!monthlyRecords.length) {
+    list.innerHTML = '<div class="records-empty">아직 저장된 기록이 없습니다. 위에서 추가해 주세요.</div>';
+    return;
+  }
+
+  // 연/월 내림차순 정렬 (최신이 위)
+  const sorted = [...monthlyRecords].sort((a, b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    return b.month - a.month;
+  });
+
+  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 60px`;
+
+  list.innerHTML = sorted.map(rec => {
+    const total = ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const accCells = ACCOUNTS.map(a => {
+      const v = Number(rec.accounts[a.id]) || 0;
+      return `<span class="amount">${v ? formatMil(v) : '-'}</span>`;
+    }).join('');
+    return `
+      <div class="records-row" style="grid-template-columns:${cols}">
+        <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
+        ${accCells}
+        <span class="total">${formatMil(total)}</span>
+        <span><button class="del-btn" onclick="deleteMonthlyRecord('${rec.id}')">삭제</button></span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== 월별 원금·평가금액 추이 차트 =====
+
+// 특정 연/월 말일까지의 계좌별 누적 순입금(=원금)
+function getAccountPrincipalAt(accId, year, month) {
+  // 해당 월 말일 YYYY-MM-DD 문자열
+  const lastDay = new Date(year, month, 0).getDate();
+  const endStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  if (!depositData || !Array.isArray(depositData.transactions)) return 0;
+  return depositData.transactions
+    .filter(t => t.accId === accId && typeof t.date === 'string' && t.date <= endStr)
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+}
+
+// 차트에 사용할 데이터 빌드: accId = null이면 전체 계좌 합산
+function buildChartSeries(accId) {
+  const sorted = [...monthlyRecords].sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    return a.month - b.month;
+  });
+  const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2, '0')}`);
+
+  const principalData = sorted.map(r => {
+    const total = accId
+      ? getAccountPrincipalAt(accId, r.year, r.month)
+      : ACCOUNTS.reduce((s, a) => s + getAccountPrincipalAt(a.id, r.year, r.month), 0);
+    return Math.round(total / 100000) / 10; // 백만원, 소수 1자리
+  });
+
+  const evalData = sorted.map(r => {
+    const total = accId
+      ? (Number(r.accounts[accId]) || 0)
+      : ACCOUNTS.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0);
+    return Math.round(total / 100000) / 10;
+  });
+
+  return { labels, principalData, evalData };
+}
+
+// 공통 라인 차트 빌더 (평가금액: 연한 녹색 채움 / 원금: 진한 녹색 채움, 원금이 위에 덮여 그려짐)
+function createLineChart(ctx, series) {
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: series.labels,
+      datasets: [
+        {
+          label: '평가총액',
+          data: series.evalData,
+          borderColor: '#86efac',                     // 연한 녹색 선
+          backgroundColor: 'rgba(187, 247, 208, 0.6)', // 연한 녹색 채움
+          fill: 'origin',
+          tension: 0.25,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          order: 2 // 먼저 그려져 아래에 깔림
+        },
+        {
+          label: '입금액(원금)',
+          data: series.principalData,
+          borderColor: '#15803d',                     // 진한 녹색 선
+          backgroundColor: 'rgba(34, 197, 94, 0.75)',  // 진한 녹색 채움
+          fill: 'origin',
+          tension: 0.25,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          order: 1 // 나중에 그려져 위로 덮임 (원금 아래 녹색, 원금~평가 사이 연한 녹색)
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 14 } },
+        tooltip: {
+          callbacks: {
+            label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)} M`
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: '연/월' } },
+        y: {
+          title: { display: true, text: '금액 (백만원)' },
+          beginAtZero: true,
+          ticks: { callback: v => v.toLocaleString('ko-KR') }
+        }
+      }
+    }
+  });
+}
+
+// 메인 페이지의 전체 포트폴리오 라인 차트
+let _portfolioChart = null;
+function renderPortfolioChart() {
+  const canvas = document.getElementById('portfolioChart');
+  const emptyEl = document.getElementById('chartEmpty');
+  if (!canvas || !emptyEl) return;
+
+  if (typeof Chart === 'undefined') {
+    setTimeout(renderPortfolioChart, 200);
+    return;
+  }
+
+  const series = buildChartSeries(null);
+  if (!series.labels.length) {
+    if (_portfolioChart) { _portfolioChart.destroy(); _portfolioChart = null; }
+    canvas.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  canvas.style.display = '';
+  emptyEl.style.display = 'none';
+
+  if (_portfolioChart) { _portfolioChart.destroy(); _portfolioChart = null; }
+  _portfolioChart = createLineChart(canvas.getContext('2d'), series);
+}
+
+// 계좌 상세 모달 내의 계좌별 라인 차트
+let _accountDetailChart = null;
+function renderAccountDetailChart(accId) {
+  const canvas = document.getElementById('accountDetailChart');
+  const emptyEl = document.getElementById('accountDetailChartEmpty');
+  if (!canvas || !emptyEl) return;
+
+  if (typeof Chart === 'undefined') {
+    setTimeout(() => renderAccountDetailChart(accId), 200);
+    return;
+  }
+
+  const series = buildChartSeries(accId);
+  if (!series.labels.length) {
+    if (_accountDetailChart) { _accountDetailChart.destroy(); _accountDetailChart = null; }
+    canvas.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  canvas.style.display = '';
+  emptyEl.style.display = 'none';
+
+  if (_accountDetailChart) { _accountDetailChart.destroy(); _accountDetailChart = null; }
+  _accountDetailChart = createLineChart(canvas.getContext('2d'), series);
 }
 
 // ===== 렌더링 =====
@@ -1839,7 +2330,13 @@ function init() {
   // 2. 데이터가 준비된 후 첫 렌더링 수행
   render();
 
-  // 3. 종목 정보 업데이트 (비동기)
+  // 3. 자동 새로고침 설정 초기화 (저장된 분 단위 값 복원)
+  initAutoRefresh();
+
+  // 4. 월별 원금·평가금액 추이 차트 렌더링
+  renderPortfolioChart();
+
+  // 5. 종목 정보 업데이트 (비동기) - 페이지 로드/F5 시 즉시 조회
   if (holdings && holdings.length > 0) {
     refreshAll(); // 기존에 구현된 전체 새로고침 함수 호출
   }
@@ -1848,24 +2345,8 @@ function init() {
 // 기존의 render(); 대신 init(); 을 호출
 init();  //render();
 
-// 페이지 로드 시 종목이 있으면 자동 새로고침
-if (holdings.length) {
-  setTimeout(() => {
-    // refreshAll은 event.target을 쓰므로 직접 fetch 진행
-    (async () => {
-      await Promise.all(holdings.map(async h => {
-        try {
-          const info = await fetchStockInfo(h.code);
-          h.price = info.price; h.change = info.change; h.changeRate = info.changeRate;
-          h.updatedAt = Date.now();
-        } catch (_) {}
-      }));
-      saveHoldings();
-      render();
-    })();
-  }, 100);
-}
+// 페이지 로드(F5) 시 init()에서 이미 refreshAll()이 호출되므로 별도 처리 불필요
 </script>
 </body>
 </html>
-  
+                                             
