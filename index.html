@@ -1462,11 +1462,12 @@ function saveCashAccounts() {
 // ===== 파일 저장 / 불러오기 =====
 function exportToFile() {
   const payload = {
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     cashAccounts: cashAccounts,
     holdings: holdings,
-    deposits: depositData  // { transactions: [...] }
+    deposits: depositData,          // { transactions: [...] }
+    monthlyRecords: monthlyRecords  // 월별 계좌 평가금액 기록
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1540,7 +1541,28 @@ function importFromFile(event) {
       }
       const newDepositCount = newDeposits.transactions.length;
 
-      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n\n현재 데이터를 덮어쓸까요?`;
+      // 월별 계좌 기록 파싱
+      let newMonthlyRecords = [];
+      if (Array.isArray(data.monthlyRecords)) {
+        newMonthlyRecords = data.monthlyRecords
+          .map(r => {
+            const year = parseInt(r.year, 10);
+            const month = parseInt(r.month, 10);
+            const accounts = (r.accounts && typeof r.accounts === 'object' && !Array.isArray(r.accounts)) ? r.accounts : {};
+            const cleanAccounts = {};
+            for (const a of ACCOUNTS) cleanAccounts[a.id] = Number(accounts[a.id]) || 0;
+            return {
+              id: String(r.id || (Date.now() + Math.random())),
+              year: year || 0,
+              month: month || 0,
+              accounts: cleanAccounts
+            };
+          })
+          .filter(r => r.year > 0 && r.month >= 1 && r.month <= 12);
+      }
+      const newRecordsCount = newMonthlyRecords.length;
+
+      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n\n현재 데이터를 덮어쓸까요?`;
       if (!confirm(summary)) { event.target.value = ''; return; }
 
       holdings = newHoldings.map(h => ({
@@ -1555,10 +1577,13 @@ function importFromFile(event) {
       }));
       cashAccounts = newCashAccounts;
       depositData = newDeposits;
+      monthlyRecords = newMonthlyRecords;
       saveHoldings();
       persistCashAccounts();
       saveDeposits();
+      saveMonthlyRecords();
       render();
+      renderPortfolioChart();
       // 최신가 재조회
       setTimeout(() => refreshPricesSilent(), 100);
       alert('불러오기 완료');
