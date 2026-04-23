@@ -807,6 +807,7 @@
           <input type="number" id="recMonth" min="1" max="12" step="1" placeholder="M">
         </label>
         <button class="btn-secondary" onclick="fillCurrentValues()">💾 현재값 저장</button>
+        <button class="btn-secondary" onclick="loadHistoricalValues()">📅 이전 가치 불러오기</button>
       </div>
       <div class="records-input-accounts" id="recAccountInputs"></div>
       <div class="records-input-total">
@@ -1835,6 +1836,101 @@ function initAutoRefresh() {
   } catch (_) {}
   input.value = saved;
   updateAutoRefresh();
+}
+
+// ===== 이전 가치 불러오기 (역사적 종가 조회) =====
+async function fetchHistoricalClose(code, year, month) {
+  // 해당 월의 마지막 날
+  const lastDay = new Date(year, month, 0);
+  const fmt = d =>
+    `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const lastDayStr = fmt(lastDay);
+
+  // 마지막 날 기준 15일 전부터 조회 (주말·공휴일 포함해도 충분)
+  const startDate = new Date(lastDay);
+  startDate.setDate(startDate.getDate() - 14);
+
+  const url = `https://m.stock.naver.com/api/stock/${code}/candle/day?startTime=${fmt(startDate)}&count=20`;
+  const text = await fetchViaProxy(url);
+  const raw = JSON.parse(text);
+  const candles = Array.isArray(raw) ? raw
+                : Array.isArray(raw.candles) ? raw.candles
+                : [];
+
+  if (!candles.length) throw new Error('데이터 없음');
+
+  // 해당 월 마지막 날 이하인 것 중 가장 최근 날짜 선택
+  const valid = candles
+    .filter(c => String(c.localDate || '').slice(0, 8) <= lastDayStr)
+    .sort((a, b) => String(b.localDate).localeCompare(String(a.localDate)));
+
+  if (!valid.length) throw new Error(`${year}-${month}월 거래 데이터 없음`);
+
+  const c = valid[0];
+  const price = Number(String(c.closePrice || '0').replace(/,/g, ''));
+  if (!price) throw new Error('종가 파싱 실패');
+  return { date: String(c.localDate), price };
+}
+
+async function loadHistoricalValues() {
+  const year  = parseInt(document.getElementById('recYear').value, 10);
+  const month = parseInt(document.getElementById('recMonth').value, 10);
+  if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
+  if (!month || month < 1 || month > 12)   { alert('월을 1~12 사이로 입력해 주세요.'); return; }
+
+  // 계좌별 수량이 있는 종목만
+  const targets = holdings.filter(h =>
+    h.accounts && Object.values(h.accounts).some(a => (Number(a.qty) || 0) > 0)
+  );
+  if (!targets.length) { alert('계좌별 수량이 입력된 종목이 없습니다.'); return; }
+
+  const btn = document.querySelector('button[onclick="loadHistoricalValues()"]');
+  if (btn) { btn.textContent = '⏳ 조회 중...'; btn.disabled = true; }
+
+  try {
+    const priceMap = {};
+    const errors  = [];
+
+    await Promise.all(targets.map(async h => {
+      try {
+        const { date, price } = await fetchHistoricalClose(h.code, year, month);
+        priceMap[h.code] = { date, price };
+      } catch (e) {
+        errors.push(`${h.name}(${h.code}): ${e.message}`);
+      }
+    }));
+
+    // 계좌별 주식 평가금액 합산 (현금 제외 — 과거 현금 잔액 미지원)
+    const values = {};
+    for (const a of ACCOUNTS) values[a.id] = 0;
+
+    for (const h of targets) {
+      const info = priceMap[h.code];
+      if (!info) continue;
+      for (const [accId, accData] of Object.entries(h.accounts || {})) {
+        const qty = Number(accData.qty) || 0;
+        if (qty > 0 && values[accId] !== undefined) {
+          values[accId] += qty * info.price;
+        }
+      }
+    }
+    for (const k of Object.keys(values)) values[k] = Math.round(values[k]);
+
+    renderRecordInputs(values);
+
+    const tradingDates = [...new Set(Object.values(priceMap).map(r => r.date))];
+    const dateLabel = tradingDates.sort().pop() || '';
+    const formattedDate = dateLabel.length === 8
+      ? `${dateLabel.slice(0,4)}-${dateLabel.slice(4,6)}-${dateLabel.slice(6,8)}`
+      : dateLabel;
+    const total = Object.values(values).reduce((s, v) => s + v, 0);
+    const msg = errors.length
+      ? `조회 완료 (일부 실패):\n${errors.join('\n')}\n\n기준일: ${formattedDate}\n총 주식 평가액: ${total.toLocaleString('ko-KR')} 원`
+      : `기준일: ${formattedDate} 종가\n총 주식 평가액: ${total.toLocaleString('ko-KR')} 원\n\n※ 현금은 포함되지 않습니다.`;
+    alert(msg);
+  } finally {
+    if (btn) { btn.textContent = '📅 이전 가치 불러오기'; btn.disabled = false; }
+  }
 }
 
 // ===== 계좌 기록 (월별 평가금액) =====
