@@ -561,6 +561,53 @@
   }
   .ptr-spinner.spinning { animation: ptr-spin 0.7s linear infinite; }
   @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+  /* 배당 기록 모달 */
+  .div-stock-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .div-stock-table th {
+    font-size: 11px; color: var(--muted); font-weight: 600;
+    background: #f9fafb; padding: 6px 8px;
+    border-bottom: 1px solid var(--border); text-align: right;
+  }
+  .div-stock-table th:first-child { text-align: left; }
+  .div-stock-table td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; text-align: right; }
+  .div-stock-table td:first-child { text-align: left; }
+  .div-stock-table tr:last-child td { border-bottom: none; }
+  .div-grand-total {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #eff6ff; padding: 8px 12px; border-radius: 6px;
+    font-size: 14px; margin: 10px 0 12px;
+  }
+  .div-grand-total strong { font-size: 16px; color: #1e40af; }
+  .div-sections { margin-top: 4px; }
+  .div-section-title {
+    font-weight: 700; font-size: 14px; color: var(--text);
+    margin-bottom: 8px; padding-bottom: 6px;
+    border-bottom: 2px solid var(--primary);
+  }
+  .div-records-wrap {
+    overflow-x: auto; border: 1px solid var(--border);
+    border-radius: 8px; max-height: 280px; margin-bottom: 16px;
+  }
+  .div-table-header, .div-record-row {
+    display: grid; gap: 6px; padding: 7px 10px;
+    font-size: 12px; align-items: center;
+  }
+  .div-table-header {
+    background: #f9fafb; font-weight: 600; color: var(--muted);
+    position: sticky; top: 0; z-index: 1;
+    border-bottom: 1px solid var(--border); font-size: 11px;
+  }
+  .div-record-row { border-bottom: 1px solid var(--border); }
+  .div-record-row:last-child { border-bottom: none; }
+  .div-record-row .amount { text-align: right; }
+  .div-record-row .total { text-align: right; font-weight: 700; color: #1e40af; }
+  .div-record-row .del-btn {
+    background: #fee2e2; color: #991b1b; border: none;
+    padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
+  }
+  .div-record-row .del-btn:hover { background: #fecaca; }
+  .div-empty { padding: 24px 20px; text-align: center; color: var(--muted); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -582,6 +629,7 @@
   <div class="toolbar">
     <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     <button class="btn-secondary" onclick="openRecordsModal()">📒 계좌 기록</button>
+    <button class="btn-secondary" onclick="openDividendModal()">💸 배당 기록</button>
     <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
     <button class="btn-secondary" onclick="exportToFile()">💾 파일로 저장</button>
     <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
@@ -827,6 +875,71 @@
 
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeRecordsModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 배당 기록 모달 -->
+<div class="modal-backdrop" id="dividendModal" onclick="handleDividendBackdropClick(event)">
+  <div class="modal modal-wide modal-records">
+    <div class="modal-header">
+      <div>
+        <h2>💸 배당 기록 관리</h2>
+        <div class="modal-subtitle">월별 배당금/분배금 수령 내역</div>
+      </div>
+      <button class="close-btn" onclick="closeDividendModal()" aria-label="닫기">×</button>
+    </div>
+
+    <div class="records-input-card">
+      <div class="records-input-top">
+        <label>
+          <span>연도</span>
+          <input type="number" id="divYear" min="2000" max="2100" step="1" placeholder="YYYY">
+        </label>
+        <label>
+          <span>월</span>
+          <input type="number" id="divMonth" min="1" max="12" step="1" placeholder="M">
+        </label>
+        <button class="btn-secondary" onclick="loadDividendData()">📥 배당내역 불러오기</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="div-stock-table">
+          <thead>
+            <tr>
+              <th>종목명</th>
+              <th>주당 배당금 (원)</th>
+              <th>보유 수량</th>
+              <th>총 배당금 (원)</th>
+            </tr>
+          </thead>
+          <tbody id="divStockInputs"></tbody>
+        </table>
+      </div>
+      <div class="div-grand-total">
+        <span>배당금 총합</span>
+        <strong id="divGrandTotal">0 원</strong>
+      </div>
+      <div class="records-input-actions">
+        <button class="btn-secondary" onclick="clearDividendInputs()">입력 초기화</button>
+        <button class="btn-primary" onclick="addDividendRecord()">➕ 추가</button>
+      </div>
+    </div>
+
+    <div class="div-sections">
+      <div class="div-section-title">종목별 배당 내역</div>
+      <div class="div-records-wrap">
+        <div class="div-table-header" id="divStockTableHeader"></div>
+        <div id="divStockRecordsList"></div>
+      </div>
+      <div class="div-section-title" style="margin-top:16px">계좌별 배당 내역</div>
+      <div class="div-records-wrap">
+        <div class="div-table-header" id="divAccTableHeader"></div>
+        <div id="divAccRecordsList"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeDividendModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -1241,6 +1354,8 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('accountDetailModal').classList.contains('open')) { closeAccountDetail(); return; }
   if (document.getElementById('cashAccountModal').classList.contains('open')) { closeCashAccountModal(); return; }
   if (document.getElementById('accountDepositModal').classList.contains('open')) { closeDepositModal(); return; }
+  if (document.getElementById('accountRecordsModal').classList.contains('open')) { closeRecordsModal(); return; }
+  if (document.getElementById('dividendModal').classList.contains('open')) { closeDividendModal(); return; }
 });
 
 // 금액 입력란 자동 콤마 포맷
@@ -1511,12 +1626,13 @@ function saveCashAccounts() {
 // ===== 파일 저장 / 불러오기 =====
 function exportToFile() {
   const payload = {
-    version: 5,
+    version: 6,
     exportedAt: new Date().toISOString(),
     cashAccounts: cashAccounts,
     holdings: holdings,
-    deposits: depositData,          // { transactions: [...] }
-    monthlyRecords: monthlyRecords  // 월별 계좌 평가금액 기록
+    deposits: depositData,
+    monthlyRecords: monthlyRecords,
+    dividendRecords: dividendRecords
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1611,7 +1727,22 @@ function importFromFile(event) {
       }
       const newRecordsCount = newMonthlyRecords.length;
 
-      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n\n현재 데이터를 덮어쓸까요?`;
+      // 배당 기록 파싱
+      let newDividendRecords = [];
+      if (Array.isArray(data.dividendRecords)) {
+        newDividendRecords = data.dividendRecords
+          .map(r => ({
+            id: String(r.id || (Date.now() + Math.random())),
+            year: parseInt(r.year, 10) || 0,
+            month: parseInt(r.month, 10) || 0,
+            stocks: (r.stocks && typeof r.stocks === 'object') ? r.stocks : {},
+            accounts: (r.accounts && typeof r.accounts === 'object') ? r.accounts : {}
+          }))
+          .filter(r => r.year > 0 && r.month >= 1 && r.month <= 12);
+      }
+      const newDivCount = newDividendRecords.length;
+
+      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n- 배당 기록 ${newDivCount}건\n\n현재 데이터를 덮어쓸까요?`;
       if (!confirm(summary)) { event.target.value = ''; return; }
 
       holdings = newHoldings.map(h => ({
@@ -1627,10 +1758,12 @@ function importFromFile(event) {
       cashAccounts = newCashAccounts;
       depositData = newDeposits;
       monthlyRecords = newMonthlyRecords;
+      dividendRecords = newDividendRecords;
       saveHoldings();
       persistCashAccounts();
       saveDeposits();
       saveMonthlyRecords();
+      saveDividendRecords();
       render();
       renderPortfolioChart();
       // 최신가 재조회
@@ -2642,6 +2775,286 @@ function init() {
 init();  //render();
 
 // 페이지 로드(F5) 시 init()에서 이미 refreshAll()이 호출되므로 별도 처리 불필요
+
+// ===== 배당 기록 =====
+const DIVIDEND_KEY = 'pension_dividends_v1';
+let dividendRecords = loadDividendRecords();
+
+function loadDividendRecords() {
+  try {
+    const raw = localStorage.getItem(DIVIDEND_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map(r => ({
+      id: String(r.id || (Date.now() + Math.random())),
+      year: parseInt(r.year, 10) || 0,
+      month: parseInt(r.month, 10) || 0,
+      stocks: (r.stocks && typeof r.stocks === 'object') ? r.stocks : {},
+      accounts: (r.accounts && typeof r.accounts === 'object') ? r.accounts : {}
+    })).filter(r => r.year > 0 && r.month >= 1 && r.month <= 12);
+  } catch (_) { return []; }
+}
+
+function saveDividendRecords() {
+  try { localStorage.setItem(DIVIDEND_KEY, JSON.stringify(dividendRecords)); } catch (_) {}
+}
+
+function openDividendModal() {
+  const modal = document.getElementById('dividendModal');
+  if (!modal) return;
+  const now = new Date();
+  document.getElementById('divYear').value = now.getFullYear();
+  document.getElementById('divMonth').value = now.getMonth() + 1;
+  renderDivStockInputs({});
+  renderDividendLists();
+  modal.classList.add('open');
+}
+
+function closeDividendModal() {
+  const modal = document.getElementById('dividendModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function handleDividendBackdropClick(event) {
+  if (event.target.id === 'dividendModal') closeDividendModal();
+}
+
+function renderDivStockInputs(perShareMap) {
+  const tbody = document.getElementById('divStockInputs');
+  if (!tbody) return;
+  const active = holdings.filter(h => h.quantity > 0);
+  if (!active.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">보유 종목이 없습니다.</td></tr>';
+    updateDivGrandTotal();
+    return;
+  }
+  tbody.innerHTML = active.map(h => {
+    const ps = perShareMap && perShareMap[h.code] != null ? perShareMap[h.code] : '';
+    const qty = h.quantity || 0;
+    const totalStr = ps !== '' && Number(ps) > 0 ? Math.round(Number(ps) * qty).toLocaleString('ko-KR') + ' 원' : '-';
+    return `
+      <tr>
+        <td>
+          <div style="font-size:13px;font-weight:600">${h.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${h.code}</div>
+        </td>
+        <td>
+          <input type="number" min="0" step="1" data-code="${h.code}" data-qty="${qty}"
+            value="${ps}" placeholder="0"
+            oninput="updateDivGrandTotal()"
+            style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right">
+        </td>
+        <td>${qty.toLocaleString('ko-KR')}</td>
+        <td id="divTotal_${h.code}">${totalStr}</td>
+      </tr>
+    `;
+  }).join('');
+  updateDivGrandTotal();
+}
+
+function updateDivGrandTotal() {
+  let grand = 0;
+  document.querySelectorAll('#divStockInputs input[data-code]').forEach(inp => {
+    const ps = Number(inp.value) || 0;
+    const qty = Number(inp.getAttribute('data-qty')) || 0;
+    const total = Math.round(ps * qty);
+    grand += total;
+    const cell = document.getElementById('divTotal_' + inp.getAttribute('data-code'));
+    if (cell) cell.textContent = ps > 0 ? total.toLocaleString('ko-KR') + ' 원' : '-';
+  });
+  const el = document.getElementById('divGrandTotal');
+  if (el) el.textContent = grand.toLocaleString('ko-KR') + ' 원';
+}
+
+function clearDividendInputs() {
+  document.querySelectorAll('#divStockInputs input[data-code]').forEach(inp => { inp.value = ''; });
+  updateDivGrandTotal();
+}
+
+async function loadDividendData() {
+  const year = parseInt(document.getElementById('divYear').value, 10);
+  const month = parseInt(document.getElementById('divMonth').value, 10);
+  if (!year || !month) { alert('연도와 월을 먼저 입력해 주세요.'); return; }
+
+  const btn = document.querySelector('button[onclick="loadDividendData()"]');
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '불러오는 중...'; btn.disabled = true; }
+
+  const perShareMap = {};
+  const active = holdings.filter(h => h.quantity > 0);
+
+  await Promise.all(active.map(async h => {
+    try {
+      const url = `https://m.stock.naver.com/api/stock/${h.code}/dividend`;
+      const json = JSON.parse(await fetchViaProxy(url));
+      const list = Array.isArray(json) ? json
+        : (json && Array.isArray(json.dividendList) ? json.dividendList : []);
+      const ym = `${year}${String(month).padStart(2, '0')}`;
+      for (const d of list) {
+        const bd = String(d.baseDate || d.paymentDate || '').replace(/[.\-\/]/g, '').slice(0, 6);
+        if (bd === ym) {
+          const cash = Number(d.cashDividend || d.cash || d.dividend || 0);
+          if (cash > 0) { perShareMap[h.code] = cash; break; }
+        }
+      }
+    } catch (_) {}
+  }));
+
+  if (btn) { btn.textContent = origText; btn.disabled = false; }
+  renderDivStockInputs(perShareMap);
+
+  if (Object.keys(perShareMap).length === 0) {
+    alert(`${year}년 ${month}월 배당 데이터를 찾지 못했습니다.\n직접 주당 배당금을 입력해 주세요.`);
+  }
+}
+
+function calcDivAccounts(stockPerShareData) {
+  const result = {};
+  for (const acc of ACCOUNTS) result[acc.id] = 0;
+  for (const h of holdings) {
+    const ps = Number(stockPerShareData[h.code]) || 0;
+    if (!ps) continue;
+    for (const acc of ACCOUNTS) {
+      const a = h.accounts && h.accounts[acc.id];
+      if (a && a.qty > 0) result[acc.id] += Math.round(a.qty * ps);
+    }
+  }
+  return result;
+}
+
+function addDividendRecord() {
+  const year = parseInt(document.getElementById('divYear').value, 10);
+  const month = parseInt(document.getElementById('divMonth').value, 10);
+  if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
+  if (!month || month < 1 || month > 12) { alert('월을 1~12 사이로 입력해 주세요.'); return; }
+
+  const stocks = {};
+  const stockPerShareData = {};
+  document.querySelectorAll('#divStockInputs input[data-code]').forEach(inp => {
+    const code = inp.getAttribute('data-code');
+    const qty = Number(inp.getAttribute('data-qty')) || 0;
+    const ps = Number(inp.value) || 0;
+    if (ps > 0) {
+      stocks[code] = Math.round(ps * qty);
+      stockPerShareData[code] = ps;
+    }
+  });
+
+  const totalDiv = Object.values(stocks).reduce((s, v) => s + v, 0);
+  if (totalDiv === 0 && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
+
+  const accounts = calcDivAccounts(stockPerShareData);
+  dividendRecords.push({
+    id: String(Date.now()) + Math.floor(Math.random() * 1000),
+    year, month, stocks, accounts
+  });
+  saveDividendRecords();
+  renderDividendLists();
+}
+
+function deleteDividendRecord(id) {
+  const rec = dividendRecords.find(r => r.id === id);
+  if (!rec) return;
+  if (!confirm(`${rec.year}년 ${rec.month}월 배당 기록을 삭제하시겠습니까?`)) return;
+  dividendRecords = dividendRecords.filter(r => r.id !== id);
+  saveDividendRecords();
+  renderDividendLists();
+}
+
+function renderDividendLists() {
+  renderDivStockRecordsList();
+  renderDivAccRecordsList();
+}
+
+function renderDivStockRecordsList() {
+  const header = document.getElementById('divStockTableHeader');
+  const list = document.getElementById('divStockRecordsList');
+  if (!header || !list) return;
+
+  if (!dividendRecords.length) {
+    header.style.gridTemplateColumns = '';
+    header.innerHTML = '';
+    list.innerHTML = '<div class="div-empty">아직 등록된 배당 기록이 없습니다.</div>';
+    return;
+  }
+
+  // collect all stock codes that appear across all records
+  const allCodes = [];
+  const codeNames = {};
+  for (const rec of dividendRecords) {
+    for (const code of Object.keys(rec.stocks)) {
+      if (!allCodes.includes(code)) {
+        allCodes.push(code);
+        const h = holdings.find(x => x.code === code);
+        codeNames[code] = h ? h.name : code;
+      }
+    }
+  }
+
+  const cols = `80px ${allCodes.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
+  header.style.gridTemplateColumns = cols;
+  header.innerHTML = `
+    <span>연/월</span>
+    ${allCodes.map(c => `<span style="text-align:right">${codeNames[c]}<br><small>${c}</small></span>`).join('')}
+    <span style="text-align:right">합계</span>
+    <span></span>
+  `;
+
+  const sorted = [...dividendRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+  list.innerHTML = sorted.map(rec => {
+    const total = Object.values(rec.stocks).reduce((s, v) => s + (Number(v) || 0), 0);
+    const cells = allCodes.map(c => {
+      const v = Number(rec.stocks[c]) || 0;
+      return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
+    }).join('');
+    return `
+      <div class="div-record-row" style="grid-template-columns:${cols}">
+        <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
+        ${cells}
+        <span class="total">${total.toLocaleString('ko-KR')}</span>
+        <span><button class="del-btn" onclick="deleteDividendRecord('${rec.id}')">삭제</button></span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDivAccRecordsList() {
+  const header = document.getElementById('divAccTableHeader');
+  const list = document.getElementById('divAccRecordsList');
+  if (!header || !list) return;
+
+  if (!dividendRecords.length) {
+    header.style.gridTemplateColumns = '';
+    header.innerHTML = '';
+    list.innerHTML = '<div class="div-empty">아직 등록된 배당 기록이 없습니다.</div>';
+    return;
+  }
+
+  const cols = `80px ${ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
+  header.style.gridTemplateColumns = cols;
+  header.innerHTML = `
+    <span>연/월</span>
+    ${ACCOUNTS.map(a => `<span style="text-align:right">${a.name}</span>`).join('')}
+    <span style="text-align:right">합계</span>
+  `;
+
+  const sorted = [...dividendRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+  list.innerHTML = sorted.map(rec => {
+    const total = ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const cells = ACCOUNTS.map(a => {
+      const v = Number(rec.accounts[a.id]) || 0;
+      return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
+    }).join('');
+    return `
+      <div class="div-record-row" style="grid-template-columns:${cols}">
+        <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
+        ${cells}
+        <span class="total">${total.toLocaleString('ko-KR')}</span>
+      </div>
+    `;
+  }).join('');
+}
 
 // ===== Pull to Refresh =====
 (function() {
