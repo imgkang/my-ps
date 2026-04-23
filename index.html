@@ -1839,37 +1839,69 @@ function initAutoRefresh() {
 }
 
 // ===== 이전 가치 불러오기 (역사적 종가 조회) =====
+
+function parseNaverSiseHtml(html, targetFull) {
+  // targetFull: "YYYY.MM.DD" 형식, 이 날짜 이하의 가장 최근 거래일 종가 반환
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  let bestDate = '', bestPrice = 0;
+  for (const row of doc.querySelectorAll('tr')) {
+    const tds = row.querySelectorAll('td');
+    if (tds.length < 2) continue;
+    const d = tds[0].textContent.trim();
+    if (!/^\d{4}\.\d{2}\.\d{2}$/.test(d) || d > targetFull) continue;
+    const price = Number(tds[1].textContent.trim().replace(/,/g, ''));
+    if (price > 0 && d > bestDate) { bestDate = d; bestPrice = price; }
+  }
+  return bestDate ? { date: bestDate, price: bestPrice } : null;
+}
+
 async function fetchHistoricalClose(code, year, month) {
-  // 해당 월의 마지막 날
-  const lastDay = new Date(year, month, 0);
-  const fmt = d =>
-    `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-  const lastDayStr = fmt(lastDay);
+  const lastDay  = new Date(year, month, 0);
+  const targetFull = `${year}.${String(month).padStart(2,'0')}.${String(lastDay.getDate()).padStart(2,'0')}`;
 
-  // 마지막 날 기준 15일 전부터 조회 (주말·공휴일 포함해도 충분)
-  const startDate = new Date(lastDay);
-  startDate.setDate(startDate.getDate() - 14);
+  // ── 1차: 네이버 금융 일별 시세 HTML ──
+  // 페이지당 약 10행, 월 약 22 거래일 → 페이지당 약 2.2개월치
+  const now = new Date();
+  const monthsAgo = (now.getFullYear() - year) * 12 + (now.getMonth() + 1 - month);
+  const estPage  = Math.max(1, Math.round(monthsAgo * 2.2));
+  const pages = [estPage];
+  for (let d = 1; d <= 5; d++) { pages.push(estPage + d); if (estPage - d >= 1) pages.push(estPage - d); }
 
-  const url = `https://m.stock.naver.com/api/stock/${code}/candle/day?startTime=${fmt(startDate)}&count=20`;
-  const text = await fetchViaProxy(url);
-  const raw = JSON.parse(text);
-  const candles = Array.isArray(raw) ? raw
-                : Array.isArray(raw.candles) ? raw.candles
-                : [];
+  for (const page of pages) {
+    try {
+      const url = `https://finance.naver.com/item/sise_day.naver?code=${code}&page=${page}`;
+      const html = await fetchViaProxy(url);
+      const result = parseNaverSiseHtml(html, targetFull);
+      if (result) return result;
+    } catch (_) {}
+  }
 
-  if (!candles.length) throw new Error('데이터 없음');
+  // ── 2차: Yahoo Finance API (.KS → .KQ 순) ──
+  const period1 = Math.floor(new Date(year, month - 1, 1).getTime() / 1000);
+  const period2 = Math.floor(lastDay.getTime() / 1000) + 86400;
 
-  // 해당 월 마지막 날 이하인 것 중 가장 최근 날짜 선택
-  const valid = candles
-    .filter(c => String(c.localDate || '').slice(0, 8) <= lastDayStr)
-    .sort((a, b) => String(b.localDate).localeCompare(String(a.localDate)));
+  for (const suffix of ['.KS', '.KQ']) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${code}${suffix}?interval=1d&period1=${period1}&period2=${period2}`;
+      const chart = JSON.parse(await fetchViaProxy(url))?.chart?.result?.[0];
+      if (!chart) continue;
+      const timestamps = chart.timestamp || [];
+      const closes     = chart.indicators?.quote?.[0]?.close || [];
+      let bestTs = 0, bestClose = 0;
+      for (let i = 0; i < timestamps.length; i++) {
+        if (closes[i] > 0 && timestamps[i] > bestTs) { bestTs = timestamps[i]; bestClose = closes[i]; }
+      }
+      if (bestClose > 0) {
+        const d = new Date((bestTs + 9 * 3600) * 1000); // UTC → KST
+        return {
+          date: `${d.getUTCFullYear()}.${String(d.getUTCMonth()+1).padStart(2,'0')}.${String(d.getUTCDate()).padStart(2,'0')}`,
+          price: Math.round(bestClose)
+        };
+      }
+    } catch (_) {}
+  }
 
-  if (!valid.length) throw new Error(`${year}-${month}월 거래 데이터 없음`);
-
-  const c = valid[0];
-  const price = Number(String(c.closePrice || '0').replace(/,/g, ''));
-  if (!price) throw new Error('종가 파싱 실패');
-  return { date: String(c.localDate), price };
+  throw new Error(`${year}년 ${month}월 주가 조회 실패`);
 }
 
 async function loadHistoricalValues() {
