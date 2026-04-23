@@ -606,7 +606,7 @@
   </div>
 
   <div class="card">
-    <h2>📈 월별 입금액·평가총액 추이 (백만원)</h2>
+    <h2>📈 월별 추세</h2>
     <div class="chart-subtitle">진한 녹색 = 누적 입금액(원금), 연한 녹색 = 평가총액</div>
     <div class="chart-wrap">
       <canvas id="portfolioChart"></canvas>
@@ -2156,60 +2156,72 @@ function getAccountPrincipalAt(accId, year, month) {
 }
 
 // 차트에 사용할 데이터 빌드: accId = null이면 전체 계좌 합산
+// x 값 = year*12+month (선형 시간 비례 축용)
 function buildChartSeries(accId) {
-  const sorted = [...monthlyRecords].sort((a, b) => {
-    if (a.year !== b.year) return a.year - b.year;
-    return a.month - b.month;
-  });
-  const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2, '0')}`);
+  const sorted = [...monthlyRecords].sort((a, b) =>
+    a.year !== b.year ? a.year - b.year : a.month - b.month
+  );
 
   const principalData = sorted.map(r => {
     const total = accId
       ? getAccountPrincipalAt(accId, r.year, r.month)
       : ACCOUNTS.reduce((s, a) => s + getAccountPrincipalAt(a.id, r.year, r.month), 0);
-    return Math.round(total / 100000) / 10; // 백만원, 소수 1자리
+    return { x: r.year * 12 + r.month, y: Math.round(total / 100000) / 10 };
   });
 
   const evalData = sorted.map(r => {
     const total = accId
       ? (Number(r.accounts[accId]) || 0)
       : ACCOUNTS.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0);
-    return Math.round(total / 100000) / 10;
+    return { x: r.year * 12 + r.month, y: Math.round(total / 100000) / 10 };
   });
 
-  return { labels, principalData, evalData };
+  return { principalData, evalData };
 }
 
-// 공통 라인 차트 빌더 (평가금액: 연한 녹색 채움 / 원금: 진한 녹색 채움, 원금이 위에 덮여 그려짐)
+// x 값(year*12+month) → "YYYY.MM" 문자열 변환
+function xToYM(x) {
+  const xi = Math.round(x);
+  const m = ((xi - 1) % 12) + 1;
+  const y = Math.floor((xi - 1) / 12);
+  return `${y}.${String(m).padStart(2, '0')}`;
+}
+
+// 공통 라인 차트 빌더 (평가금액: 연한 녹색 채움 / 원금: 진한 녹색 채움)
+// X축: 선형 시간 비례 (1년 간격 = 12개월 간격의 12배)
 function createLineChart(ctx, series) {
+  const xVals = series.evalData.map(d => d.x);
+  const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
+  // 데이터 범위에 따라 눈금 간격 결정 (항상 3의 배수로 연 경계와 잘 맞도록)
+  const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
+
   return new Chart(ctx, {
     type: 'line',
     data: {
-      labels: series.labels,
       datasets: [
         {
           label: '평가총액',
           data: series.evalData,
-          borderColor: '#86efac',                     // 연한 녹색 선
-          backgroundColor: 'rgba(187, 247, 208, 0.6)', // 연한 녹색 채움
+          borderColor: '#86efac',
+          backgroundColor: 'rgba(187, 247, 208, 0.6)',
           fill: 'origin',
           tension: 0.25,
           pointRadius: 3,
           pointHoverRadius: 5,
           borderWidth: 2,
-          order: 2 // 먼저 그려져 아래에 깔림
+          order: 2
         },
         {
           label: '입금액(원금)',
           data: series.principalData,
-          borderColor: '#15803d',                     // 진한 녹색 선
-          backgroundColor: 'rgba(34, 197, 94, 0.75)',  // 진한 녹색 채움
+          borderColor: '#15803d',
+          backgroundColor: 'rgba(34, 197, 94, 0.75)',
           fill: 'origin',
           tension: 0.25,
           pointRadius: 3,
           pointHoverRadius: 5,
           borderWidth: 2,
-          order: 1 // 나중에 그려져 위로 덮임 (원금 아래 녹색, 원금~평가 사이 연한 녹색)
+          order: 1
         }
       ]
     },
@@ -2221,12 +2233,19 @@ function createLineChart(ctx, series) {
         legend: { position: 'bottom', labels: { boxWidth: 14 } },
         tooltip: {
           callbacks: {
+            title: items => xToYM(items[0].parsed.x),
             label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)} M`
           }
         }
       },
       scales: {
-        x: { title: { display: true, text: '연/월' } },
+        x: {
+          type: 'linear',
+          ticks: {
+            stepSize,
+            callback: v => Number.isInteger(v) ? xToYM(v) : ''
+          }
+        },
         y: {
           title: { display: true, text: '금액 (백만원)' },
           beginAtZero: true,
@@ -2250,7 +2269,7 @@ function renderPortfolioChart() {
   }
 
   const series = buildChartSeries(null);
-  if (!series.labels.length) {
+  if (!series.principalData.length) {
     if (_portfolioChart) { _portfolioChart.destroy(); _portfolioChart = null; }
     canvas.style.display = 'none';
     emptyEl.style.display = 'block';
@@ -2276,7 +2295,7 @@ function renderAccountDetailChart(accId) {
   }
 
   const series = buildChartSeries(accId);
-  if (!series.labels.length) {
+  if (!series.principalData.length) {
     if (_accountDetailChart) { _accountDetailChart.destroy(); _accountDetailChart = null; }
     canvas.style.display = 'none';
     emptyEl.style.display = 'block';
