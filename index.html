@@ -1291,7 +1291,8 @@ function openAccountDetail(accId) {
       const currentValue = qty * (h.price || 0);
       const profit = currentValue - cost;
       const profitRate = cost > 0 ? (profit / cost) * 100 : null;
-      return { code: h.code, name: h.name, qty, avg, cost, price: h.price || 0, currentValue, profit, profitRate };
+      const dayChange = (Number(h.change) || 0) * qty;
+      return { code: h.code, name: h.name, qty, avg, cost, price: h.price || 0, currentValue, profit, profitRate, dayChange };
     })
     .sort((a, b) => b.currentValue - a.currentValue);
 
@@ -1300,9 +1301,10 @@ function openAccountDetail(accId) {
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
   const totalValue = stockValue + accCash;
   const totalPrincipal = getAccountNetTotal(accId);
-  const totalProfit = totalValue - totalPrincipal;  //const totalProfit = totalValue - totalCost - accCash; // 현금은 손익에서 제외
-  const profitBase = totalPrincipal; // 손익률 분모는 매입액만
+  const totalProfit = totalValue - totalPrincipal;
+  const profitBase = totalPrincipal;
   const totalProfitRate = profitBase > 0 ? (totalProfit / profitBase) * 100 : null;
+  const accDayChange = items.reduce((s, x) => s + x.dayChange, 0);
 
   document.getElementById('detailTitle').textContent = '💼 ' + acc.name;
   document.getElementById('detailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${formatKRW(accCash)}`;
@@ -1315,6 +1317,9 @@ function openAccountDetail(accId) {
   const accXirrCls  = accXirrRate != null && accXirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const accXirrText = accXirrRate != null ? accXirrSign + (accXirrRate * 100).toFixed(2) + '%' : '-';
 
+  const daySign = accDayChange >= 0 ? '+' : '';
+  const dayCls  = accDayChange >= 0 ? 'diff-positive' : 'diff-negative';
+
   document.getElementById('detailSummary').innerHTML = `
     <div class="stat">
       <div class="stat-label">원금 합계</div>
@@ -1323,6 +1328,10 @@ function openAccountDetail(accId) {
     <div class="stat">
       <div class="stat-label">평가금액 합계</div>
       <div class="stat-value">${formatKRW(totalValue)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">오늘의 손익</div>
+      <div class="stat-value ${dayCls}">${daySign}${formatKRW(accDayChange)}</div>
     </div>
     <div class="stat">
       <div class="stat-label">손익</div>
@@ -2421,7 +2430,10 @@ function render() {
   // 오늘의 손익액 전체 합계
   const totalDayChange = holdings.reduce((s, h) => s + ((Number(h.change) || 0) * (Number(h.quantity) || 0)), 0);
 
-  // 상단 요약 카드 5개 (매입액 / 평가금액 / 손익 / 누적수익률 / 내부수익률) - 백만원 단위
+  const dayChangeCls  = totalDayChange >= 0 ? 'diff-positive' : 'diff-negative';
+  const dayChangeSign = totalDayChange >= 0 ? '+' : '';
+
+  // 상단 요약 카드 6개 (원금 / 평가금액 / 오늘손익 / 손익 / 누적수익률 / 내부수익률) - 백만원 단위
   let html = `
     <div class="detail-summary">
       <div class="stat">
@@ -2431,6 +2443,10 @@ function render() {
       <div class="stat">
         <div class="stat-label">평가금액 합계 (백만원)</div>
         <div class="stat-value">${formatMil(totalValue)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">오늘의 손익 (백만원)</div>
+        <div class="stat-value ${dayChangeCls}">${dayChangeSign}${formatMil(totalDayChange)}</div>
       </div>
       <div class="stat">
         <div class="stat-label">손익 (백만원)</div>
