@@ -1541,8 +1541,10 @@ function nkOpenAccountDetail(accId) {
     const val  = qty * (h.price || 0);
     const pnl  = val - cost;
     const dayChange = qty * (h.change || 0);
-    return { ticker: h.ticker, name: h.name || '', qty, avg, cost, val, pnl, dayChange, rate: cost > 0 ? pnl/cost*100 : 0 };
-  });
+    return { ticker: h.ticker, name: h.name || '', qty, avg, cost, val, pnl, dayChange,
+             price: h.price || 0, changeRate: h.changeRate || 0,
+             rate: cost > 0 ? pnl/cost*100 : 0 };
+  }).sort((a, b) => b.val - a.val);
 
   const cash         = Number(nkCashAccounts[accId]) || 0;
   const totalVal     = items.reduce((s, i) => s + i.val, 0) + cash;
@@ -1567,16 +1569,71 @@ function nkOpenAccountDetail(accId) {
     <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${accXirrCls}" title="이 계좌의 입출금 내역 기준 연환산 내부수익률">${accXirrText}</span></div>`;
 
   const tableEl = document.getElementById('nkDetailTable');
-  tableEl.innerHTML = `<thead><tr><th>종목</th><th>보유수</th><th>매입단가</th><th>현재가</th><th>평가금액</th><th>손익</th><th>수익률</th></tr></thead>
-    <tbody>${items.map(i => `<tr>
-      <td><strong>${i.ticker}</strong> <small>${i.name}</small></td>
-      <td>${i.qty.toLocaleString()}</td>
-      <td>${fmtUSD(i.avg)}</td>
-      <td>${fmtUSD(nkHoldings.find(h=>h.ticker===i.ticker)?.price||0)}</td>
-      <td>${fmtUSD(i.val)}</td>
-      <td class="${i.pnl>=0?'pos':'neg'}">${fmtUSDSigned(i.pnl)}</td>
-      <td class="${i.rate>=0?'pos':'neg'}">${i.rate>=0?'+':''}${i.rate.toFixed(2)}%</td>
-    </tr>`).join('')}</tbody>`;
+  const itemsTotalCost = items.reduce((s, i) => s + i.cost, 0);
+  const stockVal       = items.reduce((s, i) => s + i.val, 0);
+
+  let tbody = '';
+  for (const i of items) {
+    const buyWeight = itemsTotalCost > 0 ? i.cost / itemsTotalCost * 100 : 0;
+    const curWeight = totalVal > 0 ? i.val / totalVal * 100 : 0;
+    const diff      = curWeight - buyWeight;
+    const pCls  = i.pnl >= 0 ? 'diff-positive' : 'diff-negative';
+    const dCls  = diff >= 0 ? 'diff-positive' : 'diff-negative';
+    const pSign = i.pnl >= 0 ? '+' : '';
+    const dSign = diff >= 0 ? '+' : '';
+    tbody += `
+      <tr>
+        <td>
+          <div class="stock-name">${nkEscape(i.name)}</div>
+          <div class="stock-code">${i.ticker}</div>
+        </td>
+        <td>${i.cost > 0 ? buyWeight.toFixed(1) + '%' : '-'}</td>
+        <td>${i.cost > 0 ? fmtUSD(i.cost) : '-'}</td>
+        <td>${i.qty.toLocaleString()}</td>
+        <td>${i.avg > 0 ? fmtUSD(i.avg) : '-'}</td>
+        <td>${i.price > 0 ? fmtUSD(i.price) : '-'}</td>
+        <td><strong>${fmtUSD(i.val)}</strong></td>
+        <td class="${pCls}">${i.cost > 0 ? pSign + fmtUSDSigned(i.pnl) : '-'}</td>
+        <td class="${pCls}">${i.rate != null && i.cost > 0 ? pSign + i.rate.toFixed(2) + '%' : '-'}</td>
+        <td>${curWeight.toFixed(1)}%</td>
+        <td class="${dCls}">${i.cost > 0 ? dSign + diff.toFixed(1) + '%' : '-'}</td>
+      </tr>`;
+  }
+
+  // 현금 행
+  if (cash > 0) {
+    const cashWeight = totalVal > 0 ? cash / totalVal * 100 : 0;
+    tbody += `
+      <tr class="row-cash">
+        <td><div class="stock-name">💵 현금 (예수금)</div><div class="stock-code">CASH</div></td>
+        <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+        <td><strong>${fmtUSD(cash)}</strong></td>
+        <td>-</td><td>-</td>
+        <td>${cashWeight.toFixed(1)}%</td>
+        <td>-</td>
+      </tr>`;
+  }
+
+  const tfPCls  = accPnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const tfPSign = accPnl >= 0 ? '+' : '';
+  tableEl.innerHTML = `
+    <thead><tr>
+      <th>종목</th><th>매입비중</th><th>매입액</th><th>보유수</th>
+      <th>매입단가</th><th>현재가</th><th>평가금액</th>
+      <th>손익</th><th>손익률</th><th>비중</th><th>비중차이</th>
+    </tr></thead>
+    <tbody>${tbody}</tbody>
+    <tfoot><tr>
+      <td>합계</td>
+      <td>${itemsTotalCost > 0 ? '100.0%' : '-'}</td>
+      <td>${itemsTotalCost > 0 ? fmtUSD(itemsTotalCost) : '-'}</td>
+      <td>-</td><td>-</td><td>-</td>
+      <td>${fmtUSD(totalVal)}</td>
+      <td class="${tfPCls}">${accDeposited > 0 ? fmtUSDSigned(accPnl) : '-'}</td>
+      <td class="${tfPCls}">${accDeposited > 0 ? tfPSign + accPnlRate.toFixed(2) + '%' : '-'}</td>
+      <td>100.0%</td>
+      <td>-</td>
+    </tr></tfoot>`;
 
   // Monthly trend chart
   const chartWrap = document.getElementById('nkDetailChartWrap');
