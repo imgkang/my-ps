@@ -1306,7 +1306,7 @@ function nkRenderChart() {
         { label: '평가총액', data: evalVals, borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,0.15)', fill: true, tension: 0.2 }
       ]
     },
-    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => fmtUSD(v) } } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => fmtUSD(v) } } } }
   });
 }
 
