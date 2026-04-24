@@ -1034,7 +1034,7 @@ function switchPage(page) {
 }
 
 async function fetchNkPrice(ticker) {
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ticker)}`;
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ticker)}&_=${Date.now()}`;
   const data = JSON.parse(await fetchViaProxy(url));
   const q = data?.quoteResponse?.result?.[0];
   if (!q) throw new Error('No data for ' + ticker);
@@ -1049,6 +1049,7 @@ async function nkRefreshAll() {
   if (!nkHoldings.length) return;
   const statusEl = document.getElementById('nkRefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
+  let failCount = 0;
   await Promise.all(nkHoldings.map(async h => {
     try {
       const info = await fetchNkPrice(h.ticker);
@@ -1056,7 +1057,7 @@ async function nkRefreshAll() {
       h.change = info.change;
       h.changeRate = info.changeRate;
       h.updatedAt = new Date().toISOString();
-    } catch(e) { /* keep old price */ }
+    } catch(e) { failCount++; }
   }));
   nkSaveHoldings();
   nkRender();
@@ -1066,7 +1067,9 @@ async function nkRefreshAll() {
     const hh = String(now.getHours()).padStart(2,'0');
     const mm = String(now.getMinutes()).padStart(2,'0');
     const ss = String(now.getSeconds()).padStart(2,'0');
-    statusEl.textContent = `최근 갱신 ${hh}:${mm}:${ss}`;
+    statusEl.textContent = failCount
+      ? `최근 갱신 ${hh}:${mm}:${ss} (${failCount}개 실패)`
+      : `최근 갱신 ${hh}:${mm}:${ss}`;
   }
 }
 
@@ -1304,11 +1307,14 @@ function nkRender() {
   const dayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
   const totPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
   const totPSign = pnl >= 0 ? '+' : '';
+  const totalValueYesterday = totalValue - todayPnl;
+  const todayRate = totalValueYesterday > 0 ? todayPnl / totalValueYesterday * 100 : 0;
+  const todayRateSign = todayRate >= 0 ? '+' : '';
   tableHtml += `
     </tbody>
     <tfoot><tr>
       <td>합계</td>
-      <td>-</td>
+      <td class="${dayCls}">${todayRate ? todayRateSign + todayRate.toFixed(2) + '%' : '-'}</td>
       <td class="${dayCls}">${todayPnl ? fmtUSDSigned(todayPnl) : '-'}</td>
       <td>${totalCost > 0 ? '100.0%' : '-'}</td>
       <td>${totalCost > 0 ? fmtUSD(totalCost) : '-'}</td>
