@@ -1773,18 +1773,32 @@ function nkRenderDividendLists() {
 
 // --- Export / Import ---
 function nkExportToFile() {
-  const data = {
-    holdings:  nkHoldings,
-    cash:      nkCashAccounts,
-    deposits:  nkDepositData,
-    monthly:   nkMonthlyRecords,
-    dividends: nkDividendRecords,
-    exportedAt: new Date().toISOString()
+  const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
+  const payload = {
+    version: 8, exportedAt: new Date().toISOString(),
+    mypm: {
+      holdings:        tryParse('pension_portfolio_v1')       || [],
+      cashAccounts:    tryParse('pension_cash_accounts_v1')   || {},
+      deposits:        tryParse('pension_deposits_v1')        || {},
+      monthlyRecords:  tryParse('pension_monthly_records_v1') || [],
+      dividendRecords: tryParse('pension_dividends_v1')       || [],
+      annualPlan:      tryParse('pension_annual_plan_v1')     || {}
+    },
+    nonk: {
+      holdings:  nkHoldings,
+      cash:      nkCashAccounts,
+      deposits:  nkDepositData,
+      monthly:   nkMonthlyRecords,
+      dividends: nkDividendRecords
+    }
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `nonk_portfolio_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `포트폴리오_통합백업_${stamp}.json`;
   a.click();
 }
 
@@ -1795,12 +1809,22 @@ function nkImportFromFile(event) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      if (data.holdings)  { nkHoldings        = data.holdings;  nkSaveHoldings(); }
-      if (data.cash)      { nkCashAccounts     = data.cash;      nkSaveCashData(); }
-      if (data.deposits)  { nkDepositData      = data.deposits;  nkSaveDeposits(); }
-      if (data.monthly)   { nkMonthlyRecords   = data.monthly;   nkSaveMonthly(); }
-      if (data.dividends) { nkDividendRecords  = data.dividends; nkSaveDividends(); }
-      alert('불러오기 완료!');
+      const src = (data.version >= 8 && data.nonk) ? data.nonk : data;
+      if (src.holdings)  { nkHoldings        = src.holdings;  nkSaveHoldings(); }
+      if (src.cash)      { nkCashAccounts     = src.cash;      nkSaveCashData(); }
+      if (src.deposits)  { nkDepositData      = src.deposits;  nkSaveDeposits(); }
+      if (src.monthly)   { nkMonthlyRecords   = src.monthly;   nkSaveMonthly(); }
+      if (src.dividends) { nkDividendRecords  = src.dividends; nkSaveDividends(); }
+      if (data.mypm) {
+        const mp = data.mypm;
+        if (mp.holdings)        localStorage.setItem('pension_portfolio_v1',       JSON.stringify(mp.holdings));
+        if (mp.cashAccounts)    localStorage.setItem('pension_cash_accounts_v1',   JSON.stringify(mp.cashAccounts));
+        if (mp.deposits)        localStorage.setItem('pension_deposits_v1',        JSON.stringify(mp.deposits));
+        if (mp.monthlyRecords)  localStorage.setItem('pension_monthly_records_v1', JSON.stringify(mp.monthlyRecords));
+        if (mp.dividendRecords) localStorage.setItem('pension_dividends_v1',       JSON.stringify(mp.dividendRecords));
+        if (mp.annualPlan)      localStorage.setItem('pension_annual_plan_v1',     JSON.stringify(mp.annualPlan));
+      }
+      alert('불러오기 완료' + (data.mypm ? '\n(My PM + NonK 통합 데이터)' : ''));
       nkRender();
       nkRenderChart();
     } catch(err) { alert('파일 형식 오류: ' + err.message); }
