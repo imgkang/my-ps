@@ -1203,56 +1203,127 @@ function nkRender() {
       <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</span></div>
     </div>`;
 
-  // Holdings table
-  const rows = nkHoldings.map(h => {
-    let hQty = 0, hCost = 0;
+  // Holdings table — My PM style
+  const items = nkHoldings.map(h => {
+    let qty = 0, cost = 0;
+    const hasAccounts = h.accounts && NK_ACCOUNTS.some(a => (h.accounts[a.id]?.qty || 0) > 0);
     for (const acc of NK_ACCOUNTS) {
       const a = h.accounts && h.accounts[acc.id];
-      if (a && a.qty > 0) { hQty += Number(a.qty); hCost += Number(a.qty) * Number(a.avgPrice || 0); }
+      if (a && a.qty > 0) { qty += Number(a.qty); cost += Number(a.qty) * Number(a.avgPrice || 0); }
     }
-    const hValue = hQty * (h.price || 0);
-    const hPnl   = hValue - hCost;
-    const hRate  = hCost > 0 ? hPnl / hCost * 100 : 0;
-    const wt     = totalCost > 0 ? hCost / totalCost * 100 : 0;
-    const avgP   = hQty > 0 ? hCost / hQty : 0;
-    const cr     = h.changeRate || 0;
-    const ch     = h.change || 0;
-    return `<tr onclick="nkOpenAccountModal('${h.ticker}')" style="cursor:pointer">
-      <td><strong>${h.ticker}</strong></td>
-      <td>${h.name || ''}</td>
-      <td class="${cr >= 0 ? 'pos' : 'neg'}">${cr >= 0 ? '+' : ''}${cr.toFixed(2)}%</td>
-      <td class="${ch >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(ch)}</td>
-      <td>${wt.toFixed(1)}%</td>
-      <td>${fmtUSD(hCost)}</td>
-      <td>${hQty.toLocaleString()}</td>
-      <td>${fmtUSD(avgP)}</td>
-      <td>${fmtUSD(h.price || 0)}</td>
-      <td>${fmtUSD(hValue)}</td>
-      <td class="${hPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(hPnl)}</td>
-      <td class="${hRate >= 0 ? 'pos' : 'neg'}">${hRate >= 0 ? '+' : ''}${hRate.toFixed(2)}%</td>
-      <td><button class="del-btn" onclick="event.stopPropagation();nkDeleteHolding('${h.ticker}')">삭제</button></td>
-    </tr>`;
-  }).join('');
-
-  const cashRow = `<tr style="background:var(--card-alt,#f8f8f8)">
-    <td colspan="5"><strong>현금</strong> <button class="btn-secondary" style="font-size:11px;padding:2px 8px" onclick="nkOpenCashModal()">편집</button></td>
-    <td colspan="2">${fmtUSD(totalCash)}</td>
-    <td colspan="6"></td>
-  </tr>`;
-
-  const tableHtml = `<div style="overflow-x:auto"><table class="detail-table">
-    <thead><tr>
-      <th>Ticker</th><th>종목명</th><th>오늘%</th><th>오늘$</th><th>비중%</th>
-      <th>매입원가</th><th>수량</th><th>평균단가</th><th>현재가</th><th>평가금액</th><th>손익$</th><th>수익률</th><th></th>
-    </tr></thead>
-    <tbody>${rows}${cashRow}</tbody>
-  </table></div>`;
+    const avgPrice    = qty > 0 && cost > 0 ? cost / qty : 0;
+    const currentValue = qty * (h.price || 0);
+    const profit      = cost > 0 ? currentValue - cost : 0;
+    const profitRate  = cost > 0 ? profit / cost * 100 : null;
+    return {
+      ticker: h.ticker, name: h.name || '', qty, cost, avgPrice, hasCost: cost > 0, hasAccounts,
+      price: h.price || 0, change: h.change || 0, changeRate: h.changeRate || 0,
+      currentValue, profit, profitRate
+    };
+  }).sort((a, b) => b.currentValue - a.currentValue);
 
   const updatedAts = nkHoldings.filter(h => h.updatedAt).map(h => h.updatedAt);
-  const lastUpdate = updatedAts.length ? new Date(Math.max(...updatedAts.map(d => new Date(d)))).toLocaleTimeString('ko-KR') : '-';
+  const lastUpdate = updatedAts.length
+    ? new Date(Math.max(...updatedAts.map(d => new Date(d)))).toLocaleTimeString('ko-KR') : '-';
 
-  container.innerHTML = summaryHtml + tableHtml;
-  if (statusEl) statusEl.textContent = `보유종목 ${nkHoldings.length}개 · 마지막 갱신 ${lastUpdate}`;
+  let tableHtml = `<div class="detail-table-wrap"><table class="detail-table">
+    <thead><tr>
+      <th>종목</th>
+      <th>오늘<br>손익률</th>
+      <th>오늘<br>손익</th>
+      <th>매입<br>비중</th>
+      <th>매입액</th>
+      <th>보유수</th>
+      <th>매입단가</th>
+      <th>현재가</th>
+      <th>평가금액</th>
+      <th>총손익</th>
+      <th>손익률</th>
+      <th>비중</th>
+      <th>비중차이</th>
+      <th></th>
+    </tr></thead>
+    <tbody>`;
+
+  for (const it of items) {
+    const buyWeight = totalCost > 0 ? it.cost / totalCost * 100 : 0;
+    const curWeight = totalValue > 0 ? it.currentValue / totalValue * 100 : 0;
+    const diff      = curWeight - buyWeight;
+    const pCls  = it.profit >= 0 ? 'diff-positive' : 'diff-negative';
+    const dCls  = diff >= 0 ? 'diff-positive' : 'diff-negative';
+    const pSign = it.profit >= 0 ? '+' : '';
+    const dSign = diff >= 0 ? '+' : '';
+    const crCls = it.changeRate > 0 ? 'diff-positive' : (it.changeRate < 0 ? 'diff-negative' : '');
+    const chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
+    const dayAmt = it.change * it.qty;
+    tableHtml += `
+      <tr>
+        <td>
+          <div class="stock-name">${nkEscape(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div>
+          <div class="stock-code">${it.ticker}</div>
+        </td>
+        <td class="${crCls}">${it.changeRate ? (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%' : '-'}</td>
+        <td class="${chCls}">${dayAmt ? fmtUSDSigned(dayAmt) : '-'}</td>
+        <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
+        <td>${it.hasCost ? fmtUSD(it.cost) : '-'}</td>
+        <td><a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
+        <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
+        <td>${it.price > 0 ? fmtUSD(it.price) : '-'}</td>
+        <td><strong>${fmtUSD(it.currentValue)}</strong></td>
+        <td class="${pCls}">${it.hasCost ? fmtUSDSigned(it.profit) : '-'}</td>
+        <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
+        <td>${curWeight.toFixed(1)}%</td>
+        <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
+        <td>
+          <button class="btn-accounts" onclick="nkOpenAccountModal('${it.ticker}')" title="계좌별 수량 입력">📂</button>
+          <button class="del-btn" onclick="nkDeleteHolding('${it.ticker}')">삭제</button>
+        </td>
+      </tr>`;
+  }
+
+  // 현금 행
+  const cashWeight   = totalValue > 0 ? totalCash / totalValue * 100 : 0;
+  const cashAccCount = NK_ACCOUNTS.filter(a => (Number(nkCashAccounts[a.id]) || 0) > 0).length;
+  tableHtml += `
+    <tr class="row-cash">
+      <td>
+        <div class="stock-name">💵 현금 (예수금)${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
+        <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
+      </td>
+      <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+      <td><strong>${fmtUSD(totalCash)}</strong></td>
+      <td>-</td><td>-</td>
+      <td>${cashWeight.toFixed(1)}%</td>
+      <td>-</td>
+      <td><button class="btn-accounts" onclick="nkOpenCashModal()" title="계좌별 현금 입력">📂</button></td>
+    </tr>`;
+
+  // 합계 행
+  const dayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
+  const totPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const totPSign = pnl >= 0 ? '+' : '';
+  tableHtml += `
+    </tbody>
+    <tfoot><tr>
+      <td>합계</td>
+      <td>-</td>
+      <td class="${dayCls}">${todayPnl ? fmtUSDSigned(todayPnl) : '-'}</td>
+      <td>${totalCost > 0 ? '100.0%' : '-'}</td>
+      <td>${totalCost > 0 ? fmtUSD(totalCost) : '-'}</td>
+      <td>-</td><td>-</td><td>-</td>
+      <td>${fmtUSD(totalValue)}</td>
+      <td class="${totPCls}">${deposited > 0 ? fmtUSDSigned(pnl) : '-'}</td>
+      <td class="${totPCls}">${deposited > 0 ? totPSign + pnlRate.toFixed(2) + '%' : '-'}</td>
+      <td>${totalValue > 0 ? '100.0%' : '-'}</td>
+      <td>-</td>
+      <td></td>
+    </tr></tfoot>
+  </table></div>`;
+
+  container.innerHTML = summaryHtml
+    + `<div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">마지막 갱신: ${lastUpdate}</div>`
+    + tableHtml;
+  if (statusEl) statusEl.textContent = `보유종목 ${nkHoldings.length}개 · 현금 ${fmtUSD(totalCash)} · 총 평가 ${fmtUSD(totalValue)}`;
   nkRenderAccountButtons();
 }
 
@@ -1263,6 +1334,10 @@ function nkRenderAccountButtons() {
     const val = nkComputeAccountValue(a.id);
     return `<button class="btn-account-view" onclick="nkOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtUSD(val)}</span></button>`;
   }).join('');
+}
+
+function nkEscape(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function nkDeleteHolding(ticker) {
