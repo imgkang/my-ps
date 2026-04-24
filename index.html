@@ -18,6 +18,11 @@
     --minus: #1e88e5;
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
+  .app-version {
+    position: fixed; bottom: 8px; right: 10px; z-index: 9999;
+    font-size: 10px; color: rgba(0,0,0,0.25); pointer-events: none;
+    font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
+  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
@@ -1066,6 +1071,12 @@
 </div>
 
 <script>
+const APP_VERSION = 'MyPM v2026.04.24';
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('appVersion');
+  if (el) el.textContent = APP_VERSION;
+});
+
 // ===== 계좌 정의 (8개) =====
 const ACCOUNTS = [
   { id: 'dc',            name: 'DC 계좌' },
@@ -3653,6 +3664,7 @@ function renderDivAccRecordsList() {
   });
 })();
 </script>
+<div class="app-version" id="appVersion"></div>
 </body>
 </html>
                                              
