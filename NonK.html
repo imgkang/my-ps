@@ -455,7 +455,7 @@
 
   .deposit-list-header {
     display: grid;
-    grid-template-columns: 140px 1.2fr 1.3fr 36px;
+    grid-template-columns: 140px 1.2fr 1.3fr 90px;
     gap: 8px;
     padding: 8px 12px;
     font-size: 11px; font-weight: 600; color: var(--muted);
@@ -693,7 +693,7 @@
   .summary-label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
   .summary-value { display: block; font-size: 17px; font-weight: 700; margin-top: 4px; }
   .deposit-row {
-    display: grid; grid-template-columns: 120px 1fr 1.2fr 50px;
+    display: grid; grid-template-columns: 120px 1fr 1.2fr 90px;
     gap: 8px; padding: 8px 12px; align-items: center;
     font-size: 13px; border-bottom: 1px solid var(--border);
   }
@@ -704,6 +704,11 @@
     padding: 3px 7px; border-radius: 4px; cursor: pointer; font-size: 11px;
   }
   .deposit-row .del-btn:hover { background: #fecaca; }
+  .edit-btn {
+    background: #e0f2fe; color: #0369a1; border: none;
+    padding: 3px 7px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 3px;
+  }
+  .edit-btn:hover { background: #bae6fd; }
   .records-input-accounts label {
     display: flex; flex-direction: column; gap: 4px;
     background: white; padding: 8px 10px; border-radius: 6px;
@@ -872,7 +877,7 @@
 <div class="modal-backdrop" id="nkTxnEditorModal" onclick="if(event.target===this)nkCloseTxnEditor()">
   <div class="modal">
     <div class="modal-header">
-      <div><h2>입출금 추가</h2><div class="modal-subtitle">계좌 · 날짜 · 금액을 입력하세요</div></div>
+      <div><h2 id="nkTxnEditorTitle">입출금 추가</h2><div class="modal-subtitle">계좌 · 날짜 · 금액을 입력하세요</div></div>
       <button class="close-btn" onclick="nkCloseTxnEditor()" aria-label="닫기">×</button>
     </div>
     <div class="txn-form">
@@ -907,7 +912,8 @@
         <span>전체 총합</span><strong id="nkRecTotal">$0</strong>
       </div>
       <div class="records-input-actions">
-        <button class="btn-primary" onclick="nkAddMonthlyRecord()">➕ 추가</button>
+        <button class="btn-secondary" id="nkRecCancelBtn" style="display:none" onclick="nkCancelRecordEdit()">취소</button>
+        <button class="btn-primary" id="nkRecAddBtn" onclick="nkAddMonthlyRecord()">➕ 추가</button>
       </div>
     </div>
     <div class="records-list-wrap">
@@ -992,6 +998,8 @@ let nkDividendRecords = nkLoadDividends();
 let nkChartInstance       = null;
 let nkDetailChartInstance = null;
 let nkEditingTicker   = null;
+let nkEditingTxnId    = null;
+let nkEditingRecordId = null;
 
 function nkLoadHoldings()  { try { return JSON.parse(localStorage.getItem(NK_HOLD_KEY)) || []; } catch(e) { return []; } }
 function nkSaveHoldings()  { localStorage.setItem(NK_HOLD_KEY, JSON.stringify(nkHoldings)); }
@@ -1744,7 +1752,10 @@ function nkRenderDepositList() {
       <span>${t.date || '-'}</span>
       <span>${accName}</span>
       <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtUSD(Number(t.amount))}</span>
-      <span><button class="del-btn" onclick="nkDeleteTxn('${t.id}')">삭제</button></span>
+      <span>
+        <button class="edit-btn" onclick="nkOpenTxnEditor('${t.id}')">편집</button>
+        <button class="del-btn" onclick="nkDeleteTxn('${t.id}')">삭제</button>
+      </span>
     </div>`;
   }).join('');
 }
@@ -1756,15 +1767,30 @@ function nkDeleteTxn(id) {
   nkRenderDepositList();
 }
 
-function nkOpenTxnEditor() {
+function nkOpenTxnEditor(editId) {
+  nkEditingTxnId = editId || null;
   const sel = document.getElementById('nkTxnAccount');
   sel.innerHTML = NK_ACCOUNTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
-  document.getElementById('nkTxnDate').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('nkTxnAmount').value = '';
+  const titleEl = document.getElementById('nkTxnEditorTitle');
+  if (editId) {
+    const t = nkDepositData.transactions.find(x => x.id === editId);
+    if (t) {
+      sel.value = t.accId;
+      document.getElementById('nkTxnType').value = t.type;
+      document.getElementById('nkTxnDate').value = t.date;
+      document.getElementById('nkTxnAmount').value = t.amount;
+    }
+    if (titleEl) titleEl.textContent = '입출금 편집';
+  } else {
+    document.getElementById('nkTxnDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('nkTxnAmount').value = '';
+    if (titleEl) titleEl.textContent = '입출금 추가';
+  }
   document.getElementById('nkTxnEditorModal').classList.add('open');
 }
 
 function nkCloseTxnEditor() {
+  nkEditingTxnId = null;
   document.getElementById('nkTxnEditorModal').classList.remove('open');
 }
 
@@ -1774,7 +1800,12 @@ function nkSaveTxn() {
   const date   = document.getElementById('nkTxnDate').value;
   const amount = Number(document.getElementById('nkTxnAmount').value);
   if (!amount || amount <= 0) { alert('금액을 올바르게 입력하세요'); return; }
-  nkDepositData.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount });
+  if (nkEditingTxnId) {
+    const t = nkDepositData.transactions.find(x => x.id === nkEditingTxnId);
+    if (t) { t.accId = accId; t.type = type; t.date = date; t.amount = amount; }
+  } else {
+    nkDepositData.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount });
+  }
   nkSaveDeposits();
   nkCloseTxnEditor();
   nkRenderDepositList();
@@ -1896,16 +1927,49 @@ function nkAddMonthlyRecord() {
   const year  = Number(document.getElementById('nkRecYear').value);
   const month = Number(document.getElementById('nkRecMonth').value);
   if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
-  if (nkMonthlyRecords.some(r => r.year === year && r.month === month)) {
-    if (!confirm(`${year}년 ${month}월 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
-    nkMonthlyRecords = nkMonthlyRecords.filter(r => !(r.year === year && r.month === month));
-  }
   const accounts = {};
   NK_ACCOUNTS.forEach(a => { accounts[a.id] = Number(document.getElementById(`nkRecVal_${a.id}`)?.value) || 0; });
-  nkMonthlyRecords.push({ id: String(Date.now()), year, month, accounts });
+  if (nkEditingRecordId) {
+    const rec = nkMonthlyRecords.find(r => r.id === nkEditingRecordId);
+    if (rec) { rec.year = year; rec.month = month; rec.accounts = accounts; }
+    nkCancelRecordEdit();
+  } else {
+    if (nkMonthlyRecords.some(r => r.year === year && r.month === month)) {
+      if (!confirm(`${year}년 ${month}월 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
+      nkMonthlyRecords = nkMonthlyRecords.filter(r => !(r.year === year && r.month === month));
+    }
+    nkMonthlyRecords.push({ id: String(Date.now()), year, month, accounts });
+  }
   nkSaveMonthly();
   nkRenderRecordsList();
   nkRenderChart();
+}
+
+function nkEditMonthlyRecord(id) {
+  const rec = nkMonthlyRecords.find(r => r.id === id);
+  if (!rec) return;
+  nkEditingRecordId = id;
+  document.getElementById('nkRecYear').value  = rec.year;
+  document.getElementById('nkRecMonth').value = rec.month;
+  nkRenderRecAccountInputs();
+  NK_ACCOUNTS.forEach(a => {
+    const inp = document.getElementById(`nkRecVal_${a.id}`);
+    if (inp) inp.value = rec.accounts[a.id] || '';
+  });
+  nkUpdateRecTotal();
+  const addBtn    = document.getElementById('nkRecAddBtn');
+  const cancelBtn = document.getElementById('nkRecCancelBtn');
+  if (addBtn)    addBtn.textContent = '✏️ 수정';
+  if (cancelBtn) cancelBtn.style.display = '';
+  document.getElementById('nkRecYear').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function nkCancelRecordEdit() {
+  nkEditingRecordId = null;
+  const addBtn    = document.getElementById('nkRecAddBtn');
+  const cancelBtn = document.getElementById('nkRecCancelBtn');
+  if (addBtn)    addBtn.textContent = '➕ 추가';
+  if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
 function nkDeleteMonthlyRecord(id) {
@@ -1926,7 +1990,7 @@ function nkRenderRecordsList() {
     list.innerHTML = '<div class="records-empty">아직 기록이 없습니다.</div>';
     return;
   }
-  const cols = `80px ${NK_ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
+  const cols = `80px ${NK_ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 90px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `<span>연/월</span>${NK_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
   const sorted = [...nkMonthlyRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
@@ -1937,7 +2001,10 @@ function nkRenderRecordsList() {
       <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>
       ${cells}
       <span class="total">${fmtUSD(total)}</span>
-      <span><button class="del-btn" onclick="nkDeleteMonthlyRecord('${rec.id}')">삭제</button></span>
+      <span>
+        <button class="edit-btn" onclick="nkEditMonthlyRecord('${rec.id}')">편집</button>
+        <button class="del-btn" onclick="nkDeleteMonthlyRecord('${rec.id}')">삭제</button>
+      </span>
     </div>`;
   }).join('');
 }

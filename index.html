@@ -470,7 +470,7 @@
 
   .deposit-list-header {
     display: grid;
-    grid-template-columns: 140px 1.2fr 1.3fr 36px;
+    grid-template-columns: 140px 1.2fr 1.3fr 90px;
     gap: 8px;
     padding: 8px 12px;
     font-size: 11px; font-weight: 600; color: var(--muted);
@@ -489,7 +489,7 @@
   }
   #depositList .txn-row {
     display: grid;
-    grid-template-columns: 140px 1.2fr 1.3fr 36px;
+    grid-template-columns: 140px 1.2fr 1.3fr 90px;
     gap: 8px;
     padding: 8px 12px;
     align-items: center;
@@ -517,9 +517,13 @@
   #depositList .txn-delete {
     background: transparent; border: none; color: var(--muted);
     cursor: pointer; font-size: 16px; padding: 2px 4px; line-height: 1;
-    justify-self: end;
   }
   #depositList .txn-delete:hover { color: #ef4444; }
+  .edit-btn {
+    background: #e0f2fe; color: #0369a1; border: none;
+    padding: 3px 7px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 3px;
+  }
+  .edit-btn:hover { background: #bae6fd; }
   .deposit-empty {
     padding: 26px 16px; text-align: center; color: var(--muted);
     font-size: 12px;
@@ -946,7 +950,8 @@
       </div>
       <div class="records-input-actions">
         <button class="btn-secondary" onclick="clearRecordInputs()">입력 초기화</button>
-        <button class="btn-primary" onclick="addMonthlyRecord()">➕ 추가</button>
+        <button class="btn-secondary" id="recCancelBtn" style="display:none" onclick="cancelRecordEdit()">취소</button>
+        <button class="btn-primary" id="recAddBtn" onclick="addMonthlyRecord()">➕ 추가</button>
       </div>
     </div>
 
@@ -1081,6 +1086,8 @@ const DEPOSITS_KEY = 'pension_deposits_v1';           // 연도·계좌별 입�
 let holdings = loadHoldings();
 let cashAccounts = loadCashAccounts();
 let depositData = loadDeposits();
+let editingTxnId    = null;
+let editingRecordId = null;
 
 // 기존 데이터 마이그레이션
 // - accounts 필드가 없으면 빈 객체로 초기화
@@ -1265,7 +1272,10 @@ function renderDepositList() {
         <input type="date" class="txn-date" value="${t.date}" data-txnid="${t.id}" onchange="updateTxnDate('${t.id}', this.value)" title="입출금일 수정">
         <span class="txn-acc">${accName}</span>
         <span class="txn-amount ${amountCls}">${amountStr}</span>
-        <button class="txn-delete" onclick="deleteTxn('${t.id}')" title="삭제">×</button>
+        <span style="display:flex;align-items:center;gap:2px">
+          <button class="edit-btn" onclick="openTxnEditor('${t.id}')" title="편집">편집</button>
+          <button class="txn-delete" onclick="deleteTxn('${t.id}')" title="삭제">×</button>
+        </span>
       </div>`;
   }).join('');
 }
@@ -1300,25 +1310,35 @@ function deleteTxn(id) {
 }
 
 // ===== 입출금 추가 서브 모달 =====
-function openTxnEditor() {
+function openTxnEditor(editId) {
+  editingTxnId = editId || null;
   const selAcc = document.getElementById('txnAccount');
   selAcc.innerHTML = ACCOUNTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
-
-  document.getElementById('txnType').value = 'deposit';
-
-  // 오늘 날짜 기본값
-  const now = new Date();
-  const pad = x => String(x).padStart(2, '0');
-  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  document.getElementById('txnDate').value = today;
-
-  document.getElementById('txnAmount').value = '';
-
+  const titleEl = document.getElementById('txnEditorTitle');
+  if (editId) {
+    const t = depositData.transactions.find(x => x.id === editId);
+    if (t) {
+      selAcc.value = t.accId;
+      const amt = Number(t.amount);
+      document.getElementById('txnType').value  = amt < 0 ? 'withdraw' : 'deposit';
+      document.getElementById('txnDate').value  = t.date;
+      document.getElementById('txnAmount').value = Math.abs(amt).toLocaleString('ko-KR');
+    }
+    if (titleEl) titleEl.textContent = '입출금 편집';
+  } else {
+    document.getElementById('txnType').value = 'deposit';
+    const now = new Date();
+    const pad = x => String(x).padStart(2, '0');
+    document.getElementById('txnDate').value   = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    document.getElementById('txnAmount').value = '';
+    if (titleEl) titleEl.textContent = '입출금 추가';
+  }
   document.getElementById('txnEditorModal').classList.add('open');
   setTimeout(() => { selAcc.focus(); }, 30);
 }
 
 function closeTxnEditor() {
+  editingTxnId = null;
   document.getElementById('txnEditorModal').classList.remove('open');
 }
 function handleTxnBackdropClick(e) {
@@ -1337,12 +1357,12 @@ function saveTxn() {
   if (!amount || amount <= 0) { alert('금액을 올바르게 입력해 주세요 (0보다 큰 숫자).'); return; }
 
   const signedAmount = type === 'withdraw' ? -amount : amount;
-  depositData.transactions.push({
-    id: generateTxnId(),
-    accId,
-    date,
-    amount: signedAmount
-  });
+  if (editingTxnId) {
+    const t = depositData.transactions.find(x => x.id === editingTxnId);
+    if (t) { t.accId = accId; t.date = date; t.amount = signedAmount; }
+  } else {
+    depositData.transactions.push({ id: generateTxnId(), accId, date, amount: signedAmount });
+  }
   saveDeposits();
   closeTxnEditor();
   renderDepositTotals();
@@ -2351,19 +2371,40 @@ function addMonthlyRecord() {
   if (!month || month < 1 || month > 12) { alert('월을 1~12 사이로 입력해 주세요.'); return; }
 
   const accounts = getRecordInputAmounts();
-  const hasAny = Object.values(accounts).some(v => (Number(v) || 0) > 0);
-  if (!hasAny) {
-    if (!confirm('모든 계좌 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
+  if (editingRecordId) {
+    const rec = monthlyRecords.find(r => r.id === editingRecordId);
+    if (rec) { rec.year = year; rec.month = month; rec.accounts = accounts; }
+    cancelRecordEdit();
+  } else {
+    const hasAny = Object.values(accounts).some(v => (Number(v) || 0) > 0);
+    if (!hasAny && !confirm('모든 계좌 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
+    monthlyRecords.push({ id: String(Date.now()) + Math.floor(Math.random() * 1000), year, month, accounts });
   }
-
-  monthlyRecords.push({
-    id: String(Date.now()) + Math.floor(Math.random() * 1000),
-    year, month, accounts
-  });
   saveMonthlyRecords();
   renderRecordsList();
   renderPortfolioChart();
-  // 입력 폼 유지 (연속 입력 편의)
+}
+
+function editMonthlyRecord(id) {
+  const rec = monthlyRecords.find(r => r.id === id);
+  if (!rec) return;
+  editingRecordId = id;
+  document.getElementById('recYear').value  = rec.year;
+  document.getElementById('recMonth').value = rec.month;
+  renderRecordInputs(rec.accounts);
+  const addBtn    = document.getElementById('recAddBtn');
+  const cancelBtn = document.getElementById('recCancelBtn');
+  if (addBtn)    addBtn.textContent = '✏️ 수정';
+  if (cancelBtn) cancelBtn.style.display = '';
+  document.getElementById('recYear').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelRecordEdit() {
+  editingRecordId = null;
+  const addBtn    = document.getElementById('recAddBtn');
+  const cancelBtn = document.getElementById('recCancelBtn');
+  if (addBtn)    addBtn.textContent = '➕ 추가';
+  if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
 function deleteMonthlyRecord(id) {
@@ -2380,7 +2421,7 @@ function renderRecordsTableHeader() {
   const header = document.getElementById('recordsTableHeader');
   if (!header) return;
   // 컬럼: 연/월 + 계좌들 + 총합 + 삭제
-  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 60px`;
+  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>연/월</span>
@@ -2405,7 +2446,7 @@ function renderRecordsList() {
     return b.month - a.month;
   });
 
-  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 60px`;
+  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
 
   list.innerHTML = sorted.map(rec => {
     const total = ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
@@ -2418,7 +2459,10 @@ function renderRecordsList() {
         <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
         ${accCells}
         <span class="total">${formatMil(total)}</span>
-        <span><button class="del-btn" onclick="deleteMonthlyRecord('${rec.id}')">삭제</button></span>
+        <span>
+          <button class="edit-btn" onclick="editMonthlyRecord('${rec.id}')">편집</button>
+          <button class="del-btn" onclick="deleteMonthlyRecord('${rec.id}')">삭제</button>
+        </span>
       </div>
     `;
   }).join('');
