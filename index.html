@@ -677,8 +677,9 @@
 <body>
 <div class="container">
   <header>
-    <div>
-      <h1>📊 My PM</h1>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:22px;font-weight:700">📊 My PM</span>
+      <a href="NonK.html" style="padding:5px 14px;background:#f3f4f6;color:#6b7280;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;transition:background 0.15s" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">🇺🇸 NonK</a>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <label class="auto-refresh-label" title="자동 새로고침 간격(분). 0 입력 시 자동 새로고침이 꺼집니다. 브라우저 새로고침(F5) 시 즉시 현재가가 갱신됩니다.">
@@ -941,6 +942,192 @@
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeRecordsModal()">닫기</button>
     </div>
+  </div>
+</div>
+
+<!-- NonK: 종목 추가 모달 -->
+<div class="modal-backdrop" id="nkAddStockModal" onclick="if(event.target===this)nkCloseAddModal()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div><h2>🇺🇸 US 종목 추가</h2></div>
+      <button class="close-btn" onclick="nkCloseAddModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="add-form" style="grid-template-columns:1fr 1fr;gap:12px">
+      <input type="text" id="nkTicker" placeholder="Ticker (예: AAPL)" autocomplete="off" style="grid-column:1/-1" oninput="this.value=this.value.toUpperCase()">
+      <input type="text" id="nkName" placeholder="종목명 (자동입력)" autocomplete="off" style="grid-column:1/-1">
+      <button class="btn-secondary" onclick="nkFetchInfo()" style="grid-column:1/-1">🔍 조회</button>
+      <div id="nkFetchResult" style="grid-column:1/-1;font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div class="account-head" style="margin-top:12px">
+      <div>계좌</div><div>수량</div><div>매입단가 (USD)</div><div>매입총액 (USD)</div>
+    </div>
+    <div class="account-grid" id="nkAddAccountInputs"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="nkCloseAddModal()">취소</button>
+      <button class="btn-primary" onclick="nkAddStock()">+ 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- NonK: 계좌별 수량 입력 모달 -->
+<div class="modal-backdrop" id="nkAccountModal" onclick="if(event.target===this)nkCloseAccountModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div><h2 id="nkModalTitle">계좌별 수량 입력</h2><div class="modal-subtitle" id="nkModalSubtitle"></div></div>
+      <button class="close-btn" onclick="nkCloseAccountModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="account-head">
+      <div>계좌</div><div>수량</div><div>매입단가 (USD)</div><div>매입총액 (USD)</div>
+    </div>
+    <div class="account-grid" id="nkAccountInputs"></div>
+    <div class="modal-total">
+      <span>합계</span>
+      <span>
+        <span id="nkModalTotalQty" style="margin-right:16px;color:var(--text);font-weight:600;">0 주</span>
+        <strong id="nkModalTotalCost">$0</strong>
+      </span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="nkCloseAccountModal()">취소</button>
+      <button class="btn-primary" onclick="nkSaveAccountQuantities()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- NonK: 계좌 상세 보기 모달 -->
+<div class="modal-backdrop" id="nkAccountDetailModal" onclick="if(event.target===this)nkCloseAccountDetail()">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div><h2 id="nkDetailTitle">계좌 상세</h2><div class="modal-subtitle" id="nkDetailSubtitle"></div></div>
+      <button class="close-btn" onclick="nkCloseAccountDetail()" aria-label="닫기">×</button>
+    </div>
+    <div class="detail-summary" id="nkDetailSummary"></div>
+    <div class="detail-table-wrap"><table class="detail-table" id="nkDetailTable"></table></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="nkCloseAccountDetail()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- NonK: 현금 모달 -->
+<div class="modal-backdrop" id="nkCashModal" onclick="if(event.target===this)nkCloseCashModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div><h2>💵 현금 (예수금)</h2><div class="modal-subtitle">계좌별 보유 현금 (USD)</div></div>
+      <button class="close-btn" onclick="nkCloseCashModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="account-grid" id="nkCashInputs"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="nkCloseCashModal()">취소</button>
+      <button class="btn-primary" onclick="nkSaveCash()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- NonK: 입출금 모달 -->
+<div class="modal-backdrop" id="nkDepositModal" onclick="if(event.target===this)nkCloseDepositModal()">
+  <div class="modal modal-wide modal-deposit">
+    <div class="modal-header">
+      <div><h2>💰 계좌 입출금 관리</h2><div class="modal-subtitle">계좌별 입금·출금 내역 (단위: USD)</div></div>
+      <button class="close-btn" onclick="nkCloseDepositModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="deposit-grand" id="nkDepositGrand"></div>
+    <div class="deposit-totals" id="nkDepositTotals"></div>
+    <div class="deposit-toolbar">
+      <button class="btn-primary" onclick="nkOpenTxnEditor()">➕ 입출금 추가</button>
+    </div>
+    <div class="deposit-list-header"><span>입출금일</span><span>계좌</span><span>금액</span><span></span></div>
+    <div class="deposit-list-wrap"><div id="nkDepositList"></div></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseDepositModal()">닫기</button></div>
+  </div>
+</div>
+
+<!-- NonK: 입출금 편집 서브모달 -->
+<div class="modal-backdrop" id="nkTxnEditorModal" onclick="if(event.target===this)nkCloseTxnEditor()">
+  <div class="modal">
+    <div class="modal-header">
+      <div><h2>입출금 추가</h2><div class="modal-subtitle">계좌 · 날짜 · 금액을 입력하세요</div></div>
+      <button class="close-btn" onclick="nkCloseTxnEditor()" aria-label="닫기">×</button>
+    </div>
+    <div class="txn-form">
+      <label><span>계좌</span><select id="nkTxnAccount"></select></label>
+      <label><span>구분</span><select id="nkTxnType"><option value="deposit">입금 (+)</option><option value="withdraw">출금 (−)</option></select></label>
+      <label><span>입출금일</span><input type="date" id="nkTxnDate"></label>
+      <label><span>금액 (USD)</span><input type="number" id="nkTxnAmount" min="0" step="0.01" placeholder="0.00"></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="nkCloseTxnEditor()">취소</button>
+      <button class="btn-primary" onclick="nkSaveTxn()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- NonK: 계좌 기록 모달 -->
+<div class="modal-backdrop" id="nkAccountRecordsModal" onclick="if(event.target===this)nkCloseRecordsModal()">
+  <div class="modal modal-wide modal-records">
+    <div class="modal-header">
+      <div><h2>📒 계좌 기록 관리</h2><div class="modal-subtitle">월별 계좌 평가금액 기록 (USD)</div></div>
+      <button class="close-btn" onclick="nkCloseRecordsModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="records-input-card">
+      <div class="records-input-top">
+        <label><span>연도</span><input type="number" id="nkRecYear" min="2000" max="2100" step="1" placeholder="YYYY"></label>
+        <label><span>월</span><input type="number" id="nkRecMonth" min="1" max="12" step="1" placeholder="M"></label>
+        <button class="btn-secondary" onclick="nkFillCurrentValues()">💾 현재값 저장</button>
+      </div>
+      <div class="records-input-accounts" id="nkRecAccountInputs"></div>
+      <div class="records-input-total">
+        <span>전체 총합</span>
+        <strong id="nkRecTotal">$0</strong>
+      </div>
+      <div class="records-input-actions">
+        <button class="btn-primary" onclick="nkAddMonthlyRecord()">➕ 추가</button>
+      </div>
+    </div>
+    <div class="records-list-wrap">
+      <div class="records-table-header" id="nkRecordsTableHeader"></div>
+      <div id="nkRecordsList"></div>
+    </div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseRecordsModal()">닫기</button></div>
+  </div>
+</div>
+
+<!-- NonK: 배당 기록 모달 -->
+<div class="modal-backdrop" id="nkDividendModal" onclick="if(event.target===this)nkCloseDividendModal()">
+  <div class="modal modal-wide modal-records">
+    <div class="modal-header">
+      <div><h2>💸 배당 기록 관리</h2><div class="modal-subtitle">월별 배당금 수령 내역 (USD)</div></div>
+      <button class="close-btn" onclick="nkCloseDividendModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="records-input-card">
+      <div class="records-input-top">
+        <label><span>연도</span><input type="number" id="nkDivYear" min="2000" max="2100" step="1" placeholder="YYYY"></label>
+        <label><span>월</span><input type="number" id="nkDivMonth" min="1" max="12" step="1" placeholder="M"></label>
+      </div>
+      <div style="overflow-x:auto;margin-top:8px">
+        <table class="div-stock-table">
+          <thead><tr><th>종목</th><th>배당금 (USD)</th></tr></thead>
+          <tbody id="nkDivStockInputs"></tbody>
+        </table>
+      </div>
+      <div class="div-grand-total"><span>배당금 총합</span><strong id="nkDivGrandTotal">$0</strong></div>
+      <div class="records-input-actions">
+        <button class="btn-primary" onclick="nkAddDividendRecord()">➕ 추가</button>
+      </div>
+    </div>
+    <div class="div-sections">
+      <div class="div-section-title">종목별 배당 내역</div>
+      <div class="div-records-wrap">
+        <div class="div-table-header" id="nkDivStockTableHeader"></div>
+        <div id="nkDivStockRecordsList"></div>
+      </div>
+      <div class="div-section-title" style="margin-top:16px">계좌별 배당 내역</div>
+      <div class="div-records-wrap">
+        <div class="div-table-header" id="nkDivAccTableHeader"></div>
+        <div id="nkDivAccRecordsList"></div>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseDividendModal()">닫기</button></div>
   </div>
 </div>
 
@@ -1457,6 +1644,15 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('accountRecordsModal').classList.contains('open')) { closeRecordsModal(); return; }
   if (document.getElementById('dividendModal').classList.contains('open')) { closeDividendModal(); return; }
   if (document.getElementById('annualPlanModal').classList.contains('open')) { closeAnnualPlanModal(); return; }
+  // NonK modals
+  if (document.getElementById('nkTxnEditorModal').classList.contains('open')) { nkCloseTxnEditor(); return; }
+  if (document.getElementById('nkAccountModal').classList.contains('open')) { nkCloseAccountModal(); return; }
+  if (document.getElementById('nkAccountDetailModal').classList.contains('open')) { nkCloseAccountDetail(); return; }
+  if (document.getElementById('nkCashModal').classList.contains('open')) { nkCloseCashModal(); return; }
+  if (document.getElementById('nkDepositModal').classList.contains('open')) { nkCloseDepositModal(); return; }
+  if (document.getElementById('nkAccountRecordsModal').classList.contains('open')) { nkCloseRecordsModal(); return; }
+  if (document.getElementById('nkDividendModal').classList.contains('open')) { nkCloseDividendModal(); return; }
+  if (document.getElementById('nkAddStockModal').classList.contains('open')) { nkCloseAddModal(); return; }
 });
 
 // 금액 입력란 자동 콤마 포맷
@@ -3517,6 +3713,773 @@ function renderDivAccRecordsList() {
       </div>
     `;
   }).join('');
+}
+
+// ===== NonK (US 포트폴리오) =====
+const NK_ACCOUNTS = [{ id: 'ds', name: 'D&S' }, { id: 'nk1', name: 'nK1' }];
+const NK_HOLD_KEY  = 'nonk_holdings_v1';
+const NK_CASH_KEY  = 'nonk_cash_v1';
+const NK_DEP_KEY   = 'nonk_deposits_v1';
+const NK_MON_KEY   = 'nonk_monthly_v1';
+const NK_DIV_KEY   = 'nonk_dividends_v1';
+
+let nkHoldings        = nkLoadHoldings();
+let nkCashAccounts    = nkLoadCash();
+let nkDepositData     = nkLoadDeposits();
+let nkMonthlyRecords  = nkLoadMonthly();
+let nkDividendRecords = nkLoadDividends();
+let nkChartInstance   = null;
+let nkEditingTicker   = null;
+
+function nkLoadHoldings()  { try { return JSON.parse(localStorage.getItem(NK_HOLD_KEY)) || []; } catch(e) { return []; } }
+function nkSaveHoldings()  { localStorage.setItem(NK_HOLD_KEY, JSON.stringify(nkHoldings)); }
+function nkLoadCash()      { try { return JSON.parse(localStorage.getItem(NK_CASH_KEY)) || { ds: 0, nk1: 0 }; } catch(e) { return { ds: 0, nk1: 0 }; } }
+function nkSaveCashData()  { localStorage.setItem(NK_CASH_KEY, JSON.stringify(nkCashAccounts)); }
+function nkLoadDeposits()  { try { return JSON.parse(localStorage.getItem(NK_DEP_KEY)) || { transactions: [] }; } catch(e) { return { transactions: [] }; } }
+function nkSaveDeposits()  { localStorage.setItem(NK_DEP_KEY, JSON.stringify(nkDepositData)); }
+function nkLoadMonthly()   { try { return JSON.parse(localStorage.getItem(NK_MON_KEY)) || []; } catch(e) { return []; } }
+function nkSaveMonthly()   { localStorage.setItem(NK_MON_KEY, JSON.stringify(nkMonthlyRecords)); }
+function nkLoadDividends() { try { return JSON.parse(localStorage.getItem(NK_DIV_KEY)) || []; } catch(e) { return []; } }
+function nkSaveDividends() { localStorage.setItem(NK_DIV_KEY, JSON.stringify(nkDividendRecords)); }
+
+function fmtUSD(n) {
+  if (!n && n !== 0) return '$0';
+  const abs = Math.abs(n);
+  if (abs >= 1000000) return (n < 0 ? '-' : '') + '$' + (abs/1000000).toFixed(2) + 'M';
+  if (abs >= 1000) return (n < 0 ? '-' : '') + '$' + (abs/1000).toFixed(1) + 'K';
+  return (n < 0 ? '-$' : '$') + abs.toFixed(2);
+}
+function fmtUSDSigned(n) { return (n >= 0 ? '+' : '') + fmtUSD(n); }
+
+function switchPage(page) {
+  const mypm = document.getElementById('pageMyPM');
+  const nonk = document.getElementById('pageNonK');
+  const tabM = document.getElementById('tabMyPM');
+  const tabN = document.getElementById('tabNonK');
+  if (page === 'nonk') {
+    mypm.style.display = 'none';
+    nonk.style.display = '';
+    tabM.classList.remove('active');
+    tabN.classList.add('active');
+    nkRender();
+    nkRenderChart();
+  } else {
+    nonk.style.display = 'none';
+    mypm.style.display = '';
+    tabN.classList.remove('active');
+    tabM.classList.add('active');
+  }
+}
+
+async function fetchNkPrice(ticker) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`;
+  const data = JSON.parse(await fetchViaProxy(url));
+  const meta = data?.chart?.result?.[0]?.meta;
+  if (!meta) throw new Error('No data');
+  const price = meta.regularMarketPrice || 0;
+  const prev  = meta.chartPreviousClose || price;
+  return { price, name: meta.shortName || meta.longName || ticker, change: price - prev, changeRate: prev > 0 ? (price - prev) / prev * 100 : 0 };
+}
+
+async function nkRefreshAll() {
+  if (!nkHoldings.length) return;
+  for (const h of nkHoldings) {
+    try {
+      const info = await fetchNkPrice(h.ticker);
+      h.price = info.price;
+      h.change = info.change;
+      h.changeRate = info.changeRate;
+      h.updatedAt = new Date().toISOString();
+    } catch(e) { /* keep old price */ }
+  }
+  nkSaveHoldings();
+  nkRender();
+  nkRenderChart();
+}
+
+function nkComputeAccountValue(accId) {
+  let total = 0;
+  for (const h of nkHoldings) {
+    const a = h.accounts && h.accounts[accId];
+    if (a && a.qty > 0) total += a.qty * (h.price || 0);
+  }
+  total += Number(nkCashAccounts[accId]) || 0;
+  return total;
+}
+
+function nkTotalDeposited() {
+  return nkDepositData.transactions.reduce((s, t) => {
+    return s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount));
+  }, 0);
+}
+
+function nkRender() {
+  const container = document.getElementById('nkHoldingsContainer');
+  const statusEl  = document.getElementById('nkStatusText');
+  if (!container) return;
+
+  if (!nkHoldings.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🇺🇸</div><div>\'+ 종목 추가\' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>';
+    if (statusEl) statusEl.textContent = '보유종목 0개';
+    nkRenderAccountButtons();
+    return;
+  }
+
+  // Summary calculations
+  let totalCost = 0, totalValue = 0, todayPnl = 0;
+  for (const h of nkHoldings) {
+    let hQty = 0, hCost = 0;
+    for (const acc of NK_ACCOUNTS) {
+      const a = h.accounts && h.accounts[acc.id];
+      if (a && a.qty > 0) {
+        hQty += Number(a.qty);
+        hCost += Number(a.qty) * Number(a.avgPrice || 0);
+      }
+    }
+    totalCost  += hCost;
+    totalValue += hQty * (h.price || 0);
+    todayPnl   += hQty * (h.change || 0);
+  }
+  // add cash
+  const totalCash = NK_ACCOUNTS.reduce((s, a) => s + (Number(nkCashAccounts[a.id]) || 0), 0);
+  totalValue += totalCash;
+  const pnl = totalValue - totalCost;
+  const pnlRate = totalCost > 0 ? pnl / totalCost * 100 : 0;
+  const deposited = nkTotalDeposited();
+
+  // Summary grid
+  const summaryHtml = `
+    <div class="detail-summary" style="margin-bottom:12px">
+      <div class="summary-item"><span class="summary-label">원금(입금)</span><span class="summary-value">${fmtUSD(deposited)}</span></div>
+      <div class="summary-item"><span class="summary-label">매입원가</span><span class="summary-value">${fmtUSD(totalCost)}</span></div>
+      <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalValue)}</span></div>
+      <div class="summary-item"><span class="summary-label">오늘손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}</span></div>
+      <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${pnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(pnl)}</span></div>
+      <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${pnlRate >= 0 ? 'pos' : 'neg'}">${pnlRate >= 0 ? '+' : ''}${pnlRate.toFixed(2)}%</span></div>
+    </div>`;
+
+  // Holdings table
+  const rows = nkHoldings.map(h => {
+    let hQty = 0, hCost = 0;
+    for (const acc of NK_ACCOUNTS) {
+      const a = h.accounts && h.accounts[acc.id];
+      if (a && a.qty > 0) { hQty += Number(a.qty); hCost += Number(a.qty) * Number(a.avgPrice || 0); }
+    }
+    const hValue = hQty * (h.price || 0);
+    const hPnl   = hValue - hCost;
+    const hRate  = hCost > 0 ? hPnl / hCost * 100 : 0;
+    const wt     = totalCost > 0 ? hCost / totalCost * 100 : 0;
+    const avgP   = hQty > 0 ? hCost / hQty : 0;
+    const cr     = h.changeRate || 0;
+    const ch     = h.change || 0;
+    return `<tr onclick="nkOpenAccountModal('${h.ticker}')" style="cursor:pointer">
+      <td><strong>${h.ticker}</strong></td>
+      <td>${h.name || ''}</td>
+      <td class="${cr >= 0 ? 'pos' : 'neg'}">${cr >= 0 ? '+' : ''}${cr.toFixed(2)}%</td>
+      <td class="${ch >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(ch)}</td>
+      <td>${wt.toFixed(1)}%</td>
+      <td>${fmtUSD(hCost)}</td>
+      <td>${hQty.toLocaleString()}</td>
+      <td>${fmtUSD(avgP)}</td>
+      <td>${fmtUSD(h.price || 0)}</td>
+      <td>${fmtUSD(hValue)}</td>
+      <td class="${hPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(hPnl)}</td>
+      <td class="${hRate >= 0 ? 'pos' : 'neg'}">${hRate >= 0 ? '+' : ''}${hRate.toFixed(2)}%</td>
+      <td><button class="del-btn" onclick="event.stopPropagation();nkDeleteHolding('${h.ticker}')">삭제</button></td>
+    </tr>`;
+  }).join('');
+
+  const cashRow = `<tr style="background:var(--card-alt,#f8f8f8)">
+    <td colspan="5"><strong>현금</strong> <button class="btn-secondary" style="font-size:11px;padding:2px 8px" onclick="nkOpenCashModal()">편집</button></td>
+    <td colspan="2">${fmtUSD(totalCash)}</td>
+    <td colspan="6"></td>
+  </tr>`;
+
+  const tableHtml = `<div style="overflow-x:auto"><table class="detail-table">
+    <thead><tr>
+      <th>Ticker</th><th>종목명</th><th>오늘%</th><th>오늘$</th><th>비중%</th>
+      <th>매입원가</th><th>수량</th><th>평균단가</th><th>현재가</th><th>평가금액</th><th>손익$</th><th>수익률</th><th></th>
+    </tr></thead>
+    <tbody>${rows}${cashRow}</tbody>
+  </table></div>`;
+
+  const updatedAts = nkHoldings.filter(h => h.updatedAt).map(h => h.updatedAt);
+  const lastUpdate = updatedAts.length ? new Date(Math.max(...updatedAts.map(d => new Date(d)))).toLocaleTimeString('ko-KR') : '-';
+
+  container.innerHTML = summaryHtml + tableHtml;
+  if (statusEl) statusEl.textContent = `보유종목 ${nkHoldings.length}개 · 마지막 갱신 ${lastUpdate} · 💾 <a href="#" onclick="event.preventDefault();nkRefreshAll()" style="color:var(--primary)">현재가 갱신</a>`;
+  nkRenderAccountButtons();
+}
+
+function nkRenderAccountButtons() {
+  const grid = document.getElementById('nkAccountButtonsGrid');
+  if (!grid) return;
+  grid.innerHTML = NK_ACCOUNTS.map(a => {
+    const val = nkComputeAccountValue(a.id);
+    return `<button class="btn-account-view" onclick="nkOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtUSD(val)}</span></button>`;
+  }).join('');
+}
+
+function nkDeleteHolding(ticker) {
+  if (!confirm(`${ticker} 종목을 삭제하시겠습니까?`)) return;
+  nkHoldings = nkHoldings.filter(h => h.ticker !== ticker);
+  nkSaveHoldings();
+  nkRender();
+  nkRenderChart();
+}
+
+function nkRenderChart() {
+  const canvas = document.getElementById('nkPortfolioChart');
+  const empty  = document.getElementById('nkChartEmpty');
+  if (!canvas) return;
+  if (!nkMonthlyRecords.length) {
+    canvas.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  canvas.style.display = '';
+  if (empty) empty.style.display = 'none';
+
+  const sorted = [...nkMonthlyRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2,'0')}`);
+  const evalVals = sorted.map(r => NK_ACCOUNTS.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0));
+
+  // Deposit principal: cumulative deposits up to each month
+  const txns = [...nkDepositData.transactions].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+  const depVals = sorted.map(r => {
+    const cutoff = `${r.year}-${String(r.month).padStart(2,'0')}-31`;
+    return txns.filter(t => (t.date || '') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+  });
+
+  if (nkChartInstance) nkChartInstance.destroy();
+  nkChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: '누적 입금액', data: depVals, borderColor: '#2e7d32', backgroundColor: 'rgba(46,125,50,0.15)', fill: true, tension: 0.2 },
+        { label: '평가총액', data: evalVals, borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,0.15)', fill: true, tension: 0.2 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => fmtUSD(v) } } } }
+  });
+}
+
+// --- Add stock modal ---
+function nkOpenAddModal() {
+  nkEditingTicker = null;
+  document.getElementById('nkTicker').value = '';
+  document.getElementById('nkName').value = '';
+  document.getElementById('nkFetchResult').textContent = '';
+  // Render account inputs
+  const grid = document.getElementById('nkAddAccountInputs');
+  grid.innerHTML = NK_ACCOUNTS.map(a => `
+    <div class="account-row">
+      <span>${a.name}</span>
+      <input type="number" id="nkAddQty_${a.id}" min="0" step="1" value="0" placeholder="0">
+      <input type="number" id="nkAddAvg_${a.id}" min="0" step="0.01" value="0" placeholder="0.00">
+      <span id="nkAddTotal_${a.id}">$0</span>
+    </div>`).join('');
+  NK_ACCOUNTS.forEach(a => {
+    document.getElementById(`nkAddQty_${a.id}`).addEventListener('input', nkUpdateAddTotals);
+    document.getElementById(`nkAddAvg_${a.id}`).addEventListener('input', nkUpdateAddTotals);
+  });
+  document.getElementById('nkAddStockModal').classList.add('open');
+  setTimeout(() => document.getElementById('nkTicker').focus(), 50);
+}
+
+function nkUpdateAddTotals() {
+  NK_ACCOUNTS.forEach(a => {
+    const qty = Number(document.getElementById(`nkAddQty_${a.id}`)?.value) || 0;
+    const avg = Number(document.getElementById(`nkAddAvg_${a.id}`)?.value) || 0;
+    const el = document.getElementById(`nkAddTotal_${a.id}`);
+    if (el) el.textContent = fmtUSD(qty * avg);
+  });
+}
+
+function nkCloseAddModal() {
+  document.getElementById('nkAddStockModal').classList.remove('open');
+}
+
+async function nkFetchInfo() {
+  const ticker = document.getElementById('nkTicker').value.trim().toUpperCase();
+  if (!ticker) { alert('Ticker를 입력하세요'); return; }
+  const resultEl = document.getElementById('nkFetchResult');
+  resultEl.textContent = '조회 중...';
+  try {
+    const info = await fetchNkPrice(ticker);
+    document.getElementById('nkName').value = info.name;
+    resultEl.textContent = `현재가: ${fmtUSD(info.price)} (${info.changeRate >= 0 ? '+' : ''}${info.changeRate.toFixed(2)}%)`;
+    resultEl.style.color = info.changeRate >= 0 ? 'var(--pos)' : 'var(--neg)';
+  } catch(e) {
+    resultEl.textContent = '조회 실패: ' + e.message;
+    resultEl.style.color = 'var(--neg)';
+  }
+}
+
+function nkAddStock() {
+  const ticker = document.getElementById('nkTicker').value.trim().toUpperCase();
+  const name   = document.getElementById('nkName').value.trim();
+  if (!ticker) { alert('Ticker를 입력하세요'); return; }
+  if (nkHoldings.some(h => h.ticker === ticker)) { alert('이미 추가된 종목입니다'); return; }
+
+  const accounts = {};
+  let totalQty = 0;
+  for (const a of NK_ACCOUNTS) {
+    const qty = Number(document.getElementById(`nkAddQty_${a.id}`)?.value) || 0;
+    const avg = Number(document.getElementById(`nkAddAvg_${a.id}`)?.value) || 0;
+    accounts[a.id] = { qty, avgPrice: avg };
+    totalQty += qty;
+  }
+
+  nkHoldings.push({ ticker, name, accounts, price: 0, change: 0, changeRate: 0, updatedAt: null });
+  nkSaveHoldings();
+  nkCloseAddModal();
+  nkRender();
+  // Fetch price in background
+  fetchNkPrice(ticker).then(info => {
+    const h = nkHoldings.find(x => x.ticker === ticker);
+    if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); nkSaveHoldings(); nkRender(); }
+  }).catch(() => {});
+}
+
+// --- Account qty modal ---
+function nkOpenAccountModal(ticker) {
+  const h = nkHoldings.find(x => x.ticker === ticker);
+  if (!h) return;
+  nkEditingTicker = ticker;
+  document.getElementById('nkModalTitle').textContent = `${ticker} 계좌별 수량`;
+  document.getElementById('nkModalSubtitle').textContent = h.name || '';
+
+  const grid = document.getElementById('nkAccountInputs');
+  grid.innerHTML = NK_ACCOUNTS.map(a => {
+    const acc = h.accounts && h.accounts[a.id] || { qty: 0, avgPrice: 0 };
+    return `<div class="account-row">
+      <span>${a.name}</span>
+      <input type="number" id="nkAccQty_${a.id}" min="0" step="1" value="${acc.qty || 0}">
+      <input type="number" id="nkAccAvg_${a.id}" min="0" step="0.01" value="${acc.avgPrice || 0}">
+      <span id="nkAccTotal_${a.id}">${fmtUSD((acc.qty || 0) * (acc.avgPrice || 0))}</span>
+    </div>`;
+  }).join('');
+  NK_ACCOUNTS.forEach(a => {
+    document.getElementById(`nkAccQty_${a.id}`).addEventListener('input', nkUpdateAccTotals);
+    document.getElementById(`nkAccAvg_${a.id}`).addEventListener('input', nkUpdateAccTotals);
+  });
+  nkUpdateAccTotals();
+  document.getElementById('nkAccountModal').classList.add('open');
+}
+
+function nkUpdateAccTotals() {
+  let totalQty = 0, totalCost = 0;
+  NK_ACCOUNTS.forEach(a => {
+    const qty = Number(document.getElementById(`nkAccQty_${a.id}`)?.value) || 0;
+    const avg = Number(document.getElementById(`nkAccAvg_${a.id}`)?.value) || 0;
+    const el = document.getElementById(`nkAccTotal_${a.id}`);
+    if (el) el.textContent = fmtUSD(qty * avg);
+    totalQty += qty; totalCost += qty * avg;
+  });
+  const qEl = document.getElementById('nkModalTotalQty');
+  const cEl = document.getElementById('nkModalTotalCost');
+  if (qEl) qEl.textContent = totalQty.toLocaleString() + ' 주';
+  if (cEl) cEl.textContent = fmtUSD(totalCost);
+}
+
+function nkCloseAccountModal() {
+  document.getElementById('nkAccountModal').classList.remove('open');
+  nkEditingTicker = null;
+}
+
+function nkSaveAccountQuantities() {
+  const h = nkHoldings.find(x => x.ticker === nkEditingTicker);
+  if (!h) return;
+  if (!h.accounts) h.accounts = {};
+  for (const a of NK_ACCOUNTS) {
+    h.accounts[a.id] = {
+      qty:      Number(document.getElementById(`nkAccQty_${a.id}`)?.value) || 0,
+      avgPrice: Number(document.getElementById(`nkAccAvg_${a.id}`)?.value) || 0
+    };
+  }
+  nkSaveHoldings();
+  nkCloseAccountModal();
+  nkRender();
+}
+
+// --- Account detail modal ---
+function nkOpenAccountDetail(accId) {
+  const acc = NK_ACCOUNTS.find(a => a.id === accId);
+  if (!acc) return;
+  document.getElementById('nkDetailTitle').textContent = acc.name + ' 상세';
+  document.getElementById('nkDetailSubtitle').textContent = '';
+
+  const items = nkHoldings.filter(h => h.accounts && h.accounts[accId] && h.accounts[accId].qty > 0).map(h => {
+    const a   = h.accounts[accId];
+    const qty = Number(a.qty) || 0;
+    const avg = Number(a.avgPrice) || 0;
+    const cost = qty * avg;
+    const val  = qty * (h.price || 0);
+    const pnl  = val - cost;
+    return { ticker: h.ticker, name: h.name || '', qty, avg, cost, val, pnl, rate: cost > 0 ? pnl/cost*100 : 0 };
+  });
+
+  const cash = Number(nkCashAccounts[accId]) || 0;
+  const totalVal = items.reduce((s, i) => s + i.val, 0) + cash;
+  const totalCost = items.reduce((s, i) => s + i.cost, 0);
+  const totalPnl  = items.reduce((s, i) => s + i.pnl, 0);
+
+  const summaryEl = document.getElementById('nkDetailSummary');
+  summaryEl.innerHTML = `
+    <div class="summary-item"><span class="summary-label">매입원가</span><span class="summary-value">${fmtUSD(totalCost)}</span></div>
+    <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalVal)}</span></div>
+    <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${totalPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(totalPnl)}</span></div>
+    <div class="summary-item"><span class="summary-label">현금</span><span class="summary-value">${fmtUSD(cash)}</span></div>`;
+
+  const tableEl = document.getElementById('nkDetailTable');
+  tableEl.innerHTML = `<thead><tr><th>종목</th><th>보유수</th><th>매입단가</th><th>현재가</th><th>평가금액</th><th>손익</th><th>수익률</th></tr></thead>
+    <tbody>${items.map(i => `<tr>
+      <td><strong>${i.ticker}</strong> <small>${i.name}</small></td>
+      <td>${i.qty.toLocaleString()}</td>
+      <td>${fmtUSD(i.avg)}</td>
+      <td>${fmtUSD(nkHoldings.find(h=>h.ticker===i.ticker)?.price||0)}</td>
+      <td>${fmtUSD(i.val)}</td>
+      <td class="${i.pnl>=0?'pos':'neg'}">${fmtUSDSigned(i.pnl)}</td>
+      <td class="${i.rate>=0?'pos':'neg'}">${i.rate>=0?'+':''}${i.rate.toFixed(2)}%</td>
+    </tr>`).join('')}</tbody>`;
+
+  document.getElementById('nkAccountDetailModal').classList.add('open');
+}
+
+function nkCloseAccountDetail() {
+  document.getElementById('nkAccountDetailModal').classList.remove('open');
+}
+
+// --- Cash modal ---
+function nkOpenCashModal() {
+  const grid = document.getElementById('nkCashInputs');
+  grid.innerHTML = NK_ACCOUNTS.map(a => `<div class="account-row">
+    <span>${a.name}</span>
+    <input type="number" id="nkCashInput_${a.id}" min="0" step="0.01" value="${Number(nkCashAccounts[a.id])||0}" style="grid-column:span 2">
+    <span>${fmtUSD(Number(nkCashAccounts[a.id])||0)}</span>
+  </div>`).join('');
+  document.getElementById('nkCashModal').classList.add('open');
+}
+
+function nkCloseCashModal() {
+  document.getElementById('nkCashModal').classList.remove('open');
+}
+
+function nkSaveCash() {
+  for (const a of NK_ACCOUNTS) {
+    nkCashAccounts[a.id] = Number(document.getElementById(`nkCashInput_${a.id}`)?.value) || 0;
+  }
+  nkSaveCashData();
+  nkCloseCashModal();
+  nkRender();
+}
+
+// --- Deposit modal ---
+function nkOpenDepositModal() {
+  nkRenderDepositList();
+  document.getElementById('nkDepositModal').classList.add('open');
+}
+
+function nkCloseDepositModal() {
+  document.getElementById('nkDepositModal').classList.remove('open');
+}
+
+function nkRenderDepositList() {
+  const grand = document.getElementById('nkDepositGrand');
+  const totals = document.getElementById('nkDepositTotals');
+  const list = document.getElementById('nkDepositList');
+  if (!list) return;
+
+  const txns = nkDepositData.transactions;
+  const total = txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+  if (grand) grand.innerHTML = `<strong>순 입금액 합계: ${fmtUSD(total)}</strong>`;
+
+  if (totals) {
+    totals.innerHTML = NK_ACCOUNTS.map(a => {
+      const v = txns.filter(t => t.accId === a.id).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+      return `<span>${a.name}: ${fmtUSD(v)}</span>`;
+    }).join('');
+  }
+
+  if (!txns.length) { list.innerHTML = '<div class="deposit-empty">입출금 내역이 없습니다.</div>'; return; }
+  const sorted = [...txns].sort((a, b) => (b.date || '') < (a.date || '') ? -1 : 1);
+  list.innerHTML = sorted.map(t => {
+    const accName = NK_ACCOUNTS.find(a => a.id === t.accId)?.name || t.accId;
+    const sign = t.type === 'withdraw' ? '-' : '+';
+    return `<div class="deposit-row">
+      <span>${t.date || '-'}</span>
+      <span>${accName}</span>
+      <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtUSD(Number(t.amount))}</span>
+      <span><button class="del-btn" onclick="nkDeleteTxn('${t.id}')">삭제</button></span>
+    </div>`;
+  }).join('');
+}
+
+function nkDeleteTxn(id) {
+  if (!confirm('이 입출금 내역을 삭제하시겠습니까?')) return;
+  nkDepositData.transactions = nkDepositData.transactions.filter(t => t.id !== id);
+  nkSaveDeposits();
+  nkRenderDepositList();
+}
+
+function nkOpenTxnEditor() {
+  const sel = document.getElementById('nkTxnAccount');
+  sel.innerHTML = NK_ACCOUNTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  document.getElementById('nkTxnDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('nkTxnAmount').value = '';
+  document.getElementById('nkTxnEditorModal').classList.add('open');
+}
+
+function nkCloseTxnEditor() {
+  document.getElementById('nkTxnEditorModal').classList.remove('open');
+}
+
+function nkSaveTxn() {
+  const accId  = document.getElementById('nkTxnAccount').value;
+  const type   = document.getElementById('nkTxnType').value;
+  const date   = document.getElementById('nkTxnDate').value;
+  const amount = Number(document.getElementById('nkTxnAmount').value);
+  if (!amount || amount <= 0) { alert('금액을 올바르게 입력하세요'); return; }
+  nkDepositData.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount });
+  nkSaveDeposits();
+  nkCloseTxnEditor();
+  nkRenderDepositList();
+}
+
+// --- Records modal ---
+function nkOpenRecordsModal() {
+  const d = new Date();
+  document.getElementById('nkRecYear').value  = d.getFullYear();
+  document.getElementById('nkRecMonth').value = d.getMonth() + 1;
+  nkRenderRecAccountInputs();
+  nkRenderRecordsList();
+  document.getElementById('nkAccountRecordsModal').classList.add('open');
+}
+
+function nkCloseRecordsModal() {
+  document.getElementById('nkAccountRecordsModal').classList.remove('open');
+}
+
+function nkRenderRecAccountInputs() {
+  const div = document.getElementById('nkRecAccountInputs');
+  if (!div) return;
+  div.innerHTML = NK_ACCOUNTS.map(a => `<label>
+    <span>${a.name}</span>
+    <input type="number" id="nkRecVal_${a.id}" min="0" step="0.01" placeholder="0.00" oninput="nkUpdateRecTotal()">
+  </label>`).join('');
+  document.getElementById('nkRecTotal').textContent = '$0';
+}
+
+function nkUpdateRecTotal() {
+  const total = NK_ACCOUNTS.reduce((s, a) => s + (Number(document.getElementById(`nkRecVal_${a.id}`)?.value) || 0), 0);
+  document.getElementById('nkRecTotal').textContent = fmtUSD(total);
+}
+
+function nkFillCurrentValues() {
+  NK_ACCOUNTS.forEach(a => {
+    const el = document.getElementById(`nkRecVal_${a.id}`);
+    if (el) el.value = nkComputeAccountValue(a.id).toFixed(2);
+  });
+  nkUpdateRecTotal();
+}
+
+function nkAddMonthlyRecord() {
+  const year  = Number(document.getElementById('nkRecYear').value);
+  const month = Number(document.getElementById('nkRecMonth').value);
+  if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
+  if (nkMonthlyRecords.some(r => r.year === year && r.month === month)) {
+    if (!confirm(`${year}년 ${month}월 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
+    nkMonthlyRecords = nkMonthlyRecords.filter(r => !(r.year === year && r.month === month));
+  }
+  const accounts = {};
+  NK_ACCOUNTS.forEach(a => { accounts[a.id] = Number(document.getElementById(`nkRecVal_${a.id}`)?.value) || 0; });
+  nkMonthlyRecords.push({ id: String(Date.now()), year, month, accounts });
+  nkSaveMonthly();
+  nkRenderRecordsList();
+  nkRenderChart();
+}
+
+function nkDeleteMonthlyRecord(id) {
+  const rec = nkMonthlyRecords.find(r => r.id === id);
+  if (!rec || !confirm(`${rec.year}년 ${rec.month}월 기록을 삭제하시겠습니까?`)) return;
+  nkMonthlyRecords = nkMonthlyRecords.filter(r => r.id !== id);
+  nkSaveMonthly();
+  nkRenderRecordsList();
+  nkRenderChart();
+}
+
+function nkRenderRecordsList() {
+  const header = document.getElementById('nkRecordsTableHeader');
+  const list   = document.getElementById('nkRecordsList');
+  if (!header || !list) return;
+  if (!nkMonthlyRecords.length) {
+    header.innerHTML = '';
+    list.innerHTML = '<div class="records-empty">아직 기록이 없습니다.</div>';
+    return;
+  }
+  const cols = `80px ${NK_ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
+  header.style.gridTemplateColumns = cols;
+  header.innerHTML = `<span>연/월</span>${NK_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
+  const sorted = [...nkMonthlyRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+  list.innerHTML = sorted.map(rec => {
+    const total = NK_ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const cells = NK_ACCOUNTS.map(a => `<span class="amount">${fmtUSD(Number(rec.accounts[a.id])||0)}</span>`).join('');
+    return `<div class="records-row" style="grid-template-columns:${cols}">
+      <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>
+      ${cells}
+      <span class="total">${fmtUSD(total)}</span>
+      <span><button class="del-btn" onclick="nkDeleteMonthlyRecord('${rec.id}')">삭제</button></span>
+    </div>`;
+  }).join('');
+}
+
+// --- Dividend modal ---
+function nkOpenDividendModal() {
+  const d = new Date();
+  document.getElementById('nkDivYear').value  = d.getFullYear();
+  document.getElementById('nkDivMonth').value = d.getMonth() + 1;
+  nkRenderDivStockInputs();
+  nkRenderDividendLists();
+  document.getElementById('nkDividendModal').classList.add('open');
+}
+
+function nkCloseDividendModal() {
+  document.getElementById('nkDividendModal').classList.remove('open');
+}
+
+function nkRenderDivStockInputs() {
+  const tbody = document.getElementById('nkDivStockInputs');
+  if (!tbody) return;
+  tbody.innerHTML = nkHoldings.map(h => `<tr>
+    <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
+    <td><input type="number" id="nkDivAmt_${h.ticker}" min="0" step="0.01" value="0" style="width:100px" oninput="nkUpdateDivTotal()"></td>
+  </tr>`).join('');
+  nkUpdateDivTotal();
+}
+
+function nkUpdateDivTotal() {
+  const total = nkHoldings.reduce((s, h) => s + (Number(document.getElementById(`nkDivAmt_${h.ticker}`)?.value)||0), 0);
+  document.getElementById('nkDivGrandTotal').textContent = fmtUSD(total);
+}
+
+function nkAddDividendRecord() {
+  const year  = Number(document.getElementById('nkDivYear').value);
+  const month = Number(document.getElementById('nkDivMonth').value);
+  if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
+  const stocks = {};
+  nkHoldings.forEach(h => {
+    const v = Number(document.getElementById(`nkDivAmt_${h.ticker}`)?.value) || 0;
+    if (v > 0) stocks[h.ticker] = v;
+  });
+  if (!Object.keys(stocks).length && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
+  // Distribute per account proportionally
+  const accounts = {};
+  NK_ACCOUNTS.forEach(a => {
+    const total = nkHoldings.reduce((s, h) => {
+      const acc = h.accounts && h.accounts[a.id];
+      const qty = acc ? Number(acc.qty) || 0 : 0;
+      return s + qty * (Number(stocks[h.ticker]) || 0);
+    }, 0);
+    accounts[a.id] = total;
+  });
+  nkDividendRecords.push({ id: String(Date.now()), year, month, stocks, accounts });
+  nkSaveDividends();
+  nkRenderDividendLists();
+}
+
+function nkDeleteDividendRecord(id) {
+  const rec = nkDividendRecords.find(r => r.id === id);
+  if (!rec || !confirm(`${rec.year}년 ${rec.month}월 배당 기록을 삭제하시겠습니까?`)) return;
+  nkDividendRecords = nkDividendRecords.filter(r => r.id !== id);
+  nkSaveDividends();
+  nkRenderDividendLists();
+}
+
+function nkRenderDividendLists() {
+  // Stock table
+  const sHeader = document.getElementById('nkDivStockTableHeader');
+  const sList   = document.getElementById('nkDivStockRecordsList');
+  if (sHeader && sList) {
+    if (!nkDividendRecords.length) {
+      sHeader.innerHTML = ''; sList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
+    } else {
+      const allTickers = [...new Set(nkDividendRecords.flatMap(r => Object.keys(r.stocks)))];
+      const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
+      sHeader.style.gridTemplateColumns = cols;
+      sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
+      const sorted = [...nkDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
+      sList.innerHTML = sorted.map(rec => {
+        const total = Object.values(rec.stocks).reduce((s,v)=>s+(Number(v)||0),0);
+        const cells = allTickers.map(t=>`<span class="amount">${Number(rec.stocks[t])||0 ? fmtUSD(Number(rec.stocks[t])) : '-'}</span>`).join('');
+        return `<div class="div-record-row" style="grid-template-columns:${cols}">
+          <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span class="total">${fmtUSD(total)}</span>
+          <span><button class="del-btn" onclick="nkDeleteDividendRecord('${rec.id}')">삭제</button></span>
+        </div>`;
+      }).join('');
+    }
+  }
+  // Account table
+  const aHeader = document.getElementById('nkDivAccTableHeader');
+  const aList   = document.getElementById('nkDivAccRecordsList');
+  if (aHeader && aList) {
+    if (!nkDividendRecords.length) {
+      aHeader.innerHTML = ''; aList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
+    } else {
+      const cols = `80px ${NK_ACCOUNTS.map(()=>'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
+      aHeader.style.gridTemplateColumns = cols;
+      aHeader.innerHTML = `<span>연/월</span>${NK_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span>`;
+      const sorted = [...nkDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
+      aList.innerHTML = sorted.map(rec => {
+        const total = NK_ACCOUNTS.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
+        const cells = NK_ACCOUNTS.map(a=>`<span class="amount">${Number(rec.accounts[a.id])||0 ? fmtUSD(Number(rec.accounts[a.id])) : '-'}</span>`).join('');
+        return `<div class="div-record-row" style="grid-template-columns:${cols}">
+          <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span class="total">${fmtUSD(total)}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+// --- Export / Import ---
+function nkExportToFile() {
+  const data = {
+    holdings:  nkHoldings,
+    cash:      nkCashAccounts,
+    deposits:  nkDepositData,
+    monthly:   nkMonthlyRecords,
+    dividends: nkDividendRecords,
+    exportedAt: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `nonk_portfolio_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function nkImportFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.holdings)  { nkHoldings        = data.holdings;  nkSaveHoldings(); }
+      if (data.cash)      { nkCashAccounts     = data.cash;      nkSaveCashData(); }
+      if (data.deposits)  { nkDepositData      = data.deposits;  nkSaveDeposits(); }
+      if (data.monthly)   { nkMonthlyRecords   = data.monthly;   nkSaveMonthly(); }
+      if (data.dividends) { nkDividendRecords  = data.dividends; nkSaveDividends(); }
+      alert('불러오기 완료!');
+      nkRender();
+      nkRenderChart();
+    } catch(err) { alert('파일 형식 오류: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 
 // ===== Pull to Refresh =====
