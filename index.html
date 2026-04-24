@@ -608,6 +608,71 @@
   }
   .div-record-row .del-btn:hover { background: #fecaca; }
   .div-empty { padding: 24px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* 연간 계획 모달 */
+  .annual-plan-wrap {
+    overflow-x: auto; overflow-y: auto;
+    max-height: 340px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .apt { border-collapse: collapse; font-size: 12px; min-width: 700px; width: 100%; }
+  .apt th, .apt td {
+    padding: 5px 8px; white-space: nowrap;
+    border-bottom: 1px solid var(--border); text-align: right;
+  }
+  .apt th {
+    background: #f9fafb; font-size: 11px; font-weight: 600;
+    color: var(--muted); position: sticky; top: 0; z-index: 2;
+  }
+  .apt th.yr-future { background: #fffbeb; color: #92400e; }
+  .apt th.yr-current { background: #f0fdf4; color: #166534; }
+  .apt th:first-child, .apt td:first-child {
+    text-align: left; min-width: 130px;
+    position: sticky; left: 0; z-index: 1;
+    border-right: 2px solid var(--border); padding-left: 10px;
+  }
+  .apt th:first-child { z-index: 3; }
+  .apt td:first-child { background: #fff; font-weight: 600; font-size: 11px; }
+  .apt tr:last-child td { border-bottom: none; }
+  .apt .r-sub td { background: #f0fdf4; font-weight: 700; }
+  .apt .r-sub td:first-child { background: #f0fdf4; }
+  .apt .r-total td { background: #dcfce7; font-weight: 700; color: #15803d; }
+  .apt .r-total td:first-child { background: #dcfce7; }
+  .apt .r-inc td { background: #eff6ff; color: #1d4ed8; }
+  .apt .r-inc td:first-child { background: #eff6ff; }
+  .apt .r-anse td { background: #fefce8; }
+  .apt .r-anse td:first-child { background: #fefce8; }
+  .apt .r-proj td { background: #f5f3ff; color: #6d28d9; }
+  .apt .r-proj td:first-child { background: #f5f3ff; }
+  .apt input.plan-inp {
+    width: 72px; padding: 2px 4px; font-size: 11px;
+    border: 1px solid #86efac; border-radius: 3px;
+    text-align: right; background: #f0fdf4;
+  }
+  .apt input.anse-inp {
+    width: 72px; padding: 2px 4px; font-size: 11px;
+    border: 1px solid #fbbf24; border-radius: 3px;
+    text-align: right; background: #fefce8;
+  }
+  .plan-section-title {
+    font-weight: 700; font-size: 14px;
+    margin: 14px 0 8px; padding-bottom: 5px;
+    border-bottom: 2px solid var(--primary);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .proj-rate-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: #fefce8; padding: 7px 12px;
+    border-radius: 6px; font-size: 13px; margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .proj-rate-bar input[type="number"] {
+    width: 70px; padding: 4px 8px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 4px; text-align: right;
+  }
+  .plan-unit-note { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
 </style>
 </head>
 <body>
@@ -631,6 +696,7 @@
     <button class="btn-secondary" onclick="openRecordsModal()">📒 계좌 기록</button>
     <button class="btn-secondary" onclick="openDividendModal()">💸 배당 기록</button>
     <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
+    <button class="btn-secondary" onclick="openAnnualPlanModal()">📅 연간 계획</button>
     <button class="btn-secondary" onclick="exportToFile()">💾 파일로 저장</button>
     <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
@@ -875,6 +941,40 @@
 
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeRecordsModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 연간 계획 모달 -->
+<div class="modal-backdrop" id="annualPlanModal" onclick="handleAnnualPlanBackdropClick(event)">
+  <div class="modal modal-wide" style="max-width:1400px">
+    <div class="modal-header">
+      <div>
+        <h2>📅 연간 계획</h2>
+        <div class="modal-subtitle">계좌별 원금·평가금액 연도별 기록 및 계획 (단위: 만원)</div>
+      </div>
+      <button class="close-btn" onclick="closeAnnualPlanModal()" aria-label="닫기">×</button>
+    </div>
+
+    <div class="plan-section-title">
+      원금 기록 및 계획
+      <button class="btn-primary" style="font-size:12px;padding:5px 12px" onclick="saveAnnualPlan()">💾 저장</button>
+    </div>
+    <div class="plan-unit-note">* 단위: 만원 / 회색 열 = 실적, 초록 입력란 = 계획 / 안세공재원은 항상 편집 가능</div>
+    <div class="annual-plan-wrap" id="principalTableWrap"></div>
+
+    <div class="plan-section-title" style="margin-top:20px">평가 기록 및 예상</div>
+    <div class="proj-rate-bar">
+      <span>예상수익률</span>
+      <input type="number" id="projRate" min="0" max="50" step="0.5" value="7" oninput="renderEvalTable()">
+      <span>%/년</span>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px">실적 이후 연도부터 복리 적용</span>
+    </div>
+    <div class="annual-plan-wrap" id="evalTableWrap"></div>
+
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="saveAnnualPlan()">💾 저장</button>
+      <button class="btn-secondary" onclick="closeAnnualPlanModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -1356,6 +1456,7 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('accountDepositModal').classList.contains('open')) { closeDepositModal(); return; }
   if (document.getElementById('accountRecordsModal').classList.contains('open')) { closeRecordsModal(); return; }
   if (document.getElementById('dividendModal').classList.contains('open')) { closeDividendModal(); return; }
+  if (document.getElementById('annualPlanModal').classList.contains('open')) { closeAnnualPlanModal(); return; }
 });
 
 // 금액 입력란 자동 콤마 포맷
@@ -1626,13 +1727,14 @@ function saveCashAccounts() {
 // ===== 파일 저장 / 불러오기 =====
 function exportToFile() {
   const payload = {
-    version: 6,
+    version: 7,
     exportedAt: new Date().toISOString(),
     cashAccounts: cashAccounts,
     holdings: holdings,
     deposits: depositData,
     monthlyRecords: monthlyRecords,
-    dividendRecords: dividendRecords
+    dividendRecords: dividendRecords,
+    annualPlan: annualPlan
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1742,6 +1844,15 @@ function importFromFile(event) {
       }
       const newDivCount = newDividendRecords.length;
 
+      // 연간 계획 파싱
+      let newAnnualPlan = { deposits: {}, projRate: 7 };
+      if (data.annualPlan && typeof data.annualPlan === 'object') {
+        newAnnualPlan = {
+          deposits: (data.annualPlan.deposits && typeof data.annualPlan.deposits === 'object') ? data.annualPlan.deposits : {},
+          projRate: Number(data.annualPlan.projRate) || 7
+        };
+      }
+
       const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n- 배당 기록 ${newDivCount}건\n\n현재 데이터를 덮어쓸까요?`;
       if (!confirm(summary)) { event.target.value = ''; return; }
 
@@ -1759,11 +1870,13 @@ function importFromFile(event) {
       depositData = newDeposits;
       monthlyRecords = newMonthlyRecords;
       dividendRecords = newDividendRecords;
+      annualPlan = newAnnualPlan;
       saveHoldings();
       persistCashAccounts();
       saveDeposits();
       saveMonthlyRecords();
       saveDividendRecords();
+      localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
       render();
       renderPortfolioChart();
       // 최신가 재조회
@@ -2775,6 +2888,345 @@ function init() {
 init();  //render();
 
 // 페이지 로드(F5) 시 init()에서 이미 refreshAll()이 호출되므로 별도 처리 불필요
+
+// ===== 연간 계획 =====
+const ANNUAL_PLAN_KEY = 'pension_annual_plan_v1';
+let annualPlan = loadAnnualPlan();
+
+// My 4 accounts / wife 3 accounts
+const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp'];
+const WIFE_ACC_IDS = ['wife_pension1', 'wife_pension2', 'wife_isa'];
+
+function loadAnnualPlan() {
+  try {
+    const raw = localStorage.getItem(ANNUAL_PLAN_KEY);
+    if (!raw) return { deposits: {}, projRate: 7 };
+    const p = JSON.parse(raw);
+    return {
+      deposits: (p.deposits && typeof p.deposits === 'object') ? p.deposits : {},
+      projRate: Number(p.projRate) || 7
+    };
+  } catch (_) { return { deposits: {}, projRate: 7 }; }
+}
+
+function openAnnualPlanModal() {
+  const modal = document.getElementById('annualPlanModal');
+  if (!modal) return;
+  const pr = document.getElementById('projRate');
+  if (pr) pr.value = annualPlan.projRate || 7;
+  renderPrincipalTable();
+  renderEvalTable();
+  modal.classList.add('open');
+}
+
+function closeAnnualPlanModal() {
+  const modal = document.getElementById('annualPlanModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function handleAnnualPlanBackdropClick(e) {
+  if (e.target.id === 'annualPlanModal') closeAnnualPlanModal();
+}
+
+function saveAnnualPlan() {
+  // Collect all plan inputs
+  const deps = JSON.parse(JSON.stringify(annualPlan.deposits));
+  document.querySelectorAll('#principalTableWrap input[data-py]').forEach(inp => {
+    const year = String(inp.getAttribute('data-py'));
+    const key  = inp.getAttribute('data-pk');
+    const val  = inp.value === '' ? null : (Number(inp.value) || 0);
+    if (!deps[year]) deps[year] = {};
+    if (val === null) delete deps[year][key];
+    else deps[year][key] = val;
+  });
+  const projRate = Number(document.getElementById('projRate').value) || 7;
+  annualPlan = { deposits: deps, projRate };
+  localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+  renderEvalTable();
+  alert('저장되었습니다.');
+}
+
+// Year range for the plan tables
+function getPlanYearRange() {
+  const currentYear = new Date().getFullYear();
+  let startYear = currentYear;
+  for (const t of depositData.transactions) {
+    if (t.date) { const y = parseInt(t.date); if (y > 2010 && y < startYear) startYear = y; }
+  }
+  for (const r of monthlyRecords) {
+    if (r.year > 2010 && r.year < startYear) startYear = r.year;
+  }
+  startYear = Math.min(startYear, currentYear - 1);
+  const endYear = currentYear + 7;
+  return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+}
+
+// Cumulative actual deposits for accId up to end of year, in 만원
+function getActualCumManwon(accId, year) {
+  const end = `${year}-12-31`;
+  const won = depositData.transactions
+    .filter(t => t.accId === accId && typeof t.date === 'string' && t.date <= end)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  return Math.round(won / 10000);
+}
+
+// Does this account have any transactions in this specific year?
+function hasActualTxnInYear(accId, year) {
+  return depositData.transactions.some(t =>
+    t.accId === accId && typeof t.date === 'string' && t.date.startsWith(String(year))
+  );
+}
+
+// Is the cell for (accId, year) "actual" (read-only)?
+function isActualCell(accId, year) {
+  const currentYear = new Date().getFullYear();
+  if (year <= currentYear) return true;
+  return hasActualTxnInYear(accId, year);
+}
+
+// Get plan value (in 만원) from annualPlan, or null if not set
+function getPlanManwon(accId, year) {
+  const y = annualPlan.deposits[String(year)];
+  return (y && y[accId] != null) ? Number(y[accId]) : null;
+}
+
+// Get안세공재원 plan value for year
+function getAnsePlanManwon(year) {
+  const y = annualPlan.deposits[String(year)];
+  return (y && y['naAnse'] != null) ? Number(y['naAnse']) : null;
+}
+
+// Get the display value (만원) for an account cell (actual or plan)
+function getCellManwon(accId, year) {
+  if (isActualCell(accId, year)) return getActualCumManwon(accId, year);
+  const p = getPlanManwon(accId, year);
+  return p != null ? p : 0;
+}
+
+function fmt(v) {
+  if (!v) return '-';
+  return Math.round(v).toLocaleString('ko-KR');
+}
+
+function renderPrincipalTable() {
+  const wrap = document.getElementById('principalTableWrap');
+  if (!wrap) return;
+  const years = getPlanYearRange();
+  const currentYear = new Date().getFullYear();
+
+  // header
+  let h = '<thead><tr><th>계좌</th>';
+  for (const yr of years) {
+    const cls = yr > currentYear ? 'yr-future' : yr === currentYear ? 'yr-current' : '';
+    h += `<th class="${cls}">${yr}</th>`;
+  }
+  h += '</tr></thead>';
+
+  // cell builder
+  const actualCell = (v) => `<td>${fmt(v)}</td>`;
+  const planCell = (accId, year, v, isAnse) => {
+    const cls = isAnse ? 'anse-inp' : 'plan-inp';
+    return `<td><input class="${cls}" type="number" min="0" step="1" data-py="${year}" data-pk="${accId}" value="${v != null ? v : ''}" placeholder="0"></td>`;
+  };
+
+  let body = '<tbody>';
+
+  // MY accounts
+  for (const id of MY_ACC_IDS) {
+    const acc = ACCOUNTS.find(a => a.id === id);
+    if (!acc) continue;
+    body += `<tr><td>${acc.name}</td>`;
+    for (const yr of years) {
+      if (isActualCell(id, yr)) {
+        body += actualCell(getActualCumManwon(id, yr));
+      } else {
+        body += planCell(id, yr, getPlanManwon(id, yr), false);
+      }
+    }
+    body += '</tr>';
+  }
+
+  // 안세공재원 (always editable)
+  body += '<tr class="r-anse"><td>나-안세공재원</td>';
+  for (const yr of years) {
+    body += planCell('naAnse', yr, getAnsePlanManwon(yr), true);
+  }
+  body += '</tr>';
+
+  // 나-연금총합
+  body += '<tr class="r-sub"><td>나-연금총합</td>';
+  for (const yr of years) {
+    const total = MY_ACC_IDS.reduce((s, id) => s + getCellManwon(id, yr), 0);
+    body += `<td>${fmt(total)}</td>`;
+  }
+  body += '</tr>';
+
+  // WIFE accounts
+  for (const id of WIFE_ACC_IDS) {
+    const acc = ACCOUNTS.find(a => a.id === id);
+    if (!acc) continue;
+    body += `<tr><td style="padding-left:14px;color:var(--muted)">${acc.name}</td>`;
+    for (const yr of years) {
+      if (isActualCell(id, yr)) {
+        body += actualCell(getActualCumManwon(id, yr));
+      } else {
+        body += planCell(id, yr, getPlanManwon(id, yr), false);
+      }
+    }
+    body += '</tr>';
+  }
+
+  // 아내-연금총합
+  body += '<tr class="r-sub"><td>아내-연금총합</td>';
+  for (const yr of years) {
+    const total = WIFE_ACC_IDS.reduce((s, id) => s + getCellManwon(id, yr), 0);
+    body += `<td>${fmt(total)}</td>`;
+  }
+  body += '</tr>';
+
+  // 연금총합
+  const grandTotals = {};
+  body += '<tr class="r-total"><td>연금총합</td>';
+  for (const yr of years) {
+    const total = [...MY_ACC_IDS, ...WIFE_ACC_IDS].reduce((s, id) => s + getCellManwon(id, yr), 0);
+    grandTotals[yr] = total;
+    body += `<td>${fmt(total)}</td>`;
+  }
+  body += '</tr>';
+
+  // 증가액
+  body += '<tr class="r-inc"><td>증가액</td>';
+  for (let i = 0; i < years.length; i++) {
+    if (i === 0) { body += '<td>-</td>'; continue; }
+    const diff = (grandTotals[years[i]] || 0) - (grandTotals[years[i - 1]] || 0);
+    body += `<td>${diff ? fmt(diff) : '-'}</td>`;
+  }
+  body += '</tr>';
+
+  body += '</tbody>';
+  wrap.innerHTML = `<table class="apt">${h}${body}</table>`;
+}
+
+// Year-end evaluation (원) for an account group from monthlyRecords
+function getGroupYearEndWon(accIds, year) {
+  const recs = monthlyRecords.filter(r => r.year === year);
+  if (!recs.length) return null;
+  const last = recs.sort((a, b) => b.month - a.month)[0];
+  return accIds.reduce((s, id) => s + (Number(last.accounts[id]) || 0), 0);
+}
+
+function renderEvalTable() {
+  const wrap = document.getElementById('evalTableWrap');
+  if (!wrap) return;
+  const years = getPlanYearRange();
+  const currentYear = new Date().getFullYear();
+  const projRate = (Number((document.getElementById('projRate') || {}).value) || annualPlan.projRate || 7) / 100;
+
+  // Find last year with actual monthlyRecords
+  const recYears = [...new Set(monthlyRecords.map(r => r.year))].sort((a, b) => b - a);
+  const lastRecYear = recYears[0] || (currentYear - 1);
+
+  // Last known eval values for projection base
+  const getLastKnown = (accIds) => {
+    if (!monthlyRecords.length) return 0;
+    const sorted = [...monthlyRecords].sort((a, b) =>
+      b.year !== a.year ? b.year - a.year : b.month - a.month
+    );
+    const last = sorted[0];
+    return accIds.reduce((s, id) => s + (Number(last.accounts[id]) || 0), 0);
+  };
+
+  // Compute projected values per year per group
+  const computeGroupVals = (accIds) => {
+    const vals = {};
+    let base = getLastKnown(accIds); // in 원
+    for (const yr of years) {
+      if (yr <= lastRecYear) {
+        const actual = getGroupYearEndWon(accIds, yr);
+        vals[yr] = actual;
+        if (actual !== null) base = actual; // update base to latest actual
+      } else {
+        base = base * (1 + projRate);
+        vals[yr] = base;
+      }
+    }
+    return vals;
+  };
+
+  const myVals   = computeGroupVals(MY_ACC_IDS);
+  const wifeVals = computeGroupVals(WIFE_ACC_IDS);
+
+  // header
+  let h = '<thead><tr><th>계좌/그룹</th>';
+  for (const yr of years) {
+    const cls = yr > lastRecYear ? 'yr-future' : yr === lastRecYear ? 'yr-current' : '';
+    h += `<th class="${cls}">${yr}${yr > lastRecYear ? '(예상)' : ''}</th>`;
+  }
+  h += '</tr></thead>';
+
+  let body = '<tbody>';
+
+  // Individual accounts
+  for (const id of MY_ACC_IDS) {
+    const acc = ACCOUNTS.find(a => a.id === id);
+    if (!acc) continue;
+    const vals = computeGroupVals([id]);
+    body += `<tr><td>${acc.name}</td>`;
+    for (const yr of years) {
+      const v = vals[yr];
+      const mw = v != null ? Math.round(v / 10000) : null;
+      const isProj = yr > lastRecYear;
+      body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
+    }
+    body += '</tr>';
+  }
+
+  // 나-연금총합
+  body += '<tr class="r-sub"><td>나-연금총합</td>';
+  for (const yr of years) {
+    const v = myVals[yr];
+    const mw = v != null ? Math.round(v / 10000) : null;
+    body += `<td>${mw ? fmt(mw) : '-'}</td>`;
+  }
+  body += '</tr>';
+
+  for (const id of WIFE_ACC_IDS) {
+    const acc = ACCOUNTS.find(a => a.id === id);
+    if (!acc) continue;
+    const vals = computeGroupVals([id]);
+    body += `<tr><td style="padding-left:14px;color:var(--muted)">${acc.name}</td>`;
+    for (const yr of years) {
+      const v = vals[yr];
+      const mw = v != null ? Math.round(v / 10000) : null;
+      const isProj = yr > lastRecYear;
+      body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
+    }
+    body += '</tr>';
+  }
+
+  // 아내-연금총합
+  body += '<tr class="r-sub"><td>아내-연금총합</td>';
+  for (const yr of years) {
+    const v = wifeVals[yr];
+    const mw = v != null ? Math.round(v / 10000) : null;
+    body += `<td>${mw ? fmt(mw) : '-'}</td>`;
+  }
+  body += '</tr>';
+
+  // 연금총합
+  body += '<tr class="r-total"><td>연금총합</td>';
+  for (const yr of years) {
+    const mv = myVals[yr];
+    const wv = wifeVals[yr];
+    if (mv == null && wv == null) { body += '<td>-</td>'; continue; }
+    const total = Math.round(((mv || 0) + (wv || 0)) / 10000);
+    body += `<td>${fmt(total)}</td>`;
+  }
+  body += '</tr>';
+
+  body += '</tbody>';
+  wrap.innerHTML = `<table class="apt">${h}${body}</table>`;
+}
 
 // ===== 배당 기록 =====
 const DIVIDEND_KEY = 'pension_dividends_v1';
