@@ -724,7 +724,11 @@
       <button class="nav-btn active" onclick="return false">🇺🇸 NonK</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkRefreshAll()">🔄 현재가 갱신</button>
+      <label class="auto-refresh-label" title="자동 새로고침 간격(분). 0 입력 시 자동 새로고침이 꺼집니다. 브라우저 새로고침(F5) 시 즉시 현재가가 갱신됩니다.">
+        🔄 자동
+        <input type="number" id="nkAutoRefreshMinutes" min="0" step="1" value="30" onchange="nkUpdateAutoRefresh()" onkeyup="if(event.key==='Enter')nkUpdateAutoRefresh()">
+        분
+      </label>
       <span id="nkRefreshStatus" style="font-size:12px;color:var(--muted)"></span>
     </div>
   </header>
@@ -1041,7 +1045,9 @@ async function fetchNkPrice(ticker) {
 
 async function nkRefreshAll() {
   if (!nkHoldings.length) return;
-  for (const h of nkHoldings) {
+  const statusEl = document.getElementById('nkRefreshStatus');
+  if (statusEl) statusEl.textContent = '⏳ 조회 중...';
+  await Promise.all(nkHoldings.map(async h => {
     try {
       const info = await fetchNkPrice(h.ticker);
       h.price = info.price;
@@ -1049,10 +1055,45 @@ async function nkRefreshAll() {
       h.changeRate = info.changeRate;
       h.updatedAt = new Date().toISOString();
     } catch(e) { /* keep old price */ }
-  }
+  }));
   nkSaveHoldings();
   nkRender();
   nkRenderChart();
+  if (statusEl) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    statusEl.textContent = `최근 갱신 ${hh}:${mm}:${ss}`;
+  }
+}
+
+// ===== 자동 새로고침 제어 =====
+const NK_AUTO_REFRESH_KEY = 'nk_autoRefreshMinutes';
+let nkAutoRefreshTimer = null;
+
+function nkUpdateAutoRefresh() {
+  const input = document.getElementById('nkAutoRefreshMinutes');
+  if (!input) return;
+  let minutes = parseInt(input.value, 10);
+  if (isNaN(minutes) || minutes < 0) minutes = 0;
+  input.value = minutes;
+  try { localStorage.setItem(NK_AUTO_REFRESH_KEY, String(minutes)); } catch (_) {}
+  if (nkAutoRefreshTimer) { clearInterval(nkAutoRefreshTimer); nkAutoRefreshTimer = null; }
+  if (minutes > 0) {
+    nkAutoRefreshTimer = setInterval(() => {
+      if (nkHoldings.length) nkRefreshAll();
+    }, minutes * 60 * 1000);
+  }
+}
+
+function nkInitAutoRefresh() {
+  const input = document.getElementById('nkAutoRefreshMinutes');
+  if (!input) return;
+  let saved = 30;
+  try { const v = localStorage.getItem(NK_AUTO_REFRESH_KEY); if (v != null) saved = parseInt(v, 10) || 0; } catch (_) {}
+  input.value = saved;
+  nkUpdateAutoRefresh();
 }
 
 function nkComputeAccountValue(accId) {
@@ -1211,7 +1252,7 @@ function nkRender() {
   const lastUpdate = updatedAts.length ? new Date(Math.max(...updatedAts.map(d => new Date(d)))).toLocaleTimeString('ko-KR') : '-';
 
   container.innerHTML = summaryHtml + tableHtml;
-  if (statusEl) statusEl.textContent = `보유종목 ${nkHoldings.length}개 · 마지막 갱신 ${lastUpdate} · 💾 <a href="#" onclick="event.preventDefault();nkRefreshAll()" style="color:var(--primary)">현재가 갱신</a>`;
+  if (statusEl) statusEl.textContent = `보유종목 ${nkHoldings.length}개 · 마지막 갱신 ${lastUpdate}`;
   nkRenderAccountButtons();
 }
 
@@ -1984,6 +2025,7 @@ document.addEventListener('keydown', e => {
 nkRender();
 nkRenderChart();
 nkRenderAccountButtons();
+nkInitAutoRefresh();
 if (nkHoldings.length) nkRefreshAll();
 </script>
 </body>
