@@ -964,6 +964,7 @@ async function fetchViaProxy(targetUrl) {
     } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error('모든 프록시 실패');
+}
 
 // ===== NonK (US 포트폴리오) =====
 const NK_ACCOUNTS = [{ id: 'ds', name: 'D&S' }, { id: 'nk1', name: 'nK1' }];
