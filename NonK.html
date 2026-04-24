@@ -1065,10 +1065,52 @@ function nkComputeAccountValue(accId) {
   return total;
 }
 
-function nkTotalDeposited() {
-  return nkDepositData.transactions.reduce((s, t) => {
-    return s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount));
-  }, 0);
+function nkTotalDeposited(accId = null) {
+  const txns = accId
+    ? nkDepositData.transactions.filter(t => t.accId === accId)
+    : nkDepositData.transactions;
+  return txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+}
+
+function nkXirrCalc(cashflows) {
+  if (!cashflows || cashflows.length < 2) return null;
+  const t0 = cashflows[0].date.getTime();
+  const days = cashflows.map(cf => (cf.date.getTime() - t0) / 86400000);
+  const amounts = cashflows.map(cf => cf.amount);
+  const hasPos = amounts.some(a => a > 0);
+  const hasNeg = amounts.some(a => a < 0);
+  if (!hasPos || !hasNeg) return null;
+  let rate = 0.1;
+  for (let iter = 0; iter < 200; iter++) {
+    let npv = 0, dnpv = 0;
+    for (let i = 0; i < amounts.length; i++) {
+      const t = days[i] / 365;
+      const factor = Math.pow(1 + rate, t);
+      npv  += amounts[i] / factor;
+      dnpv -= amounts[i] * t / (factor * (1 + rate));
+    }
+    if (Math.abs(npv) < 1e-6) break;
+    if (Math.abs(dnpv) < 1e-15) break;
+    const delta = npv / dnpv;
+    rate -= delta;
+    if (rate <= -1) rate = -0.9999;
+    if (Math.abs(delta) < 1e-9) break;
+  }
+  return isFinite(rate) && rate > -1 ? rate : null;
+}
+
+function nkCalcXIRR(totalCurrentValue, accId = null) {
+  const txns = accId
+    ? nkDepositData.transactions.filter(t => t.accId === accId)
+    : nkDepositData.transactions;
+  if (!txns.length || totalCurrentValue <= 0) return null;
+  const sorted = txns.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const cashflows = sorted.map(t => ({
+    date: new Date(t.date),
+    amount: t.type === 'withdraw' ? Number(t.amount) : -Number(t.amount)
+  }));
+  cashflows.push({ date: new Date(), amount: totalCurrentValue });
+  return nkXirrCalc(cashflows);
 }
 
 function nkRender() {
@@ -1101,19 +1143,23 @@ function nkRender() {
   // add cash
   const totalCash = NK_ACCOUNTS.reduce((s, a) => s + (Number(nkCashAccounts[a.id]) || 0), 0);
   totalValue += totalCash;
-  const pnl = totalValue - totalCost;
-  const pnlRate = totalCost > 0 ? pnl / totalCost * 100 : 0;
-  const deposited = nkTotalDeposited();
+  const deposited  = nkTotalDeposited();
+  const pnl        = totalValue - deposited;
+  const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
+  const xirrRate   = nkCalcXIRR(totalValue);
+  const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
+  const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
+  const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
 
   // Summary grid
   const summaryHtml = `
     <div class="detail-summary" style="margin-bottom:12px">
-      <div class="summary-item"><span class="summary-label">원금(입금)</span><span class="summary-value">${fmtUSD(deposited)}</span></div>
-      <div class="summary-item"><span class="summary-label">매입원가</span><span class="summary-value">${fmtUSD(totalCost)}</span></div>
+      <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${deposited > 0 ? fmtUSD(deposited) : '-'}</span></div>
       <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalValue)}</span></div>
-      <div class="summary-item"><span class="summary-label">오늘손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}</span></div>
-      <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${pnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(pnl)}</span></div>
-      <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${pnlRate >= 0 ? 'pos' : 'neg'}">${pnlRate >= 0 ? '+' : ''}${pnlRate.toFixed(2)}%</span></div>
+      <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}</span></div>
+      <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${pnl >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? fmtUSDSigned(pnl) : '-'}</span></div>
+      <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${pnlRate >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? (pnlRate >= 0 ? '+' : '') + pnlRate.toFixed(2) + '%' : '-'}</span></div>
+      <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</span></div>
     </div>`;
 
   // Holdings table
@@ -1376,20 +1422,31 @@ function nkOpenAccountDetail(accId) {
     const cost = qty * avg;
     const val  = qty * (h.price || 0);
     const pnl  = val - cost;
-    return { ticker: h.ticker, name: h.name || '', qty, avg, cost, val, pnl, rate: cost > 0 ? pnl/cost*100 : 0 };
+    const dayChange = qty * (h.change || 0);
+    return { ticker: h.ticker, name: h.name || '', qty, avg, cost, val, pnl, dayChange, rate: cost > 0 ? pnl/cost*100 : 0 };
   });
 
-  const cash = Number(nkCashAccounts[accId]) || 0;
-  const totalVal = items.reduce((s, i) => s + i.val, 0) + cash;
-  const totalCost = items.reduce((s, i) => s + i.cost, 0);
-  const totalPnl  = items.reduce((s, i) => s + i.pnl, 0);
+  const cash         = Number(nkCashAccounts[accId]) || 0;
+  const totalVal     = items.reduce((s, i) => s + i.val, 0) + cash;
+  const todayPnl     = items.reduce((s, i) => s + i.dayChange, 0);
+  const accDeposited = nkTotalDeposited(accId);
+  const accPnl       = totalVal - accDeposited;
+  const accPnlRate   = accDeposited > 0 ? accPnl / accDeposited * 100 : 0;
+  const accXirr      = nkCalcXIRR(totalVal, accId);
+  const accXirrSign  = accXirr != null && accXirr >= 0 ? '+' : '';
+  const accXirrCls   = accXirr != null && accXirr >= 0 ? 'pos' : 'neg';
+  const accXirrText  = accXirr != null ? accXirrSign + (accXirr * 100).toFixed(2) + '%' : '-';
+
+  document.getElementById('nkDetailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${fmtUSD(cash)}`;
 
   const summaryEl = document.getElementById('nkDetailSummary');
   summaryEl.innerHTML = `
-    <div class="summary-item"><span class="summary-label">매입원가</span><span class="summary-value">${fmtUSD(totalCost)}</span></div>
+    <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${accDeposited > 0 ? fmtUSD(accDeposited) : '-'}</span></div>
     <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalVal)}</span></div>
-    <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${totalPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(totalPnl)}</span></div>
-    <div class="summary-item"><span class="summary-label">현금</span><span class="summary-value">${fmtUSD(cash)}</span></div>`;
+    <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}</span></div>
+    <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${accPnl >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? fmtUSDSigned(accPnl) : '-'}</span></div>
+    <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${accPnlRate >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? (accPnlRate >= 0 ? '+' : '') + accPnlRate.toFixed(2) + '%' : '-'}</span></div>
+    <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${accXirrCls}" title="이 계좌의 입출금 내역 기준 연환산 내부수익률">${accXirrText}</span></div>`;
 
   const tableEl = document.getElementById('nkDetailTable');
   tableEl.innerHTML = `<thead><tr><th>종목</th><th>보유수</th><th>매입단가</th><th>현재가</th><th>평가금액</th><th>손익</th><th>수익률</th></tr></thead>
