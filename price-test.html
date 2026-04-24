@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SPY 주가 조회 방법 테스트</title>
+<style>
+  body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+  h2 { margin: 0 0 16px; }
+  .result { margin: 6px 0; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+  .ok   { background: #d1fae5; border-left: 4px solid #10b981; }
+  .fail { background: #fee2e2; border-left: 4px solid #ef4444; }
+  .wait { background: #fef9c3; border-left: 4px solid #f59e0b; }
+  .info { background: #e0f2fe; border-left: 4px solid #0284c7; margin-bottom: 16px; }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+  button { padding: 10px 24px; font-size: 14px; cursor: pointer;
+           background: #2563eb; color: white; border: none; border-radius: 6px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<h2>SPY 주가 조회 방법 테스트</h2>
+<div class="info result">각 방법을 실제 브라우저에서 테스트합니다. 테스트 시작 버튼을 누르세요.<br>
+성공하면 조회된 가격과 응답시간을 표시합니다.</div>
+<button onclick="runAll()">▶ 테스트 시작</button>
+<div id="out"></div>
+
+<script>
+const TICKER = 'SPY';
+const out = document.getElementById('out');
+
+function log(id, cls, html) {
+  let el = document.getElementById(id);
+  if (!el) { el = document.createElement('div'); el.id = id; el.className = 'result wait'; out.appendChild(el); }
+  el.className = 'result ' + cls;
+  el.innerHTML = html;
+}
+function enc(u) { return encodeURIComponent(u); }
+
+async function timed(fn) {
+  const t = Date.now();
+  try { const r = await fn(); return { ok: true, data: r, ms: Date.now() - t }; }
+  catch(e) { return { ok: false, err: String(e), ms: Date.now() - t }; }
+}
+
+// ── 테스트 정의 ─────────────────────────────────────────────────────────────
+
+const TESTS = [
+
+  // 1. Stooq 직접 (CORS proxy 불필요)
+  {
+    id: 't1', label: '① Stooq 직접 (no proxy)',
+    fn: async () => {
+      const url = `https://stooq.com/q/l/?s=${TICKER.toLowerCase()}.us&f=sd2t2ohlcv&h&e=csv`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const csv = await r.text();
+      const lines = csv.trim().split('\n');
+      if (lines.length < 2) throw new Error('데이터 없음: ' + csv.slice(0, 100));
+      const cols = lines[1].split(',');
+      // Symbol,Date,Time,Open,High,Low,Close,Volume
+      const price = parseFloat(cols[6]);
+      if (!price) throw new Error('가격 파싱 실패: ' + lines[1]);
+      return { price, raw: lines[1] };
+    }
+  },
+
+  // 2. Stooq 직접 — 변동 포함 (d=change, p=change%)
+  {
+    id: 't2', label: '② Stooq 직접 (변동포함: d,p 필드)',
+    fn: async () => {
+      const url = `https://stooq.com/q/l/?s=${TICKER.toLowerCase()}.us&f=sd2t2ohlcvdp&h&e=csv`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const csv = await r.text();
+      const lines = csv.trim().split('\n');
+      if (lines.length < 2) throw new Error('데이터 없음');
+      const header = lines[0].split(',');
+      const vals   = lines[1].split(',');
+      const row = Object.fromEntries(header.map((h, i) => [h.trim(), vals[i]?.trim()]));
+      return { price: parseFloat(row['Close']), change: parseFloat(row['Change']||'0'), changePct: parseFloat(row['%Change']||'0'), row };
+    }
+  },
+
+  // 3. Stooq 2일치 → 전일종가 직접 계산
+  {
+    id: 't3', label: '③ Stooq 2일치 (전일종가 계산)',
+    fn: async () => {
+      const url = `https://stooq.com/q/d/l/?s=${TICKER.toLowerCase()}.us&i=d&l=2&e=csv`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const csv = await r.text();
+      const lines = csv.trim().split('\n');
+      if (lines.length < 3) throw new Error('2일치 데이터 부족: ' + csv.slice(0, 200));
+      // Symbol,Date,Open,High,Low,Close,Volume
+      const today = lines[1].split(',');
+      const yesterday = lines[2].split(',');
+      const price = parseFloat(today[5]);
+      const prevClose = parseFloat(yesterday[5]);
+      const change = price - prevClose;
+      const changePct = prevClose ? change / prevClose * 100 : 0;
+      return { price, prevClose, change, changePct, today: today.join(','), prev: yesterday.join(',') };
+    }
+  },
+
+  // 4. Yahoo Finance v7 — corsproxy.io
+  {
+    id: 't4', label: '④ Yahoo v7 + corsproxy.io',
+    fn: async () => {
+      const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${TICKER}&_=${Date.now()}`;
+      const url = `https://corsproxy.io/?${enc(yUrl)}`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const json = await r.json();
+      const q = json?.quoteResponse?.result?.[0];
+      if (!q) throw new Error('결과 없음');
+      return { price: q.regularMarketPrice, change: q.regularMarketChange, changePct: q.regularMarketChangePercent };
+    }
+  },
+
+  // 5. Yahoo Finance v7 — allorigins
+  {
+    id: 't5', label: '⑤ Yahoo v7 + allorigins.win',
+    fn: async () => {
+      const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${TICKER}&_=${Date.now()}`;
+      const url = `https://api.allorigins.win/raw?url=${enc(yUrl)}`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const json = JSON.parse(await r.text());
+      const q = json?.quoteResponse?.result?.[0];
+      if (!q) throw new Error('결과 없음');
+      return { price: q.regularMarketPrice, change: q.regularMarketChange, changePct: q.regularMarketChangePercent };
+    }
+  },
+
+  // 6. Yahoo Finance v7 — query2
+  {
+    id: 't6', label: '⑥ Yahoo v7 query2 + corsproxy.io',
+    fn: async () => {
+      const yUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${TICKER}&_=${Date.now()}`;
+      const url = `https://corsproxy.io/?${enc(yUrl)}`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const json = await r.json();
+      const q = json?.quoteResponse?.result?.[0];
+      if (!q) throw new Error('결과 없음');
+      return { price: q.regularMarketPrice, change: q.regularMarketChange, changePct: q.regularMarketChangePercent };
+    }
+  },
+
+  // 7. Yahoo Finance HTML 파싱 — allorigins
+  {
+    id: 't7', label: '⑦ Yahoo HTML 파싱 + allorigins',
+    fn: async () => {
+      const yUrl = `https://finance.yahoo.com/quote/${TICKER}`;
+      const url = `https://api.allorigins.win/raw?url=${enc(yUrl)}`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const html = await r.text();
+      const price = html.match(/data-field="regularMarketPrice"[^>]*value="([0-9.]+)"/)?.[1];
+      const change = html.match(/data-field="regularMarketChange"[^>]*value="(-?[0-9.]+)"/)?.[1];
+      const changePct = html.match(/data-field="regularMarketChangePercent"[^>]*value="(-?[0-9.]+)"/)?.[1];
+      if (!price) throw new Error('HTML에서 가격 미발견 (동적 렌더링)');
+      return { price: parseFloat(price), change: parseFloat(change||'0'), changePct: parseFloat(changePct||'0') };
+    }
+  },
+
+  // 8. Alpha Vantage demo key
+  {
+    id: 't8', label: '⑧ Alpha Vantage (demo key)',
+    fn: async () => {
+      const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${TICKER}&apikey=demo`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const json = await r.json();
+      const q = json?.['Global Quote'];
+      if (!q || !q['05. price']) throw new Error('결과 없음 또는 rate-limit: ' + JSON.stringify(json).slice(0, 100));
+      const price = parseFloat(q['05. price']);
+      const change = parseFloat(q['09. change']);
+      const changePct = parseFloat(q['10. change percent']);
+      return { price, change, changePct };
+    }
+  },
+
+  // 9. FMP (Financial Modeling Prep) demo
+  {
+    id: 't9', label: '⑨ FMP financialmodelingprep.com (demo)',
+    fn: async () => {
+      const url = `https://financialmodelingprep.com/api/v3/quote-short/${TICKER}?apikey=demo`;
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const json = await r.json();
+      if (!Array.isArray(json) || !json[0]) throw new Error('결과 없음: ' + JSON.stringify(json).slice(0, 100));
+      return { price: json[0].price, volume: json[0].volume };
+    }
+  },
+
+  // 10. Yahoo Finance crumb 2-step
+  {
+    id: 't10', label: '⑩ Yahoo crumb 2-step (query1 + allorigins)',
+    fn: async () => {
+      // Step 1: get crumb
+      const crumbUrl = `https://query1.finance.yahoo.com/v1/test/getcrumb`;
+      const step1 = await fetch(`https://api.allorigins.win/raw?url=${enc(crumbUrl)}`, { cache: 'no-store' });
+      const crumb = (await step1.text()).trim();
+      if (!crumb || crumb.includes('{') || crumb.length > 20) throw new Error('crumb 실패: ' + crumb.slice(0,50));
+      // Step 2: use crumb
+      const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${TICKER}&crumb=${enc(crumb)}&_=${Date.now()}`;
+      const step2 = await fetch(`https://api.allorigins.win/raw?url=${enc(yUrl)}`, { cache: 'no-store' });
+      const json = JSON.parse(await step2.text());
+      const q = json?.quoteResponse?.result?.[0];
+      if (!q) throw new Error('결과 없음');
+      return { price: q.regularMarketPrice, change: q.regularMarketChange, changePct: q.regularMarketChangePercent, crumb };
+    }
+  },
+];
+
+// ── 실행 ──────────────────────────────────────────────────────────────────────
+
+async function runAll() {
+  out.innerHTML = '';
+  document.querySelector('button').disabled = true;
+  document.querySelector('button').textContent = '⏳ 테스트 중...';
+
+  await Promise.all(TESTS.map(async test => {
+    log(test.id, 'wait', `⏳ ${test.label} — 조회 중...`);
+    const result = await timed(test.fn);
+    if (result.ok) {
+      const d = result.data;
+      const price = d.price ? `$${parseFloat(d.price).toFixed(2)}` : '';
+      const chg   = d.change != null ? ` | 변동: ${d.change >= 0 ? '+' : ''}${parseFloat(d.change).toFixed(2)}` : '';
+      const pct   = d.changePct != null ? ` (${d.changePct >= 0 ? '+' : ''}${parseFloat(d.changePct).toFixed(2)}%)` : '';
+      log(test.id, 'ok',   `✅ ${test.label}<br><pre>${price}${chg}${pct} | ${result.ms}ms\n${JSON.stringify(d, null, 2).slice(0, 300)}</pre>`);
+    } else {
+      log(test.id, 'fail', `❌ ${test.label}<br><pre>${result.err} (${result.ms}ms)</pre>`);
+    }
+  }));
+
+  document.querySelector('button').disabled = false;
+  document.querySelector('button').textContent = '▶ 다시 테스트';
+}
+</script>
+</body>
+</html>
