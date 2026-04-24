@@ -951,7 +951,7 @@
     <div class="modal-header">
       <div>
         <h2>📅 연간 계획</h2>
-        <div class="modal-subtitle">계좌별 원금·평가금액 연도별 기록 및 계획 (단위: 만원)</div>
+        <div class="modal-subtitle">계좌별 원금·평가금액 연도별 기록 및 계획 (단위: 백만원)</div>
       </div>
       <button class="close-btn" onclick="closeAnnualPlanModal()" aria-label="닫기">×</button>
     </div>
@@ -960,7 +960,7 @@
       원금 기록 및 계획
       <button class="btn-primary" style="font-size:12px;padding:5px 12px" onclick="saveAnnualPlan()">💾 저장</button>
     </div>
-    <div class="plan-unit-note">* 단위: 만원 / 회색 열 = 실적, 초록 입력란 = 계획 / 안세공재원은 항상 편집 가능</div>
+    <div class="plan-unit-note">* 단위: 백만원(정수) / 회색 열 = 실적, 초록 입력란 = 계획 / 안세공재원은 항상 편집 가능</div>
     <div class="annual-plan-wrap" id="principalTableWrap"></div>
 
     <div class="plan-section-title" style="margin-top:20px">평가 기록 및 예상</div>
@@ -2967,7 +2967,7 @@ function getActualCumManwon(accId, year) {
   const won = depositData.transactions
     .filter(t => t.accId === accId && typeof t.date === 'string' && t.date <= end)
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  return Math.round(won / 10000);
+  return Math.round(won / 1000000);
 }
 
 // Does this account have any transactions in this specific year?
@@ -3174,7 +3174,7 @@ function renderEvalTable() {
     body += `<tr><td>${acc.name}</td>`;
     for (const yr of years) {
       const v = vals[yr];
-      const mw = v != null ? Math.round(v / 10000) : null;
+      const mw = v != null ? Math.round(v / 1000000) : null;
       const isProj = yr > lastRecYear;
       body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
     }
@@ -3185,7 +3185,7 @@ function renderEvalTable() {
   body += '<tr class="r-sub"><td>나-연금총합</td>';
   for (const yr of years) {
     const v = myVals[yr];
-    const mw = v != null ? Math.round(v / 10000) : null;
+    const mw = v != null ? Math.round(v / 1000000) : null;
     body += `<td>${mw ? fmt(mw) : '-'}</td>`;
   }
   body += '</tr>';
@@ -3197,7 +3197,7 @@ function renderEvalTable() {
     body += `<tr><td style="padding-left:14px;color:var(--muted)">${acc.name}</td>`;
     for (const yr of years) {
       const v = vals[yr];
-      const mw = v != null ? Math.round(v / 10000) : null;
+      const mw = v != null ? Math.round(v / 1000000) : null;
       const isProj = yr > lastRecYear;
       body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
     }
@@ -3208,7 +3208,7 @@ function renderEvalTable() {
   body += '<tr class="r-sub"><td>아내-연금총합</td>';
   for (const yr of years) {
     const v = wifeVals[yr];
-    const mw = v != null ? Math.round(v / 10000) : null;
+    const mw = v != null ? Math.round(v / 1000000) : null;
     body += `<td>${mw ? fmt(mw) : '-'}</td>`;
   }
   body += '</tr>';
@@ -3219,7 +3219,7 @@ function renderEvalTable() {
     const mv = myVals[yr];
     const wv = wifeVals[yr];
     if (mv == null && wv == null) { body += '<td>-</td>'; continue; }
-    const total = Math.round(((mv || 0) + (wv || 0)) / 10000);
+    const total = Math.round(((mv || 0) + (wv || 0)) / 1000000);
     body += `<td>${fmt(total)}</td>`;
   }
   body += '</tr>';
