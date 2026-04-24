@@ -1045,12 +1045,13 @@
 </div>
 
 <script>
-// ===== 계좌 정의 (7개) =====
+// ===== 계좌 정의 (8개) =====
 const ACCOUNTS = [
   { id: 'dc',            name: 'DC 계좌' },
   { id: 'pension1',      name: '개인연금 1' },
   { id: 'pension2',      name: '개인연금 2' },
   { id: 'irp',           name: 'IRP' },
+  { id: 'isa',           name: 'ISA' },
   { id: 'wife_pension1', name: '아내 개인연금 1' },
   { id: 'wife_pension2', name: '아내 개인연금 2' },
   { id: 'wife_isa',      name: '아내 ISA' }
@@ -2894,7 +2895,7 @@ const ANNUAL_PLAN_KEY = 'pension_annual_plan_v1';
 let annualPlan = loadAnnualPlan();
 
 // My 4 accounts / wife 3 accounts
-const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp'];
+const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp', 'isa'];
 const WIFE_ACC_IDS = ['wife_pension1', 'wife_pension2', 'wife_isa'];
 
 function loadAnnualPlan() {
@@ -2942,6 +2943,7 @@ function saveAnnualPlan() {
   const projRate = Number(document.getElementById('projRate').value) || 7;
   annualPlan = { deposits: deps, projRate };
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+  renderPrincipalTable();
   renderEvalTable();
   alert('저장되었습니다.');
 }
@@ -3136,7 +3138,12 @@ function renderEvalTable() {
     return accIds.reduce((s, id) => s + (Number(last.accounts[id]) || 0), 0);
   };
 
-  // Compute projected values per year per group
+  // Cumulative plan value (백만원) for an account group in a given year
+  const getGroupCumMil = (accIds, yr) =>
+    accIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
+
+  // Compute projected values per year per group.
+  // For future years: planned deposit increment (Jan 1 assumption) earns the full year return.
   const computeGroupVals = (accIds) => {
     const vals = {};
     let base = getLastKnown(accIds); // in 원
@@ -3146,7 +3153,12 @@ function renderEvalTable() {
         vals[yr] = actual;
         if (actual !== null) base = actual; // update base to latest actual
       } else {
-        base = base * (1 + projRate);
+        // Incremental planned deposit this year: (cumulative yr) - (cumulative yr-1), in 백만원
+        const prevMil = getGroupCumMil(accIds, yr - 1);
+        const currMil = getGroupCumMil(accIds, yr);
+        const newDepositWon = Math.max(0, currMil - prevMil) * 1_000_000;
+        // Deposits arrive Jan 1 → earn the full year's return
+        base = (base + newDepositWon) * (1 + projRate);
         vals[yr] = base;
       }
     }
