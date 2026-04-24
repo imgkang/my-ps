@@ -1743,22 +1743,32 @@ function saveCashAccounts() {
 
 // ===== 파일 저장 / 불러오기 =====
 function exportToFile() {
+  const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
   const payload = {
-    version: 7,
+    version: 8,
     exportedAt: new Date().toISOString(),
-    cashAccounts: cashAccounts,
-    holdings: holdings,
-    deposits: depositData,
-    monthlyRecords: monthlyRecords,
-    dividendRecords: dividendRecords,
-    annualPlan: annualPlan
+    mypm: {
+      cashAccounts: cashAccounts,
+      holdings: holdings,
+      deposits: depositData,
+      monthlyRecords: monthlyRecords,
+      dividendRecords: dividendRecords,
+      annualPlan: annualPlan
+    },
+    nonk: {
+      holdings:  tryParse('nonk_holdings_v1')  || [],
+      cash:      tryParse('nonk_cash_v1')      || { ds: 0, nk1: 0 },
+      deposits:  tryParse('nonk_deposits_v1')  || { transactions: [] },
+      monthly:   tryParse('nonk_monthly_v1')   || [],
+      dividends: tryParse('nonk_dividends_v1') || []
+    }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const pad = x => String(x).padStart(2, '0');
   const d = new Date();
-  const fname = `연금계좌_백업_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  const fname = `포트폴리오_통합백업_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
   a.href = url;
   a.download = fname;
   document.body.appendChild(a);
@@ -1775,15 +1785,17 @@ function importFromFile(event) {
     try {
       const data = JSON.parse(e.target.result);
       if (!data || typeof data !== 'object') throw new Error('형식이 올바르지 않습니다');
-      const newHoldings = Array.isArray(data.holdings) ? data.holdings : [];
+      // 통합 포맷(v8+)이면 mypm 섹션 사용, 구형 단독 포맷도 그대로 지원
+      const src = (data.version >= 8 && data.mypm) ? data.mypm : data;
+      const newHoldings = Array.isArray(src.holdings) ? src.holdings : [];
 
       // 현금: 신형식(cashAccounts) 우선, 구형식(cash) 호환
       const newCashAccounts = {};
       for (const a of ACCOUNTS) newCashAccounts[a.id] = 0;
-      if (data.cashAccounts && typeof data.cashAccounts === 'object') {
-        for (const a of ACCOUNTS) newCashAccounts[a.id] = Number(data.cashAccounts[a.id]) || 0;
-      } else if (typeof data.cash === 'number' && data.cash > 0) {
-        newCashAccounts[ACCOUNTS[0].id] = data.cash;
+      if (src.cashAccounts && typeof src.cashAccounts === 'object') {
+        for (const a of ACCOUNTS) newCashAccounts[a.id] = Number(src.cashAccounts[a.id]) || 0;
+      } else if (typeof src.cash === 'number' && src.cash > 0) {
+        newCashAccounts[ACCOUNTS[0].id] = src.cash;
       }
       const newTotalCash = Object.values(newCashAccounts).reduce((s, v) => s + v, 0);
 
@@ -1795,9 +1807,9 @@ function importFromFile(event) {
 
       // 입출금 내역 마이그레이션 (신형식: transactions / 구형식: years+entries)
       let newDeposits = { transactions: [] };
-      if (data.deposits && typeof data.deposits === 'object') {
-        if (Array.isArray(data.deposits.transactions)) {
-          newDeposits.transactions = data.deposits.transactions
+      if (src.deposits && typeof src.deposits === 'object') {
+        if (Array.isArray(src.deposits.transactions)) {
+          newDeposits.transactions = src.deposits.transactions
             .map(t => ({
               id: t.id || generateTxnId(),
               accId: String(t.accId || ''),
@@ -1805,11 +1817,11 @@ function importFromFile(event) {
               amount: Number(t.amount) || 0
             }))
             .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
-        } else if (Array.isArray(data.deposits.years) && data.deposits.entries) {
+        } else if (Array.isArray(src.deposits.years) && src.deposits.entries) {
           // 구형식 → 신형식 변환
           for (const acc of ACCOUNTS) {
-            const src = data.deposits.entries[acc.id] || {};
-            for (const y of data.deposits.years) {
+            const src = src.deposits.entries[acc.id] || {};
+            for (const y of src.deposits.years) {
               const v = Number(src[y]);
               if (!isNaN(v) && v !== 0) {
                 newDeposits.transactions.push({
@@ -1827,8 +1839,8 @@ function importFromFile(event) {
 
       // 월별 계좌 기록 파싱
       let newMonthlyRecords = [];
-      if (Array.isArray(data.monthlyRecords)) {
-        newMonthlyRecords = data.monthlyRecords
+      if (Array.isArray(src.monthlyRecords)) {
+        newMonthlyRecords = src.monthlyRecords
           .map(r => {
             const year = parseInt(r.year, 10);
             const month = parseInt(r.month, 10);
@@ -1848,8 +1860,8 @@ function importFromFile(event) {
 
       // 배당 기록 파싱
       let newDividendRecords = [];
-      if (Array.isArray(data.dividendRecords)) {
-        newDividendRecords = data.dividendRecords
+      if (Array.isArray(src.dividendRecords)) {
+        newDividendRecords = src.dividendRecords
           .map(r => ({
             id: String(r.id || (Date.now() + Math.random())),
             year: parseInt(r.year, 10) || 0,
@@ -1863,10 +1875,10 @@ function importFromFile(event) {
 
       // 연간 계획 파싱
       let newAnnualPlan = { deposits: {}, projRate: 7 };
-      if (data.annualPlan && typeof data.annualPlan === 'object') {
+      if (src.annualPlan && typeof src.annualPlan === 'object') {
         newAnnualPlan = {
-          deposits: (data.annualPlan.deposits && typeof data.annualPlan.deposits === 'object') ? data.annualPlan.deposits : {},
-          projRate: Number(data.annualPlan.projRate) || 7
+          deposits: (src.annualPlan.deposits && typeof src.annualPlan.deposits === 'object') ? src.annualPlan.deposits : {},
+          projRate: Number(src.annualPlan.projRate) || 7
         };
       }
 
@@ -1896,9 +1908,16 @@ function importFromFile(event) {
       localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
       render();
       renderPortfolioChart();
-      // 최신가 재조회
       setTimeout(() => refreshPricesSilent(), 100);
-      alert('불러오기 완료');
+      if (data.nonk) {
+        const nk = data.nonk;
+        if (nk.holdings)  localStorage.setItem('nonk_holdings_v1',  JSON.stringify(nk.holdings));
+        if (nk.cash)      localStorage.setItem('nonk_cash_v1',      JSON.stringify(nk.cash));
+        if (nk.deposits)  localStorage.setItem('nonk_deposits_v1',  JSON.stringify(nk.deposits));
+        if (nk.monthly)   localStorage.setItem('nonk_monthly_v1',   JSON.stringify(nk.monthly));
+        if (nk.dividends) localStorage.setItem('nonk_dividends_v1', JSON.stringify(nk.dividends));
+      }
+      alert('불러오기 완료' + (data.nonk ? '\n(My PM + NonK 통합 데이터)' : ''));
     } catch (err) {
       alert('불러오기 실패: ' + err.message);
     } finally {
