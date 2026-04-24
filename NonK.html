@@ -1034,13 +1034,15 @@ function switchPage(page) {
 }
 
 async function fetchNkPrice(ticker) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`;
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ticker)}`;
   const data = JSON.parse(await fetchViaProxy(url));
-  const meta = data?.chart?.result?.[0]?.meta;
-  if (!meta) throw new Error('No data');
-  const price = meta.regularMarketPrice || 0;
-  const prev  = meta.chartPreviousClose || price;
-  return { price, name: meta.shortName || meta.longName || ticker, change: price - prev, changeRate: prev > 0 ? (price - prev) / prev * 100 : 0 };
+  const q = data?.quoteResponse?.result?.[0];
+  if (!q) throw new Error('No data for ' + ticker);
+  const price      = q.regularMarketPrice      || 0;
+  const change     = q.regularMarketChange     || 0;
+  const changeRate = q.regularMarketChangePercent || 0;
+  const name       = q.shortName || q.longName || ticker;
+  return { price, name, change, changeRate };
 }
 
 async function nkRefreshAll() {
