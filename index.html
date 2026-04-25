@@ -1141,7 +1141,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.40';
+const APP_VERSION = 'MyPM v1.41';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2212,7 +2212,7 @@ async function fetchViaProxy(targetUrl) {
 
 // Yahoo Finance v8 chart API — 한국 주식: {code}.KS(KOSPI) / {code}.KQ(KOSDAQ)
 // suffix를 알고 있으면 직접 사용; 모르면 양쪽 병렬 조회 후 거래량 높은 쪽 선택
-async function fetchStockInfo(code, knownSuffix = null) {
+async function fetchStockInfo(code, _ignoredSuffix = null) {
   const ts = Date.now();
 
   async function tryOneSuffix(suffix) {
@@ -2231,26 +2231,20 @@ async function fetchStockInfo(code, knownSuffix = null) {
           price, change,
           changeRate: prev > 0 ? change / prev * 100 : 0,
           volume:     meta.regularMarketVolume || 0,
+          marketTime: meta.regularMarketTime   || 0,
         };
       } catch(e) {}
     }
     return null;
   }
 
-  // 저장된 suffix가 있으면 바로 사용 (fallback으로 반대도 시도)
-  if (knownSuffix) {
-    const r = await tryOneSuffix(knownSuffix);
-    if (r) return r;
-    // 저장된 suffix 실패 시 반대 suffix로 재시도
-    const other = knownSuffix === '.KS' ? '.KQ' : '.KS';
-    const r2 = await tryOneSuffix(other);
-    if (r2) return r2;
-    throw new Error('가격 조회 실패: ' + code);
-  }
-
-  // suffix 미정: 양쪽 병렬 조회 후 거래량 높은 쪽 선택 (동률 시 .KQ 우선)
+  // 항상 양쪽 병렬 조회: volume → marketTime 순으로 올바른 쪽 선택
+  // (stored suffix는 stale 데이터 문제로 사용 안 함)
   const [ks, kq] = await Promise.all([tryOneSuffix('.KS'), tryOneSuffix('.KQ')]);
-  if (ks && kq) return kq.volume >= ks.volume ? kq : ks;
+  if (ks && kq) {
+    if (ks.volume !== kq.volume) return ks.volume > kq.volume ? ks : kq;
+    return ks.marketTime >= kq.marketTime ? ks : kq; // 최신 데이터 우선
+  }
   if (ks) return ks;
   if (kq) return kq;
   throw new Error('가격 조회 실패: ' + code);
