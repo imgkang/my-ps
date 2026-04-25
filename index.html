@@ -1114,7 +1114,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.32';
+const APP_VERSION = 'MyPM v1.33';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3176,6 +3176,22 @@ function getAnsePlanManwon(year) {
   return (y && y['naAnse'] != null) ? Number(y['naAnse']) : null;
 }
 
+// Get 아내-안세공재원 plan value for year
+function getAnseWifePlanManwon(year) {
+  const y = annualPlan.deposits[String(year)];
+  return (y && y['wifeAnse'] != null) ? Number(y['wifeAnse']) : null;
+}
+
+// Actual anse deposits for accId list in a given year, in 만원
+function getActualAnseManwon(accIds, year) {
+  const start = `${year}-01-01`, end = `${year}-12-31`;
+  const won = depositData.transactions
+    .filter(t => accIds.includes(t.accId) && typeof t.date === 'string'
+              && t.date >= start && t.date <= end && Number(t.anse) > 0)
+    .reduce((s, t) => s + Number(t.anse), 0);
+  return Math.round(won / 10000); // 원 → 만원
+}
+
 // Get the display value (만원) for an account cell (actual or plan)
 function getCellManwon(accId, year) {
   if (isActualCell(accId, year)) return getActualCumManwon(accId, year);
@@ -3243,10 +3259,15 @@ function renderPrincipalTable() {
     body += '</tr>';
   }
 
-  // 안세공재원 (always editable)
+  // 나-안세공재원: 현재연도까지 실적(읽기전용), 이후 계획(편집)
   body += '<tr class="r-anse"><td>나-안세공재원</td>';
   for (const yr of years) {
-    body += planCell('naAnse', yr, getAnsePlanManwon(yr), true);
+    if (yr <= currentYear) {
+      const actual = getActualAnseManwon(MY_ACC_IDS, yr);
+      body += actualCell(actual || null);
+    } else {
+      body += planCell('naAnse', yr, getAnsePlanManwon(yr), true);
+    }
   }
   body += '</tr>';
 
@@ -3272,6 +3293,18 @@ function renderPrincipalTable() {
     }
     body += '</tr>';
   }
+
+  // 아내-안세공재원: 현재연도까지 실적(읽기전용), 이후 계획(편집)
+  body += '<tr class="r-anse"><td style="padding-left:14px;color:var(--muted)">아내-안세공재원</td>';
+  for (const yr of years) {
+    if (yr <= currentYear) {
+      const actual = getActualAnseManwon(WIFE_ACC_IDS, yr);
+      body += actualCell(actual || null);
+    } else {
+      body += planCell('wifeAnse', yr, getAnseWifePlanManwon(yr), true);
+    }
+  }
+  body += '</tr>';
 
   // 아내-연금총합
   body += '<tr class="r-sub"><td>아내-연금총합</td>';
