@@ -464,6 +464,13 @@
   }
   .deposit-total-card.is-zero .acc-amount { color: var(--muted); }
   .deposit-total-card.is-negative .acc-amount { color: var(--minus); }
+  .deposit-total-card .acc-anse {
+    font-size: 10px; color: #92400e; font-weight: 500;
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .txn-anse-badge {
+    font-size: 10px; color: #92400e; font-weight: 500; margin-left: 4px;
+  }
 
   .deposit-toolbar {
     display: flex; justify-content: flex-end; align-items: center;
@@ -927,7 +934,7 @@
       </label>
       <label>
         <span>구분</span>
-        <select id="txnType">
+        <select id="txnType" onchange="updateTxnAnseVisibility()">
           <option value="deposit">입금 (+)</option>
           <option value="withdraw">출금 (−)</option>
         </select>
@@ -940,6 +947,13 @@
         <span>금액 (원)</span>
         <input type="text" id="txnAmount" inputmode="numeric" placeholder="예: 1,000,000">
       </label>
+      <label id="txnAnseRow" style="display:none">
+        <span>안세공금액 (원)</span>
+        <input type="text" id="txnAnse" inputmode="numeric" placeholder="0 (없으면 빈칸)">
+      </label>
+      <div id="txnAnseHint" style="display:none;font-size:11px;color:#92400e;padding-left:100px;margin-top:-6px">
+        ※ 세액공제를 받지 않는 금액 (입금액 이하)
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeTxnEditor()">취소</button>
@@ -1099,7 +1113,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.29';
+const APP_VERSION = 'MyPM v1.30';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1273,12 +1287,18 @@ function renderDepositTotals() {
   for (const acc of ACCOUNTS) {
     const total = getAccountNetTotal(acc.id);
     grand += total;
+    const anseTotal = depositData.transactions
+      .filter(t => t.accId === acc.id && Number(t.anse) > 0)
+      .reduce((s, t) => s + Number(t.anse), 0);
     const cls = total === 0 ? 'is-zero' : (total < 0 ? 'is-negative' : '');
     const display = total === 0 ? '-' : total.toLocaleString('ko-KR') + ' 원';
+    const anseHtml = anseTotal > 0
+      ? `<span class="acc-anse">안세공 ${anseTotal.toLocaleString('ko-KR')} 원</span>` : '';
     html += `
       <div class="deposit-total-card ${cls}">
         <span class="acc-name">${acc.name}</span>
         <span class="acc-amount">${display}</span>
+        ${anseHtml}
       </div>`;
   }
   el.innerHTML = html;
@@ -1306,11 +1326,13 @@ function renderDepositList() {
     const amt = Number(t.amount) || 0;
     const amountCls = amt >= 0 ? 'pos' : 'neg';
     const amountStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
+    const anseBadge = (t.anse && Number(t.anse) > 0)
+      ? `<span class="txn-anse-badge">안세공 ${Number(t.anse).toLocaleString('ko-KR')}원</span>` : '';
     return `
       <div class="txn-row">
         <input type="date" class="txn-date" value="${t.date}" data-txnid="${t.id}" onchange="updateTxnDate('${t.id}', this.value)" title="입출금일 수정">
         <span class="txn-acc">${accName}</span>
-        <span class="txn-amount ${amountCls}">${amountStr}</span>
+        <span class="txn-amount ${amountCls}">${amountStr}${anseBadge}</span>
         <span style="display:flex;align-items:center;gap:2px">
           <button class="edit-btn" onclick="openTxnEditor('${t.id}')" title="편집">편집</button>
           <button class="txn-delete" onclick="deleteTxn('${t.id}')" title="삭제">×</button>
@@ -1349,6 +1371,13 @@ function deleteTxn(id) {
 }
 
 // ===== 입출금 추가 서브 모달 =====
+function updateTxnAnseVisibility() {
+  const isDeposit = document.getElementById('txnType').value === 'deposit';
+  document.getElementById('txnAnseRow').style.display  = isDeposit ? '' : 'none';
+  document.getElementById('txnAnseHint').style.display = isDeposit ? '' : 'none';
+  if (!isDeposit) document.getElementById('txnAnse').value = '';
+}
+
 function openTxnEditor(editId) {
   editingTxnId = editId || null;
   const selAcc = document.getElementById('txnAccount');
@@ -1359,19 +1388,22 @@ function openTxnEditor(editId) {
     if (t) {
       selAcc.value = t.accId;
       const amt = Number(t.amount);
-      document.getElementById('txnType').value  = amt < 0 ? 'withdraw' : 'deposit';
-      document.getElementById('txnDate').value  = t.date;
+      document.getElementById('txnType').value   = amt < 0 ? 'withdraw' : 'deposit';
+      document.getElementById('txnDate').value   = t.date;
       document.getElementById('txnAmount').value = Math.abs(amt).toLocaleString('ko-KR');
+      document.getElementById('txnAnse').value   = t.anse ? Number(t.anse).toLocaleString('ko-KR') : '';
     }
     if (titleEl) titleEl.textContent = '입출금 편집';
   } else {
-    document.getElementById('txnType').value = 'deposit';
+    document.getElementById('txnType').value   = 'deposit';
     const now = new Date();
     const pad = x => String(x).padStart(2, '0');
     document.getElementById('txnDate').value   = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
     document.getElementById('txnAmount').value = '';
+    document.getElementById('txnAnse').value   = '';
     if (titleEl) titleEl.textContent = '입출금 추가';
   }
+  updateTxnAnseVisibility();
   document.getElementById('txnEditorModal').classList.add('open');
   setTimeout(() => { selAcc.focus(); }, 30);
 }
@@ -1390,17 +1422,22 @@ function saveTxn() {
   const date = document.getElementById('txnDate').value;
   const rawAmt = String(document.getElementById('txnAmount').value || '').replace(/[^\d]/g, '');
   const amount = Number(rawAmt);
+  const rawAnse = String(document.getElementById('txnAnse').value || '').replace(/[^\d]/g, '');
+  const anse = type === 'deposit' ? (Number(rawAnse) || 0) : 0;
 
   if (!accId || !ACCOUNTS.find(a => a.id === accId)) { alert('계좌를 선택해 주세요.'); return; }
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('유효한 입출금일을 선택해 주세요.'); return; }
   if (!amount || amount <= 0) { alert('금액을 올바르게 입력해 주세요 (0보다 큰 숫자).'); return; }
+  if (anse > amount) { alert('안세공금액은 입금액을 초과할 수 없습니다.'); return; }
 
   const signedAmount = type === 'withdraw' ? -amount : amount;
   if (editingTxnId) {
     const t = depositData.transactions.find(x => x.id === editingTxnId);
-    if (t) { t.accId = accId; t.date = date; t.amount = signedAmount; }
+    if (t) { t.accId = accId; t.date = date; t.amount = signedAmount; t.anse = anse || undefined; }
   } else {
-    depositData.transactions.push({ id: generateTxnId(), accId, date, amount: signedAmount });
+    const entry = { id: generateTxnId(), accId, date, amount: signedAmount };
+    if (anse) entry.anse = anse;
+    depositData.transactions.push(entry);
   }
   saveDeposits();
   closeTxnEditor();
