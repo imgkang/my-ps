@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>한국 주식 가격 정확도 테스트</title>
+<title>133690 가격 조회 테스트</title>
 <style>
   body { font-family: monospace; padding: 20px; background: #f5f5f5; }
   h2 { margin: 0 0 4px; }
@@ -10,223 +10,179 @@
   .result { margin: 6px 0; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
   .ok   { background: #d1fae5; border-left: 4px solid #10b981; }
   .fail { background: #fee2e2; border-left: 4px solid #ef4444; }
-  .wait { background: #fef9c3; border-left: 4px solid #f59e0b; }
+  .warn { background: #fef3c7; border-left: 4px solid #f59e0b; }
+  .wait { background: #f3f4f6; border-left: 4px solid #9ca3af; }
   pre { margin: 4px 0 0; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
   button { padding: 10px 24px; font-size: 14px; cursor: pointer;
            background: #2563eb; color: white; border: none; border-radius: 6px; margin-bottom: 20px; }
-  .section-title { font-weight: bold; margin: 16px 0 4px; color: #374151; }
+  .verdict { margin-top: 14px; padding: 12px 16px; border-radius: 8px;
+             background: #1e40af; color: #fff; font-size: 14px; font-weight: 700; }
 </style>
 </head>
 <body>
-<h2>한국 주식 가격 정확도 테스트</h2>
-<p class="sub">인텍플러스 (064290 / KOSDAQ) — 여러 방식의 가격·등락률 비교</p>
+<h2>133690 가격 조회 테스트</h2>
+<p class="sub">KS·KQ 양쪽 가격·거래량 비교 → 올바른 suffix 결정 검증</p>
 <button onclick="runAll()">▶ 전체 테스트 시작</button>
 <div id="out"></div>
+<div id="verdict"></div>
 
 <script>
-const CODE = '064290';
+const CODE = '133690';
 const out  = document.getElementById('out');
 const enc  = u => encodeURIComponent(u);
 const cp   = u => `https://corsproxy.io/?${enc(u)}`;
 
 function log(id, cls, html) {
   let el = document.getElementById(id);
-  if (!el) {
-    el = document.createElement('div');
-    el.id = id;
-    el.className = 'result wait';
-    out.appendChild(el);
-  }
+  if (!el) { el = document.createElement('div'); el.id = id; el.className = 'result wait'; out.appendChild(el); }
   el.className = 'result ' + cls;
   el.innerHTML = html;
 }
-
 async function timed(fn) {
   const t = Date.now();
-  try   { return { ok: true,  data: await fn(),  ms: Date.now() - t }; }
+  try   { return { ok: true,  data: await fn(), ms: Date.now() - t }; }
   catch (e) { return { ok: false, err: String(e), ms: Date.now() - t }; }
 }
-
-function fmtKRW(v) { return v != null ? `${Number(v).toLocaleString('ko-KR')}원` : '?'; }
-function fmtPct(v) { return v != null ? `${(+v >= 0 ? '+' : '')}${(+v).toFixed(2)}%` : '?'; }
+const fmtKRW = v => v != null ? Number(v).toLocaleString('ko-KR') + '원' : '?';
+const fmtPct = v => v != null ? (v >= 0 ? '+' : '') + (+v).toFixed(2) + '%' : '?';
 
 function show(r, label) {
   if (r.ok) {
     const d = r.data;
-    const priceFmt = d.price != null
-      ? (d.price < 1000 ? `$${(+d.price).toFixed(2)}` : fmtKRW(d.price))
-      : '?';
-    const line = `${priceFmt}  변동: ${fmtPct(d.changePct)}  ⏱${r.ms}ms`;
-    return `✅ ${label}<br><pre>${line}\n${JSON.stringify(d, null, 2).slice(0, 600)}</pre>`;
+    const cls = r.data._warn ? 'warn' : 'ok';
+    const priceLine = d.price != null ? `${fmtKRW(d.price)}  ${fmtPct(d.changePct)}  ⏱${r.ms}ms` : `⏱${r.ms}ms`;
+    return [cls, `✅ ${label}<br><pre>${priceLine}\n${JSON.stringify(d, null, 2).slice(0, 700)}</pre>`];
   }
-  return `❌ ${label}<br><pre>${r.err}  ⏱${r.ms}ms</pre>`;
+  return ['fail', `❌ ${label}<br><pre>${r.err}  ⏱${r.ms}ms</pre>`];
 }
 
-/* ── 테스트 정의 ── */
+/* ── v8 chart 1개 조회 헬퍼 ── */
+async function fetchV8(suffix) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${CODE}${suffix}?range=1d&interval=1d&_=${Date.now()}`;
+  const r = await fetch(cp(url), { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  const meta = j?.chart?.result?.[0]?.meta;
+  if (!meta?.regularMarketPrice) throw new Error('regularMarketPrice 없음');
+  const price  = meta.regularMarketPrice;
+  const prev   = meta.chartPreviousClose || meta.previousClose || price;
+  const change = price - prev;
+  return {
+    price, prev, changePct: prev ? change / prev * 100 : 0,
+    volume: meta.regularMarketVolume ?? 0,
+    symbol: meta.symbol, longName: meta.longName,
+    marketTime: new Date(meta.regularMarketTime * 1000).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+  };
+}
+
 const TESTS = [
 
-  /* 1. 현재 MyPM 방식: v8 chart range=1d interval=1d → meta.regularMarketPrice */
-  { id: 't1', label: '① [현재방식] Yahoo v8 chart range=1d interval=1d → regularMarketPrice (KQ)', fn: async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${CODE}.KQ?range=1d&interval=1d&_=${Date.now()}`;
-    const r = await fetch(cp(url), { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    const meta = j?.chart?.result?.[0]?.meta;
-    if (!meta?.regularMarketPrice) throw new Error('meta.regularMarketPrice 없음: ' + JSON.stringify(meta).slice(0,200));
-    const price  = meta.regularMarketPrice;
-    const prev   = meta.chartPreviousClose || meta.previousClose;
-    const change = price - prev;
-    return { price, prev, changePct: prev ? change / prev * 100 : 0,
-      regularMarketPrice: meta.regularMarketPrice,
-      chartPreviousClose: meta.chartPreviousClose,
-      previousClose: meta.previousClose,
-      regularMarketTime: new Date(meta.regularMarketTime * 1000).toLocaleString('ko-KR', {timeZone:'Asia/Seoul'}) };
+  /* 1. KS suffix 단독 */
+  { id: 't1', label: `① Yahoo v8  ${CODE}.KS (KOSPI)`, fn: async () => {
+    return await fetchV8('.KS');
   }},
 
-  /* 2. v8 chart 마지막 closes 값 사용 */
-  { id: 't2', label: '② Yahoo v8 chart — closes 배열 마지막값 사용 (KQ)', fn: async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${CODE}.KQ?range=5d&interval=1d&_=${Date.now()}`;
-    const r = await fetch(cp(url), { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    const result = j?.chart?.result?.[0];
-    const meta   = result?.meta;
-    const closes = result?.indicators?.quote?.[0]?.close;
-    const timestamps = result?.timestamp;
-    if (!closes || closes.length === 0) throw new Error('closes 없음');
-    // 마지막 유효값
-    let lastClose = null, lastTs = null;
-    for (let i = closes.length - 1; i >= 0; i--) {
-      if (closes[i] != null) { lastClose = closes[i]; lastTs = timestamps?.[i]; break; }
-    }
-    const prevClose = closes.length >= 2 ? closes[closes.length - 2] : meta?.chartPreviousClose;
-    const change = lastClose - prevClose;
-    return { price: lastClose, prev: prevClose, changePct: prevClose ? change / prevClose * 100 : 0,
-      lastTs: lastTs ? new Date((lastTs + 9*3600) * 1000).toLocaleString('ko-KR') : null,
-      regularMarketPrice: meta?.regularMarketPrice, closes_last4: closes.slice(-4) };
+  /* 2. KQ suffix 단독 */
+  { id: 't2', label: `② Yahoo v8  ${CODE}.KQ (KOSDAQ)`, fn: async () => {
+    return await fetchV8('.KQ');
   }},
 
-  /* 3. v8 chart with interval=1m range=1d — 가장 최신 1분봉 */
-  { id: 't3', label: '③ Yahoo v8 chart interval=1m range=1d → 마지막 1분봉 (KQ)', fn: async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${CODE}.KQ?range=1d&interval=1m&_=${Date.now()}`;
-    const r = await fetch(cp(url), { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    const result = j?.chart?.result?.[0];
-    const meta   = result?.meta;
-    const closes = result?.indicators?.quote?.[0]?.close;
-    const timestamps = result?.timestamp;
-    if (!closes || closes.length === 0) throw new Error('closes 없음');
-    let lastClose = null, lastTs = null;
-    for (let i = closes.length - 1; i >= 0; i--) {
-      if (closes[i] != null) { lastClose = closes[i]; lastTs = timestamps?.[i]; break; }
-    }
-    const prev   = meta?.chartPreviousClose || meta?.previousClose;
-    const change = lastClose - prev;
-    return { price: lastClose, prev, changePct: prev ? change / prev * 100 : 0,
-      lastTs: lastTs ? new Date((lastTs + 9*3600) * 1000).toLocaleString('ko-KR') : null,
-      regularMarketPrice: meta?.regularMarketPrice,
-      totalBars: closes.length, lastNonNull: lastClose };
+  /* 3. 현재 MyPM 방식: 병렬 후 거래량 높은 쪽 선택 */
+  { id: 't3', label: '③ [현재 MyPM v1.36 방식] 병렬 KS·KQ → volume 높은 쪽 선택', fn: async () => {
+    const [ks, kq] = await Promise.allSettled([fetchV8('.KS'), fetchV8('.KQ')]);
+    const ksOk = ks.status === 'fulfilled' ? ks.value : null;
+    const kqOk = kq.status === 'fulfilled' ? kq.value : null;
+    let chosen, reason;
+    if (ksOk && kqOk) {
+      if (kqOk.volume >= ksOk.volume) { chosen = { ...kqOk, suffix: '.KQ' }; reason = `KQ 선택 (volume KQ=${kqOk.volume} >= KS=${ksOk.volume})`; }
+      else                            { chosen = { ...ksOk, suffix: '.KS' }; reason = `KS 선택 (volume KS=${ksOk.volume} > KQ=${kqOk.volume})`; }
+    } else if (ksOk) { chosen = { ...ksOk, suffix: '.KS' }; reason = 'KQ 실패 → KS만 응답'; }
+    else if (kqOk)   { chosen = { ...kqOk, suffix: '.KQ' }; reason = 'KS 실패 → KQ만 응답'; }
+    else throw new Error('KS·KQ 모두 실패');
+    const _warn = ksOk && kqOk && ksOk.price !== kqOk.price;
+    return { ...chosen, _warn,
+      KS_price: ksOk?.price, KS_volume: ksOk?.volume, KS_name: ksOk?.longName,
+      KQ_price: kqOk?.price, KQ_volume: kqOk?.volume, KQ_name: kqOk?.longName,
+      결정이유: reason };
   }},
 
-  /* 4. Yahoo v8 — KS suffix (KOSPI 시도, 잘못된 종목코드 리스크 확인용) */
-  { id: 't4', label: '④ Yahoo v8 chart KS suffix (KOSPI — 잘못된 경우 확인)', fn: async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${CODE}.KS?range=1d&interval=1d&_=${Date.now()}`;
-    const r = await fetch(cp(url), { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status + ' — KS 없음 (정상)');
-    const j = await r.json();
-    const meta = j?.chart?.result?.[0]?.meta;
-    if (!meta?.regularMarketPrice) throw new Error('meta 없음 — KS suffix 실패 (정상)');
-    return { price: meta.regularMarketPrice,
-      WARNING: '⚠ KS suffix가 응답함 — 다른 종목일 수 있음!',
-      symbol: meta.symbol, longName: meta.longName };
-  }},
-
-  /* 5. Yahoo v10 quoteSummary — price 모듈 */
-  { id: 't5', label: '⑤ Yahoo v10 quoteSummary/price (KQ)', fn: async () => {
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${CODE}.KQ?modules=price&_=${Date.now()}`;
-    const r = await fetch(cp(url), { cache: 'no-store' });
+  /* 4. 네이버 증권 (직접 — CORS 불가 확인용) */
+  { id: 't4', label: '④ Naver Finance API (직접 — 보통 CORS 차단됨)', fn: async () => {
+    const url = `https://m.stock.naver.com/api/stock/${CODE}/basic`;
+    const r = await fetch(url, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
-    const p = j?.quoteSummary?.result?.[0]?.price;
-    if (!p) throw new Error('price 모듈 없음: ' + JSON.stringify(j).slice(0,200));
+    return { name: j.stockName, price: j.closePrice, changePct: j.fluctuationsRatio };
+  }},
+
+  /* 5. 네이버 증권 via corsproxy */
+  { id: 't5', label: '⑤ Naver Finance API via corsproxy', fn: async () => {
+    const url = `https://m.stock.naver.com/api/stock/${CODE}/basic`;
+    const r = await fetch(cp(url), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = JSON.parse(await r.text());
+    if (!j.closePrice) throw new Error('closePrice 없음: ' + JSON.stringify(j).slice(0,200));
     return {
-      price:      p.regularMarketPrice?.raw,
-      prev:       p.regularMarketPreviousClose?.raw,
-      change:     p.regularMarketChange?.raw,
-      changePct:  p.regularMarketChangePercent?.raw * 100,
-      name:       p.longName || p.shortName,
-      marketState: p.marketState,
-      time:       p.regularMarketTime ? new Date(p.regularMarketTime * 1000).toLocaleString('ko-KR', {timeZone:'Asia/Seoul'}) : null
+      name: j.stockName, price: Number(j.closePrice?.replace(/,/g, '')),
+      changePct: Number(j.fluctuationsRatio),
+      marketType: j.marketType, _raw: j
     };
   }},
 
-  /* 6. Finnhub (참고: 한국 주식 지원 안 됨 확인) */
-  { id: 't6', label: '⑥ Finnhub quote (한국 주식 미지원 확인용)', fn: async () => {
-    const FKEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
-    const url  = `https://finnhub.io/api/v1/quote?symbol=${CODE}.KQ&token=${FKEY}`;
-    const r    = await fetch(url, { cache: 'no-store' });
+  /* 6. Yahoo Finance v7 quote (crumb 불필요 버전) */
+  { id: 't6', label: '⑥ Yahoo v7 /quote (KQ) via corsproxy', fn: async () => {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${CODE}.KQ&_=${Date.now()}`;
+    const r = await fetch(cp(url), { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
-    if (!j.c || j.c === 0) throw new Error('c=0 — 미지원: ' + JSON.stringify(j));
-    return { price: j.c, prev: j.pc, change: j.d, changePct: j.dp };
+    const q = j?.quoteResponse?.result?.[0];
+    if (!q) throw new Error('결과 없음: ' + JSON.stringify(j).slice(0,200));
+    return {
+      price: q.regularMarketPrice, prev: q.regularMarketPreviousClose,
+      changePct: q.regularMarketChangePercent,
+      volume: q.regularMarketVolume, name: q.longName || q.shortName,
+      symbol: q.symbol
+    };
   }},
 
-  /* 7. Yahoo Finance 검색 API — 한국어 종목명 */
-  { id: 't7', label: '⑦ Yahoo Finance /v1/finance/search — 한국어 종목명 (ko-KR)', fn: async () => {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${CODE}&lang=ko-KR&region=KR&newsCount=0&quotesCount=6&enableFuzzyQuery=false`;
-    const r   = await fetch(cp(url), { cache: 'no-store' });
+  /* 7. Yahoo Finance v7 quote KS via corsproxy */
+  { id: 't7', label: '⑦ Yahoo v7 /quote (KS) via corsproxy', fn: async () => {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${CODE}.KS&_=${Date.now()}`;
+    const r = await fetch(cp(url), { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
-    const quotes = j?.finance?.result?.[0]?.quotes || [];
-    const match  = quotes.find(q => (q.symbol || '').startsWith(CODE));
-    if (!match) throw new Error('종목 미발견: ' + JSON.stringify(quotes.map(q=>q.symbol)));
-    const name = match.shortname || match.longname || '';
-    return { name, isKorean: /[가-힣]/.test(name), symbol: match.symbol, shortname: match.shortname, longname: match.longname };
-  }},
-
-  /* 8. Yahoo Finance 검색 API — query2 */
-  { id: 't8', label: '⑧ Yahoo Finance /v1/finance/search — query2 (ko-KR)', fn: async () => {
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${CODE}&lang=ko-KR&region=KR&newsCount=0&quotesCount=6&enableFuzzyQuery=false`;
-    const r   = await fetch(cp(url), { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    const quotes = j?.finance?.result?.[0]?.quotes || [];
-    const match  = quotes.find(q => (q.symbol || '').startsWith(CODE));
-    if (!match) throw new Error('종목 미발견');
-    const name = match.shortname || match.longname || '';
-    return { name, isKorean: /[가-힣]/.test(name), shortname: match.shortname, longname: match.longname };
-  }},
-
-  /* 9. Stooq CSV (064290.kq) via corsproxy */
-  { id: 't9', label: '⑨ Stooq CSV (064290.kq) via corsproxy', fn: async () => {
-    const url = `https://stooq.com/q/l/?s=${CODE}.kq&f=sd2t2ohlcvdp&h&e=csv`;
-    const r   = await fetch(cp(url), { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const csv   = await r.text();
-    const lines = csv.trim().split('\n');
-    if (lines.length < 2) throw new Error('행 부족: ' + csv.slice(0, 120));
-    const header = lines[0].split(',').map(h => h.trim());
-    const vals   = lines[1].split(',').map(v => v.trim());
-    const row    = Object.fromEntries(header.map((h, i) => [h, vals[i]]));
-    const price  = parseFloat(row['Close'] ?? row['close']);
-    if (!price) throw new Error('Close 파싱 실패: ' + lines[1]);
-    const change    = parseFloat(row['Change']  ?? '0');
-    const changePct = parseFloat(row['%Change'] ?? row['%change'] ?? '0');
-    return { price, change, changePct, _row: row };
+    const q = j?.quoteResponse?.result?.[0];
+    if (!q) throw new Error('결과 없음');
+    return {
+      price: q.regularMarketPrice, prev: q.regularMarketPreviousClose,
+      changePct: q.regularMarketChangePercent,
+      volume: q.regularMarketVolume, name: q.longName || q.shortName,
+      symbol: q.symbol
+    };
   }},
 
 ];
 
 async function runAll() {
   out.innerHTML = '';
-  // 각 테스트 준비
+  document.getElementById('verdict').innerHTML = '';
   for (const t of TESTS) log(t.id, 'wait', `⏳ ${t.label}`);
-  // 병렬 실행
-  await Promise.all(TESTS.map(async t => {
+
+  const results = await Promise.all(TESTS.map(async t => {
     const r = await timed(t.fn);
-    log(t.id, r.ok ? 'ok' : 'fail', show(r, t.label));
+    const [cls, html] = show(r, t.label);
+    log(t.id, cls, html);
+    return { id: t.id, r };
   }));
+
+  // 최종 verdict
+  const t3 = results.find(x => x.id === 't3');
+  if (t3?.r?.ok) {
+    const d = t3.r.data;
+    const warn = d._warn ? `⚠ KS(${d.KS_price?.toLocaleString()}원)와 KQ(${d.KQ_price?.toLocaleString()}원) 가격이 다름! 거래량 기준으로 ${d.suffix} 선택됨.` : `KS·KQ 가격 일치 또는 한쪽만 응답.`;
+    document.getElementById('verdict').innerHTML =
+      `<div class="verdict">📊 현재 MyPM 선택: <b>${d.suffix}</b> → ${d.price?.toLocaleString()}원 (${fmtPct(d.changePct)})<br>${warn}<br>결정이유: ${d.결정이유}</div>`;
+  }
 }
 </script>
 </body>
