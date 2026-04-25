@@ -1141,7 +1141,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.39';
+const APP_VERSION = 'MyPM v1.40';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2368,17 +2368,12 @@ async function refreshAll() {
   // 개별 시도 (한 종목 실패해도 나머지 진행)
   await Promise.all(holdings.map(async h => {
     try {
-      const [info, krName] = await Promise.all([
-        fetchStockInfo(h.code, h.suffix || null),
-        // 영문명이거나 조회 실패 이름인 경우 한국어로 갱신 시도
-        (!h.name || !/[가-힣]/.test(h.name)) ? fetchKoreanName(h.code) : Promise.resolve(null),
-      ]);
+      const info = await fetchStockInfo(h.code, h.suffix || null);
       h.price = info.price;
       h.change = info.change;
       h.changeRate = info.changeRate;
-      if (info.suffix) h.suffix = info.suffix; // suffix 확정/갱신
-      if (krName) h.name = krName;
-      else if (info.name && (!h.name || h.name === '(이름 불러오기 실패)')) h.name = info.name;
+      if (info.suffix) h.suffix = info.suffix;
+      if (info.name && (!h.name || h.name === '(이름 불러오기 실패)')) h.name = info.name;
       h.updatedAt = Date.now();
     } catch (e) {
       console.warn(`${h.code} 조회 실패:`, e);
