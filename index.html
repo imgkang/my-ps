@@ -1114,7 +1114,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.33';
+const APP_VERSION = 'MyPM v1.34';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1219,7 +1219,8 @@ function loadDeposits() {
           id: t.id || generateTxnId(),
           accId: String(t.accId || ''),
           date: String(t.date || ''),
-          amount: Number(t.amount) || 0
+          amount: Number(t.amount) || 0,
+          ...(Number(t.anse) > 0 ? { anse: Number(t.anse) } : {})
         }))
         .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
       return { transactions: txns };
@@ -1910,7 +1911,8 @@ function importFromFile(event) {
               id: t.id || generateTxnId(),
               accId: String(t.accId || ''),
               date: String(t.date || ''),
-              amount: Number(t.amount) || 0
+              amount: Number(t.amount) || 0,
+              ...(Number(t.anse) > 0 ? { anse: Number(t.anse) } : {})
             }))
             .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
         } else if (Array.isArray(src.deposits.years) && src.deposits.entries) {
