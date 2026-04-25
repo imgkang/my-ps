@@ -952,7 +952,7 @@
         <input type="text" id="txnAnse" inputmode="numeric" placeholder="0 (없으면 빈칸)">
       </label>
       <div id="txnAnseHint" style="display:none;font-size:11px;color:#92400e;padding-left:100px;margin-top:-6px">
-        ※ 세액공제를 받지 않는 금액 (입금액 이하)
+        ※ 세액공제를 받지 않는 금액
       </div>
     </div>
     <div class="modal-actions">
@@ -1113,7 +1113,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.30';
+const APP_VERSION = 'MyPM v1.31';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1428,7 +1428,6 @@ function saveTxn() {
   if (!accId || !ACCOUNTS.find(a => a.id === accId)) { alert('계좌를 선택해 주세요.'); return; }
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('유효한 입출금일을 선택해 주세요.'); return; }
   if (!amount || amount <= 0) { alert('금액을 올바르게 입력해 주세요 (0보다 큰 숫자).'); return; }
-  if (anse > amount) { alert('안세공금액은 입금액을 초과할 수 없습니다.'); return; }
 
   const signedAmount = type === 'withdraw' ? -amount : amount;
   if (editingTxnId) {
