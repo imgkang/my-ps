@@ -280,6 +280,32 @@
   }
   .btn-account-view:hover .acc-value { color: rgba(255,255,255,0.85); }
 
+  /* 계좌 요약 테이블 */
+  .acc-summary-wrap { margin-top: 14px; overflow-x: auto; }
+  .acc-summary-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px; font-variant-numeric: tabular-nums;
+  }
+  .acc-summary-table th {
+    background: #f1f5f9; color: var(--muted);
+    font-weight: 600; font-size: 11px;
+    padding: 5px 8px; text-align: right; white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .acc-summary-table th:first-child { text-align: left; }
+  .acc-summary-table td {
+    padding: 5px 8px; text-align: right;
+    border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+  }
+  .acc-summary-table td:first-child { text-align: left; font-weight: 500; }
+  .acc-summary-table tr.total-row td {
+    font-weight: 700; background: #f8fafc;
+    border-top: 1px solid var(--border);
+  }
+  .acc-summary-table .plus  { color: var(--plus); }
+  .acc-summary-table .minus { color: var(--minus); }
+  .acc-summary-table .goal  { color: #7c3aed; font-weight: 600; }
+
   /* 계좌 상세 모달 */
   .modal-wide { max-width: 1200px; }
 
@@ -774,6 +800,7 @@
   <div class="card">
     <h2>계좌별 상태 보기</h2>
     <div class="account-buttons-grid" id="accountButtonsGrid"></div>
+    <div id="accSummaryWrap"></div>
   </div>
 
   <div class="card">
@@ -1035,7 +1062,7 @@
         <span style="font-size:12px;font-weight:400;color:var(--muted)">예상수익률</span>
         <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
                style="width:56px;padding:2px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;text-align:right"
-               oninput="renderEvalTable()">
+               oninput="renderEvalTable(); renderAccSummary()">
         <span style="font-size:12px;font-weight:400;color:var(--muted)">%/년 · 실적 이후 복리 적용</span>
       </div>
       <div class="annual-plan-wrap" id="evalTableWrap"></div>
@@ -1114,7 +1141,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.38';
+const APP_VERSION = 'MyPM v1.39';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1595,6 +1622,119 @@ function renderAccountButtons() {
     const valueText = val > 0 ? formatKRW(val) : '보유 없음';
     return `<button class="btn-account-view" onclick="openAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${valueText}</span></button>`;
   }).join('');
+  renderAccSummary();
+}
+
+function renderAccSummary() {
+  const wrap = document.getElementById('accSummaryWrap');
+  if (!wrap) return;
+
+  const currentYear = new Date().getFullYear();
+  const projRateEl = document.getElementById('projRate');
+  const projRate = ((projRateEl ? Number(projRateEl.value) : 0) || annualPlan.projRate || 7) / 100;
+
+  // 포맷 헬퍼: 백만원 소수 1자리
+  const m1 = v => v == null ? '-' : (Math.round(v / 100000) / 10).toFixed(1);
+  // 부호포함 백만원
+  const m1s = v => {
+    if (v == null) return '-';
+    const mv = Math.round(v / 100000) / 10;
+    const cls = mv >= 0 ? 'plus' : 'minus';
+    const s = (mv >= 0 ? '+' : '') + mv.toFixed(1);
+    return `<span class="${cls}">${s}</span>`;
+  };
+
+  // 납입원금 (원): 입금 거래합계 (출금 제외)
+  const getPrincipal = (accId) =>
+    depositData.transactions
+      .filter(t => t.accId === accId && Number(t.amount) > 0)
+      .reduce((s, t) => s + Number(t.amount), 0);
+
+  // 안세공 (원): 해당 계좌 전체 anse 합
+  const getAnse = (accId) =>
+    depositData.transactions
+      .filter(t => t.accId === accId && Number(t.anse) > 0)
+      .reduce((s, t) => s + Number(t.anse), 0);
+
+  // 올해 목표: (전년도 평가액 + 올해 계획 입금 증분) × (1 + projRate)
+  const getGoal = (accId) => {
+    // 전년도 평가액 (monthlyRecords 기준)
+    const prevRecs = monthlyRecords.filter(r => r.year === currentYear - 1);
+    let prevEval = 0;
+    if (prevRecs.length) {
+      const last = prevRecs.sort((a, b) => b.month - a.month)[0];
+      prevEval = Number(last.accounts[accId]) || 0;
+    }
+    // 올해 계획 입금 증분 (annualPlan, 백만원 → 원)
+    const currMil = getCellManwon(accId, currentYear);
+    const prevMil = getCellManwon(accId, currentYear - 1);
+    const newDeposit = Math.max(0, currMil - prevMil) * 1_000_000;
+    return (prevEval + newDeposit) * (1 + projRate);
+  };
+
+  // 현재가치 (원)
+  const getVal = (accId) => computeAccountValue(accId);
+
+  // 행 데이터 계산
+  const rows = ACCOUNTS.map(a => {
+    const principal = getPrincipal(a.id);
+    const anse      = getAnse(a.id);
+    const val       = getVal(a.id);
+    const goal      = getGoal(a.id);
+    const profit    = val - principal;
+    const profitRate = principal > 0 ? profit / principal * 100 : null;
+    return { name: a.id === 'cash' ? '현금' : a.name, principal, anse, val, goal, profit, profitRate };
+  });
+
+  const totalVal       = rows.reduce((s, r) => s + r.val, 0);
+  const totalPrincipal = rows.reduce((s, r) => s + r.principal, 0);
+  const totalAnse      = rows.reduce((s, r) => s + r.anse, 0);
+  const totalGoal      = rows.reduce((s, r) => s + r.goal, 0);
+  const totalProfit    = totalVal - totalPrincipal;
+  const totalProfitRate = totalPrincipal > 0 ? totalProfit / totalPrincipal * 100 : null;
+
+  const pct1 = v => v == null ? '-' : v.toFixed(1) + '%';
+  const share = v => totalVal > 0 ? Math.round(v / totalVal * 100) + '%' : '-';
+
+  let trs = rows.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td>${m1(r.principal)}</td>
+      <td>${m1(r.anse) === '0.0' ? '-' : m1(r.anse)}</td>
+      <td>${m1(r.val)}</td>
+      <td class="goal">${m1(r.goal)}</td>
+      <td>${m1s(r.profit)}</td>
+      <td>${r.profitRate != null ? `<span class="${r.profitRate >= 0 ? 'plus' : 'minus'}">${r.profitRate.toFixed(1)}%</span>` : '-'}</td>
+      <td>${share(r.val)}</td>
+    </tr>`).join('');
+
+  trs += `
+    <tr class="total-row">
+      <td>총액</td>
+      <td>${m1(totalPrincipal)}</td>
+      <td>${m1(totalAnse) === '0.0' ? '-' : m1(totalAnse)}</td>
+      <td>${m1(totalVal)}</td>
+      <td class="goal">${m1(totalGoal)}</td>
+      <td>${m1s(totalProfit)}</td>
+      <td>${totalProfitRate != null ? `<span class="${totalProfitRate >= 0 ? 'plus' : 'minus'}">${totalProfitRate.toFixed(1)}%</span>` : '-'}</td>
+      <td>100%</td>
+    </tr>`;
+
+  wrap.innerHTML = `
+    <table class="acc-summary-table">
+      <thead><tr>
+        <th>계좌</th>
+        <th>납입원금</th>
+        <th>안세공</th>
+        <th>현재가치</th>
+        <th>${currentYear} 목표</th>
+        <th>누적손익</th>
+        <th>누적수익률</th>
+        <th>비중</th>
+      </tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:right">단위: 백만원 · 수익률 기준: ${(projRate*100).toFixed(1)}%/년</div>`;
 }
 
 function computeAccountValue(accId) {
@@ -3168,6 +3308,7 @@ function saveAnnualPlan() {
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderPrincipalTable();
   renderEvalTable();
+  renderAccSummary();
   alert('저장되었습니다.');
 }
 
