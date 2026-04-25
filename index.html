@@ -757,23 +757,23 @@
   .plan-unit-note { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
   /* 인출 계획 테이블 */
   .wd-table {
-    border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums;
+    border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums;
     min-width: 100%; table-layout: fixed;
   }
   .wd-table th, .wd-table td {
-    padding: 3px 5px; border: 1px solid #e2e8f0;
+    padding: 2px 4px; border: 1px solid #e2e8f0;
     text-align: right; white-space: nowrap; overflow: hidden;
   }
-  .wd-table th { background: #f1f5f9; font-size: 11px; font-weight: 600; color: #475569; text-align: center; }
-  .wd-table th:first-child, .wd-table td:first-child { text-align: left; position: sticky; left: 0; background: #f8fafc; z-index: 1; }
-  .wd-table .wd-sub  { background: #fafafa; color: #64748b; font-size: 10.5px; text-align: center; }
+  .wd-table th { background: #f1f5f9; font-size: 9.5px; font-weight: 600; color: #475569; text-align: center; }
+  .wd-table th:first-child, .wd-table td:first-child { text-align: left; }
+  .wd-table .wd-sub  { background: #fafafa; color: #64748b; font-size: 9.5px; text-align: center; }
   .wd-table .wd-init { background: #fffbeb; font-weight: 600; color: #92400e; }
   .wd-table .wd-np-row td  { background: #f0fdf4; color: #166534; font-weight: 500; }
   .wd-table .wd-dc td      { background: #fef3c7; }
   .wd-table .wd-total-row td { background: #f1f5f9; font-weight: 700; border-top: 2px solid #94a3b8; }
-  .wd-table .wd-sum-row td   { background: #eff6ff; font-size: 11px; }
+  .wd-table .wd-sum-row td   { background: #eff6ff; font-size: 9.5px; }
   .wd-table .wd-target-row td { font-weight: 600; }
-  .wd-table .wd-tax-row td   { background: #fef2f2; font-size: 10.5px; color: #7f1d1d; }
+  .wd-table .wd-tax-row td   { background: #fef2f2; font-size: 9.5px; color: #7f1d1d; }
   .wd-table .wd-net-row td   { background: #f0fdf4; font-weight: 700; color: #14532d; }
   .wd-settings-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 8px 14px;
@@ -1112,7 +1112,7 @@
 
 <!-- 인출 계획 모달 -->
 <div class="modal-backdrop" id="withdrawalModal" onclick="handleWdBackdropClick(event)">
-  <div class="modal modal-wide" style="max-width:1500px;max-height:95vh;overflow-y:auto;display:flex;flex-direction:column">
+  <div class="modal modal-wide" style="max-width:1500px;display:flex;flex-direction:column">
     <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:10;flex-shrink:0">
       <div>
         <h2>💸 인출 계획</h2>
@@ -1142,11 +1142,13 @@
 
         <div class="wd-section">👨 나 국민연금</div>
         <label><span>시작 연도</span><input id="wd_myNPStartYear" type="number" min="2020" max="2080" step="1"></label>
+        <label><span>시작 월</span><input id="wd_myNPStartMonth" type="number" min="1" max="12" step="1"></label>
         <label><span>월 수령액 (만원, 현재가치)</span><input id="wd_myNPMonthly" type="number" min="0" step="1"></label>
         <label><span>연기연금 연수</span><input id="wd_myNPDelay" type="number" min="0" max="5" step="1"></label>
 
         <div class="wd-section">👩 아내 국민연금</div>
         <label><span>시작 연도</span><input id="wd_wifeNPStartYear" type="number" min="2020" max="2080" step="1"></label>
+        <label><span>시작 월</span><input id="wd_wifeNPStartMonth" type="number" min="1" max="12" step="1"></label>
         <label><span>월 수령액 (만원, 현재가치)</span><input id="wd_wifeNPMonthly" type="number" min="0" step="1"></label>
         <label><span>연기연금 연수</span><input id="wd_wifeNPDelay" type="number" min="0" max="5" step="1"></label>
       </div>
@@ -1236,7 +1238,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.42';
+const APP_VERSION = 'MyPM v1.43';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4187,8 +4189,8 @@ function getWdDefaults() {
     startYear: cy + 2, duration: 25, annualTarget: 120,
     inflation: 2.2, returnRate: 4.0,
     retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4,
-    myNPStartYear: cy + 7,  myNPMonthly: 100, myNPDelay: 0,
-    wifeNPStartYear: cy + 9, wifeNPMonthly: 50, wifeNPDelay: 0,
+    myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
+    wifeNPStartYear: cy + 9, wifeNPStartMonth: 1, wifeNPMonthly: 50, wifeNPDelay: 0,
     basicWithdraw: 15,
   };
 }
@@ -4219,8 +4221,10 @@ function loadWdFormValues() {
   s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
   s('wd_retireTaxRate', wp.retireTaxRate); s('wd_pensionTaxRate', wp.pensionTaxRate);
   s('wd_npTaxRate', wp.npTaxRate);
-  s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPMonthly', wp.myNPMonthly); s('wd_myNPDelay', wp.myNPDelay||0);
-  s('wd_wifeNPStartYear', wp.wifeNPStartYear); s('wd_wifeNPMonthly', wp.wifeNPMonthly); s('wd_wifeNPDelay', wp.wifeNPDelay||0);
+  s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPStartMonth', wp.myNPStartMonth||1);
+  s('wd_myNPMonthly', wp.myNPMonthly); s('wd_myNPDelay', wp.myNPDelay||0);
+  s('wd_wifeNPStartYear', wp.wifeNPStartYear); s('wd_wifeNPStartMonth', wp.wifeNPStartMonth||1);
+  s('wd_wifeNPMonthly', wp.wifeNPMonthly); s('wd_wifeNPDelay', wp.wifeNPDelay||0);
 }
 function applyWdSettings() {
   const n = id => Number(document.getElementById(id)?.value) || 0;
@@ -4230,8 +4234,10 @@ function applyWdSettings() {
     annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
     retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'), npTaxRate: n('wd_npTaxRate'),
     basicWithdraw: n('wd_basicWithdraw'),
-    myNPStartYear: n('wd_myNPStartYear'), myNPMonthly: n('wd_myNPMonthly'), myNPDelay: n('wd_myNPDelay'),
-    wifeNPStartYear: n('wd_wifeNPStartYear'), wifeNPMonthly: n('wd_wifeNPMonthly'), wifeNPDelay: n('wd_wifeNPDelay'),
+    myNPStartYear: n('wd_myNPStartYear'), myNPStartMonth: n('wd_myNPStartMonth')||1,
+    myNPMonthly: n('wd_myNPMonthly'), myNPDelay: n('wd_myNPDelay'),
+    wifeNPStartYear: n('wd_wifeNPStartYear'), wifeNPStartMonth: n('wd_wifeNPStartMonth')||1,
+    wifeNPMonthly: n('wd_wifeNPMonthly'), wifeNPDelay: n('wd_wifeNPDelay'),
   };
   saveWdPlan();
   document.getElementById('wdSettingsPanel').style.display = 'none';
@@ -4311,12 +4317,15 @@ function computeWithdrawalSim() {
       s.regular += gain; s.total += gain;
     }
 
-    // 2. 국민연금 (물가연동)
-    const myNP = yr >= wp.myNPStartYear
-      ? wp.myNPMonthly * 10000 * 12 * Math.pow(1+inf, yr - wp.myNPStartYear) * (1 + 0.07*(wp.myNPDelay||0))
+    // 2. 국민연금 (현재시점 기준 물가연동, 시작월 반영)
+    const npCurrentYear = new Date().getFullYear();
+    const myNPMonths = yr > wp.myNPStartYear ? 12 : yr === wp.myNPStartYear ? 13 - (wp.myNPStartMonth||1) : 0;
+    const myNP = myNPMonths > 0
+      ? wp.myNPMonthly * 10000 * myNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.07*(wp.myNPDelay||0))
       : 0;
-    const wifeNP = yr >= wp.wifeNPStartYear
-      ? wp.wifeNPMonthly * 10000 * 12 * Math.pow(1+inf, yr - wp.wifeNPStartYear) * (1 + 0.07*(wp.wifeNPDelay||0))
+    const wifeNPMonths = yr > wp.wifeNPStartYear ? 12 : yr === wp.wifeNPStartYear ? 13 - (wp.wifeNPStartMonth||1) : 0;
+    const wifeNP = wifeNPMonths > 0
+      ? wp.wifeNPMonthly * 10000 * wifeNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.07*(wp.wifeNPDelay||0))
       : 0;
 
     // 3. 인출 목표
@@ -4386,8 +4395,8 @@ function renderWithdrawalPlan() {
     `<span>퇴직세: <b>${wp.retireTaxRate}%</b></span>` +
     `<span>연금세: <b>${wp.pensionTaxRate}%</b></span>` +
     `<span>국민연금세: <b>${wp.npTaxRate}%</b></span>` +
-    `<span>나 국민연금: <b>${wp.myNPStartYear}년 ${wp.myNPMonthly}만원/월</b></span>` +
-    `<span>아내 국민연금: <b>${wp.wifeNPStartYear}년 ${wp.wifeNPMonthly}만원/월</b></span>` +
+    `<span>나 국민연금: <b>${wp.myNPStartYear}년 ${wp.myNPStartMonth||1}월 ${wp.myNPMonthly}만원/월</b></span>` +
+    `<span>아내 국민연금: <b>${wp.wifeNPStartYear}년 ${wp.wifeNPStartMonth||1}월 ${wp.wifeNPMonthly}만원/월</b></span>` +
     `<span>기본인출액: <b>${wp.basicWithdraw}백만원/계좌</b></span>`;
 
   renderWdWithdrawTable(sim);
@@ -4408,8 +4417,8 @@ function renderWdWithdrawTable(sim) {
   const wp = wdPlan;
   const DC_ID = 'dc';
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
-  const m = (won) => won > 100 ? (Math.round(won / 100000) / 10).toFixed(1) : '';
-  const mv = (won) => (Math.round(won / 100000) / 10).toFixed(1);
+  const mv = (won) => Math.round(won / 1_000_000).toString();
+  const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
 
   let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💸 연도별 인출 금액 (백만원)</h3>
   <table class="wd-table"><colgroup>
@@ -4477,11 +4486,10 @@ function renderWdBalanceTable(sim) {
   const { years, balances, initState, allAccIds, startYear } = sim;
   const DC_ID = 'dc';
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
-  const mv = (won) => (Math.round(won / 100000) / 10).toFixed(1);
+  const mv = (won) => Math.round(won / 1_000_000).toString();
   const mc = (won) => {
-    const v = Math.round(won / 100000) / 10;
-    const s = v.toFixed(1);
-    return v <= 0 ? `<span style="color:#9ca3af">${s}</span>` : s;
+    const v = Math.round(won / 1_000_000);
+    return v <= 0 ? `<span style="color:#9ca3af">0</span>` : v.toString();
   };
 
   let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💰 연도별 잔액 (백만원)</h3>
