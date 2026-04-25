@@ -968,7 +968,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.16';
+const APP_VERSION = 'NonK v1.17';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -977,12 +977,12 @@ document.addEventListener('DOMContentLoaded', () => {
 const PROXIES = [
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
   url => `https://thingproxy.freeboard.io/fetch/${url}`,
 ];
-const YAHOO_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+// query2가 더 빠름(테스트 기준 ~370ms), query1은 백업
+const YAHOO_HOSTS = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com'];
 
-async function fetchWithTimeout(url, ms = 8000) {
+async function fetchWithTimeout(url, ms = 9000) {
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), ms);
   try {
@@ -1006,37 +1006,37 @@ async function fetchViaProxy(targetUrl) {
   throw lastErr || new Error('모든 프록시 실패');
 }
 
-// 여러 티커를 한 번에 조회 (배치 요청)
-async function fetchNkQuoteBatch(tickers) {
-  const syms = encodeURIComponent(tickers.join(','));
-  const ts   = Date.now();
-  for (const host of YAHOO_HOSTS) {
-    const url = `https://${host}/v7/finance/quote?symbols=${syms}&_=${ts}`;
-    try {
-      const data = JSON.parse(await fetchViaProxy(url));
-      const results = data?.quoteResponse?.result;
-      if (results && results.length) return results;
-    } catch(e) {}
-  }
-  return null;
-}
-
+// Yahoo Finance v8 chart API (range=1d → chartPreviousClose = 전일종가, 정확)
 async function fetchNkPrice(ticker) {
   const ts = Date.now();
   for (const host of YAHOO_HOSTS) {
-    const url = `https://${host}/v7/finance/quote?symbols=${encodeURIComponent(ticker)}&_=${ts}`;
+    const url = `https://${host}/v8/finance/chart/${encodeURIComponent(ticker)}?range=1d&interval=1d&_=${ts}`;
     try {
       const data = JSON.parse(await fetchViaProxy(url));
-      const q = data?.quoteResponse?.result?.[0];
-      if (!q) continue;
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) continue;
+      const price  = meta.regularMarketPrice;
+      const prev   = meta.chartPreviousClose || meta.previousClose || price;
+      const change = price - prev;
       return {
-        price:      q.regularMarketPrice       || 0,
-        change:     q.regularMarketChange      || 0,
-        changeRate: q.regularMarketChangePercent || 0,
-        name:       q.shortName || q.longName  || ticker,
+        price,
+        change,
+        changeRate: prev > 0 ? change / prev * 100 : 0,
+        name: meta.longName || meta.shortName || ticker,
       };
     } catch(e) {}
   }
+  // 폴백: Stooq 현재가 (변동은 0)
+  try {
+    const url  = `https://stooq.com/q/l/?s=${encodeURIComponent(ticker.toLowerCase())}.us&f=sd2t2ohlcv&h&e=csv&_=${ts}`;
+    const text = await fetchViaProxy(url);
+    const lines = text.trim().split('\n');
+    if (lines.length >= 2) {
+      const cols  = lines[1].split(',');
+      const price = parseFloat(cols[6]); // Close (sd2t2ohlcv 기준 index 6)
+      if (price > 0) return { price, change: 0, changeRate: 0, name: ticker };
+    }
+  } catch(e2) {}
   throw new Error('가격 조회 실패: ' + ticker);
 }
 
@@ -1105,30 +1105,14 @@ async function nkRefreshAll() {
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
 
-  // 1차: 배치 요청 (모든 티커를 한 번에)
-  const tickers = nkHoldings.map(h => h.ticker);
-  const batchResults = await fetchNkQuoteBatch(tickers);
-  if (batchResults) {
-    for (const h of nkHoldings) {
-      const q = batchResults.find(r => r.symbol === h.ticker);
-      if (q) {
-        h.price      = q.regularMarketPrice        || 0;
-        h.change     = q.regularMarketChange       || 0;
-        h.changeRate = q.regularMarketChangePercent || 0;
-        h.updatedAt  = new Date().toISOString();
-      } else { failCount++; }
-    }
-  } else {
-    // 2차 폴백: 개별 요청
-    await Promise.all(nkHoldings.map(async h => {
-      try {
-        const info = await fetchNkPrice(h.ticker);
-        h.price = info.price; h.change = info.change;
-        h.changeRate = info.changeRate;
-        h.updatedAt  = new Date().toISOString();
-      } catch(e) { failCount++; }
-    }));
-  }
+  await Promise.all(nkHoldings.map(async h => {
+    try {
+      const info = await fetchNkPrice(h.ticker);
+      h.price = info.price; h.change = info.change;
+      h.changeRate = info.changeRate;
+      h.updatedAt  = new Date().toISOString();
+    } catch(e) { failCount++; }
+  }));
   nkLastRefreshTime = new Date();
   nkSaveHoldings();
   nkRender();
