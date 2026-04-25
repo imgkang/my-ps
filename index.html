@@ -1114,7 +1114,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.35';
+const APP_VERSION = 'MyPM v1.36';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2071,10 +2071,11 @@ async function fetchViaProxy(targetUrl) {
 }
 
 // Yahoo Finance v8 chart API — 한국 주식: {code}.KS(KOSPI) / {code}.KQ(KOSDAQ)
-async function fetchStockInfo(code) {
+// suffix를 알고 있으면 직접 사용; 모르면 양쪽 병렬 조회 후 거래량 높은 쪽 선택
+async function fetchStockInfo(code, knownSuffix = null) {
   const ts = Date.now();
-  const suffixes = ['.KS', '.KQ'];
-  for (const suffix of suffixes) {
+
+  async function tryOneSuffix(suffix) {
     for (const host of YAHOO_HOSTS) {
       const url = `https://${host}/v8/finance/chart/${code}${suffix}?range=1d&interval=1d&_=${ts}`;
       try {
@@ -2085,15 +2086,33 @@ async function fetchStockInfo(code) {
         const prev   = meta.chartPreviousClose || meta.previousClose || price;
         const change = price - prev;
         return {
-          code,
+          code, suffix,
           name:       meta.longName || meta.shortName || code,
-          price,
-          change,
+          price, change,
           changeRate: prev > 0 ? change / prev * 100 : 0,
+          volume:     meta.regularMarketVolume || 0,
         };
       } catch(e) {}
     }
+    return null;
   }
+
+  // 저장된 suffix가 있으면 바로 사용 (fallback으로 반대도 시도)
+  if (knownSuffix) {
+    const r = await tryOneSuffix(knownSuffix);
+    if (r) return r;
+    // 저장된 suffix 실패 시 반대 suffix로 재시도
+    const other = knownSuffix === '.KS' ? '.KQ' : '.KS';
+    const r2 = await tryOneSuffix(other);
+    if (r2) return r2;
+    throw new Error('가격 조회 실패: ' + code);
+  }
+
+  // suffix 미정: 양쪽 병렬 조회 후 거래량 높은 쪽 선택 (동률 시 .KQ 우선)
+  const [ks, kq] = await Promise.all([tryOneSuffix('.KS'), tryOneSuffix('.KQ')]);
+  if (ks && kq) return kq.volume >= ks.volume ? kq : ks;
+  if (ks) return ks;
+  if (kq) return kq;
   throw new Error('가격 조회 실패: ' + code);
 }
 
@@ -2125,13 +2144,14 @@ async function addStock() {
 
   // 이름이 비어있으면 조회로 자동 입력
   let stockName = name;
-  let price = 0, change = 0, changeRate = 0;
+  let price = 0, change = 0, changeRate = 0, suffix = null;
   try {
     const info = await fetchStockInfo(code);
     if (!stockName) stockName = info.name;
     price = info.price;
     change = info.change;
     changeRate = info.changeRate;
+    suffix = info.suffix || null;
   } catch (e) {
     if (!stockName) {
       if (!confirm(`종목정보 조회 실패: ${e.message}\n종목명 없이 추가할까요?`)) return;
@@ -2139,7 +2159,7 @@ async function addStock() {
     }
   }
 
-  holdings.push({ code, name: stockName, quantity: qty, accounts: {}, price, change, changeRate, updatedAt: Date.now() });
+  holdings.push({ code, name: stockName, quantity: qty, accounts: {}, price, change, changeRate, suffix, updatedAt: Date.now() });
   saveHoldings();
   render();
 
@@ -2191,10 +2211,11 @@ async function refreshAll() {
   // 개별 시도 (한 종목 실패해도 나머지 진행)
   await Promise.all(holdings.map(async h => {
     try {
-      const info = await fetchStockInfo(h.code);
+      const info = await fetchStockInfo(h.code, h.suffix || null);
       h.price = info.price;
       h.change = info.change;
       h.changeRate = info.changeRate;
+      if (info.suffix) h.suffix = info.suffix; // suffix 확정/갱신
       if (info.name && h.name === '(이름 불러오기 실패)') h.name = info.name;
       h.updatedAt = Date.now();
     } catch (e) {
