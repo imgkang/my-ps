@@ -1114,7 +1114,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.37';
+const APP_VERSION = 'MyPM v1.38';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3227,14 +3227,14 @@ function getAnseWifePlanManwon(year) {
   return (y && y['wifeAnse'] != null) ? Number(y['wifeAnse']) : null;
 }
 
-// Actual anse deposits for accId list in a given year, in 백만원
+// Cumulative anse deposits for accId list up to end of year, in 백만원 (integer)
 function getActualAnseManwon(accIds, year) {
-  const start = `${year}-01-01`, end = `${year}-12-31`;
+  const end = `${year}-12-31`;
   const won = depositData.transactions
     .filter(t => accIds.includes(t.accId) && typeof t.date === 'string'
-              && t.date >= start && t.date <= end && Number(t.anse) > 0)
+              && t.date <= end && Number(t.anse) > 0)
     .reduce((s, t) => s + Number(t.anse), 0);
-  return Math.round(won / 1000000 * 10) / 10; // 원 → 백만원 (소수점 1자리)
+  return Math.round(won / 1000000); // 원 → 백만원 (정수)
 }
 
 // Get the display value (만원) for an account cell (actual or plan)
@@ -3281,12 +3281,10 @@ function renderPrincipalTable() {
   h += '</tr></thead>';
 
   // cell builder
-  const fmtAnse = (v) => v == null ? '-' : (+v % 1 === 0 ? String(+v) : (+v).toFixed(1));
-  const actualCell = (v, isAnse) => `<td>${isAnse ? fmtAnse(v) : fmt(v)}</td>`;
+  const actualCell = (v, isAnse) => `<td>${isAnse ? (v == null ? '-' : Math.round(+v)) : fmt(v)}</td>`;
   const planCell = (accId, year, v, isAnse) => {
     const cls = isAnse ? 'anse-inp' : 'plan-inp';
-    const step = isAnse ? '0.1' : '1';
-    return `<td><input class="${cls}" type="number" min="0" step="${step}" data-py="${year}" data-pk="${accId}" value="${v != null ? v : ''}" placeholder="0"></td>`;
+    return `<td><input class="${cls}" type="number" min="0" step="1" data-py="${year}" data-pk="${accId}" value="${v != null ? Math.round(+v) : ''}" placeholder="0"></td>`;
   };
 
   let body = '<tbody>';
