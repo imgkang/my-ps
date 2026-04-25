@@ -17,13 +17,15 @@
 </style>
 </head>
 <body>
-<h2>SPY 주가 조회 방법 테스트 v2</h2>
-<p class="sub">1차 테스트 결과 반영 — corsproxy.io는 정상, Stooq+proxy / 새 API 위주 테스트</p>
+<h2>주가 조회 방법 테스트 v3</h2>
+<p class="sub">한국 주식(삼성전자 005930) Finnhub 지원 여부 + 기존 SPY 테스트</p>
 <button onclick="runAll()">▶ 테스트 시작</button>
 <div id="out"></div>
 
 <script>
 const T = 'SPY';
+const FKEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
+const KR   = '005930';  // 삼성전자
 const out = document.getElementById('out');
 const enc = u => encodeURIComponent(u);
 const cp  = u => `https://corsproxy.io/?${enc(u)}`;
@@ -232,6 +234,60 @@ const TESTS = [
       const r = await fetch(proxyUrl, {cache:'no-store'});
       if (!r.ok) throw new Error('HTTP '+r.status);
       return parseStooqCsv(await r.text());
+    }
+  },
+
+  /* ════ 한국 주식 (삼성전자 005930) 테스트 ════ */
+
+  /* Finnhub — .KS (KOSPI) */
+  { id:'kr1', label:'㉠ 삼성전자 Finnhub 005930.KS (직접)',
+    fn: async () => {
+      const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=005930.KS&token=${FKEY}`, {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      if (!j.c) throw new Error('가격 없음: '+JSON.stringify(j).slice(0,100));
+      return { price: j.c, change: j.d, changePct: j.dp, prevClose: j.pc };
+    }
+  },
+
+  /* Finnhub — KRX:005930 형식 */
+  { id:'kr2', label:'㉡ 삼성전자 Finnhub KRX:005930 (직접)',
+    fn: async () => {
+      const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=KRX:005930&token=${FKEY}`, {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      if (!j.c) throw new Error('가격 없음: '+JSON.stringify(j).slice(0,100));
+      return { price: j.c, change: j.d, changePct: j.dp, prevClose: j.pc };
+    }
+  },
+
+  /* 네이버 금융 모바일 API + corsproxy.io */
+  { id:'kr3', label:'㉢ 삼성전자 네이버 모바일 API + corsproxy.io',
+    fn: async () => {
+      const url = `https://m.stock.naver.com/api/stock/${KR}/basic`;
+      const r = await fetch(cp(url), {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      const price = Number(String(j.closePrice||'').replace(/,/g,''));
+      if (!price) throw new Error('파싱 실패: '+JSON.stringify(j).slice(0,120));
+      return {
+        price,
+        change:    Number(String(j.compareToPreviousClosePrice||'').replace(/,/g,'')),
+        changePct: Number(j.fluctuationsRatio||0),
+        name: j.stockName || j.itemName,
+      };
+    }
+  },
+
+  /* 네이버 금융 모바일 API (직접 — CORS 가능 여부 확인) */
+  { id:'kr4', label:'㉣ 삼성전자 네이버 모바일 API (직접, CORS 확인용)',
+    fn: async () => {
+      const r = await fetch(`https://m.stock.naver.com/api/stock/${KR}/basic`, {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      const price = Number(String(j.closePrice||'').replace(/,/g,''));
+      if (!price) throw new Error('파싱 실패');
+      return { price, change: Number(String(j.compareToPreviousClosePrice||'').replace(/,/g,'')), changePct: Number(j.fluctuationsRatio||0) };
     }
   },
 ];
