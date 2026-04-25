@@ -755,6 +755,40 @@
     border: 1px solid var(--border); border-radius: 4px; text-align: right;
   }
   .plan-unit-note { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  /* 인출 계획 테이블 */
+  .wd-table {
+    border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums;
+    min-width: 100%; table-layout: fixed;
+  }
+  .wd-table th, .wd-table td {
+    padding: 3px 5px; border: 1px solid #e2e8f0;
+    text-align: right; white-space: nowrap; overflow: hidden;
+  }
+  .wd-table th { background: #f1f5f9; font-size: 11px; font-weight: 600; color: #475569; text-align: center; }
+  .wd-table th:first-child, .wd-table td:first-child { text-align: left; position: sticky; left: 0; background: #f8fafc; z-index: 1; }
+  .wd-table .wd-sub  { background: #fafafa; color: #64748b; font-size: 10.5px; text-align: center; }
+  .wd-table .wd-init { background: #fffbeb; font-weight: 600; color: #92400e; }
+  .wd-table .wd-np-row td  { background: #f0fdf4; color: #166534; font-weight: 500; }
+  .wd-table .wd-dc td      { background: #fef3c7; }
+  .wd-table .wd-total-row td { background: #f1f5f9; font-weight: 700; border-top: 2px solid #94a3b8; }
+  .wd-table .wd-sum-row td   { background: #eff6ff; font-size: 11px; }
+  .wd-table .wd-target-row td { font-weight: 600; }
+  .wd-table .wd-tax-row td   { background: #fef2f2; font-size: 10.5px; color: #7f1d1d; }
+  .wd-table .wd-net-row td   { background: #f0fdf4; font-weight: 700; color: #14532d; }
+  .wd-settings-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 8px 14px;
+  }
+  .wd-settings-grid label { display: flex; flex-direction: column; font-size: 11.5px; color: #374151; gap: 2px; }
+  .wd-settings-grid label span { font-weight: 600; }
+  .wd-settings-grid input, .wd-settings-grid select {
+    padding: 4px 7px; border: 1px solid var(--border); border-radius: 4px;
+    font-size: 12px; text-align: right;
+  }
+  .wd-section { font-size: 11px; font-weight: 700; color: #6d28d9;
+    margin: 10px 0 4px; grid-column: 1 / -1; padding-bottom: 3px; border-bottom: 1px solid #e9d5ff; }
+  .wd-info-bar { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px;
+    color: #374151; padding: 8px 12px; background: #f8fafc; border-radius: 6px; margin-bottom: 12px; }
+  .wd-info-bar b { color: #1e40af; }
 </style>
 </head>
 <body>
@@ -780,6 +814,7 @@
     <button class="btn-secondary" onclick="openDividendModal()">💸 배당 기록</button>
     <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
     <button class="btn-secondary" onclick="openAnnualPlanModal()">📅 연간 계획</button>
+    <button class="btn-secondary" onclick="openWithdrawalModal()">💸 인출 계획</button>
     <button class="btn-secondary" onclick="exportToFile()">💾 파일로 저장</button>
     <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
@@ -1075,6 +1110,66 @@
   </div>
 </div>
 
+<!-- 인출 계획 모달 -->
+<div class="modal-backdrop" id="withdrawalModal" onclick="handleWdBackdropClick(event)">
+  <div class="modal modal-wide" style="max-width:1500px;max-height:95vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:10;flex-shrink:0">
+      <div>
+        <h2>💸 인출 계획</h2>
+        <div class="modal-subtitle" id="wdSubtitle"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="toggleWdSettings()">⚙️ 설정</button>
+        <button class="close-btn" onclick="closeWithdrawalModal()">×</button>
+      </div>
+    </div>
+
+    <!-- 설정 패널 -->
+    <div id="wdSettingsPanel" style="display:none;border:1px solid #e9d5ff;border-radius:8px;padding:14px;margin-bottom:12px;background:#faf5ff;flex-shrink:0">
+      <div class="wd-settings-grid">
+        <div class="wd-section">📅 인출 기본 설정</div>
+        <label><span>인출 시작 연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
+        <label><span>인출 기간 (년)</span><input id="wd_duration" type="number" min="5" max="50" step="1"></label>
+        <label><span>연간 인출 목표액 (백만원)</span><input id="wd_annualTarget" type="number" min="0" step="1"></label>
+        <label><span>물가상승률 (%)</span><input id="wd_inflation" type="number" min="0" max="20" step="0.1"></label>
+        <label><span>인출기간 수익률 (%/년)</span><input id="wd_returnRate" type="number" min="0" max="20" step="0.1"></label>
+        <label><span>사적연금 기본인출액 (백만원/계좌/년)</span><input id="wd_basicWithdraw" type="number" min="0" step="1"></label>
+
+        <div class="wd-section">🏦 세율 설정</div>
+        <label><span>퇴직소득세율 (%)</span><input id="wd_retireTaxRate" type="number" min="0" max="50" step="0.1"></label>
+        <label><span>연금소득세율 (%)</span><input id="wd_pensionTaxRate" type="number" min="0" max="20" step="0.1"></label>
+        <label><span>국민연금소득세율 (%)</span><input id="wd_npTaxRate" type="number" min="0" max="20" step="0.1"></label>
+
+        <div class="wd-section">👨 나 국민연금</div>
+        <label><span>시작 연도</span><input id="wd_myNPStartYear" type="number" min="2020" max="2080" step="1"></label>
+        <label><span>월 수령액 (만원, 현재가치)</span><input id="wd_myNPMonthly" type="number" min="0" step="1"></label>
+        <label><span>연기연금 연수</span><input id="wd_myNPDelay" type="number" min="0" max="5" step="1"></label>
+
+        <div class="wd-section">👩 아내 국민연금</div>
+        <label><span>시작 연도</span><input id="wd_wifeNPStartYear" type="number" min="2020" max="2080" step="1"></label>
+        <label><span>월 수령액 (만원, 현재가치)</span><input id="wd_wifeNPMonthly" type="number" min="0" step="1"></label>
+        <label><span>연기연금 연수</span><input id="wd_wifeNPDelay" type="number" min="0" max="5" step="1"></label>
+      </div>
+      <div style="margin-top:12px;text-align:right">
+        <button class="btn-primary" onclick="applyWdSettings()">✔ 적용</button>
+      </div>
+    </div>
+
+    <!-- 설정 요약 바 -->
+    <div class="wd-info-bar" id="wdInfoBar"></div>
+
+    <!-- 인출 테이블 -->
+    <div id="wdWithdrawWrap" style="overflow-x:auto;margin-bottom:24px"></div>
+
+    <!-- 잔액 테이블 -->
+    <div id="wdBalanceWrap" style="overflow-x:auto"></div>
+
+    <div class="modal-actions" style="flex-shrink:0">
+      <button class="btn-secondary" onclick="closeWithdrawalModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 배당 기록 모달 -->
 <div class="modal-backdrop" id="dividendModal" onclick="handleDividendBackdropClick(event)">
   <div class="modal modal-wide modal-records">
@@ -1141,7 +1236,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.41';
+const APP_VERSION = 'MyPM v1.42';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4081,6 +4176,351 @@ function renderDivAccRecordsList() {
     if (textEl) textEl.textContent = '당겨서 새로고침';
   });
 })();
+
+// ===== 💸 인출 계획 =====
+const WITHDRAWAL_KEY = 'pension_withdrawal_v1';
+let wdPlan = loadWdPlan();
+
+function getWdDefaults() {
+  const cy = new Date().getFullYear();
+  return {
+    startYear: cy + 2, duration: 25, annualTarget: 120,
+    inflation: 2.2, returnRate: 4.0,
+    retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4,
+    myNPStartYear: cy + 7,  myNPMonthly: 100, myNPDelay: 0,
+    wifeNPStartYear: cy + 9, wifeNPMonthly: 50, wifeNPDelay: 0,
+    basicWithdraw: 15,
+  };
+}
+function loadWdPlan() {
+  try {
+    const r = localStorage.getItem(WITHDRAWAL_KEY);
+    return r ? { ...getWdDefaults(), ...JSON.parse(r) } : getWdDefaults();
+  } catch(_) { return getWdDefaults(); }
+}
+function saveWdPlan() { localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan)); }
+
+function openWithdrawalModal() {
+  loadWdFormValues();
+  document.getElementById('withdrawalModal').classList.add('open');
+  renderWithdrawalPlan();
+}
+function closeWithdrawalModal() { document.getElementById('withdrawalModal').classList.remove('open'); }
+function handleWdBackdropClick(e) { if (e.target.id === 'withdrawalModal') closeWithdrawalModal(); }
+function toggleWdSettings() {
+  const p = document.getElementById('wdSettingsPanel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+function loadWdFormValues() {
+  const wp = wdPlan;
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  s('wd_startYear', wp.startYear); s('wd_duration', wp.duration);
+  s('wd_annualTarget', wp.annualTarget); s('wd_inflation', wp.inflation);
+  s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
+  s('wd_retireTaxRate', wp.retireTaxRate); s('wd_pensionTaxRate', wp.pensionTaxRate);
+  s('wd_npTaxRate', wp.npTaxRate);
+  s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPMonthly', wp.myNPMonthly); s('wd_myNPDelay', wp.myNPDelay||0);
+  s('wd_wifeNPStartYear', wp.wifeNPStartYear); s('wd_wifeNPMonthly', wp.wifeNPMonthly); s('wd_wifeNPDelay', wp.wifeNPDelay||0);
+}
+function applyWdSettings() {
+  const n = id => Number(document.getElementById(id)?.value) || 0;
+  wdPlan = {
+    startYear: n('wd_startYear') || new Date().getFullYear() + 2,
+    duration: n('wd_duration') || 25,
+    annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
+    retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'), npTaxRate: n('wd_npTaxRate'),
+    basicWithdraw: n('wd_basicWithdraw'),
+    myNPStartYear: n('wd_myNPStartYear'), myNPMonthly: n('wd_myNPMonthly'), myNPDelay: n('wd_myNPDelay'),
+    wifeNPStartYear: n('wd_wifeNPStartYear'), wifeNPMonthly: n('wd_wifeNPMonthly'), wifeNPDelay: n('wd_wifeNPDelay'),
+  };
+  saveWdPlan();
+  document.getElementById('wdSettingsPanel').style.display = 'none';
+  renderWithdrawalPlan();
+}
+
+// 특정 계좌의 인출 시작연도 기준 예상 잔액 (원) 계산
+function computeAccStartBal(accId, startYear) {
+  const sorted = [...monthlyRecords].sort((a, b) =>
+    b.year !== a.year ? b.year - a.year : b.month - a.month);
+  const lastRec = sorted[0];
+  const lastRecYear = lastRec ? lastRec.year : new Date().getFullYear() - 1;
+
+  // 실적이 startYear 이하면 그 연도의 실제값 사용
+  if (startYear <= lastRecYear) {
+    const recs = monthlyRecords.filter(r => r.year === startYear);
+    if (recs.length) {
+      const last = recs.sort((a, b) => b.month - a.month)[0];
+      return Number(last.accounts[accId]) || 0;
+    }
+    return 0;
+  }
+  // 마지막 실적값에서 annualPlan 예상수익률로 복리 추정
+  let base = lastRec ? (Number(lastRec.accounts[accId]) || 0) : 0;
+  const projR = (annualPlan.projRate || 7) / 100;
+  for (let yr = lastRecYear + 1; yr <= startYear; yr++) {
+    const prevMil = getCellManwon(accId, yr - 1);
+    const currMil = getCellManwon(accId, yr);
+    const dep = Math.max(0, currMil - prevMil) * 1_000_000;
+    base = (base + dep) * (1 + projR);
+  }
+  return base;
+}
+
+function computeWithdrawalSim() {
+  const wp = wdPlan;
+  if (!wp.startYear) return null;
+  const { startYear, duration } = wp;
+  const years = Array.from({ length: duration || 25 }, (_, i) => startYear + i);
+  const r    = (wp.returnRate || 4) / 100;
+  const inf  = (wp.inflation || 2.2) / 100;
+  const rTR  = (wp.retireTaxRate || 12) / 100;
+  const pTR  = (wp.pensionTaxRate || 3.3) / 100;
+  const npTR = (wp.npTaxRate || 4) / 100;
+  const DC_ID = 'dc';
+  const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
+  const endDate = `${startYear}-12-31`;
+
+  // 초기 잔액 계산 (각 컴포넌트별)
+  const state = {};
+  for (const accId of allAccIds) {
+    const total = computeAccStartBal(accId, startYear);
+    const anse = Math.min(
+      depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.anse) > 0)
+        .reduce((s, t) => s + Number(t.anse), 0),
+      total);
+    const dcPrincipal = accId === DC_ID
+      ? Math.min(
+          depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.amount) > 0)
+            .reduce((s, t) => s + Number(t.amount), 0),
+          Math.max(0, total - anse))
+      : 0;
+    state[accId] = { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
+  }
+  const initState = {};
+  for (const accId of allAccIds) initState[accId] = { ...state[accId] };
+
+  const withdrawals = {}, balances = {}, summary = {};
+
+  for (const yr of years) {
+    withdrawals[yr] = {};
+
+    // 1. 수익률 적용 (수익은 regular에 누적)
+    for (const accId of allAccIds) {
+      const s = state[accId];
+      const gain = s.total * r;
+      s.regular += gain; s.total += gain;
+    }
+
+    // 2. 국민연금 (물가연동)
+    const myNP = yr >= wp.myNPStartYear
+      ? wp.myNPMonthly * 10000 * 12 * Math.pow(1+inf, yr - wp.myNPStartYear) * (1 + 0.07*(wp.myNPDelay||0))
+      : 0;
+    const wifeNP = yr >= wp.wifeNPStartYear
+      ? wp.wifeNPMonthly * 10000 * 12 * Math.pow(1+inf, yr - wp.wifeNPStartYear) * (1 + 0.07*(wp.wifeNPDelay||0))
+      : 0;
+
+    // 3. 인출 목표
+    const target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - startYear);
+    let remaining = Math.max(0, target - myNP - wifeNP);
+    let totalRT = 0, totalPT = 0;
+
+    // 4. 계좌별 인출
+    for (const accId of allAccIds) {
+      const s = state[accId];
+      const out = { anseOut: 0, dcOut: 0, regularOut: 0 };
+
+      // 안세공 (비과세)
+      if (s.anse > 0 && remaining > 0) {
+        const take = Math.min(s.anse, remaining);
+        out.anseOut = take; s.anse -= take; s.total -= take; remaining -= take;
+      }
+      // DC 퇴직원금 (퇴직세)
+      if (accId === DC_ID && s.dcPrincipal > 0 && remaining > 0) {
+        const take = Math.min(s.dcPrincipal, remaining);
+        out.dcOut = take; s.dcPrincipal -= take; s.total -= take;
+        totalRT += take * rTR; remaining -= take;
+      }
+      // 연금(regular): 다른 계좌에 안세공/DC원금이 남으면 기본인출액 상한 적용
+      if (s.regular > 0 && remaining > 0) {
+        const othersHave = allAccIds.filter(id => id !== accId)
+          .some(id => state[id].anse > 0 || state[id].dcPrincipal > 0);
+        const lim = othersHave ? Math.min(wp.basicWithdraw * 1_000_000, remaining) : remaining;
+        const take = Math.min(s.regular, lim);
+        out.regularOut = take; s.regular -= take; s.total -= take;
+        totalPT += take * pTR; remaining -= take;
+      }
+      withdrawals[yr][accId] = out;
+    }
+
+    const totalPriv = allAccIds.reduce((s, id) =>
+      s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
+    const npTax = (myNP + wifeNP) * npTR;
+    summary[yr] = {
+      myNP, wifeNP, target,
+      totalPriv, totalInc: totalPriv + myNP + wifeNP,
+      retireTax: totalRT, pensionTax: totalPT, npTax,
+      totalTax: totalRT + totalPT + npTax,
+      shortfall: Math.max(0, target - myNP - wifeNP - totalPriv),
+      inflFactor: Math.pow(1+inf, yr - startYear),
+    };
+    balances[yr] = {};
+    for (const accId of allAccIds) balances[yr][accId] = { ...state[accId] };
+  }
+  return { years, withdrawals, balances, summary, initState, allAccIds, startYear };
+}
+
+function renderWithdrawalPlan() {
+  const sim = computeWithdrawalSim();
+  if (!sim) return;
+  const wp = wdPlan;
+
+  // 설정 요약 바
+  document.getElementById('wdSubtitle').textContent =
+    `${wp.startYear}년 인출 시작 · ${wp.annualTarget}백만원/년 · 물가 ${wp.inflation}% · 수익률 ${wp.returnRate}%`;
+  document.getElementById('wdInfoBar').innerHTML =
+    `<span>인출시작: <b>${wp.startYear}년</b></span>` +
+    `<span>기간: <b>${wp.duration}년</b></span>` +
+    `<span>연간목표: <b>${wp.annualTarget}백만원</b></span>` +
+    `<span>물가상승: <b>${wp.inflation}%</b></span>` +
+    `<span>수익률: <b>${wp.returnRate}%</b></span>` +
+    `<span>퇴직세: <b>${wp.retireTaxRate}%</b></span>` +
+    `<span>연금세: <b>${wp.pensionTaxRate}%</b></span>` +
+    `<span>국민연금세: <b>${wp.npTaxRate}%</b></span>` +
+    `<span>나 국민연금: <b>${wp.myNPStartYear}년 ${wp.myNPMonthly}만원/월</b></span>` +
+    `<span>아내 국민연금: <b>${wp.wifeNPStartYear}년 ${wp.wifeNPMonthly}만원/월</b></span>` +
+    `<span>기본인출액: <b>${wp.basicWithdraw}백만원/계좌</b></span>`;
+
+  renderWdWithdrawTable(sim);
+  renderWdBalanceTable(sim);
+}
+
+function buildWdTableHead(years, summary, extraCols = 3) {
+  let h = '';
+  for (const yr of years) {
+    const hasnp = summary[yr].myNP > 0 || summary[yr].wifeNP > 0;
+    h += `<th${hasnp ? ' style="color:#7c3aed;font-weight:800"' : ''}>${yr}</th>`;
+  }
+  return h;
+}
+
+function renderWdWithdrawTable(sim) {
+  const { years, withdrawals, summary, initState, allAccIds, startYear } = sim;
+  const wp = wdPlan;
+  const DC_ID = 'dc';
+  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const m = (won) => won > 100 ? (Math.round(won / 100000) / 10).toFixed(1) : '';
+  const mv = (won) => (Math.round(won / 100000) / 10).toFixed(1);
+
+  let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💸 연도별 인출 금액 (백만원)</h3>
+  <table class="wd-table"><colgroup>
+    <col style="width:110px"><col style="width:46px"><col style="width:58px">`;
+  for (const yr of years) h += `<col style="width:50px">`;
+  h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
+  h += buildWdTableHead(years, summary);
+  h += '</tr></thead><tbody>';
+
+  // 나/아내 국민연금 행
+  h += `<tr class="wd-np-row"><td>나 국민연금</td><td></td><td></td>`;
+  for (const yr of years) h += `<td>${summary[yr].myNP > 0 ? mv(summary[yr].myNP) : ''}</td>`;
+  h += '</tr>';
+  h += `<tr class="wd-np-row"><td>아내 국민연금</td><td></td><td></td>`;
+  for (const yr of years) h += `<td>${summary[yr].wifeNP > 0 ? mv(summary[yr].wifeNP) : ''}</td>`;
+  h += '</tr>';
+
+  // 계좌별 행
+  for (const accId of allAccIds) {
+    const nm = accMap[accId] || accId;
+    const init = initState[accId];
+    const rs = accId === DC_ID ? 3 : 2;
+
+    h += `<tr class="wd-acc-row"><td rowspan="${rs}">${nm}</td>
+      <td class="wd-sub">안세공</td><td class="wd-init">${mv(init.anse)}</td>`;
+    for (const yr of years) h += `<td>${m(withdrawals[yr][accId].anseOut)}</td>`;
+    h += '</tr>';
+
+    if (accId === DC_ID) {
+      h += `<tr class="wd-acc-row wd-dc"><td class="wd-sub">퇴직세</td><td class="wd-init">${mv(init.dcPrincipal)}</td>`;
+      for (const yr of years) h += `<td>${m(withdrawals[yr][accId].dcOut)}</td>`;
+      h += '</tr>';
+    }
+    h += `<tr class="wd-acc-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
+    for (const yr of years) h += `<td>${m(withdrawals[yr][accId].regularOut)}</td>`;
+    h += '</tr>';
+  }
+
+  // 합계·요약행
+  const totalInit = allAccIds.reduce((s, id) => s + initState[id].total, 0);
+  h += `<tr class="wd-total-row"><td colspan="2">사적연금 소계</td><td class="wd-init">${mv(totalInit)}</td>`;
+  for (const yr of years) h += `<td>${mv(summary[yr].totalPriv)}</td>`;
+  h += '</tr>';
+
+  const rows = [
+    ['wd-sum-row', '인출 합계 (사적+국민)', yr => mv(summary[yr].totalInc)],
+    ['wd-target-row wd-sum-row', '인출 목표액', yr => mv(summary[yr].target)],
+    ['wd-sum-row', `현재가치 (${startYear}기준)`, yr => `<span style="color:#7c3aed">${mv(summary[yr].totalInc / summary[yr].inflFactor)}</span>`],
+    ['wd-tax-row', '퇴직소득세', yr => mv(summary[yr].retireTax)],
+    ['wd-tax-row', '연금소득세', yr => mv(summary[yr].pensionTax)],
+    ['wd-tax-row', '국민연금세', yr => mv(summary[yr].npTax)],
+    ['wd-net-row wd-sum-row', '인출 - 세금', yr => mv(summary[yr].totalInc - summary[yr].totalTax)],
+  ];
+  for (const [cls, label, fn] of rows) {
+    h += `<tr class="${cls}"><td colspan="3">${label}</td>`;
+    for (const yr of years) h += `<td>${fn(yr)}</td>`;
+    h += '</tr>';
+  }
+
+  h += '</tbody></table>';
+  document.getElementById('wdWithdrawWrap').innerHTML = h;
+}
+
+function renderWdBalanceTable(sim) {
+  const { years, balances, initState, allAccIds, startYear } = sim;
+  const DC_ID = 'dc';
+  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const mv = (won) => (Math.round(won / 100000) / 10).toFixed(1);
+  const mc = (won) => {
+    const v = Math.round(won / 100000) / 10;
+    const s = v.toFixed(1);
+    return v <= 0 ? `<span style="color:#9ca3af">${s}</span>` : s;
+  };
+
+  let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💰 연도별 잔액 (백만원)</h3>
+  <table class="wd-table"><colgroup>
+    <col style="width:110px"><col style="width:46px"><col style="width:58px">`;
+  for (const yr of years) h += `<col style="width:50px">`;
+  h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
+  for (const yr of years) h += `<th>${yr}</th>`;
+  h += '</tr></thead><tbody>';
+
+  for (const accId of allAccIds) {
+    const nm = accMap[accId] || accId;
+    const init = initState[accId];
+    const rs = accId === DC_ID ? 3 : 2;
+
+    h += `<tr class="wd-acc-row"><td rowspan="${rs}">${nm}</td>
+      <td class="wd-sub">안세공</td><td class="wd-init">${mv(init.anse)}</td>`;
+    for (const yr of years) h += `<td>${mc(balances[yr][accId].anse)}</td>`;
+    h += '</tr>';
+
+    if (accId === DC_ID) {
+      h += `<tr class="wd-acc-row wd-dc"><td class="wd-sub">퇴직세</td><td class="wd-init">${mv(init.dcPrincipal)}</td>`;
+      for (const yr of years) h += `<td>${mc(balances[yr][accId].dcPrincipal)}</td>`;
+      h += '</tr>';
+    }
+    h += `<tr class="wd-acc-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
+    for (const yr of years) h += `<td>${mc(balances[yr][accId].regular)}</td>`;
+    h += '</tr>';
+  }
+
+  const totalInit = allAccIds.reduce((s, id) => s + initState[id].total, 0);
+  h += `<tr class="wd-total-row"><td colspan="2">총 잔액</td><td class="wd-init">${mv(totalInit)}</td>`;
+  for (const yr of years) {
+    const total = allAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
+    h += `<td>${mc(total)}</td>`;
+  }
+  h += '</tr></tbody></table>';
+  document.getElementById('wdBalanceWrap').innerHTML = h;
+}
 </script>
 <div class="app-version" id="appVersion"></div>
 </body>
