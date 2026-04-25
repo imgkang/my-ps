@@ -293,7 +293,33 @@
   }
 
   /* 계좌 기록(월별 평가금액) 모달 */
-  .modal-records { max-width: 1200px; }
+  .modal-records {
+    max-width: 1200px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+  .modal-records .modal-header {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 18px 20px 14px;
+  }
+  .modal-records .records-input-card {
+    flex-shrink: 0;
+    margin: 0 16px 12px;
+  }
+  .modal-records .records-list-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    max-height: none;
+    margin: 0 16px;
+  }
+  .modal-records .modal-actions {
+    flex-shrink: 0;
+    padding: 10px 20px 14px;
+  }
   .records-input-card {
     background: #f9fafb; border: 1px solid var(--border);
     border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
@@ -974,7 +1000,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.19';
+const APP_VERSION = 'NonK v1.20';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
