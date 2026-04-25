@@ -1135,6 +1135,7 @@
         <label><span>물가상승률 (%)</span><input id="wd_inflation" type="number" min="0" max="20" step="0.1"></label>
         <label><span>인출기간 수익률 (%/년)</span><input id="wd_returnRate" type="number" min="0" max="20" step="0.1"></label>
         <label><span>사적연금 기본인출액 (백만원/계좌/년)</span><input id="wd_basicWithdraw" type="number" min="0" step="1"></label>
+        <label><span>아내 계좌 인출금액 (백만원/년)</span><input id="wd_wifeFixWithdraw" type="number" min="0" step="1"></label>
 
         <div class="wd-section">🏦 세율 설정</div>
         <label><span>퇴직소득세율 (%)</span><input id="wd_retireTaxRate" type="number" min="0" max="50" step="0.1"></label>
@@ -1239,7 +1240,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.44';
+const APP_VERSION = 'MyPM v1.45';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4192,7 +4193,7 @@ function getWdDefaults() {
     retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4,
     myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
     wifeNPStartYear: cy + 9, wifeNPStartMonth: 1, wifeNPMonthly: 50, wifeNPDelay: 0,
-    basicWithdraw: 15,
+    basicWithdraw: 15, wifeFixWithdraw: 0,
   };
 }
 function loadWdPlan() {
@@ -4219,7 +4220,7 @@ function loadWdFormValues() {
   const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
   s('wd_startYear', wp.startYear); s('wd_duration', wp.duration);
   s('wd_annualTarget', wp.annualTarget); s('wd_inflation', wp.inflation);
-  s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
+  s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw); s('wd_wifeFixWithdraw', wp.wifeFixWithdraw||0);
   s('wd_retireTaxRate', wp.retireTaxRate); s('wd_pensionTaxRate', wp.pensionTaxRate);
   s('wd_npTaxRate', wp.npTaxRate);
   s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPStartMonth', wp.myNPStartMonth||1);
@@ -4234,7 +4235,7 @@ function applyWdSettings() {
     duration: n('wd_duration') || 25,
     annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
     retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'), npTaxRate: n('wd_npTaxRate'),
-    basicWithdraw: n('wd_basicWithdraw'),
+    basicWithdraw: n('wd_basicWithdraw'), wifeFixWithdraw: n('wd_wifeFixWithdraw'),
     myNPStartYear: n('wd_myNPStartYear'), myNPStartMonth: n('wd_myNPStartMonth')||1,
     myNPMonthly: n('wd_myNPMonthly'), myNPDelay: n('wd_myNPDelay'),
     wifeNPStartYear: n('wd_wifeNPStartYear'), wifeNPStartMonth: n('wd_wifeNPStartMonth')||1,
@@ -4329,35 +4330,53 @@ function computeWithdrawalSim() {
       ? wp.wifeNPMonthly * 10000 * wifeNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.07*(wp.wifeNPDelay||0))
       : 0;
 
-    // 3. 인출 목표
+    // 3. 인출 목표 및 계좌별 배분
     const target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - startYear);
-    let remaining = Math.max(0, target - myNP - wifeNP);
+    const needPriv = Math.max(0, target - myNP - wifeNP);
+    const wifeBudget = Math.min((wp.wifeFixWithdraw || 0) * 1_000_000, needPriv);
+    let myRemaining   = needPriv - wifeBudget;
+    let wifeRemaining = wifeBudget;
     let totalRT = 0, totalPT = 0;
 
-    // 4. 계좌별 인출
-    for (const accId of allAccIds) {
+    // 4-A. 내 계좌 인출
+    for (const accId of MY_ACC_IDS) {
       const s = state[accId];
       const out = { anseOut: 0, dcOut: 0, regularOut: 0 };
-
-      // 안세공 (비과세)
-      if (s.anse > 0 && remaining > 0) {
-        const take = Math.min(s.anse, remaining);
-        out.anseOut = take; s.anse -= take; s.total -= take; remaining -= take;
+      if (s.anse > 0 && myRemaining > 0) {
+        const take = Math.min(s.anse, myRemaining);
+        out.anseOut = take; s.anse -= take; s.total -= take; myRemaining -= take;
       }
-      // DC 퇴직원금 (퇴직세)
-      if (accId === DC_ID && s.dcPrincipal > 0 && remaining > 0) {
-        const take = Math.min(s.dcPrincipal, remaining);
+      if (accId === DC_ID && s.dcPrincipal > 0 && myRemaining > 0) {
+        const take = Math.min(s.dcPrincipal, myRemaining);
         out.dcOut = take; s.dcPrincipal -= take; s.total -= take;
-        totalRT += take * rTR; remaining -= take;
+        totalRT += take * rTR; myRemaining -= take;
       }
-      // 연금(regular): 다른 계좌에 안세공/DC원금이 남으면 기본인출액 상한 적용
-      if (s.regular > 0 && remaining > 0) {
-        const othersHave = allAccIds.filter(id => id !== accId)
+      if (s.regular > 0 && myRemaining > 0) {
+        const othersHave = MY_ACC_IDS.filter(id => id !== accId)
           .some(id => state[id].anse > 0 || state[id].dcPrincipal > 0);
-        const lim = othersHave ? Math.min(wp.basicWithdraw * 1_000_000, remaining) : remaining;
+        const lim = othersHave ? Math.min(wp.basicWithdraw * 1_000_000, myRemaining) : myRemaining;
         const take = Math.min(s.regular, lim);
         out.regularOut = take; s.regular -= take; s.total -= take;
-        totalPT += take * pTR; remaining -= take;
+        totalPT += take * pTR; myRemaining -= take;
+      }
+      withdrawals[yr][accId] = out;
+    }
+
+    // 4-B. 아내 계좌 인출 (wifeFixWithdraw 고정액)
+    for (const accId of WIFE_ACC_IDS) {
+      const s = state[accId];
+      const out = { anseOut: 0, dcOut: 0, regularOut: 0 };
+      if (s.anse > 0 && wifeRemaining > 0) {
+        const take = Math.min(s.anse, wifeRemaining);
+        out.anseOut = take; s.anse -= take; s.total -= take; wifeRemaining -= take;
+      }
+      if (s.regular > 0 && wifeRemaining > 0) {
+        const othersHave = WIFE_ACC_IDS.filter(id => id !== accId)
+          .some(id => state[id].anse > 0);
+        const lim = othersHave ? Math.min(wp.basicWithdraw * 1_000_000, wifeRemaining) : wifeRemaining;
+        const take = Math.min(s.regular, lim);
+        out.regularOut = take; s.regular -= take; s.total -= take;
+        totalPT += take * pTR; wifeRemaining -= take;
       }
       withdrawals[yr][accId] = out;
     }
@@ -4398,7 +4417,8 @@ function renderWithdrawalPlan() {
     `<span>국민연금세: <b>${wp.npTaxRate}%</b></span>` +
     `<span>나 국민연금: <b>${wp.myNPStartYear}년 ${wp.myNPStartMonth||1}월 ${wp.myNPMonthly}만원/월</b></span>` +
     `<span>아내 국민연금: <b>${wp.wifeNPStartYear}년 ${wp.wifeNPStartMonth||1}월 ${wp.wifeNPMonthly}만원/월</b></span>` +
-    `<span>기본인출액: <b>${wp.basicWithdraw}백만원/계좌</b></span>`;
+    `<span>기본인출액: <b>${wp.basicWithdraw}백만원/계좌</b></span>` +
+    (wp.wifeFixWithdraw ? `<span>아내계좌 인출: <b>${wp.wifeFixWithdraw}백만원/년</b></span>` : '');
 
   renderWdWithdrawTable(sim);
   renderWdBalanceTable(sim);
