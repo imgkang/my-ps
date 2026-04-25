@@ -1071,7 +1071,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.26';
+const APP_VERSION = 'MyPM v1.27';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1972,39 +1972,62 @@ async function refreshPricesSilent() {
   render();
 }
 
-// ===== 네이버 금융 현재가 조회 =====
-// 여러 CORS 프록시를 순차 시도 (네이버 API는 브라우저에서 직접 호출 시 CORS 차단됨)
+// ===== 주가 조회 (Yahoo Finance v8) =====
 const PROXIES = [
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
 ];
+const YAHOO_HOSTS = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+
+async function fetchWithTimeout(url, ms = 9000) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
+    clearTimeout(tid); return res;
+  } catch(e) { clearTimeout(tid); throw e; }
+}
 
 async function fetchViaProxy(targetUrl) {
   let lastErr;
   for (const proxy of PROXIES) {
     try {
-      const res = await fetch(proxy(targetUrl), { cache: 'no-store' });
+      const res = await fetchWithTimeout(proxy(targetUrl));
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
+      if (!text || text.length < 10) throw new Error('빈 응답');
       return text;
     } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error('모든 프록시 실패');
 }
 
-// 네이버 모바일 주식 API (JSON 반환)
+// Yahoo Finance v8 chart API — 한국 주식: {code}.KS(KOSPI) / {code}.KQ(KOSDAQ)
 async function fetchStockInfo(code) {
-  const url = `https://m.stock.naver.com/api/stock/${code}/basic`;
-  const text = await fetchViaProxy(url);
-  const data = JSON.parse(text);
-  return {
-    code: code,
-    name: data.stockName || data.itemName || '',
-    price: Number(data.closePrice ? String(data.closePrice).replace(/,/g, '') : 0),
-    change: Number(data.compareToPreviousClosePrice ? String(data.compareToPreviousClosePrice).replace(/,/g, '') : 0),
-    changeRate: Number(data.fluctuationsRatio || 0)
-  };
+  const ts = Date.now();
+  const suffixes = ['.KS', '.KQ'];
+  for (const suffix of suffixes) {
+    for (const host of YAHOO_HOSTS) {
+      const url = `https://${host}/v8/finance/chart/${code}${suffix}?range=1d&interval=1d&_=${ts}`;
+      try {
+        const data = JSON.parse(await fetchViaProxy(url));
+        const meta = data?.chart?.result?.[0]?.meta;
+        if (!meta?.regularMarketPrice) continue;
+        const price  = meta.regularMarketPrice;
+        const prev   = meta.chartPreviousClose || meta.previousClose || price;
+        const change = price - prev;
+        return {
+          code,
+          name:       meta.longName || meta.shortName || code,
+          price,
+          change,
+          changeRate: prev > 0 ? change / prev * 100 : 0,
+        };
+      } catch(e) {}
+    }
+  }
+  throw new Error('가격 조회 실패: ' + code);
 }
 
 // ===== 종목 추가 모달 =====
