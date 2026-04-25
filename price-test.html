@@ -290,6 +290,50 @@ const TESTS = [
       return { price, change: Number(String(j.compareToPreviousClosePrice||'').replace(/,/g,'')), changePct: Number(j.fluctuationsRatio||0) };
     }
   },
+
+  /* Yahoo Finance v8 — 005930.KS (query2) + corsproxy.io */
+  { id:'kr5', label:'㉤ 삼성전자 Yahoo v8 005930.KS query2 + corsproxy.io',
+    fn: async () => {
+      const url = `https://query2.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=1d&_=${Date.now()}`;
+      const r = await fetch(cp(url), {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      const meta = j?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) throw new Error('meta 없음: '+JSON.stringify(j).slice(0,120));
+      const price = meta.regularMarketPrice;
+      const prev  = meta.chartPreviousClose || meta.previousClose || price;
+      return { price, change: price-prev, changePct: prev ? (price-prev)/prev*100 : 0, currency: meta.currency };
+    }
+  },
+
+  /* Yahoo Finance v8 — 005930.KS (query1) + corsproxy.io */
+  { id:'kr6', label:'㉥ 삼성전자 Yahoo v8 005930.KS query1 + corsproxy.io',
+    fn: async () => {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=1d&_=${Date.now()}`;
+      const r = await fetch(cp(url), {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      const meta = j?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) throw new Error('meta 없음: '+JSON.stringify(j).slice(0,120));
+      const price = meta.regularMarketPrice;
+      const prev  = meta.chartPreviousClose || meta.previousClose || price;
+      return { price, change: price-prev, changePct: prev ? (price-prev)/prev*100 : 0, currency: meta.currency };
+    }
+  },
+
+  /* 네이버 API — allorigins.win proxy */
+  { id:'kr7', label:'㉦ 삼성전자 네이버 모바일 API + allorigins.win',
+    fn: async () => {
+      const url = `https://m.stock.naver.com/api/stock/${KR}/basic`;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${enc(url)}`;
+      const r = await fetch(proxyUrl, {cache:'no-store'});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      const price = Number(String(j.closePrice||'').replace(/,/g,''));
+      if (!price) throw new Error('파싱 실패: '+JSON.stringify(j).slice(0,100));
+      return { price, change: Number(String(j.compareToPreviousClosePrice||'').replace(/,/g,'')), changePct: Number(j.fluctuationsRatio||0), name: j.stockName };
+    }
+  },
 ];
 
 async function runAll() {
