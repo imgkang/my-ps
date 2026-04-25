@@ -642,8 +642,18 @@
     border-radius: 8px;
     margin-bottom: 12px;
   }
-  #principalTableWrap {
-    border-bottom: 3px solid #d1d5db;
+  .apt-section-hdr {
+    position: sticky; left: 0; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px 7px;
+    background: #f0fdf4;
+    border-bottom: 2px solid var(--primary);
+    font-weight: 700; font-size: 13px; white-space: nowrap;
+    width: fit-content; min-width: 100%;
+  }
+  .apt-section-hdr.eval-hdr {
+    background: #f0f9ff;
+    border-top: 20px solid #f3f4f6;
   }
   .apt { border-collapse: collapse; font-size: 12px; }
   .apt th, .apt td {
@@ -996,24 +1006,23 @@
       <button class="close-btn" onclick="closeAnnualPlanModal()" aria-label="닫기">×</button>
     </div>
 
-    <div class="plan-section-title">
-      원금 기록 및 계획
-      <button class="btn-primary" style="font-size:12px;padding:5px 12px" onclick="saveAnnualPlan()">💾 저장</button>
-    </div>
-    <div class="plan-unit-note">* 단위: 백만원(정수) / 회색 열 = 실적, 초록 입력란 = 계획 / 안세공재원은 항상 편집 가능</div>
-
-    <div class="plan-section-title" style="margin-top:16px">
-      평가 기록 및 예상
-      <div class="proj-rate-bar" style="margin:0;padding:4px 10px;font-size:12px">
-        <span>예상수익률</span>
-        <input type="number" id="projRate" min="0" max="50" step="0.5" value="7" oninput="renderEvalTable()">
-        <span>%/년</span>
-        <span style="font-size:11px;color:var(--muted)">실적 이후 복리 적용</span>
-      </div>
-    </div>
+    <div class="plan-unit-note" style="margin-bottom:6px">* 단위: 백만원(정수) / 회색 열 = 실적, 초록 입력란 = 계획 / 안세공재원은 항상 편집 가능</div>
 
     <div class="annual-plan-combined">
+      <div class="apt-section-hdr">
+        📋 원금 기록 및 계획
+        <button class="btn-primary" style="font-size:11px;padding:3px 10px;font-weight:600" onclick="saveAnnualPlan()">💾 저장</button>
+      </div>
       <div class="annual-plan-wrap" id="principalTableWrap"></div>
+
+      <div class="apt-section-hdr eval-hdr">
+        📈 평가 기록 및 예상
+        <span style="font-size:12px;font-weight:400;color:var(--muted)">예상수익률</span>
+        <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
+               style="width:56px;padding:2px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;text-align:right"
+               oninput="renderEvalTable()">
+        <span style="font-size:12px;font-weight:400;color:var(--muted)">%/년 · 실적 이후 복리 적용</span>
+      </div>
       <div class="annual-plan-wrap" id="evalTableWrap"></div>
     </div>
 
@@ -1090,7 +1099,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.28';
+const APP_VERSION = 'MyPM v1.29';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
