@@ -1114,7 +1114,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.36';
+const APP_VERSION = 'MyPM v1.37';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2116,6 +2116,23 @@ async function fetchStockInfo(code, knownSuffix = null) {
   throw new Error('가격 조회 실패: ' + code);
 }
 
+// Yahoo Finance 검색 API로 한국어 종목명 조회
+async function fetchKoreanName(code) {
+  for (const host of YAHOO_HOSTS) {
+    const url = `https://${host}/v1/finance/search?q=${code}&lang=ko-KR&region=KR&newsCount=0&quotesCount=6&enableFuzzyQuery=false`;
+    try {
+      const text = await fetchViaProxy(url);
+      const j    = JSON.parse(text);
+      const quotes = j?.finance?.result?.[0]?.quotes || [];
+      const match  = quotes.find(q => (q.symbol || '').startsWith(code));
+      if (!match) continue;
+      const name = match.shortname || match.longname || '';
+      if (/[가-힣]/.test(name)) return name;
+    } catch(e) {}
+  }
+  return null;
+}
+
 // ===== 종목 추가 모달 =====
 function openAddStockModal() {
   document.getElementById('addStockModal').classList.add('open');
@@ -2146,8 +2163,8 @@ async function addStock() {
   let stockName = name;
   let price = 0, change = 0, changeRate = 0, suffix = null;
   try {
-    const info = await fetchStockInfo(code);
-    if (!stockName) stockName = info.name;
+    const [info, krName] = await Promise.all([fetchStockInfo(code), stockName ? null : fetchKoreanName(code)]);
+    if (!stockName) stockName = krName || info.name;
     price = info.price;
     change = info.change;
     changeRate = info.changeRate;
@@ -2174,8 +2191,8 @@ document.getElementById('stockCode').addEventListener('blur', async (e) => {
   if (!/^\d{6}$/.test(code) || nameEl.value.trim()) return;
   nameEl.placeholder = '조회 중...';
   try {
-    const info = await fetchStockInfo(code);
-    if (info.name) nameEl.value = info.name;
+    const [info, krName] = await Promise.all([fetchStockInfo(code), fetchKoreanName(code)]);
+    nameEl.value = krName || info.name || '';
   } catch (_) {} finally {
     nameEl.placeholder = '종목명 (자동입력)';
   }
@@ -2211,12 +2228,17 @@ async function refreshAll() {
   // 개별 시도 (한 종목 실패해도 나머지 진행)
   await Promise.all(holdings.map(async h => {
     try {
-      const info = await fetchStockInfo(h.code, h.suffix || null);
+      const [info, krName] = await Promise.all([
+        fetchStockInfo(h.code, h.suffix || null),
+        // 영문명이거나 조회 실패 이름인 경우 한국어로 갱신 시도
+        (!h.name || !/[가-힣]/.test(h.name)) ? fetchKoreanName(h.code) : Promise.resolve(null),
+      ]);
       h.price = info.price;
       h.change = info.change;
       h.changeRate = info.changeRate;
       if (info.suffix) h.suffix = info.suffix; // suffix 확정/갱신
-      if (info.name && h.name === '(이름 불러오기 실패)') h.name = info.name;
+      if (krName) h.name = krName;
+      else if (info.name && (!h.name || h.name === '(이름 불러오기 실패)')) h.name = info.name;
       h.updatedAt = Date.now();
     } catch (e) {
       console.warn(`${h.code} 조회 실패:`, e);
