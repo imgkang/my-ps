@@ -1173,7 +1173,6 @@
     <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:10;flex-shrink:0">
       <div>
         <h2>💸 인출 계획</h2>
-        <div class="modal-subtitle" id="wdSubtitle"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="toggleWdSettings()">⚙️ 설정</button>
@@ -1250,8 +1249,7 @@
     </div>
 
     <!-- 설정 요약 바 -->
-    <!-- (퀵 편집 바로 대체됨, wdInfoBar는 JS 호환성 유지용 빈 div) -->
-    <div id="wdInfoBar" style="display:none"></div>
+    <div class="wd-info-bar" id="wdInfoBar"></div>
 
     <!-- 인출 계획 차트 -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:20px;flex-shrink:0">
@@ -1343,7 +1341,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.74';
+const APP_VERSION = 'MyPM v1.75';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4574,8 +4572,6 @@ function renderWithdrawalPlan() {
   const wp = wdPlan;
 
   // 설정 요약 바
-  document.getElementById('wdSubtitle').textContent =
-    `${wp.startYear}년 인출 시작 · ${wp.annualTarget}백만원/년 · 물가 ${wp.inflation}% · 수익률 ${wp.returnRate}%`;
   document.getElementById('wdInfoBar').innerHTML =
     `<span>인출시작: <b>${wp.startYear}년</b></span>` +
     `<span>기간: <b>${wp.duration}년</b></span>` +
