@@ -1287,7 +1287,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.54';
+const APP_VERSION = 'MyPM v1.55';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4338,6 +4338,8 @@ function computeWithdrawalSim() {
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
   const endDate = `${startYear}-12-31`;
+  const wifeStartYear = wp.wifeFixStartYear || startYear;
+  const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
 
   // 초기 잔액 계산 (통합 모드 or 개별 계산)
   const state = {};
@@ -4356,14 +4358,17 @@ function computeWithdrawalSim() {
     state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,             total: wifePP2Anse + wifePP2Regular };
   } else {
     for (const accId of allAccIds) {
-      const total = computeAccStartBal(accId, startYear);
+      const isWife  = WIFE_ACC_IDS.includes(accId);
+      const initEnd = isWife ? wifeEndDate : endDate;
+      const initYr  = isWife ? wifeStartYear - 1 : startYear;
+      const total = computeAccStartBal(accId, initYr);
       const anse = Math.min(
-        depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.anse) > 0)
+        depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.anse) > 0)
           .reduce((s, t) => s + Number(t.anse), 0),
         total);
       const dcPrincipal = accId === DC_ID
         ? Math.min(
-            depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.amount) > 0)
+            depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.amount) > 0)
               .reduce((s, t) => s + Number(t.amount), 0),
             Math.max(0, total - anse))
         : 0;
@@ -4378,8 +4383,9 @@ function computeWithdrawalSim() {
   for (const yr of years) {
     withdrawals[yr] = {};
 
-    // 1. 수익률 적용 (수익은 regular에 누적)
+    // 1. 수익률 적용 (아내 계좌는 wifeStartYear부터)
     for (const accId of allAccIds) {
+      if (WIFE_ACC_IDS.includes(accId) && yr < wifeStartYear) continue;
       const s = state[accId];
       const gain = s.total * r;
       s.regular += gain; s.total += gain;
@@ -4464,7 +4470,7 @@ function computeWithdrawalSim() {
     balances[yr] = {};
     for (const accId of allAccIds) balances[yr][accId] = { ...state[accId] };
   }
-  return { years, withdrawals, balances, summary, initState, allAccIds, startYear };
+  return { years, withdrawals, balances, summary, initState, allAccIds, startYear, wifeStartYear };
 }
 
 function renderWithdrawalPlan() {
@@ -4578,7 +4584,7 @@ function renderWdWithdrawTable(sim) {
 }
 
 function renderWdBalanceTable(sim) {
-  const { years, balances, initState, allAccIds, startYear } = sim;
+  const { years, balances, initState, allAccIds, startYear, wifeStartYear } = sim;
   const DC_ID = 'dc';
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
   const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
@@ -4600,9 +4606,11 @@ function renderWdBalanceTable(sim) {
   for (const yr of years) h += `<th>${yr}</th>`;
   h += '</tr></thead><tbody>';
 
+  const blank = `<td style="color:#e5e7eb">—</td>`;
   for (const accId of dispAccIds) {
     const nm = accName(accId);
     const init = initState[accId];
+    const isWife = WIFE_ACC_IDS.includes(accId);
 
     if (accId === DC_ID) {
       h += `<tr class="wd-acc-row wd-dc"><td rowspan="2">${nm}</td>
@@ -4612,19 +4620,22 @@ function renderWdBalanceTable(sim) {
     } else {
       h += `<tr class="wd-acc-row"><td rowspan="2">${nm}</td>
         <td class="wd-sub">안세공</td><td class="wd-init">${mv(init.anse)}</td>`;
-      for (const yr of years) h += `<td>${mc(balances[yr][accId].anse)}</td>`;
+      for (const yr of years) h += isWife && yr < wifeStartYear ? blank : `<td>${mc(balances[yr][accId].anse)}</td>`;
       h += '</tr>';
     }
     h += `<tr class="wd-acc-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
-    for (const yr of years) h += `<td>${mc(balances[yr][accId].regular)}</td>`;
+    for (const yr of years) h += isWife && yr < wifeStartYear ? blank : `<td>${mc(balances[yr][accId].regular)}</td>`;
     h += '</tr>';
   }
 
-  const totalInit = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
+  const myAccIds   = dispAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
+  const totalInit  = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
   h += `<tr class="wd-total-row"><td colspan="2">총 잔액</td><td class="wd-init">${mv(totalInit)}</td>`;
   for (const yr of years) {
-    const total = dispAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
-    h += `<td>${mc(total)}</td>`;
+    const myTotal   = myAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
+    const wifeTotal = yr >= wifeStartYear
+      ? dispAccIds.filter(id => WIFE_ACC_IDS.includes(id)).reduce((s, id) => s + balances[yr][id].total, 0) : 0;
+    h += `<td>${mc(myTotal + wifeTotal)}</td>`;
   }
   h += '</tr></tbody></table>';
   document.getElementById('wdBalanceWrap').innerHTML = h;
