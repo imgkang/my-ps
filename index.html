@@ -1250,16 +1250,11 @@
     </div>
 
     <!-- 설정 요약 바 -->
-    <div class="wd-info-bar" id="wdInfoBar"></div>
-
-    <!-- 인출 테이블 -->
-    <div id="wdWithdrawWrap" style="overflow-x:auto;margin-bottom:24px"></div>
-
-    <!-- 잔액 테이블 -->
-    <div id="wdBalanceWrap" style="overflow-x:auto"></div>
+    <!-- (퀵 편집 바로 대체됨, wdInfoBar는 JS 호환성 유지용 빈 div) -->
+    <div id="wdInfoBar" style="display:none"></div>
 
     <!-- 인출 계획 차트 -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-top:24px;flex-shrink:0">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:20px;flex-shrink:0">
       <div>
         <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
         <div style="position:relative;height:220px"><canvas id="wdChart1"></canvas></div>
@@ -1269,6 +1264,12 @@
         <div style="position:relative;height:220px"><canvas id="wdChart2"></canvas></div>
       </div>
     </div>
+
+    <!-- 인출 테이블 -->
+    <div id="wdWithdrawWrap" style="overflow-x:auto;margin-bottom:24px"></div>
+
+    <!-- 잔액 테이블 -->
+    <div id="wdBalanceWrap" style="overflow-x:auto"></div>
 
     <div class="modal-actions" style="flex-shrink:0">
       <button class="btn-secondary" onclick="closeWithdrawalModal()">닫기</button>
@@ -1342,7 +1343,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.73';
+const APP_VERSION = 'MyPM v1.74';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
