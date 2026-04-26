@@ -1344,7 +1344,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.70';
+const APP_VERSION = 'MyPM v1.71';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4417,15 +4417,23 @@ function computeWithdrawalSim() {
     state['wife_pension1'] = { anse: c.wifePP1Anse, dcPrincipal: 0, regular: c.wifePP1Regular,         total: c.wifePP1Anse + c.wifePP1Regular };
     state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,             total: wifePP2Anse + wifePP2Regular };
   } else {
+    const currentYear = new Date().getFullYear();
     for (const accId of allAccIds) {
       const isWife  = WIFE_ACC_IDS.includes(accId);
       const initEnd = isWife ? wifeEndDate : endDate;
       const initYr  = isWife ? wifeStartYear - 1 : startYear - 1;
       const total = computeAccStartBal(accId, initYr);
-      const anse = Math.min(
-        depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.anse) > 0)
-          .reduce((s, t) => s + Number(t.anse), 0),
-        total);
+      let anse;
+      if (accId !== DC_ID && initYr > currentYear) {
+        // 미래 연도: 연간계획에 입력된 계좌별 안세공 값 사용
+        const planMv = getPlanAnseManwon(accId, initYr);
+        anse = planMv != null ? Math.min(planMv * 1_000_000, total) : 0;
+      } else {
+        anse = Math.min(
+          depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.anse) > 0)
+            .reduce((s, t) => s + Number(t.anse), 0),
+          total);
+      }
       const dcPrincipal = accId === DC_ID
         ? Math.min(
             depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.amount) > 0)
