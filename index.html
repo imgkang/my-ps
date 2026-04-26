@@ -854,6 +854,34 @@
     <div id="accSummaryWrap"></div>
   </div>
 
+  <div class="card" style="padding:10px 16px">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">💸 인출 계획</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
+        <span style="white-space:nowrap">인출 시작연도</span>
+        <input id="qwd_startYear" type="number" min="2020" max="2080" step="1"
+               style="width:70px;font-size:12px;padding:3px 5px"
+               oninput="saveQuickWdPlan()">
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
+        <span style="white-space:nowrap">연간목표</span>
+        <input id="qwd_annualTarget" type="number" min="0" step="1"
+               style="width:60px;font-size:12px;padding:3px 5px"
+               oninput="saveQuickWdPlan()">
+        <span style="color:var(--muted)">백만원</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
+        <span style="white-space:nowrap">수익률</span>
+        <input id="qwd_returnRate" type="number" min="0" max="20" step="0.1"
+               style="width:52px;font-size:12px;padding:3px 5px"
+               oninput="saveQuickWdPlan()">
+        <span style="color:var(--muted)">%</span>
+      </label>
+      <button class="btn-secondary" style="font-size:12px;padding:3px 10px"
+              onclick="openWithdrawalModal()">상세 보기</button>
+    </div>
+  </div>
+
   <div class="card">
     <h2>📈 월별 추세</h2>
     <div class="chart-subtitle">진한 녹색 = 누적 입금액(원금), 연한 녹색 = 평가총액</div>
@@ -4185,6 +4213,7 @@ function renderDivAccRecordsList() {
   document.body.prepend(indicator);
 
   document.addEventListener('touchstart', e => {
+    if (e.target.closest?.('.modal-backdrop')) { pulling = false; return; }
     if (window.scrollY === 0) {
       startY = e.touches[0].clientY;
       pulling = true;
@@ -4293,6 +4322,7 @@ function applyWdSettings() {
     wifeNPMonthly: n('wd_wifeNPMonthly'), wifeNPDelay: n('wd_wifeNPDelay'),
   };
   saveWdPlan();
+  loadQuickWdValues();
   document.getElementById('wdSettingsPanel').style.display = 'none';
   renderWithdrawalPlan();
 }
@@ -4471,6 +4501,23 @@ function computeWithdrawalSim() {
     for (const accId of allAccIds) balances[yr][accId] = { ...state[accId] };
   }
   return { years, withdrawals, balances, summary, initState, allAccIds, startYear, wifeStartYear };
+}
+
+function loadQuickWdValues() {
+  const wp = wdPlan;
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  s('qwd_startYear',    wp.startYear);
+  s('qwd_annualTarget', wp.annualTarget);
+  s('qwd_returnRate',   wp.returnRate);
+}
+function saveQuickWdPlan() {
+  const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) || v === 0 ? def : v; };
+  wdPlan.startYear    = nv('qwd_startYear',    wdPlan.startYear);
+  wdPlan.annualTarget = nv('qwd_annualTarget', wdPlan.annualTarget);
+  wdPlan.returnRate   = nv('qwd_returnRate',   wdPlan.returnRate);
+  saveWdPlan();
+  const modal = document.getElementById('withdrawalModal');
+  if (modal?.classList.contains('open')) renderWithdrawalPlan();
 }
 
 function renderWithdrawalPlan() {
@@ -4686,6 +4733,21 @@ function openConsolidateModal() {
   for (const accId of MY_ACC_IDS)   comps[accId] = computeAccComponents(accId, baseYear);
   for (const accId of WIFE_ACC_IDS) comps[accId] = computeAccComponents(accId, wifeBaseYear);
 
+  // 아내 안세공: 거래 기반 대신 연간계획 'wifeAnse' 필드 값으로 재계산
+  {
+    const currentYear = new Date().getFullYear();
+    const planWifeAnseMv = wifeBaseYear <= currentYear
+      ? getActualAnseManwon(WIFE_ACC_IDS, wifeBaseYear)
+      : (getAnseWifePlanManwon(wifeBaseYear) ?? 0);
+    const planWifeAnse = planWifeAnseMv * 1_000_000;
+    const wifeTotBal = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].total, 0);
+    for (const id of WIFE_ACC_IDS) {
+      const frac = wifeTotBal > 0 ? comps[id].total / wifeTotBal : 1 / WIFE_ACC_IDS.length;
+      const newAnse = Math.min(Math.round(planWifeAnse * frac), comps[id].total);
+      comps[id] = { ...comps[id], anse: newAnse, regular: Math.max(0, comps[id].total - newAnse) };
+    }
+  }
+
   const myNonDcIds = MY_ACC_IDS.filter(id => id !== 'dc');
   const myAnseTotal      = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
   const myRegularTotal   = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
@@ -4846,6 +4908,9 @@ function clearConsolidate() {
   closeConsolidateModal();
   renderWithdrawalPlan();
 }
+
+// wdPlan이 모두 초기화된 후 빠른 편집 패널 초기값 설정
+loadQuickWdValues();
 </script>
 <div class="app-version" id="appVersion"></div>
 </body>
