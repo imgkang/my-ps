@@ -789,6 +789,22 @@
   .wd-info-bar { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px;
     color: #374151; padding: 8px 12px; background: #f8fafc; border-radius: 6px; margin-bottom: 12px; }
   .wd-info-bar b { color: #1e40af; }
+  /* 계좌 통합 모달 */
+  .cons-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
+  @media (max-width: 680px) { .cons-wrap { grid-template-columns: 1fr; } }
+  .cons-section-title { font-size: 12px; font-weight: 700; color: #1e40af; margin-bottom: 6px; }
+  .cons-table { border-collapse: collapse; font-size: 10px; width: 100%; }
+  .cons-table th, .cons-table td { border: 1px solid #e2e8f0; padding: 3px 7px; }
+  .cons-table th { background: #f1f5f9; font-weight: 600; color: #475569; text-align: center; }
+  .cons-table td:first-child { text-align: left; }
+  .cons-table td:nth-child(2) { text-align: center; color: #64748b; font-size: 9.5px; }
+  .cons-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .cons-table .cons-dc td  { background: #fef3c7; }
+  .cons-table .cons-anse td { background: #f0fdf4; }
+  .cons-table .cons-sub td { background: #f1f5f9; font-weight: 700; }
+  .cons-table .cons-auto { color: #6366f1; font-weight: 600; }
+  .cons-table input[type=number] { width: 62px; text-align: right; padding: 1px 4px;
+    border: 1px solid #93c5fd; border-radius: 3px; font-size: 10px; }
 </style>
 </head>
 <body>
@@ -1110,6 +1126,35 @@
   </div>
 </div>
 
+<!-- 계좌 통합 모달 -->
+<div class="modal-backdrop" id="consolidateModal" onclick="handleConsBackdropClick(event)"
+     style="align-items:flex-start;overflow-y:auto;padding:16px">
+  <div class="modal modal-wide" style="max-width:920px;max-height:none;overflow-y:visible;margin:auto">
+    <div class="modal-header">
+      <div>
+        <h2>📊 계좌 통합 및 정리</h2>
+        <div class="modal-subtitle" id="consSubtitle"></div>
+      </div>
+      <button class="close-btn" onclick="closeConsolidateModal()">×</button>
+    </div>
+    <div class="cons-wrap">
+      <div>
+        <div class="cons-section-title">현재 계좌 현황</div>
+        <div id="consLeftWrap"></div>
+      </div>
+      <div>
+        <div class="cons-section-title">통합 후 배분</div>
+        <div id="consRightWrap"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="applyConsolidate()">✔ 적용하고 닫기</button>
+      <button class="btn-secondary" onclick="clearConsolidate()">↩ 통합 취소</button>
+      <button class="btn-secondary" onclick="closeConsolidateModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 인출 계획 모달 -->
 <div class="modal-backdrop" id="withdrawalModal" onclick="handleWdBackdropClick(event)"
      style="align-items:flex-start;overflow-y:auto;padding:16px">
@@ -1121,6 +1166,7 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="toggleWdSettings()">⚙️ 설정</button>
+        <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합 및 정리</button>
         <button class="close-btn" onclick="closeWithdrawalModal()">×</button>
       </div>
     </div>
@@ -1241,7 +1287,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.47';
+const APP_VERSION = 'MyPM v1.48';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4185,6 +4231,8 @@ function renderDivAccRecordsList() {
 // ===== 💸 인출 계획 =====
 const WITHDRAWAL_KEY = 'pension_withdrawal_v1';
 let wdPlan = loadWdPlan();
+let wdConsolidated = null;
+let _consTotals = null;
 
 function getWdDefaults() {
   const cy = new Date().getFullYear();
@@ -4291,21 +4339,36 @@ function computeWithdrawalSim() {
   const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
   const endDate = `${startYear}-12-31`;
 
-  // 초기 잔액 계산 (각 컴포넌트별)
+  // 초기 잔액 계산 (통합 모드 or 개별 계산)
   const state = {};
-  for (const accId of allAccIds) {
-    const total = computeAccStartBal(accId, startYear);
-    const anse = Math.min(
-      depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.anse) > 0)
-        .reduce((s, t) => s + Number(t.anse), 0),
-      total);
-    const dcPrincipal = accId === DC_ID
-      ? Math.min(
-          depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.amount) > 0)
-            .reduce((s, t) => s + Number(t.amount), 0),
-          Math.max(0, total - anse))
-      : 0;
-    state[accId] = { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
+  if (wdConsolidated && wdConsolidated.startYear === startYear) {
+    const c = wdConsolidated;
+    const myPP2Anse    = Math.max(0, c.totalMyAnse    - c.myPP1Anse);
+    const myPP2Regular = Math.max(0, c.totalMyRegular - c.myPP1Regular);
+    const wifePP2Anse    = Math.max(0, c.totalWifeAnse    - c.wifePP1Anse);
+    const wifePP2Regular = Math.max(0, c.totalWifeRegular - c.wifePP1Regular);
+    const zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+    for (const accId of allAccIds) state[accId] = { ...zero };
+    state['dc']            = { anse: 0, dcPrincipal: c.myDCPrincipal, regular: c.myDCRegular,          total: c.myDCPrincipal + c.myDCRegular };
+    state['pension1']      = { anse: c.myPP1Anse, dcPrincipal: 0, regular: c.myPP1Regular,             total: c.myPP1Anse + c.myPP1Regular };
+    state['pension2']      = { anse: myPP2Anse, dcPrincipal: 0, regular: myPP2Regular,                 total: myPP2Anse + myPP2Regular };
+    state['wife_pension1'] = { anse: c.wifePP1Anse, dcPrincipal: 0, regular: c.wifePP1Regular,         total: c.wifePP1Anse + c.wifePP1Regular };
+    state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,             total: wifePP2Anse + wifePP2Regular };
+  } else {
+    for (const accId of allAccIds) {
+      const total = computeAccStartBal(accId, startYear);
+      const anse = Math.min(
+        depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.anse) > 0)
+          .reduce((s, t) => s + Number(t.anse), 0),
+        total);
+      const dcPrincipal = accId === DC_ID
+        ? Math.min(
+            depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.amount) > 0)
+              .reduce((s, t) => s + Number(t.amount), 0),
+            Math.max(0, total - anse))
+        : 0;
+      state[accId] = { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
+    }
   }
   const initState = {};
   for (const accId of allAccIds) initState[accId] = { ...state[accId] };
@@ -4444,6 +4507,11 @@ function renderWdWithdrawTable(sim) {
   const wp = wdPlan;
   const DC_ID = 'dc';
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
+    wife_pension1:'개인연금1(아내)', wife_pension2:'개인연금2(아내)' };
+  const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
+  const dispAccIds = isConsolidated ? allAccIds.filter(id => initState[id].total > 0) : allAccIds;
+  const accName = id => (isConsolidated && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
 
@@ -4464,8 +4532,8 @@ function renderWdWithdrawTable(sim) {
   h += '</tr>';
 
   // 계좌별 행
-  for (const accId of allAccIds) {
-    const nm = accMap[accId] || accId;
+  for (const accId of dispAccIds) {
+    const nm = accName(accId);
     const init = initState[accId];
     const rs = accId === DC_ID ? 3 : 2;
 
@@ -4485,7 +4553,7 @@ function renderWdWithdrawTable(sim) {
   }
 
   // 합계·요약행
-  const totalInit = allAccIds.reduce((s, id) => s + initState[id].total, 0);
+  const totalInit = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
   h += `<tr class="wd-total-row"><td colspan="2">사적연금 소계</td><td class="wd-init">${mv(totalInit)}</td>`;
   for (const yr of years) h += `<td>${mv(summary[yr].totalPriv)}</td>`;
   h += '</tr>';
@@ -4513,6 +4581,11 @@ function renderWdBalanceTable(sim) {
   const { years, balances, initState, allAccIds, startYear } = sim;
   const DC_ID = 'dc';
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
+    wife_pension1:'개인연금1(아내)', wife_pension2:'개인연금2(아내)' };
+  const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
+  const dispAccIds = isConsolidated ? allAccIds.filter(id => initState[id].total > 0) : allAccIds;
+  const accName = id => (isConsolidated && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const mc = (won) => {
     const v = Math.round(won / 1_000_000);
@@ -4527,8 +4600,8 @@ function renderWdBalanceTable(sim) {
   for (const yr of years) h += `<th>${yr}</th>`;
   h += '</tr></thead><tbody>';
 
-  for (const accId of allAccIds) {
-    const nm = accMap[accId] || accId;
+  for (const accId of dispAccIds) {
+    const nm = accName(accId);
     const init = initState[accId];
     const rs = accId === DC_ID ? 3 : 2;
 
@@ -4547,14 +4620,168 @@ function renderWdBalanceTable(sim) {
     h += '</tr>';
   }
 
-  const totalInit = allAccIds.reduce((s, id) => s + initState[id].total, 0);
+  const totalInit = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
   h += `<tr class="wd-total-row"><td colspan="2">총 잔액</td><td class="wd-init">${mv(totalInit)}</td>`;
   for (const yr of years) {
-    const total = allAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
+    const total = dispAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
     h += `<td>${mc(total)}</td>`;
   }
   h += '</tr></tbody></table>';
   document.getElementById('wdBalanceWrap').innerHTML = h;
+}
+
+// ===== 📊 계좌 통합 및 정리 =====
+function computeAccComponents(accId, year) {
+  const total = computeAccStartBal(accId, year);
+  const endDate = `${year}-12-31`;
+  const anse = Math.min(
+    depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.anse) > 0)
+      .reduce((s, t) => s + Number(t.anse), 0),
+    total);
+  const dcPrincipal = accId === 'dc'
+    ? Math.min(
+        depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.amount) > 0)
+          .reduce((s, t) => s + Number(t.amount), 0),
+        Math.max(0, total - anse))
+    : 0;
+  return { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
+}
+
+function openConsolidateModal() {
+  const wp = wdPlan;
+  if (!wp.startYear) { alert('먼저 인출 계획의 인출 시작연도를 설정해 주세요.'); return; }
+  const baseYear = wp.startYear - 1;
+  document.getElementById('consSubtitle').textContent =
+    `${baseYear}년말 예상 잔액 기준 → ${wp.startYear}년 인출 시작`;
+
+  const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
+  const comps = {};
+  for (const accId of allAccIds) comps[accId] = computeAccComponents(accId, baseYear);
+
+  const myNonDcIds = MY_ACC_IDS.filter(id => id !== 'dc');
+  const myAnseTotal    = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
+  const myRegularTotal = MY_ACC_IDS.reduce((s, id) => s + comps[id].regular, 0);
+  const wifeAnseTotal    = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].anse, 0);
+  const wifeRegularTotal = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].regular, 0);
+
+  _consTotals = { baseYear, comps, myAnseTotal, myRegularTotal, wifeAnseTotal, wifeRegularTotal,
+    myDCPrincipal: comps['dc'].dcPrincipal, myDCRegular: comps['dc'].regular };
+
+  const mv = won => Math.round(won / 1_000_000);
+  const c = wdConsolidated;
+  const pp1Anse    = c ? mv(c.myPP1Anse)    : mv(myAnseTotal);
+  const pp1Regular = c ? mv(c.myPP1Regular) : 0;
+  const wp1Anse    = c ? mv(c.wifePP1Anse)    : mv(wifeAnseTotal);
+  const wp1Regular = c ? mv(c.wifePP1Regular) : 0;
+
+  renderConsLeftTable(comps);
+  renderConsRightTable(pp1Anse, pp1Regular, wp1Anse, wp1Regular);
+  document.getElementById('consolidateModal').classList.add('open');
+}
+function closeConsolidateModal() { document.getElementById('consolidateModal').classList.remove('open'); }
+function handleConsBackdropClick(e) { if (e.target.id === 'consolidateModal') closeConsolidateModal(); }
+
+function renderConsLeftTable(comps) {
+  const t = _consTotals;
+  const mv = won => Math.round(won / 1_000_000);
+  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  let h = `<table class="cons-table"><thead>
+    <tr><th>계좌</th><th>구분</th><th>백만원</th></tr></thead><tbody>`;
+  for (const accId of MY_ACC_IDS) {
+    const c = comps[accId], nm = accMap[accId] || accId;
+    if (accId === 'dc') {
+      h += `<tr class="cons-dc"><td rowspan="2">${nm}</td><td>퇴직금</td><td>${mv(c.dcPrincipal)}</td></tr>`;
+      h += `<tr class="cons-dc"><td>연금세</td><td>${mv(c.regular)}</td></tr>`;
+    } else {
+      h += `<tr class="cons-anse"><td rowspan="2">${nm}</td><td>안세공</td><td>${mv(c.anse)}</td></tr>`;
+      h += `<tr><td>연금세</td><td>${mv(c.regular)}</td></tr>`;
+    }
+  }
+  h += `<tr class="cons-sub"><td>내 계좌 (비DC)</td><td>안세공합계</td><td>${mv(t.myAnseTotal)}</td></tr>`;
+  h += `<tr class="cons-sub"><td></td><td>연금세합계</td><td>${mv(t.myRegularTotal)}</td></tr>`;
+  h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
+  for (const accId of WIFE_ACC_IDS) {
+    const c = comps[accId], nm = accMap[accId] || accId;
+    h += `<tr class="cons-anse"><td rowspan="2">${nm}</td><td>안세공</td><td>${mv(c.anse)}</td></tr>`;
+    h += `<tr><td>연금세</td><td>${mv(c.regular)}</td></tr>`;
+  }
+  h += `<tr class="cons-sub"><td>아내 계좌</td><td>안세공합계</td><td>${mv(t.wifeAnseTotal)}</td></tr>`;
+  h += `<tr class="cons-sub"><td></td><td>연금세합계</td><td>${mv(t.wifeRegularTotal)}</td></tr>`;
+  h += `</tbody></table>`;
+  document.getElementById('consLeftWrap').innerHTML = h;
+}
+
+function renderConsRightTable(pp1Anse, pp1Regular, wp1Anse, wp1Regular) {
+  const t = _consTotals;
+  const mv = won => Math.round(won / 1_000_000);
+  const pp2Anse    = Math.max(0, mv(t.myAnseTotal)    - pp1Anse);
+  const pp2Regular = Math.max(0, mv(t.myRegularTotal) - pp1Regular);
+  const wp2Anse    = Math.max(0, mv(t.wifeAnseTotal)  - wp1Anse);
+  const wp2Regular = Math.max(0, mv(t.wifeRegularTotal) - wp1Regular);
+  const maxMA = mv(t.myAnseTotal), maxMR = mv(t.myRegularTotal);
+  const maxWA = mv(t.wifeAnseTotal), maxWR = mv(t.wifeRegularTotal);
+
+  let h = `<table class="cons-table"><thead>
+    <tr><th>계좌</th><th>구분</th><th>백만원</th></tr></thead><tbody>`;
+  h += `<tr class="cons-dc"><td rowspan="2">나 퇴직연금</td><td>퇴직금</td><td>${mv(t.myDCPrincipal)}</td></tr>`;
+  h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.myDCRegular)}</td></tr>`;
+  h += `<tr class="cons-anse"><td rowspan="2">나 개인연금1</td><td>안세공</td>
+    <td><input type="number" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxMA}" oninput="updateConsPP2()"></td></tr>`;
+  h += `<tr><td>연금세</td>
+    <td><input type="number" id="cons_pp1_regular" value="${pp1Regular}" min="0" max="${maxMR}" oninput="updateConsPP2()"></td></tr>`;
+  h += `<tr class="cons-anse"><td rowspan="2">나 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
+  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_regular">${pp2Regular}</td></tr>`;
+  h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
+  h += `<tr class="cons-anse"><td rowspan="2">아내 개인연금1</td><td>안세공</td>
+    <td><input type="number" id="cons_wp1_anse" value="${wp1Anse}" min="0" max="${maxWA}" oninput="updateConsWP2()"></td></tr>`;
+  h += `<tr><td>연금세</td>
+    <td><input type="number" id="cons_wp1_regular" value="${wp1Regular}" min="0" max="${maxWR}" oninput="updateConsWP2()"></td></tr>`;
+  h += `<tr class="cons-anse"><td rowspan="2">아내 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
+  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_regular">${wp2Regular}</td></tr>`;
+  h += `</tbody></table>`;
+  document.getElementById('consRightWrap').innerHTML = h;
+}
+
+function updateConsPP2() {
+  const t = _consTotals; if (!t) return;
+  const mv = won => Math.round(won / 1_000_000);
+  const pp1A = Number(document.getElementById('cons_pp1_anse')?.value) || 0;
+  const pp1R = Number(document.getElementById('cons_pp1_regular')?.value) || 0;
+  const el1 = document.getElementById('cons_pp2_anse');
+  const el2 = document.getElementById('cons_pp2_regular');
+  if (el1) el1.textContent = Math.max(0, mv(t.myAnseTotal)    - pp1A);
+  if (el2) el2.textContent = Math.max(0, mv(t.myRegularTotal) - pp1R);
+}
+function updateConsWP2() {
+  const t = _consTotals; if (!t) return;
+  const mv = won => Math.round(won / 1_000_000);
+  const wp1A = Number(document.getElementById('cons_wp1_anse')?.value) || 0;
+  const wp1R = Number(document.getElementById('cons_wp1_regular')?.value) || 0;
+  const el1 = document.getElementById('cons_wp2_anse');
+  const el2 = document.getElementById('cons_wp2_regular');
+  if (el1) el1.textContent = Math.max(0, mv(t.wifeAnseTotal)    - wp1A);
+  if (el2) el2.textContent = Math.max(0, mv(t.wifeRegularTotal) - wp1R);
+}
+
+function applyConsolidate() {
+  const t = _consTotals; if (!t) return;
+  const M = 1_000_000;
+  const n = id => (Number(document.getElementById(id)?.value) || 0) * M;
+  wdConsolidated = {
+    startYear: wdPlan.startYear,
+    myDCPrincipal: t.myDCPrincipal, myDCRegular: t.myDCRegular,
+    myPP1Anse: n('cons_pp1_anse'), myPP1Regular: n('cons_pp1_regular'),
+    totalMyAnse: t.myAnseTotal, totalMyRegular: t.myRegularTotal,
+    wifePP1Anse: n('cons_wp1_anse'), wifePP1Regular: n('cons_wp1_regular'),
+    totalWifeAnse: t.wifeAnseTotal, totalWifeRegular: t.wifeRegularTotal,
+  };
+  closeConsolidateModal();
+  renderWithdrawalPlan();
+}
+function clearConsolidate() {
+  wdConsolidated = null;
+  closeConsolidateModal();
+  renderWithdrawalPlan();
 }
 </script>
 <div class="app-version" id="appVersion"></div>
