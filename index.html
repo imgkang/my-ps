@@ -1202,6 +1202,12 @@
     <!-- 설정 패널 -->
     <div id="wdSettingsPanel" style="display:none;border:1px solid #e9d5ff;border-radius:8px;padding:14px;margin-bottom:12px;background:#faf5ff;flex-shrink:0">
       <div class="wd-settings-grid">
+        <div class="wd-section">👤 개인 정보</div>
+        <label><span>나 생년 (년)</span><input id="wd_myBirthYear" type="number" min="1940" max="2010" step="1"></label>
+        <label><span>나 생월 (월)</span><input id="wd_myBirthMonth" type="number" min="1" max="12" step="1"></label>
+        <label><span>배우자 생년 (년)</span><input id="wd_wifeBirthYear" type="number" min="1940" max="2010" step="1"></label>
+        <label><span>배우자 생월 (월)</span><input id="wd_wifeBirthMonth" type="number" min="1" max="12" step="1"></label>
+
         <div class="wd-section">📅 인출 기본 설정</div>
         <label><span>인출 시작 연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
         <label><span>인출 기간 (년)</span><input id="wd_duration" type="number" min="5" max="50" step="1"></label>
@@ -1216,6 +1222,7 @@
         <label><span>퇴직소득세율 (%)</span><input id="wd_retireTaxRate" type="number" min="0" max="50" step="0.1"></label>
         <label><span>연금소득세율 (%)</span><input id="wd_pensionTaxRate" type="number" min="0" max="20" step="0.1"></label>
         <label><span>국민연금소득세율 (%)</span><input id="wd_npTaxRate" type="number" min="0" max="20" step="0.1"></label>
+        <label><span>연금소득 초과세율 (%)</span><input id="wd_excessPensionTaxRate" type="number" min="0" max="50" step="0.1"></label>
 
         <div class="wd-section">👨 나 국민연금</div>
         <label><span>시작 연도</span><input id="wd_myNPStartYear" type="number" min="2020" max="2080" step="1"></label>
@@ -4280,10 +4287,11 @@ function getWdDefaults() {
   return {
     startYear: cy + 2, duration: 25, annualTarget: 120,
     inflation: 2.2, returnRate: 4.0,
-    retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4,
+    retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4, excessPensionTaxRate: 16.5,
     myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
     wifeNPStartYear: cy + 9, wifeNPStartMonth: 1, wifeNPMonthly: 50, wifeNPDelay: 0,
     basicWithdraw: 15, wifeFixWithdraw: 0, wifeFixStartYear: cy + 2,
+    myBirthYear: 0, myBirthMonth: 1, wifeBirthYear: 0, wifeBirthMonth: 1,
   };
 }
 function loadWdPlan() {
@@ -4313,7 +4321,9 @@ function loadWdFormValues() {
   s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
   s('wd_wifeFixWithdraw', wp.wifeFixWithdraw||0); s('wd_wifeFixStartYear', wp.wifeFixStartYear||wp.startYear);
   s('wd_retireTaxRate', wp.retireTaxRate); s('wd_pensionTaxRate', wp.pensionTaxRate);
-  s('wd_npTaxRate', wp.npTaxRate);
+  s('wd_npTaxRate', wp.npTaxRate); s('wd_excessPensionTaxRate', wp.excessPensionTaxRate ?? 16.5);
+  s('wd_myBirthYear', wp.myBirthYear || ''); s('wd_myBirthMonth', wp.myBirthMonth || '');
+  s('wd_wifeBirthYear', wp.wifeBirthYear || ''); s('wd_wifeBirthMonth', wp.wifeBirthMonth || '');
   s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPStartMonth', wp.myNPStartMonth||1);
   s('wd_myNPMonthly', wp.myNPMonthly); s('wd_myNPDelay', wp.myNPDelay||0);
   s('wd_wifeNPStartYear', wp.wifeNPStartYear); s('wd_wifeNPStartMonth', wp.wifeNPStartMonth||1);
@@ -4325,9 +4335,12 @@ function applyWdSettings() {
     startYear: n('wd_startYear') || new Date().getFullYear() + 2,
     duration: n('wd_duration') || 25,
     annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
-    retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'), npTaxRate: n('wd_npTaxRate'),
+    retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'),
+    npTaxRate: n('wd_npTaxRate'), excessPensionTaxRate: n('wd_excessPensionTaxRate'),
     basicWithdraw: n('wd_basicWithdraw'), wifeFixWithdraw: n('wd_wifeFixWithdraw'),
     wifeFixStartYear: n('wd_wifeFixStartYear') || new Date().getFullYear() + 2,
+    myBirthYear: n('wd_myBirthYear'), myBirthMonth: n('wd_myBirthMonth') || 1,
+    wifeBirthYear: n('wd_wifeBirthYear'), wifeBirthMonth: n('wd_wifeBirthMonth') || 1,
     myNPStartYear: n('wd_myNPStartYear'), myNPStartMonth: n('wd_myNPStartMonth')||1,
     myNPMonthly: n('wd_myNPMonthly'), myNPDelay: n('wd_myNPDelay'),
     wifeNPStartYear: n('wd_wifeNPStartYear'), wifeNPStartMonth: n('wd_wifeNPStartMonth')||1,
@@ -4376,6 +4389,7 @@ function computeWithdrawalSim() {
   const inf  = (wp.inflation || 2.2) / 100;
   const rTR  = (wp.retireTaxRate || 12) / 100;
   const pTR  = (wp.pensionTaxRate || 3.3) / 100;
+  const epTR = (wp.excessPensionTaxRate ?? 16.5) / 100;
   const npTR = (wp.npTaxRate || 4) / 100;
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
@@ -4484,13 +4498,13 @@ function computeWithdrawalSim() {
         withdrawals[yr][DC_ID].dcOut += take; state[DC_ID].dcPrincipal -= take; state[DC_ID].total -= take;
         totalRT += take * rTR; rem -= take;
       }
-      // ④ 안세공·퇴직금 모두 소진 시 → 연금세에서 필요한만큼
+      // ④ 안세공·퇴직금 모두 소진 시 → 연금세에서 필요한만큼 (기본인출액 초과 → epTR 적용)
       if (accIds.every(id => state[id].anse === 0) &&
           (!accIds.includes(DC_ID) || state[DC_ID].dcPrincipal === 0) && rem > 0) {
         for (const id of accIds) {
           if (rem <= 0) break;
           const take = Math.min(state[id].regular, rem);
-          if (take > 0) { withdrawals[yr][id].regularOut += take; state[id].regular -= take; state[id].total -= take; totalPT += take * pTR; rem -= take; }
+          if (take > 0) { withdrawals[yr][id].regularOut += take; state[id].regular -= take; state[id].total -= take; totalPT += take * epTR; rem -= take; }
         }
       }
     };
@@ -4664,7 +4678,13 @@ function renderWdWithdrawTable(sim) {
   for (const yr of years) h += `<col style="width:50px">`;
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
   h += buildWdTableHead(years, summary);
-  h += '</tr></thead><tbody>';
+  h += '</tr>';
+  if (wp.myBirthYear) {
+    h += `<tr class="wd-age-row"><td colspan="3" style="font-size:11px;color:#6b7280;text-align:center">나이</td>`;
+    for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - wp.myBirthYear}</td>`;
+    h += '</tr>';
+  }
+  h += '</thead><tbody>';
 
   // 나/아내 국민연금 행
   h += `<tr class="wd-np-row"><td>나 국민연금</td><td></td><td></td>`;
@@ -4741,7 +4761,13 @@ function renderWdBalanceTable(sim) {
   for (const yr of years) h += `<col style="width:50px">`;
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
   for (const yr of years) h += `<th>${yr}</th>`;
-  h += '</tr></thead><tbody>';
+  h += '</tr>';
+  if (wp.myBirthYear) {
+    h += `<tr class="wd-age-row"><td colspan="3" style="font-size:11px;color:#6b7280;text-align:center">나이</td>`;
+    for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - wp.myBirthYear}</td>`;
+    h += '</tr>';
+  }
+  h += '</thead><tbody>';
 
   const blank = `<td style="color:#e5e7eb">—</td>`;
   for (const accId of dispAccIds) {
