@@ -1334,7 +1334,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.60';
+const APP_VERSION = 'MyPM v1.61';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4742,6 +4742,7 @@ function renderWdWithdrawTable(sim) {
 
 function renderWdBalanceTable(sim) {
   const { years, balances, initState, allAccIds, startYear, wifeStartYear } = sim;
+  const wp = wdPlan;
   const DC_ID = 'dc';
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
   const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
