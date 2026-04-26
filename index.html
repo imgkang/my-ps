@@ -1243,6 +1243,18 @@
     <!-- 잔액 테이블 -->
     <div id="wdBalanceWrap" style="overflow-x:auto"></div>
 
+    <!-- 인출 계획 차트 -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-top:24px;flex-shrink:0">
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
+        <div style="position:relative;height:220px"><canvas id="wdChart1"></canvas></div>
+      </div>
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 나 / 아내 잔액 추이 (백만원)</h3>
+        <div style="position:relative;height:220px"><canvas id="wdChart2"></canvas></div>
+      </div>
+    </div>
+
     <div class="modal-actions" style="flex-shrink:0">
       <button class="btn-secondary" onclick="closeWithdrawalModal()">닫기</button>
     </div>
@@ -4544,7 +4556,72 @@ function renderWithdrawalPlan() {
 
   renderWdWithdrawTable(sim);
   renderWdBalanceTable(sim);
+  renderWdCharts(sim);
   setupWdScrollSync();
+}
+
+let _wdChart1 = null, _wdChart2 = null;
+
+function renderWdCharts(sim) {
+  const { years, balances, summary, allAccIds, wifeStartYear } = sim;
+  const M = 1_000_000;
+  const round = v => Math.round(v / M);
+
+  // Chart 1 데이터
+  const withdrawAmts = years.map(yr => round(summary[yr].totalInc));
+  let cum = 0;
+  const cumulativeAmts = years.map(yr => { cum += round(summary[yr].totalInc); return cum; });
+  const totalBals = years.map(yr => Math.round(allAccIds.reduce((s, id) => s + balances[yr][id].total, 0) / M));
+
+  // Chart 2 데이터
+  const myBals = years.map(yr =>
+    Math.round(MY_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
+  const wifeBals = years.map(yr =>
+    Math.round(WIFE_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
+
+  if (_wdChart1) { _wdChart1.destroy(); _wdChart1 = null; }
+  if (_wdChart2) { _wdChart2.destroy(); _wdChart2 = null; }
+
+  const ctx1 = document.getElementById('wdChart1')?.getContext('2d');
+  const ctx2 = document.getElementById('wdChart2')?.getContext('2d');
+  if (!ctx1 || !ctx2 || typeof Chart === 'undefined') return;
+
+  const sharedOpts = {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString('ko-KR')} 백만원` } }
+    },
+    scales: {
+      x: { ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, ticks: { font: { size: 11 }, callback: v => v.toLocaleString('ko-KR') } }
+    }
+  };
+
+  _wdChart1 = new Chart(ctx1, {
+    data: {
+      labels: years,
+      datasets: [
+        { type: 'bar',  label: '연간 인출금액', data: withdrawAmts,   backgroundColor: 'rgba(167,139,250,0.6)', borderColor: '#7c3aed', borderWidth: 1, order: 3 },
+        { type: 'line', label: '인출 누적액',   data: cumulativeAmts, borderColor: '#f59e0b', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2, order: 2 },
+        { type: 'line', label: '총 잔액',       data: totalBals,      borderColor: '#10b981', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2, order: 1 }
+      ]
+    },
+    options: { ...sharedOpts }
+  });
+
+  _wdChart2 = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        { label: '나 총잔액',   data: myBals,   borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)',  fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 },
+        { label: '아내 총잔액', data: wifeBals, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.12)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 }
+      ]
+    },
+    options: { ...sharedOpts }
+  });
 }
 
 let _wdScrollSyncDone = false;
