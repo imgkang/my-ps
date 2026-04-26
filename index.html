@@ -1343,7 +1343,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.66';
+const APP_VERSION = 'MyPM v1.67';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4394,7 +4394,7 @@ function computeWithdrawalSim() {
   const npTR = (wp.npTaxRate || 4) / 100;
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
-  const endDate = `${startYear}-12-31`;
+  const endDate = `${startYear - 1}-12-31`;
   const wifeStartYear = wp.wifeFixStartYear || startYear;
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
 
@@ -4417,7 +4417,7 @@ function computeWithdrawalSim() {
     for (const accId of allAccIds) {
       const isWife  = WIFE_ACC_IDS.includes(accId);
       const initEnd = isWife ? wifeEndDate : endDate;
-      const initYr  = isWife ? wifeStartYear - 1 : startYear;
+      const initYr  = isWife ? wifeStartYear - 1 : startYear - 1;
       const total = computeAccStartBal(accId, initYr);
       const anse = Math.min(
         depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.anse) > 0)
