@@ -729,14 +729,23 @@
   .apt .r-proj td { background: #f5f3ff; color: #6d28d9; }
   .apt .r-proj td:first-child { background: #f5f3ff; }
   .apt input.plan-inp {
-    width: 72px; padding: 2px 4px; font-size: 11px;
+    width: 60px; padding: 2px 4px; font-size: 11px;
     border: 1px solid #86efac; border-radius: 3px;
     text-align: right; background: #f0fdf4;
   }
   .apt input.anse-inp {
-    width: 72px; padding: 2px 4px; font-size: 11px;
+    width: 52px; padding: 1px 3px; font-size: 10px;
     border: 1px solid #fbbf24; border-radius: 3px;
     text-align: right; background: #fefce8;
+  }
+  .anse-sub {
+    display: flex; align-items: center; gap: 2px; margin-top: 2px;
+  }
+  .anse-sub > .anse-lbl {
+    font-size: 9px; color: #92400e; white-space: nowrap;
+  }
+  .anse-sub > .anse-val {
+    font-size: 10px; color: #92400e;
   }
   .plan-section-title {
     font-weight: 700; font-size: 14px;
@@ -1334,7 +1343,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.62';
+const APP_VERSION = 'MyPM v1.65';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3538,16 +3547,11 @@ function getPlanManwon(accId, year) {
   return (y && y[accId] != null) ? Number(y[accId]) : null;
 }
 
-// Get안세공재원 plan value for year
-function getAnsePlanManwon(year) {
+// Get per-account anse plan value (만원) for accId in year
+function getPlanAnseManwon(accId, year) {
   const y = annualPlan.deposits[String(year)];
-  return (y && y['naAnse'] != null) ? Number(y['naAnse']) : null;
-}
-
-// Get 아내-안세공재원 plan value for year
-function getAnseWifePlanManwon(year) {
-  const y = annualPlan.deposits[String(year)];
-  return (y && y['wifeAnse'] != null) ? Number(y['wifeAnse']) : null;
+  const k = accId + '_anse';
+  return (y && y[k] != null) ? Number(y[k]) : null;
 }
 
 // Cumulative anse deposits for accId list up to end of year, in 백만원 (integer)
@@ -3594,6 +3598,7 @@ function renderPrincipalTable() {
   if (!wrap) return;
   const years = getPlanYearRange();
   const currentYear = new Date().getFullYear();
+  const DC_ID = 'dc';
 
   // header
   let h = '<thead><tr><th>계좌</th>';
@@ -3603,11 +3608,20 @@ function renderPrincipalTable() {
   }
   h += '</tr></thead>';
 
-  // cell builder
-  const actualCell = (v, isAnse) => `<td>${isAnse ? (v == null ? '-' : Math.round(+v)) : fmt(v)}</td>`;
-  const planCell = (accId, year, v, isAnse) => {
-    const cls = isAnse ? 'anse-inp' : 'plan-inp';
-    return `<td><input class="${cls}" type="number" min="0" step="1" data-py="${year}" data-pk="${accId}" value="${v != null ? Math.round(+v) : ''}" placeholder="0"></td>`;
+  // Build one cell; non-DC accounts show deposit + anse stacked
+  const mkActualCell = (id, yr, showAnse) => {
+    const v = getActualCumManwon(id, yr);
+    if (!showAnse) return `<td>${fmt(v)}</td>`;
+    const anse = getActualAnseManwon([id], yr);
+    return `<td>${fmt(v)}<div class="anse-sub"><span class="anse-lbl">안세공</span><span class="anse-val">${anse || '-'}</span></div></td>`;
+  };
+  const mkPlanCell = (id, yr, showAnse) => {
+    const v = getPlanManwon(id, yr);
+    const inp = `<input class="plan-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}" value="${v != null ? Math.round(+v) : ''}" placeholder="0">`;
+    if (!showAnse) return `<td>${inp}</td>`;
+    const anse = getPlanAnseManwon(id, yr);
+    const anseInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse" value="${anse != null ? Math.round(+anse) : ''}" placeholder="0">`;
+    return `<td>${inp}<div class="anse-sub"><span class="anse-lbl">안세공</span>${anseInp}</div></td>`;
   };
 
   let body = '<tbody>';
@@ -3616,28 +3630,13 @@ function renderPrincipalTable() {
   for (const id of MY_ACC_IDS) {
     const acc = ACCOUNTS.find(a => a.id === id);
     if (!acc) continue;
+    const showAnse = id !== DC_ID;
     body += `<tr><td>${acc.name}</td>`;
     for (const yr of years) {
-      if (isActualCell(id, yr)) {
-        body += actualCell(getActualCumManwon(id, yr));
-      } else {
-        body += planCell(id, yr, getPlanManwon(id, yr), false);
-      }
+      body += isActualCell(id, yr) ? mkActualCell(id, yr, showAnse) : mkPlanCell(id, yr, showAnse);
     }
     body += '</tr>';
   }
-
-  // 나-안세공재원: 현재연도까지 실적(읽기전용), 이후 계획(편집)
-  body += '<tr class="r-anse"><td>나-안세공재원</td>';
-  for (const yr of years) {
-    if (yr <= currentYear) {
-      const actual = getActualAnseManwon(MY_ACC_IDS, yr);
-      body += actualCell(actual || null, true);
-    } else {
-      body += planCell('naAnse', yr, getAnsePlanManwon(yr), true);
-    }
-  }
-  body += '</tr>';
 
   // 나-연금총합
   body += '<tr class="r-sub"><td>나-연금총합</td>';
@@ -3647,32 +3646,16 @@ function renderPrincipalTable() {
   }
   body += '</tr>';
 
-  // WIFE accounts
+  // WIFE accounts (all show anse)
   for (const id of WIFE_ACC_IDS) {
     const acc = ACCOUNTS.find(a => a.id === id);
     if (!acc) continue;
     body += `<tr><td style="padding-left:14px;color:var(--muted)">${acc.name}</td>`;
     for (const yr of years) {
-      if (isActualCell(id, yr)) {
-        body += actualCell(getActualCumManwon(id, yr));
-      } else {
-        body += planCell(id, yr, getPlanManwon(id, yr), false);
-      }
+      body += isActualCell(id, yr) ? mkActualCell(id, yr, true) : mkPlanCell(id, yr, true);
     }
     body += '</tr>';
   }
-
-  // 아내-안세공재원: 현재연도까지 실적(읽기전용), 이후 계획(편집)
-  body += '<tr class="r-anse"><td style="padding-left:14px;color:var(--muted)">아내-안세공재원</td>';
-  for (const yr of years) {
-    if (yr <= currentYear) {
-      const actual = getActualAnseManwon(WIFE_ACC_IDS, yr);
-      body += actualCell(actual || null, true);
-    } else {
-      body += planCell('wifeAnse', yr, getAnseWifePlanManwon(yr), true);
-    }
-  }
-  body += '</tr>';
 
   // 아내-연금총합
   body += '<tr class="r-sub"><td>아내-연금총합</td>';
@@ -4384,6 +4367,7 @@ function computeWithdrawalSim() {
   const wp = wdPlan;
   if (!wp.startYear) return null;
   const { startYear, duration } = wp;
+  const todayYear = new Date().getFullYear();
   const years = Array.from({ length: duration || 25 }, (_, i) => startYear + i);
   const r    = (wp.returnRate || 4) / 100;
   const inf  = (wp.inflation || 2.2) / 100;
@@ -4459,11 +4443,11 @@ function computeWithdrawalSim() {
       : 0;
 
     // 3. 인출 목표 및 계좌별 배분
-    const target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - startYear);
+    const target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
     const needPriv = Math.max(0, target - myNP - wifeNP);
     const wifeActive = yr >= (wp.wifeFixStartYear || startYear);
     const wifeBudget = wifeActive
-      ? Math.min((wp.wifeFixWithdraw || 0) * 1_000_000 * Math.pow(1+inf, yr - startYear), needPriv)
+      ? Math.min((wp.wifeFixWithdraw || 0) * 1_000_000 * Math.pow(1+inf, yr - todayYear), needPriv)
       : 0;
     let myRemaining   = needPriv - wifeBudget;
     let wifeRemaining = wifeBudget;
@@ -4843,19 +4827,20 @@ function openConsolidateModal() {
   for (const accId of MY_ACC_IDS)   comps[accId] = computeAccComponents(accId, baseYear);
   for (const accId of WIFE_ACC_IDS) comps[accId] = computeAccComponents(accId, wifeBaseYear);
 
-  // 아내 안세공: 거래 기반 대신 연간계획 'wifeAnse' 필드 값으로 재계산
+  // 미래 연도: 거래 대신 연간계획에 입력된 계좌별 안세공 값으로 덮어쓰기
   {
     const currentYear = new Date().getFullYear();
-    const planWifeAnseMv = wifeBaseYear <= currentYear
-      ? getActualAnseManwon(WIFE_ACC_IDS, wifeBaseYear)
-      : (getAnseWifePlanManwon(wifeBaseYear) ?? 0);
-    const planWifeAnse = planWifeAnseMv * 1_000_000;
-    const wifeTotBal = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].total, 0);
-    for (const id of WIFE_ACC_IDS) {
-      const frac = wifeTotBal > 0 ? comps[id].total / wifeTotBal : 1 / WIFE_ACC_IDS.length;
-      const newAnse = Math.min(Math.round(planWifeAnse * frac), comps[id].total);
-      comps[id] = { ...comps[id], anse: newAnse, regular: Math.max(0, comps[id].total - newAnse) };
-    }
+    const overrideAnse = (accIds, refYear) => {
+      if (refYear <= currentYear) return; // 과거/현재는 거래 기반 그대로 사용
+      for (const id of accIds) {
+        const planMv = getPlanAnseManwon(id, refYear);
+        if (planMv == null) continue;
+        const newAnse = Math.min(planMv * 1_000_000, comps[id].total);
+        comps[id] = { ...comps[id], anse: newAnse, regular: Math.max(0, comps[id].total - newAnse) };
+      }
+    };
+    overrideAnse(MY_ACC_IDS.filter(id => id !== 'dc'), baseYear);
+    overrideAnse(WIFE_ACC_IDS, wifeBaseYear);
   }
 
   const myNonDcIds = MY_ACC_IDS.filter(id => id !== 'dc');
