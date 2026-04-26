@@ -1343,7 +1343,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.65';
+const APP_VERSION = 'MyPM v1.66';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2184,7 +2184,7 @@ function saveCashAccounts() {
 function exportToFile() {
   const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
   const payload = {
-    version: 8,
+    version: 9,
     exportedAt: new Date().toISOString(),
     mypm: {
       cashAccounts: cashAccounts,
@@ -2192,7 +2192,9 @@ function exportToFile() {
       deposits: depositData,
       monthlyRecords: monthlyRecords,
       dividendRecords: dividendRecords,
-      annualPlan: annualPlan
+      annualPlan: annualPlan,
+      wdPlan: wdPlan,
+      wdConsolidated: wdConsolidated
     },
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
@@ -2322,7 +2324,19 @@ function importFromFile(event) {
         };
       }
 
-      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n- 배당 기록 ${newDivCount}건\n\n현재 데이터를 덮어쓸까요?`;
+      // 인출 계획 파싱
+      let newWdPlan = null;
+      if (src.wdPlan && typeof src.wdPlan === 'object') {
+        newWdPlan = { ...getWdDefaults(), ...src.wdPlan };
+      }
+
+      // 계좌통합 파싱
+      let newWdConsolidated = null;
+      if (src.wdConsolidated && typeof src.wdConsolidated === 'object') {
+        newWdConsolidated = src.wdConsolidated;
+      }
+
+      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n- 배당 기록 ${newDivCount}건\n- 인출계획: ${newWdPlan ? '있음' : '없음'}\n\n현재 데이터를 덮어쓸까요?`;
       if (!confirm(summary)) { event.target.value = ''; return; }
 
       holdings = newHoldings.map(h => ({
@@ -2340,12 +2354,15 @@ function importFromFile(event) {
       monthlyRecords = newMonthlyRecords;
       dividendRecords = newDividendRecords;
       annualPlan = newAnnualPlan;
+      if (newWdPlan) wdPlan = newWdPlan;
+      wdConsolidated = newWdConsolidated;
       saveHoldings();
       persistCashAccounts();
       saveDeposits();
       saveMonthlyRecords();
       saveDividendRecords();
       localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+      if (newWdPlan) localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan));
       render();
       renderPortfolioChart();
       setTimeout(() => refreshPricesSilent(), 100);
