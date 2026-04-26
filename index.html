@@ -1344,7 +1344,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.69';
+const APP_VERSION = 'MyPM v1.70';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4468,9 +4468,9 @@ function computeWithdrawalSim() {
     const isPrivateOnly = privateOnlyPeriod > 0 && (yr - startYear) < privateOnlyPeriod;
     let myRemaining, wifeRemaining, target;
     if (isPrivateOnly) {
-      // 나/아내 각각 기본인출액 인출 (국민연금이 기본인출액을 초과해도 사적연금 0으로 처리)
-      myRemaining   = Math.max(0, basic - myNP);
-      wifeRemaining = Math.max(0, basic - wifeNP);
+      // 나/아내 각각 기본인출액 인출 (국민연금과 무관하게 사적연금 독립 인출)
+      myRemaining   = basic;
+      wifeRemaining = basic;
       target = basic * 2;
     } else {
       target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
