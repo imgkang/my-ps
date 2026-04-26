@@ -1287,7 +1287,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.49';
+const APP_VERSION = 'MyPM v1.50';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4666,17 +4666,16 @@ function openConsolidateModal() {
 
   _consTotals = { baseYear, wifeBaseYear, comps, myAnseTotal, myRegularTotal,
     wifeAnseTotal, wifeRegularTotal,
-    myDCPrincipal: comps['dc'].dcPrincipal, myDCRegular: comps['dc'].regular };
+    myDCPrincipal: comps['dc'].dcPrincipal, myDCRegular: comps['dc'].regular,
+    pp1Total: comps['pension1'].total, wifePP1Total: comps['wife_pension1'].total };
 
   const mv = won => Math.round(won / 1_000_000);
   const c = wdConsolidated;
-  const pp1Anse    = c ? mv(c.myPP1Anse)      : mv(myAnseTotal);
-  const pp1Regular = c ? mv(c.myPP1Regular)   : 0;
-  const wp1Anse    = c ? mv(c.wifePP1Anse)    : mv(wifeAnseTotal);
-  const wp1Regular = c ? mv(c.wifePP1Regular) : 0;
+  const pp1Anse = c ? mv(c.myPP1Anse)    : mv(comps['pension1'].anse);
+  const wp1Anse = c ? mv(c.wifePP1Anse)  : mv(comps['wife_pension1'].anse);
 
   renderConsLeftTable(comps);
-  renderConsRightTable(pp1Anse, pp1Regular, wp1Anse, wp1Regular);
+  renderConsRightTable(pp1Anse, wp1Anse);
   document.getElementById('consolidateModal').classList.add('open');
 }
 function closeConsolidateModal() { document.getElementById('consolidateModal').classList.remove('open'); }
@@ -4712,33 +4711,34 @@ function renderConsLeftTable(comps) {
   document.getElementById('consLeftWrap').innerHTML = h;
 }
 
-function renderConsRightTable(pp1Anse, pp1Regular, wp1Anse, wp1Regular) {
+function renderConsRightTable(pp1Anse, wp1Anse) {
   const t = _consTotals;
   const mv = won => Math.round(won / 1_000_000);
-  const pp2Anse    = Math.max(0, mv(t.myAnseTotal)    - pp1Anse);
-  const pp2Regular = Math.max(0, mv(t.myRegularTotal) - pp1Regular);
-  const wp2Anse    = Math.max(0, mv(t.wifeAnseTotal)  - wp1Anse);
-  const wp2Regular = Math.max(0, mv(t.wifeRegularTotal) - wp1Regular);
-  const maxMA = mv(t.myAnseTotal), maxMR = mv(t.myRegularTotal);
-  const maxWA = mv(t.wifeAnseTotal), maxWR = mv(t.wifeRegularTotal);
+  const pp1Total = mv(t.pp1Total), wifePP1Total = mv(t.wifePP1Total);
+  const pp1Reg  = Math.max(0, pp1Total      - pp1Anse);
+  const wp1Reg  = Math.max(0, wifePP1Total  - wp1Anse);
+  const pp2Anse = Math.max(0, mv(t.myAnseTotal)      - pp1Anse);
+  const pp2Reg  = Math.max(0, mv(t.myRegularTotal)   - pp1Reg);
+  const wp2Anse = Math.max(0, mv(t.wifeAnseTotal)    - wp1Anse);
+  const wp2Reg  = Math.max(0, mv(t.wifeRegularTotal) - wp1Reg);
+  const maxPP1  = Math.min(pp1Total,     mv(t.myAnseTotal));
+  const maxWP1  = Math.min(wifePP1Total, mv(t.wifeAnseTotal));
 
   let h = `<table class="cons-table"><thead>
     <tr><th>계좌</th><th>구분</th><th>백만원</th></tr></thead><tbody>`;
   h += `<tr class="cons-dc"><td rowspan="2">나 퇴직연금</td><td>퇴직금</td><td>${mv(t.myDCPrincipal)}</td></tr>`;
   h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.myDCRegular)}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">나 개인연금1</td><td>안세공</td>
-    <td><input type="number" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxMA}" oninput="updateConsPP2()"></td></tr>`;
-  h += `<tr><td>연금세</td>
-    <td><input type="number" id="cons_pp1_regular" value="${pp1Regular}" min="0" max="${maxMR}" oninput="updateConsPP2()"></td></tr>`;
+    <td><input type="number" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxPP1}" oninput="updateConsPP2()"></td></tr>`;
+  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp1_reg">${pp1Reg}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">나 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
-  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_regular">${pp2Regular}</td></tr>`;
+  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_reg">${pp2Reg}</td></tr>`;
   h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">아내 개인연금1</td><td>안세공</td>
-    <td><input type="number" id="cons_wp1_anse" value="${wp1Anse}" min="0" max="${maxWA}" oninput="updateConsWP2()"></td></tr>`;
-  h += `<tr><td>연금세</td>
-    <td><input type="number" id="cons_wp1_regular" value="${wp1Regular}" min="0" max="${maxWR}" oninput="updateConsWP2()"></td></tr>`;
+    <td><input type="number" id="cons_wp1_anse" value="${wp1Anse}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
+  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp1_reg">${wp1Reg}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">아내 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
-  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_regular">${wp2Regular}</td></tr>`;
+  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_reg">${wp2Reg}</td></tr>`;
   h += `</tbody></table>`;
   document.getElementById('consRightWrap').innerHTML = h;
 }
@@ -4747,33 +4747,35 @@ function updateConsPP2() {
   const t = _consTotals; if (!t) return;
   const mv = won => Math.round(won / 1_000_000);
   const pp1A = Number(document.getElementById('cons_pp1_anse')?.value) || 0;
-  const pp1R = Number(document.getElementById('cons_pp1_regular')?.value) || 0;
-  const el1 = document.getElementById('cons_pp2_anse');
-  const el2 = document.getElementById('cons_pp2_regular');
-  if (el1) el1.textContent = Math.max(0, mv(t.myAnseTotal)    - pp1A);
-  if (el2) el2.textContent = Math.max(0, mv(t.myRegularTotal) - pp1R);
+  const pp1R = Math.max(0, mv(t.pp1Total) - pp1A);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('cons_pp1_reg',  pp1R);
+  set('cons_pp2_anse', Math.max(0, mv(t.myAnseTotal)    - pp1A));
+  set('cons_pp2_reg',  Math.max(0, mv(t.myRegularTotal) - pp1R));
 }
 function updateConsWP2() {
   const t = _consTotals; if (!t) return;
   const mv = won => Math.round(won / 1_000_000);
   const wp1A = Number(document.getElementById('cons_wp1_anse')?.value) || 0;
-  const wp1R = Number(document.getElementById('cons_wp1_regular')?.value) || 0;
-  const el1 = document.getElementById('cons_wp2_anse');
-  const el2 = document.getElementById('cons_wp2_regular');
-  if (el1) el1.textContent = Math.max(0, mv(t.wifeAnseTotal)    - wp1A);
-  if (el2) el2.textContent = Math.max(0, mv(t.wifeRegularTotal) - wp1R);
+  const wp1R = Math.max(0, mv(t.wifePP1Total) - wp1A);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('cons_wp1_reg',  wp1R);
+  set('cons_wp2_anse', Math.max(0, mv(t.wifeAnseTotal)    - wp1A));
+  set('cons_wp2_reg',  Math.max(0, mv(t.wifeRegularTotal) - wp1R));
 }
 
 function applyConsolidate() {
   const t = _consTotals; if (!t) return;
   const M = 1_000_000;
-  const n = id => (Number(document.getElementById(id)?.value) || 0) * M;
+  const nv = id => (Number(document.getElementById(id)?.value) || 0);
+  const pp1A  = nv('cons_pp1_anse');  const pp1R  = Math.max(0, Math.round(t.pp1Total      / M) - pp1A);
+  const wp1A  = nv('cons_wp1_anse');  const wp1R  = Math.max(0, Math.round(t.wifePP1Total  / M) - wp1A);
   wdConsolidated = {
     startYear: wdPlan.startYear,
     myDCPrincipal: t.myDCPrincipal, myDCRegular: t.myDCRegular,
-    myPP1Anse: n('cons_pp1_anse'), myPP1Regular: n('cons_pp1_regular'),
+    myPP1Anse: pp1A * M, myPP1Regular: pp1R * M,
     totalMyAnse: t.myAnseTotal, totalMyRegular: t.myRegularTotal,
-    wifePP1Anse: n('cons_wp1_anse'), wifePP1Regular: n('cons_wp1_regular'),
+    wifePP1Anse: wp1A * M, wifePP1Regular: wp1R * M,
     totalWifeAnse: t.wifeAnseTotal, totalWifeRegular: t.wifeRegularTotal,
   };
   closeConsolidateModal();
