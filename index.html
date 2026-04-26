@@ -1216,7 +1216,7 @@
 
         <div class="wd-section">📅 인출 기본 설정</div>
         <label><span>인출 시작 연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
-        <label><span>인출 기간 (년)</span><input id="wd_duration" type="number" min="5" max="50" step="1"></label>
+        <label><span>은퇴 시작나이 (세)</span><input id="wd_retireAge" type="number" min="40" max="90" step="1"></label>
         <label><span>연간 인출 목표액 (백만원)</span><input id="wd_annualTarget" type="number" min="0" step="1"></label>
         <label><span>물가상승률 (%)</span><input id="wd_inflation" type="number" min="0" max="20" step="0.1"></label>
         <label><span>인출기간 수익률 (%/년)</span><input id="wd_returnRate" type="number" min="0" max="20" step="0.1"></label>
@@ -1341,7 +1341,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.75';
+const APP_VERSION = 'MyPM v1.76';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4283,7 +4283,7 @@ let _consTotals = null;
 function getWdDefaults() {
   const cy = new Date().getFullYear();
   return {
-    startYear: cy + 2, duration: 25, annualTarget: 120,
+    startYear: cy + 2, retireAge: 60, annualTarget: 120,
     inflation: 2.2, returnRate: 4.0,
     retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4, excessPensionTaxRate: 16.5,
     myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
@@ -4315,7 +4315,7 @@ function toggleWdSettings() {
 function loadWdFormValues() {
   const wp = wdPlan;
   const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
-  s('wd_startYear', wp.startYear); s('wd_duration', wp.duration);
+  s('wd_startYear', wp.startYear); s('wd_retireAge', wp.retireAge ?? 60);
   s('wd_annualTarget', wp.annualTarget); s('wd_inflation', wp.inflation);
   s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
   s('wd_privateOnlyPeriod', wp.privateOnlyPeriod ?? 5);
@@ -4333,7 +4333,7 @@ function applyWdSettings() {
   const n = id => Number(document.getElementById(id)?.value) || 0;
   wdPlan = {
     startYear: n('wd_startYear') || new Date().getFullYear() + 2,
-    duration: n('wd_duration') || 25,
+    retireAge: n('wd_retireAge') || 60,
     annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
     retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'),
     npTaxRate: n('wd_npTaxRate'), excessPensionTaxRate: n('wd_excessPensionTaxRate'),
@@ -4384,9 +4384,14 @@ function computeAccStartBal(accId, startYear) {
 function computeWithdrawalSim() {
   const wp = wdPlan;
   if (!wp.startYear) return null;
-  const { startYear, duration } = wp;
+  const { startYear } = wp;
   const todayYear = new Date().getFullYear();
-  const years = Array.from({ length: duration || 25 }, (_, i) => startYear + i);
+  const retireAge = wp.retireAge || 60;
+  // 95세까지 고정 표시: 출생연도 알면 myBirthYear+95, 모르면 은퇴나이 기준
+  const endYear = wp.myBirthYear > 0
+    ? wp.myBirthYear + 95
+    : startYear + (95 - retireAge);
+  const years = Array.from({ length: Math.max(1, endYear - startYear + 1) }, (_, i) => startYear + i);
   const r    = (wp.returnRate || 4) / 100;
   const inf  = (wp.inflation || 2.2) / 100;
   const rTR  = (wp.retireTaxRate || 12) / 100;
@@ -4573,8 +4578,8 @@ function renderWithdrawalPlan() {
 
   // 설정 요약 바
   document.getElementById('wdInfoBar').innerHTML =
-    `<span>인출시작: <b>${wp.startYear}년</b></span>` +
-    `<span>기간: <b>${wp.duration}년</b></span>` +
+    `<span>인출시작: <b>${wp.startYear}년 (${wp.retireAge || 60}세)</b></span>` +
+    `<span>종료: <b>95세</b></span>` +
     `<span>연간목표: <b>${wp.annualTarget}백만원</b></span>` +
     `<span>물가상승: <b>${wp.inflation}%</b></span>` +
     `<span>수익률: <b>${wp.returnRate}%</b></span>` +
