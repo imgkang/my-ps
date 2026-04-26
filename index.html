@@ -1287,7 +1287,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.52';
+const APP_VERSION = 'MyPM v1.53';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4414,11 +4414,15 @@ function computeWithdrawalSim() {
       let rem = budget;
       const snapAnse = Object.fromEntries(accIds.map(id => [id, state[id].anse]));
 
-      // ① 안세공=0 계좌(DC 제외): 연금세에서 기본인출액만큼
-      for (const id of accIds) {
-        if (rem <= 0 || snapAnse[id] > 0 || id === DC_ID) continue;
-        const take = Math.min(state[id].regular, basic, rem);
-        if (take > 0) { withdrawals[yr][id].regularOut += take; state[id].regular -= take; state[id].total -= take; totalPT += take * pTR; rem -= take; }
+      // ① 안세공=0 계좌(DC 제외): 안세공·퇴직금이 남아 있는 동안 그룹 전체에서 기본인출액 1회만
+      const hasHighPri = accIds.some(id => snapAnse[id] > 0 || (state[id].dcPrincipal || 0) > 0);
+      if (hasHighPri) {
+        let basicRem = basic;
+        for (const id of accIds) {
+          if (basicRem <= 0 || rem <= 0 || snapAnse[id] > 0 || id === DC_ID) continue;
+          const take = Math.min(state[id].regular, basicRem, rem);
+          if (take > 0) { withdrawals[yr][id].regularOut += take; state[id].regular -= take; state[id].total -= take; totalPT += take * pTR; rem -= take; basicRem -= take; }
+        }
       }
       // ② 안세공>0 계좌: 안세공 소진
       for (const id of accIds) {
