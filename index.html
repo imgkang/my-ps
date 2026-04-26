@@ -864,33 +864,6 @@
     <div id="accSummaryWrap"></div>
   </div>
 
-  <div class="card" style="padding:10px 16px">
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-      <span style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">💸 인출 계획</span>
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
-        <span style="white-space:nowrap">인출 시작연도</span>
-        <input id="qwd_startYear" type="number" min="2020" max="2080" step="1"
-               style="width:70px;font-size:12px;padding:3px 5px"
-               oninput="saveQuickWdPlan()">
-      </label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
-        <span style="white-space:nowrap">연간목표</span>
-        <input id="qwd_annualTarget" type="number" min="0" step="1"
-               style="width:60px;font-size:12px;padding:3px 5px"
-               oninput="saveQuickWdPlan()">
-        <span style="color:var(--muted)">백만원</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
-        <span style="white-space:nowrap">수익률</span>
-        <input id="qwd_returnRate" type="number" min="0" max="20" step="0.1"
-               style="width:52px;font-size:12px;padding:3px 5px"
-               oninput="saveQuickWdPlan()">
-        <span style="color:var(--muted)">%</span>
-      </label>
-      <button class="btn-secondary" style="font-size:12px;padding:3px 10px"
-              onclick="openWithdrawalModal()">상세 보기</button>
-    </div>
-  </div>
 
   <div class="card">
     <h2>📈 월별 추세</h2>
@@ -1209,6 +1182,30 @@
       </div>
     </div>
 
+    <!-- 빠른 편집 바 -->
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;flex-shrink:0">
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
+        <span style="white-space:nowrap;color:var(--muted)">인출 시작연도</span>
+        <input id="qwd_startYear" type="number" min="2020" max="2080" step="1"
+               style="width:72px;font-size:12px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px"
+               oninput="saveQuickWdPlan()">
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
+        <span style="white-space:nowrap;color:var(--muted)">연간목표</span>
+        <input id="qwd_annualTarget" type="number" min="0" step="1"
+               style="width:62px;font-size:12px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px"
+               oninput="saveQuickWdPlan()">
+        <span style="color:var(--muted);font-size:11px">백만원</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
+        <span style="white-space:nowrap;color:var(--muted)">수익률</span>
+        <input id="qwd_returnRate" type="number" min="0" max="20" step="0.1"
+               style="width:54px;font-size:12px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px"
+               oninput="saveQuickWdPlan()">
+        <span style="color:var(--muted);font-size:11px">%</span>
+      </label>
+    </div>
+
     <!-- 설정 패널 -->
     <div id="wdSettingsPanel" style="display:none;border:1px solid #e9d5ff;border-radius:8px;padding:14px;margin-bottom:12px;background:#faf5ff;flex-shrink:0">
       <div class="wd-settings-grid">
@@ -1345,7 +1342,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.72';
+const APP_VERSION = 'MyPM v1.73';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4306,6 +4303,7 @@ function saveWdPlan() { localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPl
 
 function openWithdrawalModal() {
   loadWdFormValues();
+  loadQuickWdValues();
   document.getElementById('withdrawalModal').classList.add('open');
   renderWithdrawalPlan();
 }
