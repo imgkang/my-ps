@@ -1287,7 +1287,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.50';
+const APP_VERSION = 'MyPM v1.51';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4660,7 +4660,7 @@ function openConsolidateModal() {
 
   const myNonDcIds = MY_ACC_IDS.filter(id => id !== 'dc');
   const myAnseTotal      = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-  const myRegularTotal   = MY_ACC_IDS.reduce((s, id) => s + comps[id].regular, 0);
+  const myRegularTotal   = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
   const wifeAnseTotal    = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].anse, 0);
   const wifeRegularTotal = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].regular, 0);
 
