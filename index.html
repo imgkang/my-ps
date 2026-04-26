@@ -1334,7 +1334,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.61';
+const APP_VERSION = 'MyPM v1.62';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4721,14 +4721,20 @@ function renderWdWithdrawTable(sim) {
   for (const yr of years) h += `<td>${mv(summary[yr].totalPriv)}</td>`;
   h += '</tr>';
 
+  const inf = (wp.inflation || 2.2) / 100;
+  const todayYear = new Date().getFullYear();
   const rows = [
     ['wd-sum-row', '인출 합계 (사적+국민)', yr => mv(summary[yr].totalInc)],
     ['wd-target-row wd-sum-row', '인출 목표액', yr => mv(summary[yr].target)],
-    ['wd-sum-row', `현재가치 (${startYear}기준)`, yr => `<span style="color:#7c3aed">${mv(summary[yr].totalInc / summary[yr].inflFactor)}</span>`],
     ['wd-tax-row', '퇴직소득세', yr => mv(summary[yr].retireTax)],
     ['wd-tax-row', '연금소득세', yr => mv(summary[yr].pensionTax)],
     ['wd-tax-row', '국민연금세', yr => mv(summary[yr].npTax)],
     ['wd-net-row wd-sum-row', '인출 - 세금', yr => mv(summary[yr].totalInc - summary[yr].totalTax)],
+    ['wd-sum-row', `실수령액 현재가치 (${todayYear}년 기준)`, yr => {
+      const net = summary[yr].totalInc - summary[yr].totalTax;
+      const pv = net / Math.pow(1 + inf, yr - todayYear);
+      return `<span style="color:#7c3aed">${mv(pv)}</span>`;
+    }],
   ];
   for (const [cls, label, fn] of rows) {
     h += `<tr class="${cls}"><td colspan="3">${label}</td>`;
