@@ -1252,7 +1252,7 @@
     <div class="wd-info-bar" id="wdInfoBar"></div>
 
     <!-- 인출 계획 차트 -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:20px;flex-shrink:0">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:12px;flex-shrink:0">
       <div>
         <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
         <div style="position:relative;height:220px"><canvas id="wdChart1"></canvas></div>
@@ -1261,6 +1261,10 @@
         <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 나 / 아내 잔액 추이 (백만원)</h3>
         <div style="position:relative;height:220px"><canvas id="wdChart2"></canvas></div>
       </div>
+    </div>
+    <div style="margin-bottom:20px;flex-shrink:0">
+      <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 세금 누적 추이 (백만원)</h3>
+      <div style="position:relative;height:220px"><canvas id="wdChart3"></canvas></div>
     </div>
 
     <!-- 인출 테이블 -->
@@ -1341,7 +1345,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.77';
+const APP_VERSION = 'MyPM v1.78';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4585,7 +4589,8 @@ function renderWithdrawalPlan() {
 
   // 설정 요약 바
   document.getElementById('wdInfoBar').innerHTML =
-    `<span>인출시작: <b>${wp.startYear}년 (${wp.retireAge || 60}세)</b></span>` +
+    `<span>인출시작: <b>${wp.startYear}년</b></span>` +
+    `<span>은퇴나이: <b>${wp.retireAge || 60}세</b></span>` +
     `<span>종료: <b>95세</b></span>` +
     `<span>연간목표: <b>${wp.annualTarget}백만원</b></span>` +
     `<span>물가상승: <b>${wp.inflation}%</b></span>` +
@@ -4604,10 +4609,10 @@ function renderWithdrawalPlan() {
   setupWdScrollSync();
 }
 
-let _wdChart1 = null, _wdChart2 = null;
+let _wdChart1 = null, _wdChart2 = null, _wdChart3 = null;
 
 function renderWdCharts(sim) {
-  const { years, balances, summary, allAccIds, wifeStartYear } = sim;
+  const { years, balances, summary, allAccIds } = sim;
   const M = 1_000_000;
   const round = v => Math.round(v / M);
 
@@ -4623,11 +4628,20 @@ function renderWdCharts(sim) {
   const wifeBals = years.map(yr =>
     Math.round(WIFE_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
 
+  // Chart 3 데이터: 누적 세금
+  let cumRT = 0, cumPT = 0, cumNP = 0;
+  const cumRetire  = years.map(yr => { cumRT += round(summary[yr].retireTax);  return cumRT; });
+  const cumPension = years.map(yr => { cumPT += round(summary[yr].pensionTax); return cumPT; });
+  const cumNPTax   = years.map(yr => { cumNP += round(summary[yr].npTax);      return cumNP; });
+  const cumTotal   = years.map((_, i) => cumRetire[i] + cumPension[i] + cumNPTax[i]);
+
   if (_wdChart1) { _wdChart1.destroy(); _wdChart1 = null; }
   if (_wdChart2) { _wdChart2.destroy(); _wdChart2 = null; }
+  if (_wdChart3) { _wdChart3.destroy(); _wdChart3 = null; }
 
   const ctx1 = document.getElementById('wdChart1')?.getContext('2d');
   const ctx2 = document.getElementById('wdChart2')?.getContext('2d');
+  const ctx3 = document.getElementById('wdChart3')?.getContext('2d');
   if (!ctx1 || !ctx2 || typeof Chart === 'undefined') return;
 
   const sharedOpts = {
@@ -4666,6 +4680,22 @@ function renderWdCharts(sim) {
     },
     options: { ...sharedOpts }
   });
+
+  if (ctx3) {
+    _wdChart3 = new Chart(ctx3, {
+      type: 'line',
+      data: {
+        labels: years,
+        datasets: [
+          { label: '퇴직소득세 누적', data: cumRetire,  borderColor: '#ef4444', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
+          { label: '연금소득세 누적', data: cumPension, borderColor: '#f97316', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
+          { label: '국민연금세 누적', data: cumNPTax,   borderColor: '#eab308', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
+          { label: '세금 합계 누적',  data: cumTotal,   borderColor: '#6b7280', backgroundColor: 'rgba(107,114,128,0.08)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2.5 }
+        ]
+      },
+      options: { ...sharedOpts }
+    });
+  }
 }
 
 let _wdScrollSyncDone = false;
