@@ -739,11 +739,12 @@
     border: 1px solid #fbbf24; border-radius: 3px;
     text-align: right; background: #fefce8;
   }
-  .anse-sub {
-    display: flex; align-items: center; gap: 2px; margin-top: 2px;
+  .apt .acc-name { font-weight: 500; line-height: 1.2; }
+  .apt .acc-meta {
+    font-size: 9px; color: #92400e; margin-top: 2px; line-height: 1.1;
   }
-  .anse-sub > .anse-lbl {
-    font-size: 9px; color: #92400e; white-space: nowrap;
+  .anse-sub {
+    display: flex; justify-content: flex-end; margin-top: 2px;
   }
   .anse-sub > .anse-val {
     font-size: 10px; color: #92400e;
@@ -3633,7 +3634,7 @@ function renderPrincipalTable() {
     const v = getActualCumManwon(id, yr);
     if (!showAnse) return `<td>${fmt(v)}</td>`;
     const anse = getActualAnseManwon([id], yr);
-    return `<td>${fmt(v)}<div class="anse-sub"><span class="anse-lbl">안세공</span><span class="anse-val">${anse || '-'}</span></div></td>`;
+    return `<td>${fmt(v)}<div class="anse-sub"><span class="anse-val">${anse || '-'}</span></div></td>`;
   };
   const mkPlanCell = (id, yr, showAnse) => {
     const v = getPlanManwon(id, yr);
@@ -3641,7 +3642,7 @@ function renderPrincipalTable() {
     if (!showAnse) return `<td>${inp}</td>`;
     const anse = getPlanAnseManwon(id, yr);
     const anseInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse" value="${anse != null ? Math.round(+anse) : ''}" placeholder="0">`;
-    return `<td>${inp}<div class="anse-sub"><span class="anse-lbl">안세공</span>${anseInp}</div></td>`;
+    return `<td>${inp}<div class="anse-sub">${anseInp}</div></td>`;
   };
 
   let body = '<tbody>';
@@ -3651,7 +3652,10 @@ function renderPrincipalTable() {
     const acc = ACCOUNTS.find(a => a.id === id);
     if (!acc) continue;
     const showAnse = id !== DC_ID;
-    body += `<tr><td>${acc.name}</td>`;
+    const nameCell = showAnse
+      ? `<div class="acc-name">${acc.name}</div><div class="acc-meta">안세공</div>`
+      : `<div class="acc-name">${acc.name}</div>`;
+    body += `<tr><td>${nameCell}</td>`;
     for (const yr of years) {
       body += isActualCell(id, yr) ? mkActualCell(id, yr, showAnse) : mkPlanCell(id, yr, showAnse);
     }
@@ -3670,7 +3674,8 @@ function renderPrincipalTable() {
   for (const id of WIFE_ACC_IDS) {
     const acc = ACCOUNTS.find(a => a.id === id);
     if (!acc) continue;
-    body += `<tr><td style="padding-left:14px;color:var(--muted)">${acc.name}</td>`;
+    const nameCell = `<div class="acc-name">${acc.name}</div><div class="acc-meta">안세공</div>`;
+    body += `<tr><td style="padding-left:14px;color:var(--muted)">${nameCell}</td>`;
     for (const yr of years) {
       body += isActualCell(id, yr) ? mkActualCell(id, yr, true) : mkPlanCell(id, yr, true);
     }
