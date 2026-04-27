@@ -1346,7 +1346,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.81';
+const APP_VERSION = 'MyPM v1.82';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4480,15 +4480,17 @@ function computeWithdrawalSim() {
       s.regular += gain; s.total += gain;
     }
 
-    // 2. 국민연금 (현재시점 기준 물가연동, 시작월 반영)
+    // 2. 국민연금 (현재시점 기준 물가연동, 시작월 반영, 연기연금 반영)
     const npCurrentYear = new Date().getFullYear();
-    const myNPMonths = yr > wp.myNPStartYear ? 12 : yr === wp.myNPStartYear ? 13 - (wp.myNPStartMonth||1) : 0;
+    const myNPActualYear   = wp.myNPStartYear   + (wp.myNPDelay   || 0);
+    const wifeNPActualYear = wp.wifeNPStartYear + (wp.wifeNPDelay || 0);
+    const myNPMonths = yr > myNPActualYear ? 12 : yr === myNPActualYear ? 13 - (wp.myNPStartMonth||1) : 0;
     const myNP = myNPMonths > 0
-      ? wp.myNPMonthly * 10000 * myNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.07*(wp.myNPDelay||0))
+      ? wp.myNPMonthly * 10000 * myNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.072*(wp.myNPDelay||0))
       : 0;
-    const wifeNPMonths = yr > wp.wifeNPStartYear ? 12 : yr === wp.wifeNPStartYear ? 13 - (wp.wifeNPStartMonth||1) : 0;
+    const wifeNPMonths = yr > wifeNPActualYear ? 12 : yr === wifeNPActualYear ? 13 - (wp.wifeNPStartMonth||1) : 0;
     const wifeNP = wifeNPMonths > 0
-      ? wp.wifeNPMonthly * 10000 * wifeNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.07*(wp.wifeNPDelay||0))
+      ? wp.wifeNPMonthly * 10000 * wifeNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.072*(wp.wifeNPDelay||0))
       : 0;
 
     // 3. 인출 목표 및 계좌별 배분
@@ -4608,8 +4610,8 @@ function renderWithdrawalPlan() {
     `<span>퇴직세: <b>${wp.retireTaxRate}%</b></span>` +
     `<span>연금세: <b>${wp.pensionTaxRate}%</b></span>` +
     `<span>국민연금세: <b>${wp.npTaxRate}%</b></span>` +
-    `<span>나 국민연금: <b>${wp.myNPStartYear}년 ${wp.myNPStartMonth||1}월 ${wp.myNPMonthly}만원/월</b></span>` +
-    `<span>아내 국민연금: <b>${wp.wifeNPStartYear}년 ${wp.wifeNPStartMonth||1}월 ${wp.wifeNPMonthly}만원/월</b></span>` +
+    `<span>나 국민연금: <b>${wp.myNPStartYear + (wp.myNPDelay||0)}년 ${wp.myNPStartMonth||1}월${wp.myNPDelay ? ` (연기${wp.myNPDelay}년)` : ''}</b></span>` +
+    `<span>아내 국민연금: <b>${wp.wifeNPStartYear + (wp.wifeNPDelay||0)}년 ${wp.wifeNPStartMonth||1}월${wp.wifeNPDelay ? ` (연기${wp.wifeNPDelay}년)` : ''}</b></span>` +
     `<span>기본인출액: <b>${wp.basicWithdraw}백만원/계좌</b></span>` +
     (wp.wifeFixWithdraw ? `<span>아내계좌 인출: <b>${wp.wifeFixStartYear}년부터 ${wp.wifeFixWithdraw}백만원/년</b></span>` : '');
 
