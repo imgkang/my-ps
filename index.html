@@ -1345,7 +1345,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.79';
+const APP_VERSION = 'MyPM v1.80';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4860,7 +4860,7 @@ function renderWdBalanceTable(sim) {
     if (accId === DC_ID) {
       h += `<tr class="wd-acc-row wd-dc"><td rowspan="2">${nm}</td>
         <td class="wd-sub">퇴직세</td><td class="wd-init">${mv(init.dcPrincipal)}</td>`;
-      for (const yr of years) h += cell(yr, mc(balances[yr][accId].dcPrincipal));
+      for (const yr of years) h += balances[yr] === null ? blankTd : `<td>${mc(balances[yr][accId].dcPrincipal)}</td>`;
       h += '</tr>';
     } else {
       h += `<tr class="wd-acc-row"><td rowspan="2">${nm}</td>
