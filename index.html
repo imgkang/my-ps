@@ -779,7 +779,8 @@
   .wd-table .wd-sub  { background: #fafafa; color: #64748b; font-size: 9.5px; text-align: center; }
   .wd-table .wd-init { background: #fffbeb; font-weight: 600; color: #92400e; }
   .wd-table .wd-np-row td  { background: #f0fdf4; color: #166534; font-weight: 500; }
-  .wd-table .wd-dc td      { background: #fef3c7; }
+  .wd-table .wd-dc td      { background: #fff; }
+  .wd-table .wd-pension-row td { background: #fefce8; }
   .wd-table .wd-total-row td { background: #f1f5f9; font-weight: 700; border-top: 2px solid #94a3b8; }
   .wd-table .wd-sum-row td   { background: #eff6ff; }
   .wd-table .wd-target-row td { font-weight: 600; }
@@ -1345,7 +1346,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.80';
+const APP_VERSION = 'MyPM v1.81';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4782,7 +4783,7 @@ function renderWdWithdrawTable(sim) {
       for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].anseOut));
       h += '</tr>';
     }
-    h += `<tr class="wd-acc-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
+    h += `<tr class="wd-acc-row wd-pension-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
     for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].regularOut));
     h += '</tr>';
   }
@@ -4868,7 +4869,7 @@ function renderWdBalanceTable(sim) {
       for (const yr of years) h += balances[yr] === null ? blankTd : (isWife && yr < wifeStartYear ? wifeBlankTd : `<td>${mc(balances[yr][accId].anse)}</td>`);
       h += '</tr>';
     }
-    h += `<tr class="wd-acc-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
+    h += `<tr class="wd-acc-row wd-pension-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
     for (const yr of years) h += balances[yr] === null ? blankTd : (isWife && yr < wifeStartYear ? wifeBlankTd : `<td>${mc(balances[yr][accId].regular)}</td>`);
     h += '</tr>';
   }
