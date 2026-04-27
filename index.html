@@ -1341,7 +1341,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.76';
+const APP_VERSION = 'MyPM v1.77';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4387,11 +4387,15 @@ function computeWithdrawalSim() {
   const { startYear } = wp;
   const todayYear = new Date().getFullYear();
   const retireAge = wp.retireAge || 60;
-  // 95세까지 고정 표시: 출생연도 알면 myBirthYear+95, 모르면 은퇴나이 기준
+  // 테이블 표시 시작연도 (은퇴 시작나이 기준, startYear 보다 클 수 없음)
+  const displayStartYear = wp.myBirthYear > 0
+    ? Math.min(wp.myBirthYear + retireAge, startYear)
+    : startYear;
+  // 95세까지 고정 표시
   const endYear = wp.myBirthYear > 0
     ? wp.myBirthYear + 95
     : startYear + (95 - retireAge);
-  const years = Array.from({ length: Math.max(1, endYear - startYear + 1) }, (_, i) => startYear + i);
+  const years = Array.from({ length: Math.max(1, endYear - displayStartYear + 1) }, (_, i) => displayStartYear + i);
   const r    = (wp.returnRate || 4) / 100;
   const inf  = (wp.inflation || 2.2) / 100;
   const rTR  = (wp.retireTaxRate || 12) / 100;
@@ -4400,7 +4404,7 @@ function computeWithdrawalSim() {
   const npTR = (wp.npTaxRate || 4) / 100;
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
-  const endDate = `${startYear - 1}-12-31`;
+  const endDate = `${displayStartYear - 1}-12-31`;
   const wifeStartYear = wp.wifeFixStartYear || startYear;
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
 
@@ -4424,7 +4428,7 @@ function computeWithdrawalSim() {
     for (const accId of allAccIds) {
       const isWife  = WIFE_ACC_IDS.includes(accId);
       const initEnd = isWife ? wifeEndDate : endDate;
-      const initYr  = isWife ? wifeStartYear - 1 : startYear - 1;
+      const initYr  = isWife ? wifeStartYear - 1 : displayStartYear - 1;
       const total = computeAccStartBal(accId, initYr);
       let anse;
       if (accId !== DC_ID && initYr > currentYear) {
@@ -4476,9 +4480,12 @@ function computeWithdrawalSim() {
     // 3. 인출 목표 및 계좌별 배분
     const basic = (wp.basicWithdraw || 0) * 1_000_000;
     const privateOnlyPeriod = wp.privateOnlyPeriod ?? 5;
-    const isPrivateOnly = privateOnlyPeriod > 0 && (yr - startYear) < privateOnlyPeriod;
+    const isPrivateOnly = yr >= startYear && privateOnlyPeriod > 0 && (yr - startYear) < privateOnlyPeriod;
     let myRemaining, wifeRemaining, target;
-    if (isPrivateOnly) {
+    if (yr < startYear) {
+      // 인출 시작 전: 잔액만 유지 (인출 없음)
+      myRemaining = 0; wifeRemaining = 0; target = 0;
+    } else if (isPrivateOnly) {
       // 나/아내 각각 기본인출액 인출 (국민연금과 무관하게 사적연금 독립 인출)
       myRemaining   = basic;
       wifeRemaining = basic;
