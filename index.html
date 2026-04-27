@@ -1345,7 +1345,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.78';
+const APP_VERSION = 'MyPM v1.79';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4408,7 +4408,7 @@ function computeWithdrawalSim() {
   const npTR = (wp.npTaxRate || 4) / 100;
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
-  const endDate = `${displayStartYear - 1}-12-31`;
+  const endDate = `${startYear - 1}-12-31`;
   const wifeStartYear = wp.wifeFixStartYear || startYear;
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
 
@@ -4432,7 +4432,7 @@ function computeWithdrawalSim() {
     for (const accId of allAccIds) {
       const isWife  = WIFE_ACC_IDS.includes(accId);
       const initEnd = isWife ? wifeEndDate : endDate;
-      const initYr  = isWife ? wifeStartYear - 1 : displayStartYear - 1;
+      const initYr  = isWife ? wifeStartYear - 1 : startYear - 1;
       const total = computeAccStartBal(accId, initYr);
       let anse;
       if (accId !== DC_ID && initYr > currentYear) {
@@ -4461,6 +4461,15 @@ function computeWithdrawalSim() {
 
   for (const yr of years) {
     withdrawals[yr] = {};
+
+    // 인출 시작 전 구간: 수익률 미적용, 빈 잔액 기록 후 skip
+    if (yr < startYear) {
+      for (const accId of allAccIds) withdrawals[yr][accId] = { anseOut: 0, dcOut: 0, regularOut: 0 };
+      summary[yr] = { myNP: 0, wifeNP: 0, target: 0, totalPriv: 0, totalInc: 0,
+        retireTax: 0, pensionTax: 0, npTax: 0, totalTax: 0, shortfall: 0, inflFactor: 1 };
+      balances[yr] = null; // null = 연간계획 미표시 (blank)
+      continue;
+    }
 
     // 1. 수익률 적용 (아내 계좌는 wifeStartYear부터)
     for (const accId of allAccIds) {
@@ -4620,12 +4629,13 @@ function renderWdCharts(sim) {
   const withdrawAmts = years.map(yr => round(summary[yr].totalInc));
   let cum = 0;
   const cumulativeAmts = years.map(yr => { cum += round(summary[yr].totalInc); return cum; });
-  const totalBals = years.map(yr => Math.round(allAccIds.reduce((s, id) => s + balances[yr][id].total, 0) / M));
+  const totalBals = years.map(yr => balances[yr] === null ? 0 :
+    Math.round(allAccIds.reduce((s, id) => s + balances[yr][id].total, 0) / M));
 
   // Chart 2 데이터
-  const myBals = years.map(yr =>
+  const myBals = years.map(yr => balances[yr] === null ? 0 :
     Math.round(MY_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
-  const wifeBals = years.map(yr =>
+  const wifeBals = years.map(yr => balances[yr] === null ? 0 :
     Math.round(WIFE_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
 
   // Chart 3 데이터: 누적 세금
@@ -4731,11 +4741,13 @@ function renderWdWithdrawTable(sim) {
   const accName = id => (isConsolidated && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
+  const blankTd = `<td style="background:#f3f4f6;padding:0"></td>`;
+  const cell = (yr, content) => yr < startYear ? blankTd : `<td>${content}</td>`;
 
   let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💸 연도별 인출 금액 (백만원)</h3>
   <table class="wd-table"><colgroup>
     <col style="width:110px"><col style="width:46px"><col style="width:58px">`;
-  for (const yr of years) h += `<col style="width:50px">`;
+  for (const yr of years) h += `<col style="width:${yr < startYear ? '22px' : '50px'}">`;
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
   h += buildWdTableHead(years, summary);
   h += '</tr>';
@@ -4748,10 +4760,10 @@ function renderWdWithdrawTable(sim) {
 
   // 나/아내 국민연금 행
   h += `<tr class="wd-np-row"><td>나 국민연금</td><td></td><td></td>`;
-  for (const yr of years) h += `<td>${summary[yr].myNP > 0 ? mv(summary[yr].myNP) : ''}</td>`;
+  for (const yr of years) h += cell(yr, summary[yr].myNP > 0 ? mv(summary[yr].myNP) : '');
   h += '</tr>';
   h += `<tr class="wd-np-row"><td>아내 국민연금</td><td></td><td></td>`;
-  for (const yr of years) h += `<td>${summary[yr].wifeNP > 0 ? mv(summary[yr].wifeNP) : ''}</td>`;
+  for (const yr of years) h += cell(yr, summary[yr].wifeNP > 0 ? mv(summary[yr].wifeNP) : '');
   h += '</tr>';
 
   // 계좌별 행
@@ -4762,23 +4774,23 @@ function renderWdWithdrawTable(sim) {
     if (accId === DC_ID) {
       h += `<tr class="wd-acc-row wd-dc"><td rowspan="2">${nm}</td>
         <td class="wd-sub">퇴직세</td><td class="wd-init">${mv(init.dcPrincipal)}</td>`;
-      for (const yr of years) h += `<td>${m(withdrawals[yr][accId].dcOut)}</td>`;
+      for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].dcOut));
       h += '</tr>';
     } else {
       h += `<tr class="wd-acc-row"><td rowspan="2">${nm}</td>
         <td class="wd-sub">안세공</td><td class="wd-init">${mv(init.anse)}</td>`;
-      for (const yr of years) h += `<td>${m(withdrawals[yr][accId].anseOut)}</td>`;
+      for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].anseOut));
       h += '</tr>';
     }
     h += `<tr class="wd-acc-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
-    for (const yr of years) h += `<td>${m(withdrawals[yr][accId].regularOut)}</td>`;
+    for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].regularOut));
     h += '</tr>';
   }
 
   // 합계·요약행
   const totalInit = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
   h += `<tr class="wd-total-row"><td colspan="2">사적연금 소계</td><td class="wd-init">${mv(totalInit)}</td>`;
-  for (const yr of years) h += `<td>${mv(summary[yr].totalPriv)}</td>`;
+  for (const yr of years) h += cell(yr, mv(summary[yr].totalPriv));
   h += '</tr>';
 
   const inf = (wp.inflation || 2.2) / 100;
@@ -4798,7 +4810,7 @@ function renderWdWithdrawTable(sim) {
   ];
   for (const [cls, label, fn] of rows) {
     h += `<tr class="${cls}"><td colspan="3">${label}</td>`;
-    for (const yr of years) h += `<td>${fn(yr)}</td>`;
+    for (const yr of years) h += cell(yr, fn(yr));
     h += '</tr>';
   }
 
@@ -4822,10 +4834,13 @@ function renderWdBalanceTable(sim) {
     return v <= 0 ? `<span style="color:#9ca3af">0</span>` : v.toString();
   };
 
+  const blankTd = `<td style="background:#f3f4f6;padding:0"></td>`;
+  const cell = (yr, content) => balances[yr] === null ? blankTd : `<td>${content}</td>`;
+
   let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💰 연도별 잔액 (백만원)</h3>
   <table class="wd-table"><colgroup>
     <col style="width:110px"><col style="width:46px"><col style="width:58px">`;
-  for (const yr of years) h += `<col style="width:50px">`;
+  for (const yr of years) h += `<col style="width:${balances[yr] === null ? '22px' : '50px'}">`;
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
   for (const yr of years) h += `<th>${yr}</th>`;
   h += '</tr>';
@@ -4836,7 +4851,7 @@ function renderWdBalanceTable(sim) {
   }
   h += '</thead><tbody>';
 
-  const blank = `<td style="color:#e5e7eb">—</td>`;
+  const wifeBlankTd = `<td style="color:#e5e7eb">—</td>`;
   for (const accId of dispAccIds) {
     const nm = accName(accId);
     const init = initState[accId];
@@ -4845,16 +4860,16 @@ function renderWdBalanceTable(sim) {
     if (accId === DC_ID) {
       h += `<tr class="wd-acc-row wd-dc"><td rowspan="2">${nm}</td>
         <td class="wd-sub">퇴직세</td><td class="wd-init">${mv(init.dcPrincipal)}</td>`;
-      for (const yr of years) h += `<td>${mc(balances[yr][accId].dcPrincipal)}</td>`;
+      for (const yr of years) h += cell(yr, mc(balances[yr][accId].dcPrincipal));
       h += '</tr>';
     } else {
       h += `<tr class="wd-acc-row"><td rowspan="2">${nm}</td>
         <td class="wd-sub">안세공</td><td class="wd-init">${mv(init.anse)}</td>`;
-      for (const yr of years) h += isWife && yr < wifeStartYear ? blank : `<td>${mc(balances[yr][accId].anse)}</td>`;
+      for (const yr of years) h += balances[yr] === null ? blankTd : (isWife && yr < wifeStartYear ? wifeBlankTd : `<td>${mc(balances[yr][accId].anse)}</td>`);
       h += '</tr>';
     }
     h += `<tr class="wd-acc-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
-    for (const yr of years) h += isWife && yr < wifeStartYear ? blank : `<td>${mc(balances[yr][accId].regular)}</td>`;
+    for (const yr of years) h += balances[yr] === null ? blankTd : (isWife && yr < wifeStartYear ? wifeBlankTd : `<td>${mc(balances[yr][accId].regular)}</td>`);
     h += '</tr>';
   }
 
@@ -4862,6 +4877,7 @@ function renderWdBalanceTable(sim) {
   const totalInit  = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
   h += `<tr class="wd-total-row"><td colspan="2">총 잔액</td><td class="wd-init">${mv(totalInit)}</td>`;
   for (const yr of years) {
+    if (balances[yr] === null) { h += blankTd; continue; }
     const myTotal   = myAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
     const wifeTotal = yr >= wifeStartYear
       ? dispAccIds.filter(id => WIFE_ACC_IDS.includes(id)).reduce((s, id) => s + balances[yr][id].total, 0) : 0;
