@@ -1057,12 +1057,6 @@
       <div class="cfg-grid">
         <label>퇴직소득세율 (%)</label>
         <input id="cfg_myRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
-        <label>1~10년 잔여세율 (%)</label>
-        <input id="cfg_myBenefit10y" type="number" min="0" max="100" step="1" placeholder="70">
-        <label>11~20년 잔여세율 (%)</label>
-        <input id="cfg_myBenefit20y" type="number" min="0" max="100" step="1" placeholder="60">
-        <label>21년~ 잔여세율 (%)</label>
-        <input id="cfg_myBenefit30y" type="number" min="0" max="100" step="1" placeholder="50">
       </div>
     </div><!-- /cfgPaneMy -->
 
@@ -1149,12 +1143,6 @@
       <div class="cfg-grid">
         <label>퇴직소득세율 (%)</label>
         <input id="cfg_wifeRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
-        <label>1~10년 잔여세율 (%)</label>
-        <input id="cfg_wifeBenefit10y" type="number" min="0" max="100" step="1" placeholder="70">
-        <label>11~20년 잔여세율 (%)</label>
-        <input id="cfg_wifeBenefit20y" type="number" min="0" max="100" step="1" placeholder="60">
-        <label>21년~ 잔여세율 (%)</label>
-        <input id="cfg_wifeBenefit30y" type="number" min="0" max="100" step="1" placeholder="50">
       </div>
     </div><!-- /cfgPaneWife -->
 
@@ -1626,7 +1614,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.89';
+const APP_VERSION = 'MyPM v1.90';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4856,9 +4844,6 @@ function openSettingsModal() {
   sv('cfg_mySPDelay',       msp.delayYears   || 0);
   sv('cfg_mySPEarly',       msp.earlyYears   || 0);
   sv('cfg_myRetireTaxRate', my.retireTaxRate    ?? 12);
-  sv('cfg_myBenefit10y',    my.pensionBenefit10y ?? 70);
-  sv('cfg_myBenefit20y',    my.pensionBenefit20y ?? 60);
-  sv('cfg_myBenefit30y',    my.pensionBenefit30y ?? 50);
   onCfgBirthYearChange('my');
 
   // 배우자 탭
@@ -4890,9 +4875,6 @@ function openSettingsModal() {
   sv('cfg_wifeSPDelay',       wsp.delayYears   || 0);
   sv('cfg_wifeSPEarly',       wsp.earlyYears   || 0);
   sv('cfg_wifeRetireTaxRate', wife.retireTaxRate    ?? 12);
-  sv('cfg_wifeBenefit10y',    wife.pensionBenefit10y ?? 70);
-  sv('cfg_wifeBenefit20y',    wife.pensionBenefit20y ?? 60);
-  sv('cfg_wifeBenefit30y',    wife.pensionBenefit30y ?? 50);
   onCfgBirthYearChange('wife');
 
   switchCfgTab('general');
@@ -4938,9 +4920,9 @@ function saveSettingsModal() {
       earlyYears:    n(`cfg_${prefix}SPEarly`),
     },
     retireTaxRate:    nv(`cfg_${prefix}RetireTaxRate`, 12),
-    pensionBenefit10y: nv(`cfg_${prefix}Benefit10y`,  70),
-    pensionBenefit20y: nv(`cfg_${prefix}Benefit20y`,  60),
-    pensionBenefit30y: nv(`cfg_${prefix}Benefit30y`,  50),
+    pensionBenefit10y: 70,
+    pensionBenefit20y: 60,
+    pensionBenefit30y: 50,
   });
 
   appSettings = {
