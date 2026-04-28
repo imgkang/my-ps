@@ -843,11 +843,6 @@
       <a href="NonK.html" class="nav-btn">🇺🇸 NonK</a>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <label class="auto-refresh-label" title="자동 새로고침 간격(분). 0 입력 시 자동 새로고침이 꺼집니다. 브라우저 새로고침(F5) 시 즉시 현재가가 갱신됩니다.">
-        🔄 자동
-        <input type="number" id="autoRefreshMinutes" min="0" step="1" value="30" onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()">
-        분
-      </label>
       <span id="refreshStatus"></span>
       <button class="btn-settings" onclick="openSettingsModal()" title="앱 설정">⚙️ 설정</button>
     </div>
@@ -905,6 +900,17 @@
       <button class="close-btn" onclick="closeSettingsModal()" aria-label="닫기">×</button>
     </div>
 
+    <div class="cfg-section">🔄 자동 새로고침</div>
+    <div class="cfg-grid">
+      <label>새로고침 간격</label>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input id="autoRefreshMinutes" type="number" min="0" step="1"
+               onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()"
+               style="width:70px;text-align:right;padding:8px 10px">
+        <span style="color:var(--muted);font-size:13px">분&nbsp;(0 = 끄기)</span>
+      </div>
+    </div>
+
     <div class="cfg-section">👤 본인 정보</div>
     <div class="cfg-grid">
       <label>생년 (년)</label>
@@ -928,6 +934,24 @@
         <label>배우자 생월 (월)</label>
         <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
       </div>
+    </div>
+
+    <div class="cfg-section">🏦 세율 설정</div>
+    <div class="cfg-grid">
+      <label>퇴직소득세율 (%)</label>
+      <input id="cfg_retireTaxRate" type="number" min="0" max="50" step="0.1">
+      <label>10년연금 혜택 (%)</label>
+      <input id="cfg_pensionBenefit10y" type="number" min="0" max="100" step="1" placeholder="예: 30">
+      <label>20년연금 혜택 (%)</label>
+      <input id="cfg_pensionBenefit20y" type="number" min="0" max="100" step="1" placeholder="예: 40">
+      <label>30년연금 혜택 (%)</label>
+      <input id="cfg_pensionBenefit30y" type="number" min="0" max="100" step="1" placeholder="예: 50">
+      <label>국민연금 소득세율 (%)</label>
+      <input id="cfg_npTaxRate" type="number" min="0" max="20" step="0.1">
+      <label>연금소득세율 (%)</label>
+      <input id="cfg_pensionTaxRate" type="number" min="0" max="20" step="0.1">
+      <label>연금소득초과세율 (%)</label>
+      <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1">
     </div>
 
     <div class="modal-actions" style="margin-top:16px">
@@ -1294,12 +1318,6 @@
         <label><span>아내 계좌 인출금액 (백만원/년)</span><input id="wd_wifeFixWithdraw" type="number" min="0" step="1"></label>
         <label><span>아내계좌 인출 시작연도</span><input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1"></label>
 
-        <div class="wd-section">🏦 세율 설정</div>
-        <label><span>퇴직소득세율 (%)</span><input id="wd_retireTaxRate" type="number" min="0" max="50" step="0.1"></label>
-        <label><span>연금소득세율 (%)</span><input id="wd_pensionTaxRate" type="number" min="0" max="20" step="0.1"></label>
-        <label><span>국민연금소득세율 (%)</span><input id="wd_npTaxRate" type="number" min="0" max="20" step="0.1"></label>
-        <label><span>연금소득 초과세율 (%)</span><input id="wd_excessPensionTaxRate" type="number" min="0" max="50" step="0.1"></label>
-
         <div class="wd-section">👨 나 국민연금</div>
         <label><span>시작 연도</span><input id="wd_myNPStartYear" type="number" min="2020" max="2080" step="1"></label>
         <label><span>시작 월</span><input id="wd_myNPStartMonth" type="number" min="1" max="12" step="1"></label>
@@ -1414,7 +1432,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.85';
+const APP_VERSION = 'MyPM v1.86';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4427,6 +4445,7 @@ function getWdDefaults() {
     startYear: cy + 2, retireAge: 60, annualTarget: 120,
     inflation: 2.2, returnRate: 4.0,
     retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4, excessPensionTaxRate: 16.5,
+    pensionBenefit10y: 30, pensionBenefit20y: 40, pensionBenefit30y: 50,
     myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
     wifeNPStartYear: cy + 9, wifeNPStartMonth: 1, wifeNPMonthly: 50, wifeNPDelay: 0,
     basicWithdraw: 15, privateOnlyPeriod: 5, wifeFixWithdraw: 0, wifeFixStartYear: cy + 2,
@@ -4452,11 +4471,21 @@ function closeWithdrawalModal() { document.getElementById('withdrawalModal').cla
 // ===== ⚙️ 앱 설정 모달 =====
 function openSettingsModal() {
   const s = appSettings;
+  const wp = wdPlan;
+  // 개인정보
   document.getElementById('cfg_myBirthYear').value    = s.myBirthYear  || '';
   document.getElementById('cfg_myBirthMonth').value   = s.myBirthMonth || '';
   document.getElementById('cfg_wifeBirthYear').value  = s.wifeBirthYear  || '';
   document.getElementById('cfg_wifeBirthMonth').value = s.wifeBirthMonth || '';
   _updateCfgWifeUI(s.hasWife);
+  // 세율
+  document.getElementById('cfg_retireTaxRate').value       = wp.retireTaxRate ?? 12;
+  document.getElementById('cfg_pensionBenefit10y').value   = wp.pensionBenefit10y ?? 30;
+  document.getElementById('cfg_pensionBenefit20y').value   = wp.pensionBenefit20y ?? 40;
+  document.getElementById('cfg_pensionBenefit30y').value   = wp.pensionBenefit30y ?? 50;
+  document.getElementById('cfg_npTaxRate').value           = wp.npTaxRate ?? 4;
+  document.getElementById('cfg_pensionTaxRate').value      = wp.pensionTaxRate ?? 3.3;
+  document.getElementById('cfg_excessPensionTaxRate').value = wp.excessPensionTaxRate ?? 16.5;
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
@@ -4478,11 +4507,20 @@ function saveSettingsModal() {
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
   };
   saveAppSettings();
-  // wdPlan과 동기화
+  // wdPlan 동기화 - 생년
   wdPlan.myBirthYear    = appSettings.myBirthYear;
   wdPlan.myBirthMonth   = appSettings.myBirthMonth;
   wdPlan.wifeBirthYear  = appSettings.wifeBirthYear;
   wdPlan.wifeBirthMonth = appSettings.wifeBirthMonth;
+  // wdPlan 동기화 - 세율
+  const nf = id => { const v = Number(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
+  wdPlan.retireTaxRate        = nf('cfg_retireTaxRate')        ?? 12;
+  wdPlan.pensionBenefit10y    = nf('cfg_pensionBenefit10y')    ?? 30;
+  wdPlan.pensionBenefit20y    = nf('cfg_pensionBenefit20y')    ?? 40;
+  wdPlan.pensionBenefit30y    = nf('cfg_pensionBenefit30y')    ?? 50;
+  wdPlan.npTaxRate            = nf('cfg_npTaxRate')            ?? 4;
+  wdPlan.pensionTaxRate       = nf('cfg_pensionTaxRate')       ?? 3.3;
+  wdPlan.excessPensionTaxRate = nf('cfg_excessPensionTaxRate') ?? 16.5;
   saveWdPlan();
   closeSettingsModal();
   render();
@@ -4500,8 +4538,6 @@ function loadWdFormValues() {
   s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
   s('wd_privateOnlyPeriod', wp.privateOnlyPeriod ?? 5);
   s('wd_wifeFixWithdraw', wp.wifeFixWithdraw||0); s('wd_wifeFixStartYear', wp.wifeFixStartYear||wp.startYear);
-  s('wd_retireTaxRate', wp.retireTaxRate); s('wd_pensionTaxRate', wp.pensionTaxRate);
-  s('wd_npTaxRate', wp.npTaxRate); s('wd_excessPensionTaxRate', wp.excessPensionTaxRate ?? 16.5);
   s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPStartMonth', wp.myNPStartMonth||1);
   s('wd_myNPMonthly', wp.myNPMonthly); s('wd_myNPDelay', wp.myNPDelay||0);
   s('wd_wifeNPStartYear', wp.wifeNPStartYear); s('wd_wifeNPStartMonth', wp.wifeNPStartMonth||1);
@@ -4524,8 +4560,9 @@ function applyWdSettings() {
     startYear,
     retireAge: n('wd_retireAge') || 60,
     annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
-    retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'),
-    npTaxRate: n('wd_npTaxRate'), excessPensionTaxRate: n('wd_excessPensionTaxRate'),
+    retireTaxRate: wdPlan.retireTaxRate, pensionTaxRate: wdPlan.pensionTaxRate,
+    npTaxRate: wdPlan.npTaxRate, excessPensionTaxRate: wdPlan.excessPensionTaxRate,
+    pensionBenefit10y: wdPlan.pensionBenefit10y, pensionBenefit20y: wdPlan.pensionBenefit20y, pensionBenefit30y: wdPlan.pensionBenefit30y,
     basicWithdraw: n('wd_basicWithdraw'), privateOnlyPeriod: n('wd_privateOnlyPeriod'),
     wifeFixWithdraw: n('wd_wifeFixWithdraw'),
     wifeFixStartYear,
