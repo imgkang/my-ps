@@ -1617,7 +1617,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.94';
+const APP_VERSION = 'MyPM v1.95';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4975,8 +4975,8 @@ function applyWdSettings() {
     alert(`본인 은퇴연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
     return;
   }
-  if (targetStartYear <= startYear) {
-    alert(`목표액 인출 시작연도(${targetStartYear})는 본인 은퇴연도(${startYear})보다 나중이어야 합니다.`);
+  if (targetStartYear < startYear) {
+    alert(`목표액 인출 시작연도(${targetStartYear})는 본인 은퇴연도(${startYear})와 같거나 나중이어야 합니다.`);
     return;
   }
   if (wifeFixStartYear < currentYear) {
