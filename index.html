@@ -1617,7 +1617,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.93';
+const APP_VERSION = 'MyPM v1.94';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5036,13 +5036,14 @@ function computeWithdrawalSim() {
   const { startYear } = wp;
   const todayYear = new Date().getFullYear();
   const retireAge = wp.retireAge || 60;
-  // 테이블 표시 시작연도 (그래프 시작나이 기준으로 고정)
-  const displayStartYear = wp.myBirthYear > 0
-    ? wp.myBirthYear + retireAge
+  const myBirthYear = appSettings.myBirthYear || wp.myBirthYear || 0;
+  // 테이블/그래프 시작연도: 생년월일 + 그래프 시작나이 기준으로 고정
+  const displayStartYear = myBirthYear > 0
+    ? myBirthYear + retireAge
     : startYear;
   // 95세까지 고정 표시
-  const endYear = wp.myBirthYear > 0
-    ? wp.myBirthYear + 95
+  const endYear = myBirthYear > 0
+    ? myBirthYear + 95
     : startYear + (95 - retireAge);
   const years = Array.from({ length: Math.max(1, endYear - displayStartYear + 1) }, (_, i) => displayStartYear + i);
   const r    = (wp.returnRate || 4) / 100;
@@ -5468,9 +5469,10 @@ function renderWdWithdrawTable(sim) {
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
   h += buildWdTableHead(years, summary);
   h += '</tr>';
-  if (wp.myBirthYear) {
+  const _myBY1 = appSettings.myBirthYear || wp.myBirthYear || 0;
+  if (_myBY1) {
     h += `<tr class="wd-age-row"><td colspan="3" style="font-size:11px;color:#6b7280;text-align:center">나이</td>`;
-    for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - wp.myBirthYear}</td>`;
+    for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - _myBY1}</td>`;
     h += '</tr>';
   }
   h += '</thead><tbody>';
@@ -5561,9 +5563,10 @@ function renderWdBalanceTable(sim) {
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
   for (const yr of years) h += `<th>${yr}</th>`;
   h += '</tr>';
-  if (wp.myBirthYear) {
+  const _myBY2 = appSettings.myBirthYear || wp.myBirthYear || 0;
+  if (_myBY2) {
     h += `<tr class="wd-age-row"><td colspan="3" style="font-size:11px;color:#6b7280;text-align:center">나이</td>`;
-    for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - wp.myBirthYear}</td>`;
+    for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - _myBY2}</td>`;
     h += '</tr>';
   }
   h += '</thead><tbody>';
