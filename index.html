@@ -833,6 +833,26 @@
     background: var(--card); color: var(--muted); font-size: 13px; cursor: pointer;
     transition: all 0.15s; }
   .btn-settings:hover { background: #f3f4f6; color: var(--text); }
+  /* 설정 탭 */
+  .cfg-tabs { display: flex; border-bottom: 2px solid var(--border); margin: 0 -4px 10px; gap: 2px; flex-shrink: 0; }
+  .cfg-tab { padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--muted); background: none;
+    border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; cursor: pointer; }
+  .cfg-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .cfg-tab-pane { display: none; }
+  .cfg-tab-pane.active { display: block; }
+  .cfg-sub { font-size: 12px; font-weight: 700; color: #7c3aed; margin: 12px 0 6px;
+    padding-bottom: 4px; border-bottom: 1px solid #e9d5ff; }
+  .cfg-sub:first-child { margin-top: 4px; }
+  .cfg-acc-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .cfg-acc-btn { padding: 5px 10px; font-size: 12px; border: 1.5px solid var(--border);
+    border-radius: 6px; background: #f8fafc; cursor: pointer; }
+  .cfg-acc-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .cfg-extra-acc-row { display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 8px; background: #f1f5f9; border-radius: 6px; margin-bottom: 4px; font-size: 13px; }
+  .cfg-extra-acc-row button { background: none; border: none; cursor: pointer; color: #ef4444; padding: 0 4px; }
+  .cfg-add-acc-btn { font-size: 12px; color: var(--primary); background: none; border: 1px dashed var(--primary);
+    border-radius: 6px; padding: 4px 10px; cursor: pointer; margin-bottom: 4px; }
+  .cfg-note { font-size: 11px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -894,67 +914,228 @@
 <!-- 종목 추가 모달 -->
 <!-- ⚙️ 앱 설정 모달 -->
 <div class="modal-backdrop" id="settingsModal" onclick="handleSettingsBackdropClick(event)">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-header">
+  <div class="modal" style="max-width:460px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
       <div><h2>⚙️ 설정</h2></div>
       <button class="close-btn" onclick="closeSettingsModal()" aria-label="닫기">×</button>
     </div>
-
-    <div class="cfg-section">🔄 자동 새로고침</div>
-    <div class="cfg-grid">
-      <label>새로고침 간격</label>
-      <div style="display:flex;align-items:center;gap:6px">
-        <input id="autoRefreshMinutes" type="number" min="0" step="1"
-               onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()"
-               style="width:70px;text-align:right;padding:8px 10px">
-        <span style="color:var(--muted);font-size:13px">분&nbsp;(0 = 끄기)</span>
-      </div>
+    <div class="cfg-tabs">
+      <button class="cfg-tab active" id="cfgTabGeneral" onclick="switchCfgTab('general')">일반</button>
+      <button class="cfg-tab" id="cfgTabMy"   onclick="switchCfgTab('my')">👤 본인</button>
+      <button class="cfg-tab" id="cfgTabWife" onclick="switchCfgTab('wife')">👩 배우자</button>
     </div>
+    <div style="overflow-y:auto;flex:1;padding:0 4px 4px">
 
-    <div class="cfg-section">👤 본인 정보</div>
-    <div class="cfg-grid">
-      <label>생년 (년)</label>
-      <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1985">
-      <label>생월 (월)</label>
-      <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
-    </div>
-
-    <div class="cfg-section">👫 배우자 계좌</div>
-    <div class="cfg-grid">
-      <label>배우자 계좌</label>
-      <div class="toggle-row">
-        <button id="cfgWifeYes" class="toggle-btn" onclick="setCfgWife(true)">있음</button>
-        <button id="cfgWifeNo"  class="toggle-btn" onclick="setCfgWife(false)">없음</button>
-      </div>
-    </div>
-    <div id="cfgWifeRows">
+    <!-- 일반 탭 -->
+    <div class="cfg-tab-pane active" id="cfgPaneGeneral">
+      <div class="cfg-section">🔄 자동 새로고침</div>
       <div class="cfg-grid">
-        <label>배우자 생년 (년)</label>
-        <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1987">
-        <label>배우자 생월 (월)</label>
-        <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
+        <label>새로고침 간격</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input id="autoRefreshMinutes" type="number" min="0" step="1"
+                 onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()"
+                 style="width:70px;text-align:right;padding:8px 10px">
+          <span style="color:var(--muted);font-size:13px">분&nbsp;(0 = 끄기)</span>
+        </div>
       </div>
-    </div>
+      <div class="cfg-section">👤 기본 정보</div>
+      <div class="cfg-grid">
+        <label>본인 생년 (년)</label>
+        <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1985"
+               oninput="onCfgBirthYearChange('my')">
+        <label>본인 생월 (월)</label>
+        <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
+      </div>
+      <div class="cfg-section">👫 배우자</div>
+      <div class="cfg-grid">
+        <label>배우자 계좌</label>
+        <div class="toggle-row">
+          <button id="cfgWifeYes" class="toggle-btn" onclick="setCfgWife(true)">있음</button>
+          <button id="cfgWifeNo"  class="toggle-btn" onclick="setCfgWife(false)">없음</button>
+        </div>
+      </div>
+      <div id="cfgWifeRows">
+        <div class="cfg-grid">
+          <label>배우자 생년 (년)</label>
+          <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1987"
+                 oninput="onCfgBirthYearChange('wife')">
+          <label>배우자 생월 (월)</label>
+          <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
+        </div>
+      </div>
+      <div class="cfg-section">🏦 세율 설정</div>
+      <div class="cfg-grid">
+        <label>국민연금 소득세율 (%)</label>
+        <input id="cfg_npTaxRate" type="number" min="0" max="20" step="0.1">
+        <label>연금소득세율 (%)</label>
+        <input id="cfg_pensionTaxRate" type="number" min="0" max="20" step="0.1">
+        <label>연금소득초과세율 (%)</label>
+        <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1">
+      </div>
+    </div><!-- /cfgPaneGeneral -->
 
-    <div class="cfg-section">🏦 세율 설정</div>
-    <div class="cfg-grid">
-      <label>퇴직소득세율 (%)</label>
-      <input id="cfg_retireTaxRate" type="number" min="0" max="50" step="0.1">
-      <label>10년연금 혜택 (%)</label>
-      <input id="cfg_pensionBenefit10y" type="number" min="0" max="100" step="1" placeholder="예: 30">
-      <label>20년연금 혜택 (%)</label>
-      <input id="cfg_pensionBenefit20y" type="number" min="0" max="100" step="1" placeholder="예: 40">
-      <label>30년연금 혜택 (%)</label>
-      <input id="cfg_pensionBenefit30y" type="number" min="0" max="100" step="1" placeholder="예: 50">
-      <label>국민연금 소득세율 (%)</label>
-      <input id="cfg_npTaxRate" type="number" min="0" max="20" step="0.1">
-      <label>연금소득세율 (%)</label>
-      <input id="cfg_pensionTaxRate" type="number" min="0" max="20" step="0.1">
-      <label>연금소득초과세율 (%)</label>
-      <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1">
-    </div>
+    <!-- 본인 탭 -->
+    <div class="cfg-tab-pane" id="cfgPaneMy">
+      <div class="cfg-sub">🏦 계좌 설정</div>
+      <div class="cfg-acc-grid" id="cfgMyAccGrid"></div>
+      <div id="cfgMyExtraAccs"></div>
+      <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('my')">+ 계좌 추가</button>
 
-    <div class="modal-actions" style="margin-top:16px">
+      <div class="cfg-sub">🧓 국민연금 설정</div>
+      <div class="cfg-grid">
+        <label>사용여부</label>
+        <div class="toggle-row">
+          <button id="cfgMyNPYes" class="toggle-btn" onclick="setCfgPersonToggle('myNP',true)">사용</button>
+          <button id="cfgMyNPNo"  class="toggle-btn" onclick="setCfgPersonToggle('myNP',false)">미사용</button>
+        </div>
+        <label>수급 시작 연도</label>
+        <div>
+          <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
+          <div id="cfgMyNPAutoHint" class="cfg-note"></div>
+        </div>
+        <label>수급 시작 월</label>
+        <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1">
+        <label>월 수령액 (만원)</label>
+        <input id="cfg_myNPMonthly" type="number" min="0" step="1">
+        <label>연기연금 (년, 0~5)</label>
+        <input id="cfg_myNPDelay" type="number" min="0" max="5" step="1">
+        <label>조기수령 (년, 0~5)</label>
+        <input id="cfg_myNPEarly" type="number" min="0" max="5" step="1">
+      </div>
+      <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
+
+      <div class="cfg-sub">🏛️ 공무원연금 설정</div>
+      <div class="cfg-grid">
+        <label>사용여부</label>
+        <div class="toggle-row">
+          <button id="cfgMyGPYes" class="toggle-btn" onclick="setCfgPersonToggle('myGP',true)">사용</button>
+          <button id="cfgMyGPNo"  class="toggle-btn" onclick="setCfgPersonToggle('myGP',false)">미사용</button>
+        </div>
+        <label>수령 시작 연도</label>
+        <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1">
+        <label>수령 시작 월</label>
+        <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1">
+        <label>월 수령액 (만원)</label>
+        <input id="cfg_myGPMonthly" type="number" min="0" step="1">
+        <label>조기연금 (년, 0~5)</label>
+        <input id="cfg_myGPEarly" type="number" min="0" max="5" step="1">
+      </div>
+
+      <div class="cfg-sub">🎓 사학연금 설정</div>
+      <div class="cfg-grid">
+        <label>사용여부</label>
+        <div class="toggle-row">
+          <button id="cfgMySPYes" class="toggle-btn" onclick="setCfgPersonToggle('mySP',true)">사용</button>
+          <button id="cfgMySPNo"  class="toggle-btn" onclick="setCfgPersonToggle('mySP',false)">미사용</button>
+        </div>
+        <label>수령 시작 연도</label>
+        <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1">
+        <label>수령 시작 월</label>
+        <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1">
+        <label>월 수령액 (만원)</label>
+        <input id="cfg_mySPMonthly" type="number" min="0" step="1">
+        <label>연기연금 (년, 0~5)</label>
+        <input id="cfg_mySPDelay" type="number" min="0" max="5" step="1">
+        <label>조기연금 (년, 0~5)</label>
+        <input id="cfg_mySPEarly" type="number" min="0" max="5" step="1">
+      </div>
+
+      <div class="cfg-sub">💰 퇴직소득세율</div>
+      <div class="cfg-note">DC 인출 시 자동 감면: 1~10년차 70%, 11~20년차 60%, 21년차~ 50%</div>
+      <div class="cfg-grid">
+        <label>퇴직소득세율 (%)</label>
+        <input id="cfg_myRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
+        <label>1~10년 잔여세율 (%)</label>
+        <input id="cfg_myBenefit10y" type="number" min="0" max="100" step="1" placeholder="30">
+        <label>11~20년 잔여세율 (%)</label>
+        <input id="cfg_myBenefit20y" type="number" min="0" max="100" step="1" placeholder="40">
+        <label>21년~ 잔여세율 (%)</label>
+        <input id="cfg_myBenefit30y" type="number" min="0" max="100" step="1" placeholder="50">
+      </div>
+    </div><!-- /cfgPaneMy -->
+
+    <!-- 배우자 탭 -->
+    <div class="cfg-tab-pane" id="cfgPaneWife">
+      <div class="cfg-sub">🏦 계좌 설정</div>
+      <div class="cfg-acc-grid" id="cfgWifeAccGrid"></div>
+      <div id="cfgWifeExtraAccs"></div>
+      <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('wife')">+ 계좌 추가</button>
+
+      <div class="cfg-sub">🧓 국민연금 설정</div>
+      <div class="cfg-grid">
+        <label>사용여부</label>
+        <div class="toggle-row">
+          <button id="cfgWifeNPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeNP',true)">사용</button>
+          <button id="cfgWifeNPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeNP',false)">미사용</button>
+        </div>
+        <label>수급 시작 연도</label>
+        <div>
+          <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
+          <div id="cfgWifeNPAutoHint" class="cfg-note"></div>
+        </div>
+        <label>수급 시작 월</label>
+        <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1">
+        <label>월 수령액 (만원)</label>
+        <input id="cfg_wifeNPMonthly" type="number" min="0" step="1">
+        <label>연기연금 (년, 0~5)</label>
+        <input id="cfg_wifeNPDelay" type="number" min="0" max="5" step="1">
+        <label>조기수령 (년, 0~5)</label>
+        <input id="cfg_wifeNPEarly" type="number" min="0" max="5" step="1">
+      </div>
+      <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
+
+      <div class="cfg-sub">🏛️ 공무원연금 설정</div>
+      <div class="cfg-grid">
+        <label>사용여부</label>
+        <div class="toggle-row">
+          <button id="cfgWifeGPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeGP',true)">사용</button>
+          <button id="cfgWifeGPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeGP',false)">미사용</button>
+        </div>
+        <label>수령 시작 연도</label>
+        <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1">
+        <label>수령 시작 월</label>
+        <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1">
+        <label>월 수령액 (만원)</label>
+        <input id="cfg_wifeGPMonthly" type="number" min="0" step="1">
+        <label>조기연금 (년, 0~5)</label>
+        <input id="cfg_wifeGPEarly" type="number" min="0" max="5" step="1">
+      </div>
+
+      <div class="cfg-sub">🎓 사학연금 설정</div>
+      <div class="cfg-grid">
+        <label>사용여부</label>
+        <div class="toggle-row">
+          <button id="cfgWifeSPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeSP',true)">사용</button>
+          <button id="cfgWifeSPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeSP',false)">미사용</button>
+        </div>
+        <label>수령 시작 연도</label>
+        <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1">
+        <label>수령 시작 월</label>
+        <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1">
+        <label>월 수령액 (만원)</label>
+        <input id="cfg_wifeSPMonthly" type="number" min="0" step="1">
+        <label>연기연금 (년, 0~5)</label>
+        <input id="cfg_wifeSPDelay" type="number" min="0" max="5" step="1">
+        <label>조기연금 (년, 0~5)</label>
+        <input id="cfg_wifeSPEarly" type="number" min="0" max="5" step="1">
+      </div>
+
+      <div class="cfg-sub">💰 퇴직소득세율</div>
+      <div class="cfg-note">DC 인출 시 자동 감면: 1~10년차 70%, 11~20년차 60%, 21년차~ 50%</div>
+      <div class="cfg-grid">
+        <label>퇴직소득세율 (%)</label>
+        <input id="cfg_wifeRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
+        <label>1~10년 잔여세율 (%)</label>
+        <input id="cfg_wifeBenefit10y" type="number" min="0" max="100" step="1" placeholder="30">
+        <label>11~20년 잔여세율 (%)</label>
+        <input id="cfg_wifeBenefit20y" type="number" min="0" max="100" step="1" placeholder="40">
+        <label>21년~ 잔여세율 (%)</label>
+        <input id="cfg_wifeBenefit30y" type="number" min="0" max="100" step="1" placeholder="50">
+      </div>
+    </div><!-- /cfgPaneWife -->
+
+    </div><!-- /scrollable -->
+    <div class="modal-actions" style="margin-top:12px;flex-shrink:0">
       <button class="btn-secondary" onclick="closeSettingsModal()">취소</button>
       <button class="btn-primary" onclick="saveSettingsModal()">저장</button>
     </div>
@@ -1318,17 +1499,6 @@
         <label><span>아내 계좌 인출금액 (백만원/년)</span><input id="wd_wifeFixWithdraw" type="number" min="0" step="1"></label>
         <label><span>아내계좌 인출 시작연도</span><input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1"></label>
 
-        <div class="wd-section">👨 나 국민연금</div>
-        <label><span>시작 연도</span><input id="wd_myNPStartYear" type="number" min="2020" max="2080" step="1"></label>
-        <label><span>시작 월</span><input id="wd_myNPStartMonth" type="number" min="1" max="12" step="1"></label>
-        <label><span>월 수령액 (만원, 현재가치)</span><input id="wd_myNPMonthly" type="number" min="0" step="1"></label>
-        <label><span>연기연금 연수</span><input id="wd_myNPDelay" type="number" min="0" max="5" step="1"></label>
-
-        <div class="wd-section">👩 아내 국민연금</div>
-        <label><span>시작 연도</span><input id="wd_wifeNPStartYear" type="number" min="2020" max="2080" step="1"></label>
-        <label><span>시작 월</span><input id="wd_wifeNPStartMonth" type="number" min="1" max="12" step="1"></label>
-        <label><span>월 수령액 (만원, 현재가치)</span><input id="wd_wifeNPMonthly" type="number" min="0" step="1"></label>
-        <label><span>연기연금 연수</span><input id="wd_wifeNPDelay" type="number" min="0" max="5" step="1"></label>
       </div>
       <div style="margin-top:12px;text-align:right">
         <button class="btn-primary" onclick="applyWdSettings()">✔ 적용</button>
@@ -1432,7 +1602,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.86';
+const APP_VERSION = 'MyPM v1.87';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1452,13 +1622,63 @@ const ACCOUNTS = [
 
 // ===== 앱 설정 =====
 const APP_SETTINGS_KEY = 'pension_app_settings_v1';
-function getDefaultAppSettings() {
-  return { myBirthYear: 0, myBirthMonth: 1, hasWife: true, wifeBirthYear: 0, wifeBirthMonth: 1 };
+
+function npStartAge(birthYear) {
+  if (!birthYear) return 65;
+  if (birthYear <= 1952) return 60;
+  if (birthYear <= 1956) return 61;
+  if (birthYear <= 1960) return 62;
+  if (birthYear <= 1964) return 63;
+  if (birthYear <= 1968) return 64;
+  return 65;
 }
+
+function getDefaultPersonCfg(isWife) {
+  const cy = new Date().getFullYear();
+  return {
+    activeAccIds:   isWife ? ['wife_pension1', 'wife_isa'] : ['dc', 'pension1', 'irp', 'isa'],
+    extraAccounts:  [],
+    np:  { use: true,  startYear: cy+7, startMonth: 1, monthlyManwon: isWife ? 50 : 100, delayYears: 0, earlyYears: 0 },
+    gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
+    sp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, delayYears: 0, earlyYears: 0 },
+    retireTaxRate:    12,
+    pensionBenefit10y: 30,
+    pensionBenefit20y: 40,
+    pensionBenefit30y: 50,
+  };
+}
+
+function _deepMergePersonCfg(def, saved) {
+  if (!saved || typeof saved !== 'object') return def;
+  const r = { ...def, ...saved };
+  r.np  = { ...def.np,  ...(saved.np  || {}) };
+  r.gp  = { ...def.gp,  ...(saved.gp  || {}) };
+  r.sp  = { ...def.sp,  ...(saved.sp  || {}) };
+  r.activeAccIds  = Array.isArray(saved.activeAccIds)  ? saved.activeAccIds  : def.activeAccIds;
+  r.extraAccounts = Array.isArray(saved.extraAccounts) ? saved.extraAccounts : def.extraAccounts;
+  return r;
+}
+
+function getDefaultAppSettings() {
+  return {
+    myBirthYear: 0, myBirthMonth: 1,
+    hasWife: true,
+    wifeBirthYear: 0, wifeBirthMonth: 1,
+    my:   getDefaultPersonCfg(false),
+    wife: getDefaultPersonCfg(true),
+  };
+}
+
 function loadAppSettings() {
   try {
     const r = localStorage.getItem(APP_SETTINGS_KEY);
-    return r ? { ...getDefaultAppSettings(), ...JSON.parse(r) } : getDefaultAppSettings();
+    if (!r) return getDefaultAppSettings();
+    const saved = JSON.parse(r);
+    const def = getDefaultAppSettings();
+    const result = { ...def, ...saved };
+    result.my   = _deepMergePersonCfg(def.my,   saved.my);
+    result.wife = _deepMergePersonCfg(def.wife,  saved.wife);
+    return result;
   } catch(_) { return getDefaultAppSettings(); }
 }
 function saveAppSettings() { localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(appSettings)); }
@@ -3607,10 +3827,21 @@ const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp', 'isa'];
 const WIFE_ACC_IDS = ['wife_pension1', 'wife_pension2', 'wife_isa'];
 
 function getActiveAccounts() {
-  return appSettings.hasWife ? ACCOUNTS : ACCOUNTS.filter(a => !WIFE_ACC_IDS.includes(a.id));
+  const myActive = appSettings.my?.activeAccIds || MY_ACC_IDS;
+  const myAccs   = ACCOUNTS.filter(a => MY_ACC_IDS.includes(a.id) && myActive.includes(a.id));
+  const myExtras = (appSettings.my?.extraAccounts || []).map(e => ({ id: e.id, name: e.name }));
+  let wifeAccs = [], wifeExtras = [];
+  if (appSettings.hasWife) {
+    const wifeActive = appSettings.wife?.activeAccIds || WIFE_ACC_IDS;
+    wifeAccs   = ACCOUNTS.filter(a => WIFE_ACC_IDS.includes(a.id) && wifeActive.includes(a.id));
+    wifeExtras = (appSettings.wife?.extraAccounts || []).map(e => ({ id: e.id, name: e.name }));
+  }
+  return [...myAccs, ...myExtras, ...wifeAccs, ...wifeExtras];
 }
 function getActiveWifeAccIds() {
-  return appSettings.hasWife ? WIFE_ACC_IDS : [];
+  if (!appSettings.hasWife) return [];
+  const wifeActive = appSettings.wife?.activeAccIds || WIFE_ACC_IDS;
+  return WIFE_ACC_IDS.filter(id => wifeActive.includes(id));
 }
 
 function loadAnnualPlan() {
@@ -4436,8 +4667,35 @@ if (!appSettings.myBirthYear && wdPlan.myBirthYear) {
   appSettings.myBirthMonth   = wdPlan.myBirthMonth  || 1;
   appSettings.wifeBirthYear  = wdPlan.wifeBirthYear  || 0;
   appSettings.wifeBirthMonth = wdPlan.wifeBirthMonth || 1;
-  saveAppSettings();
 }
+// appSettings.my 가 없으면 wdPlan에서 NP/세율 마이그레이션
+{
+  let _raw = {};
+  try { _raw = JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}'); } catch(_) {}
+  if (!_raw.my) {
+    if (!appSettings.my) appSettings.my   = getDefaultPersonCfg(false);
+    if (!appSettings.wife) appSettings.wife = getDefaultPersonCfg(true);
+    if (wdPlan.myNPStartYear) {
+      appSettings.my.np.startYear     = wdPlan.myNPStartYear;
+      appSettings.my.np.startMonth    = wdPlan.myNPStartMonth || 1;
+      appSettings.my.np.monthlyManwon = wdPlan.myNPMonthly    || 0;
+      appSettings.my.np.delayYears    = wdPlan.myNPDelay      || 0;
+    }
+    if (wdPlan.wifeNPStartYear) {
+      appSettings.wife.np.startYear     = wdPlan.wifeNPStartYear;
+      appSettings.wife.np.startMonth    = wdPlan.wifeNPStartMonth || 1;
+      appSettings.wife.np.monthlyManwon = wdPlan.wifeNPMonthly    || 0;
+      appSettings.wife.np.delayYears    = wdPlan.wifeNPDelay      || 0;
+    }
+    if (wdPlan.retireTaxRate) {
+      appSettings.my.retireTaxRate     = wdPlan.retireTaxRate;
+      appSettings.my.pensionBenefit10y = wdPlan.pensionBenefit10y ?? 30;
+      appSettings.my.pensionBenefit20y = wdPlan.pensionBenefit20y ?? 40;
+      appSettings.my.pensionBenefit30y = wdPlan.pensionBenefit30y ?? 50;
+    }
+  }
+}
+saveAppSettings();
 
 function getWdDefaults() {
   const cy = new Date().getFullYear();
@@ -4469,23 +4727,151 @@ function openWithdrawalModal() {
 function closeWithdrawalModal() { document.getElementById('withdrawalModal').classList.remove('open'); }
 
 // ===== ⚙️ 앱 설정 모달 =====
+let _cfgActiveAccIds  = { my: [], wife: [] };
+let _cfgExtraAccounts = { my: [], wife: [] };
+let _cfgToggles = { myNP: true, myGP: false, mySP: false, wifeNP: true, wifeGP: false, wifeSP: false };
+
+function switchCfgTab(tab) {
+  ['general','my','wife'].forEach(t => {
+    const cap = t.charAt(0).toUpperCase() + t.slice(1);
+    document.getElementById(`cfgTab${cap}`)?.classList.toggle('active', t === tab);
+    document.getElementById(`cfgPane${cap}`)?.classList.toggle('active', t === tab);
+  });
+}
+function setCfgPersonToggle(key, val) {
+  _cfgToggles[key] = val;
+  const cap = key.charAt(0).toUpperCase() + key.slice(1);
+  document.getElementById(`cfg${cap}Yes`)?.classList.toggle('active', !!val);
+  document.getElementById(`cfg${cap}No`) ?.classList.toggle('active', !val);
+}
+function toggleCfgAcc(person, accId) {
+  const arr = _cfgActiveAccIds[person];
+  const idx = arr.indexOf(accId);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(accId);
+  _renderCfgAccGrid(person);
+}
+function cfgAddExtraAcc(person) {
+  const name = prompt('추가할 계좌 이름:');
+  if (!name?.trim()) return;
+  const id = (person === 'wife' ? 'wife_extra_' : 'extra_') + Date.now();
+  _cfgExtraAccounts[person].push({ id, name: name.trim() });
+  _renderCfgAccGrid(person);
+}
+function cfgRemoveExtraAcc(person, idx) {
+  _cfgExtraAccounts[person].splice(idx, 1);
+  _renderCfgAccGrid(person);
+}
+function _renderCfgAccGrid(person) {
+  const fixedIds = person === 'my' ? MY_ACC_IDS : WIFE_ACC_IDS;
+  const accNames = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const active   = _cfgActiveAccIds[person];
+  const gridEl   = document.getElementById(person === 'my' ? 'cfgMyAccGrid' : 'cfgWifeAccGrid');
+  if (gridEl) {
+    gridEl.innerHTML = fixedIds.map(id =>
+      `<button class="cfg-acc-btn${active.includes(id) ? ' active' : ''}"
+               onclick="toggleCfgAcc('${person}','${id}')">${accNames[id]}</button>`
+    ).join('');
+  }
+  const extrasEl = document.getElementById(person === 'my' ? 'cfgMyExtraAccs' : 'cfgWifeExtraAccs');
+  if (extrasEl) {
+    extrasEl.innerHTML = _cfgExtraAccounts[person].map((e, i) =>
+      `<div class="cfg-extra-acc-row"><span>${e.name}</span>
+       <button onclick="cfgRemoveExtraAcc('${person}',${i})" title="삭제">🗑</button></div>`
+    ).join('');
+  }
+}
+function onCfgBirthYearChange(person) {
+  const by = Number(document.getElementById(`cfg_${person}BirthYear`)?.value) || 0;
+  if (!by) return;
+  const autoYear = by + npStartAge(by);
+  const hintEl = document.getElementById(person === 'my' ? 'cfgMyNPAutoHint' : 'cfgWifeNPAutoHint');
+  if (hintEl) hintEl.textContent = `생년 기준 예상: ${autoYear}년`;
+}
+
 function openSettingsModal() {
-  const s = appSettings;
+  const s  = appSettings;
   const wp = wdPlan;
-  // 개인정보
-  document.getElementById('cfg_myBirthYear').value    = s.myBirthYear  || '';
-  document.getElementById('cfg_myBirthMonth').value   = s.myBirthMonth || '';
-  document.getElementById('cfg_wifeBirthYear').value  = s.wifeBirthYear  || '';
-  document.getElementById('cfg_wifeBirthMonth').value = s.wifeBirthMonth || '';
+  const sv = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v ?? ''); };
+
+  // 일반 탭
+  sv('cfg_myBirthYear',   s.myBirthYear  || '');
+  sv('cfg_myBirthMonth',  s.myBirthMonth || '');
+  sv('cfg_wifeBirthYear',  s.wifeBirthYear  || '');
+  sv('cfg_wifeBirthMonth', s.wifeBirthMonth || '');
   _updateCfgWifeUI(s.hasWife);
-  // 세율
-  document.getElementById('cfg_retireTaxRate').value       = wp.retireTaxRate ?? 12;
-  document.getElementById('cfg_pensionBenefit10y').value   = wp.pensionBenefit10y ?? 30;
-  document.getElementById('cfg_pensionBenefit20y').value   = wp.pensionBenefit20y ?? 40;
-  document.getElementById('cfg_pensionBenefit30y').value   = wp.pensionBenefit30y ?? 50;
-  document.getElementById('cfg_npTaxRate').value           = wp.npTaxRate ?? 4;
-  document.getElementById('cfg_pensionTaxRate').value      = wp.pensionTaxRate ?? 3.3;
-  document.getElementById('cfg_excessPensionTaxRate').value = wp.excessPensionTaxRate ?? 16.5;
+  sv('cfg_npTaxRate',            wp.npTaxRate            ?? 4);
+  sv('cfg_pensionTaxRate',       wp.pensionTaxRate       ?? 3.3);
+  sv('cfg_excessPensionTaxRate', wp.excessPensionTaxRate ?? 16.5);
+
+  // 본인 탭
+  const my = s.my || getDefaultPersonCfg(false);
+  _cfgActiveAccIds.my  = [...(my.activeAccIds  || [])];
+  _cfgExtraAccounts.my = JSON.parse(JSON.stringify(my.extraAccounts || []));
+  _renderCfgAccGrid('my');
+  _cfgToggles.myNP = my.np?.use !== false;
+  _cfgToggles.myGP = !!my.gp?.use;
+  _cfgToggles.mySP = !!my.sp?.use;
+  setCfgPersonToggle('myNP', _cfgToggles.myNP);
+  setCfgPersonToggle('myGP', _cfgToggles.myGP);
+  setCfgPersonToggle('mySP', _cfgToggles.mySP);
+  const mnp = my.np || {};
+  const mgp = my.gp || {};
+  const msp = my.sp || {};
+  sv('cfg_myNPStartYear',   mnp.startYear    || '');
+  sv('cfg_myNPStartMonth',  mnp.startMonth   || 1);
+  sv('cfg_myNPMonthly',     mnp.monthlyManwon || '');
+  sv('cfg_myNPDelay',       mnp.delayYears   || 0);
+  sv('cfg_myNPEarly',       mnp.earlyYears   || 0);
+  sv('cfg_myGPStartYear',   mgp.startYear    || '');
+  sv('cfg_myGPStartMonth',  mgp.startMonth   || 1);
+  sv('cfg_myGPMonthly',     mgp.monthlyManwon || '');
+  sv('cfg_myGPEarly',       mgp.earlyYears   || 0);
+  sv('cfg_mySPStartYear',   msp.startYear    || '');
+  sv('cfg_mySPStartMonth',  msp.startMonth   || 1);
+  sv('cfg_mySPMonthly',     msp.monthlyManwon || '');
+  sv('cfg_mySPDelay',       msp.delayYears   || 0);
+  sv('cfg_mySPEarly',       msp.earlyYears   || 0);
+  sv('cfg_myRetireTaxRate', my.retireTaxRate    ?? 12);
+  sv('cfg_myBenefit10y',    my.pensionBenefit10y ?? 30);
+  sv('cfg_myBenefit20y',    my.pensionBenefit20y ?? 40);
+  sv('cfg_myBenefit30y',    my.pensionBenefit30y ?? 50);
+  onCfgBirthYearChange('my');
+
+  // 배우자 탭
+  const wife = s.wife || getDefaultPersonCfg(true);
+  _cfgActiveAccIds.wife  = [...(wife.activeAccIds  || [])];
+  _cfgExtraAccounts.wife = JSON.parse(JSON.stringify(wife.extraAccounts || []));
+  _renderCfgAccGrid('wife');
+  _cfgToggles.wifeNP = wife.np?.use !== false;
+  _cfgToggles.wifeGP = !!wife.gp?.use;
+  _cfgToggles.wifeSP = !!wife.sp?.use;
+  setCfgPersonToggle('wifeNP', _cfgToggles.wifeNP);
+  setCfgPersonToggle('wifeGP', _cfgToggles.wifeGP);
+  setCfgPersonToggle('wifeSP', _cfgToggles.wifeSP);
+  const wnp = wife.np || {};
+  const wgp = wife.gp || {};
+  const wsp = wife.sp || {};
+  sv('cfg_wifeNPStartYear',   wnp.startYear    || '');
+  sv('cfg_wifeNPStartMonth',  wnp.startMonth   || 1);
+  sv('cfg_wifeNPMonthly',     wnp.monthlyManwon || '');
+  sv('cfg_wifeNPDelay',       wnp.delayYears   || 0);
+  sv('cfg_wifeNPEarly',       wnp.earlyYears   || 0);
+  sv('cfg_wifeGPStartYear',   wgp.startYear    || '');
+  sv('cfg_wifeGPStartMonth',  wgp.startMonth   || 1);
+  sv('cfg_wifeGPMonthly',     wgp.monthlyManwon || '');
+  sv('cfg_wifeGPEarly',       wgp.earlyYears   || 0);
+  sv('cfg_wifeSPStartYear',   wsp.startYear    || '');
+  sv('cfg_wifeSPStartMonth',  wsp.startMonth   || 1);
+  sv('cfg_wifeSPMonthly',     wsp.monthlyManwon || '');
+  sv('cfg_wifeSPDelay',       wsp.delayYears   || 0);
+  sv('cfg_wifeSPEarly',       wsp.earlyYears   || 0);
+  sv('cfg_wifeRetireTaxRate', wife.retireTaxRate    ?? 12);
+  sv('cfg_wifeBenefit10y',    wife.pensionBenefit10y ?? 30);
+  sv('cfg_wifeBenefit20y',    wife.pensionBenefit20y ?? 40);
+  sv('cfg_wifeBenefit30y',    wife.pensionBenefit30y ?? 50);
+  onCfgBirthYearChange('wife');
+
+  switchCfgTab('general');
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
@@ -4498,29 +4884,60 @@ function _updateCfgWifeUI(hasWife) {
 }
 function saveSettingsModal() {
   const n  = id => Number(document.getElementById(id)?.value) || 0;
+  const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
   const hasWife = document.getElementById('cfgWifeYes').classList.contains('active');
+
+  const buildPersonCfg = (prefix) => ({
+    activeAccIds:  [..._cfgActiveAccIds[prefix]],
+    extraAccounts: JSON.parse(JSON.stringify(_cfgExtraAccounts[prefix])),
+    np: {
+      use:           _cfgToggles[`${prefix}NP`] !== false,
+      startYear:     n(`cfg_${prefix}NPStartYear`)  || 0,
+      startMonth:    n(`cfg_${prefix}NPStartMonth`) || 1,
+      monthlyManwon: n(`cfg_${prefix}NPMonthly`),
+      delayYears:    n(`cfg_${prefix}NPDelay`),
+      earlyYears:    n(`cfg_${prefix}NPEarly`),
+    },
+    gp: {
+      use:           !!_cfgToggles[`${prefix}GP`],
+      startYear:     n(`cfg_${prefix}GPStartYear`)  || 0,
+      startMonth:    n(`cfg_${prefix}GPStartMonth`) || 1,
+      monthlyManwon: n(`cfg_${prefix}GPMonthly`),
+      earlyYears:    n(`cfg_${prefix}GPEarly`),
+    },
+    sp: {
+      use:           !!_cfgToggles[`${prefix}SP`],
+      startYear:     n(`cfg_${prefix}SPStartYear`)  || 0,
+      startMonth:    n(`cfg_${prefix}SPStartMonth`) || 1,
+      monthlyManwon: n(`cfg_${prefix}SPMonthly`),
+      delayYears:    n(`cfg_${prefix}SPDelay`),
+      earlyYears:    n(`cfg_${prefix}SPEarly`),
+    },
+    retireTaxRate:    nv(`cfg_${prefix}RetireTaxRate`, 12),
+    pensionBenefit10y: nv(`cfg_${prefix}Benefit10y`,  30),
+    pensionBenefit20y: nv(`cfg_${prefix}Benefit20y`,  40),
+    pensionBenefit30y: nv(`cfg_${prefix}Benefit30y`,  50),
+  });
+
   appSettings = {
     myBirthYear:   n('cfg_myBirthYear'),
-    myBirthMonth:  n('cfg_myBirthMonth')  || 1,
+    myBirthMonth:  n('cfg_myBirthMonth') || 1,
     hasWife,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
+    my:   buildPersonCfg('my'),
+    wife: hasWife ? buildPersonCfg('wife') : appSettings.wife,
   };
   saveAppSettings();
-  // wdPlan 동기화 - 생년
+
+  // wdPlan 동기화
   wdPlan.myBirthYear    = appSettings.myBirthYear;
   wdPlan.myBirthMonth   = appSettings.myBirthMonth;
   wdPlan.wifeBirthYear  = appSettings.wifeBirthYear;
   wdPlan.wifeBirthMonth = appSettings.wifeBirthMonth;
-  // wdPlan 동기화 - 세율
-  const nf = id => { const v = Number(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
-  wdPlan.retireTaxRate        = nf('cfg_retireTaxRate')        ?? 12;
-  wdPlan.pensionBenefit10y    = nf('cfg_pensionBenefit10y')    ?? 30;
-  wdPlan.pensionBenefit20y    = nf('cfg_pensionBenefit20y')    ?? 40;
-  wdPlan.pensionBenefit30y    = nf('cfg_pensionBenefit30y')    ?? 50;
-  wdPlan.npTaxRate            = nf('cfg_npTaxRate')            ?? 4;
-  wdPlan.pensionTaxRate       = nf('cfg_pensionTaxRate')       ?? 3.3;
-  wdPlan.excessPensionTaxRate = nf('cfg_excessPensionTaxRate') ?? 16.5;
+  wdPlan.npTaxRate            = nv('cfg_npTaxRate',            4);
+  wdPlan.pensionTaxRate       = nv('cfg_pensionTaxRate',       3.3);
+  wdPlan.excessPensionTaxRate = nv('cfg_excessPensionTaxRate', 16.5);
   saveWdPlan();
   closeSettingsModal();
   render();
@@ -4538,10 +4955,6 @@ function loadWdFormValues() {
   s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
   s('wd_privateOnlyPeriod', wp.privateOnlyPeriod ?? 5);
   s('wd_wifeFixWithdraw', wp.wifeFixWithdraw||0); s('wd_wifeFixStartYear', wp.wifeFixStartYear||wp.startYear);
-  s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPStartMonth', wp.myNPStartMonth||1);
-  s('wd_myNPMonthly', wp.myNPMonthly); s('wd_myNPDelay', wp.myNPDelay||0);
-  s('wd_wifeNPStartYear', wp.wifeNPStartYear); s('wd_wifeNPStartMonth', wp.wifeNPStartMonth||1);
-  s('wd_wifeNPMonthly', wp.wifeNPMonthly); s('wd_wifeNPDelay', wp.wifeNPDelay||0);
 }
 function applyWdSettings() {
   const n = id => Number(document.getElementById(id)?.value) || 0;
@@ -4568,10 +4981,6 @@ function applyWdSettings() {
     wifeFixStartYear,
     myBirthYear: appSettings.myBirthYear, myBirthMonth: appSettings.myBirthMonth || 1,
     wifeBirthYear: appSettings.wifeBirthYear, wifeBirthMonth: appSettings.wifeBirthMonth || 1,
-    myNPStartYear: n('wd_myNPStartYear'), myNPStartMonth: n('wd_myNPStartMonth')||1,
-    myNPMonthly: n('wd_myNPMonthly'), myNPDelay: n('wd_myNPDelay'),
-    wifeNPStartYear: n('wd_wifeNPStartYear'), wifeNPStartMonth: n('wd_wifeNPStartMonth')||1,
-    wifeNPMonthly: n('wd_wifeNPMonthly'), wifeNPDelay: n('wd_wifeNPDelay'),
   };
   saveWdPlan();
   loadQuickWdValues();
@@ -4624,10 +5033,16 @@ function computeWithdrawalSim() {
   const years = Array.from({ length: Math.max(1, endYear - displayStartYear + 1) }, (_, i) => displayStartYear + i);
   const r    = (wp.returnRate || 4) / 100;
   const inf  = (wp.inflation || 2.2) / 100;
-  const rTR  = (wp.retireTaxRate || 12) / 100;
   const pTR  = (wp.pensionTaxRate || 3.3) / 100;
   const epTR = (wp.excessPensionTaxRate ?? 16.5) / 100;
   const npTR = (wp.npTaxRate || 4) / 100;
+  // 개인별 설정
+  const myPersonCfg   = appSettings.my   || getDefaultPersonCfg(false);
+  const wifePersonCfg = appSettings.wife || getDefaultPersonCfg(true);
+  const myRTR_base = (myPersonCfg.retireTaxRate  ?? wp.retireTaxRate ?? 12) / 100;
+  const myB10 = ((myPersonCfg.pensionBenefit10y  ?? wp.pensionBenefit10y ?? 30)) / 100;
+  const myB20 = ((myPersonCfg.pensionBenefit20y  ?? wp.pensionBenefit20y ?? 40)) / 100;
+  const myB30 = ((myPersonCfg.pensionBenefit30y  ?? wp.pensionBenefit30y ?? 50)) / 100;
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...getActiveWifeAccIds()];
   const endDate = `${startYear - 1}-12-31`;
@@ -4687,7 +5102,7 @@ function computeWithdrawalSim() {
     // 인출 시작 전 구간: 수익률 미적용, 빈 잔액 기록 후 skip
     if (yr < startYear) {
       for (const accId of allAccIds) withdrawals[yr][accId] = { anseOut: 0, dcOut: 0, regularOut: 0 };
-      summary[yr] = { myNP: 0, wifeNP: 0, target: 0, totalPriv: 0, totalInc: 0,
+      summary[yr] = { myNP: 0, wifeNP: 0, myPublicInc: 0, wifePublicInc: 0, target: 0, totalPriv: 0, totalInc: 0,
         retireTax: 0, pensionTax: 0, npTax: 0, totalTax: 0, shortfall: 0, inflFactor: 1 };
       balances[yr] = null; // null = 연간계획 미표시 (blank)
       continue;
@@ -4701,18 +5116,62 @@ function computeWithdrawalSim() {
       s.regular += gain; s.total += gain;
     }
 
-    // 2. 국민연금 (현재시점 기준 물가연동, 시작월 반영, 연기연금 반영)
+    // 2. 공적연금 (국민연금 + 공무원연금 + 사학연금, 물가연동, 시작월 반영)
     const npCurrentYear = new Date().getFullYear();
-    const myNPActualYear   = wp.myNPStartYear   + (wp.myNPDelay   || 0);
-    const wifeNPActualYear = wp.wifeNPStartYear + (wp.wifeNPDelay || 0);
-    const myNPMonths = yr > myNPActualYear ? 12 : yr === myNPActualYear ? 13 - (wp.myNPStartMonth||1) : 0;
+    // 나 국민연금
+    const myNPCfg = myPersonCfg.np || {};
+    const myNPUse = myNPCfg.use !== false && myNPCfg.startYear > 0;
+    const myNPActualYear = (myNPCfg.startYear || 0) + (myNPCfg.delayYears || 0);
+    const myNPMonths = myNPUse ? (yr > myNPActualYear ? 12 : yr === myNPActualYear ? 13 - (myNPCfg.startMonth||1) : 0) : 0;
     const myNP = myNPMonths > 0
-      ? wp.myNPMonthly * 10000 * myNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.072*(wp.myNPDelay||0))
+      ? (myNPCfg.monthlyManwon||0) * 10000 * myNPMonths * Math.pow(1+inf, yr - npCurrentYear)
+        * (1 + 0.072*(myNPCfg.delayYears||0)) * (1 - 0.06*(myNPCfg.earlyYears||0))
       : 0;
-    const wifeNPMonths = yr > wifeNPActualYear ? 12 : yr === wifeNPActualYear ? 13 - (wp.wifeNPStartMonth||1) : 0;
+    // 나 공무원연금
+    const myGPCfg = myPersonCfg.gp || {};
+    const myGPUse = myGPCfg.use && myGPCfg.startYear > 0;
+    const myGPMonths = myGPUse ? (yr > myGPCfg.startYear ? 12 : yr === myGPCfg.startYear ? 13 - (myGPCfg.startMonth||1) : 0) : 0;
+    const myGP = myGPMonths > 0
+      ? (myGPCfg.monthlyManwon||0) * 10000 * myGPMonths * Math.pow(1+inf, yr - npCurrentYear)
+        * (1 - 0.06*(myGPCfg.earlyYears||0))
+      : 0;
+    // 나 사학연금
+    const mySPCfg = myPersonCfg.sp || {};
+    const mySPUse = mySPCfg.use && mySPCfg.startYear > 0;
+    const mySPActualYear = (mySPCfg.startYear || 0) + (mySPCfg.delayYears || 0);
+    const mySPMonths = mySPUse ? (yr > mySPActualYear ? 12 : yr === mySPActualYear ? 13 - (mySPCfg.startMonth||1) : 0) : 0;
+    const mySP = mySPMonths > 0
+      ? (mySPCfg.monthlyManwon||0) * 10000 * mySPMonths * Math.pow(1+inf, yr - npCurrentYear)
+        * (1 + 0.072*(mySPCfg.delayYears||0)) * (1 - 0.06*(mySPCfg.earlyYears||0))
+      : 0;
+    // 아내 국민연금
+    const wifeNPCfg = wifePersonCfg.np || {};
+    const wifeNPUse = wifeNPCfg.use !== false && wifeNPCfg.startYear > 0;
+    const wifeNPActualYear = (wifeNPCfg.startYear || 0) + (wifeNPCfg.delayYears || 0);
+    const wifeNPMonths = wifeNPUse ? (yr > wifeNPActualYear ? 12 : yr === wifeNPActualYear ? 13 - (wifeNPCfg.startMonth||1) : 0) : 0;
     const wifeNP = wifeNPMonths > 0
-      ? wp.wifeNPMonthly * 10000 * wifeNPMonths * Math.pow(1+inf, yr - npCurrentYear) * (1 + 0.072*(wp.wifeNPDelay||0))
+      ? (wifeNPCfg.monthlyManwon||0) * 10000 * wifeNPMonths * Math.pow(1+inf, yr - npCurrentYear)
+        * (1 + 0.072*(wifeNPCfg.delayYears||0)) * (1 - 0.06*(wifeNPCfg.earlyYears||0))
       : 0;
+    // 아내 공무원연금
+    const wifeGPCfg = wifePersonCfg.gp || {};
+    const wifeGPUse = wifeGPCfg.use && wifeGPCfg.startYear > 0;
+    const wifeGPMonths = wifeGPUse ? (yr > wifeGPCfg.startYear ? 12 : yr === wifeGPCfg.startYear ? 13 - (wifeGPCfg.startMonth||1) : 0) : 0;
+    const wifeGP = wifeGPMonths > 0
+      ? (wifeGPCfg.monthlyManwon||0) * 10000 * wifeGPMonths * Math.pow(1+inf, yr - npCurrentYear)
+        * (1 - 0.06*(wifeGPCfg.earlyYears||0))
+      : 0;
+    // 아내 사학연금
+    const wifeSPCfg = wifePersonCfg.sp || {};
+    const wifeSPUse = wifeSPCfg.use && wifeSPCfg.startYear > 0;
+    const wifeSPActualYear = (wifeSPCfg.startYear || 0) + (wifeSPCfg.delayYears || 0);
+    const wifeSPMonths = wifeSPUse ? (yr > wifeSPActualYear ? 12 : yr === wifeSPActualYear ? 13 - (wifeSPCfg.startMonth||1) : 0) : 0;
+    const wifeSP = wifeSPMonths > 0
+      ? (wifeSPCfg.monthlyManwon||0) * 10000 * wifeSPMonths * Math.pow(1+inf, yr - npCurrentYear)
+        * (1 + 0.072*(wifeSPCfg.delayYears||0)) * (1 - 0.06*(wifeSPCfg.earlyYears||0))
+      : 0;
+    const myPublicInc   = myNP + myGP + mySP;
+    const wifePublicInc = wifeNP + wifeGP + wifeSP;
 
     // 3. 인출 목표 및 계좌별 배분
     const basic = (wp.basicWithdraw || 0) * 1_000_000;
@@ -4729,7 +5188,7 @@ function computeWithdrawalSim() {
       target = basic * 2;
     } else {
       target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
-      const needPriv = Math.max(0, target - myNP - wifeNP);
+      const needPriv = Math.max(0, target - myPublicInc - wifePublicInc);
       const wifeActive = yr >= (wp.wifeFixStartYear || startYear);
       const wifeBudget = wifeActive
         ? Math.min((wp.wifeFixWithdraw || 0) * 1_000_000 * Math.pow(1+inf, yr - todayYear), needPriv)
@@ -4738,6 +5197,11 @@ function computeWithdrawalSim() {
       wifeRemaining = wifeBudget;
     }
     let totalRT = 0, totalPT = 0;
+
+    // 퇴직소득세 연차별 감면 (1~10년차 benefit10, 11~20년차 benefit20, 21년차~ benefit30)
+    const yrFromStart = yr - startYear;
+    const benefit = yrFromStart < 10 ? myB10 : yrFromStart < 20 ? myB20 : myB30;
+    const rTR = myRTR_base * benefit;
 
     // 4. 우선순위 인출: ①안세공=0 계좌 연금세(기본액) → ②안세공>0 계좌 안세공 → ③퇴직금 → ④연금세(전체소진)
     const doWithdraw = (accIds, budget) => {
@@ -4783,13 +5247,13 @@ function computeWithdrawalSim() {
 
     const totalPriv = allAccIds.reduce((s, id) =>
       s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
-    const npTax = (myNP + wifeNP) * npTR;
+    const npTax = (myPublicInc + wifePublicInc) * npTR;
     summary[yr] = {
-      myNP, wifeNP, target,
-      totalPriv, totalInc: totalPriv + myNP + wifeNP,
+      myNP, wifeNP, myPublicInc, wifePublicInc, target,
+      totalPriv, totalInc: totalPriv + myPublicInc + wifePublicInc,
       retireTax: totalRT, pensionTax: totalPT, npTax,
       totalTax: totalRT + totalPT + npTax,
-      shortfall: Math.max(0, target - myNP - wifeNP - totalPriv),
+      shortfall: Math.max(0, target - myPublicInc - wifePublicInc - totalPriv),
       inflFactor: Math.pow(1+inf, yr - startYear),
     };
     balances[yr] = {};
@@ -4831,6 +5295,10 @@ function renderWithdrawalPlan() {
   const wp = wdPlan;
 
   // 설정 요약 바
+  const _myNPCfg = appSettings.my?.np || {};
+  const _wifeNPCfg = appSettings.wife?.np || {};
+  const _myNPYear = (_myNPCfg.startYear||0) + (_myNPCfg.delayYears||0);
+  const _wifeNPYear = (_wifeNPCfg.startYear||0) + (_wifeNPCfg.delayYears||0);
   document.getElementById('wdInfoBar').innerHTML =
     `<span>인출시작: <b>${wp.startYear}년</b></span>` +
     `<span>은퇴나이: <b>${wp.retireAge || 60}세</b></span>` +
@@ -4838,11 +5306,11 @@ function renderWithdrawalPlan() {
     `<span>연간목표: <b>${wp.annualTarget}백만원</b></span>` +
     `<span>물가상승: <b>${wp.inflation}%</b></span>` +
     `<span>수익률: <b>${wp.returnRate}%</b></span>` +
-    `<span>퇴직세: <b>${wp.retireTaxRate}%</b></span>` +
+    `<span>나 퇴직세: <b>${appSettings.my?.retireTaxRate ?? 12}%</b></span>` +
     `<span>연금세: <b>${wp.pensionTaxRate}%</b></span>` +
     `<span>국민연금세: <b>${wp.npTaxRate}%</b></span>` +
-    `<span>나 국민연금: <b>${wp.myNPStartYear + (wp.myNPDelay||0)}년 ${wp.myNPStartMonth||1}월${wp.myNPDelay ? ` (연기${wp.myNPDelay}년)` : ''}</b></span>` +
-    `<span>아내 국민연금: <b>${wp.wifeNPStartYear + (wp.wifeNPDelay||0)}년 ${wp.wifeNPStartMonth||1}월${wp.wifeNPDelay ? ` (연기${wp.wifeNPDelay}년)` : ''}</b></span>` +
+    (_myNPYear > 0 && _myNPCfg.use !== false ? `<span>나 국민연금: <b>${_myNPYear}년 ${_myNPCfg.startMonth||1}월${_myNPCfg.delayYears ? ` (연기${_myNPCfg.delayYears}년)` : ''}</b></span>` : '') +
+    (appSettings.hasWife && _wifeNPYear > 0 && _wifeNPCfg.use !== false ? `<span>아내 국민연금: <b>${_wifeNPYear}년 ${_wifeNPCfg.startMonth||1}월${_wifeNPCfg.delayYears ? ` (연기${_wifeNPCfg.delayYears}년)` : ''}</b></span>` : '') +
     `<span>기본인출액: <b>${wp.basicWithdraw}백만원/계좌</b></span>` +
     (wp.wifeFixWithdraw ? `<span>아내계좌 인출: <b>${wp.wifeFixStartYear}년부터 ${wp.wifeFixWithdraw}백만원/년</b></span>` : '');
 
@@ -4957,7 +5425,7 @@ function setupWdScrollSync() {
 function buildWdTableHead(years, summary, extraCols = 3) {
   let h = '';
   for (const yr of years) {
-    const hasnp = summary[yr].myNP > 0 || summary[yr].wifeNP > 0;
+    const hasnp = (summary[yr].myPublicInc||0) > 0 || (summary[yr].wifePublicInc||0) > 0;
     h += `<th${hasnp ? ' style="color:#7c3aed;font-weight:800"' : ''}>${yr}</th>`;
   }
   return h;
@@ -4992,12 +5460,12 @@ function renderWdWithdrawTable(sim) {
   }
   h += '</thead><tbody>';
 
-  // 나/아내 국민연금 행
-  h += `<tr class="wd-np-row"><td>나 국민연금</td><td></td><td></td>`;
-  for (const yr of years) h += cell(yr, summary[yr].myNP > 0 ? mv(summary[yr].myNP) : '');
+  // 나/아내 공적연금 행
+  h += `<tr class="wd-np-row"><td>나 공적연금</td><td></td><td></td>`;
+  for (const yr of years) h += cell(yr, (summary[yr].myPublicInc||0) > 0 ? mv(summary[yr].myPublicInc) : '');
   h += '</tr>';
-  h += `<tr class="wd-np-row"><td>아내 국민연금</td><td></td><td></td>`;
-  for (const yr of years) h += cell(yr, summary[yr].wifeNP > 0 ? mv(summary[yr].wifeNP) : '');
+  h += `<tr class="wd-np-row"><td>아내 공적연금</td><td></td><td></td>`;
+  for (const yr of years) h += cell(yr, (summary[yr].wifePublicInc||0) > 0 ? mv(summary[yr].wifePublicInc) : '');
   h += '</tr>';
 
   // 계좌별 행
