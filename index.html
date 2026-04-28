@@ -1363,7 +1363,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.83';
+const APP_VERSION = 'MyPM v1.84';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4652,13 +4652,16 @@ function loadQuickWdValues() {
 function saveQuickWdPlan() {
   const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) || v === 0 ? def : v; };
   const currentYear = new Date().getFullYear();
-  const newStartYear = nv('qwd_startYear', wdPlan.startYear);
-  if (newStartYear < currentYear) {
-    alert(`인출 시작연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
-    document.getElementById('qwd_startYear').value = wdPlan.startYear;
-    return;
+  const rawStartYear = document.getElementById('qwd_startYear')?.value ?? '';
+  if (rawStartYear.length >= 4) {
+    const newStartYear = Number(rawStartYear);
+    if (newStartYear < currentYear) {
+      alert(`인출 시작연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+      document.getElementById('qwd_startYear').value = wdPlan.startYear;
+      return;
+    }
+    wdPlan.startYear = newStartYear;
   }
-  wdPlan.startYear    = newStartYear;
   wdPlan.annualTarget = nv('qwd_annualTarget', wdPlan.annualTarget);
   wdPlan.returnRate   = nv('qwd_returnRate',   wdPlan.returnRate);
   saveWdPlan();
