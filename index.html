@@ -1602,7 +1602,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.87';
+const APP_VERSION = 'MyPM v1.88';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1619,6 +1619,8 @@ const ACCOUNTS = [
   { id: 'wife_pension2', name: '아내 개인연금 2' },
   { id: 'wife_isa',      name: '아내 ISA' }
 ];
+const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp', 'isa'];
+const WIFE_ACC_IDS = ['wife_pension1', 'wife_pension2', 'wife_isa'];
 
 // ===== 앱 설정 =====
 const APP_SETTINGS_KEY = 'pension_app_settings_v1';
@@ -1636,7 +1638,7 @@ function npStartAge(birthYear) {
 function getDefaultPersonCfg(isWife) {
   const cy = new Date().getFullYear();
   return {
-    activeAccIds:   isWife ? ['wife_pension1', 'wife_isa'] : ['dc', 'pension1', 'irp', 'isa'],
+    activeAccIds:   isWife ? ['wife_pension1', 'wife_pension2', 'wife_isa'] : ['dc', 'pension1', 'pension2', 'irp', 'isa'],
     extraAccounts:  [],
     np:  { use: true,  startYear: cy+7, startMonth: 1, monthlyManwon: isWife ? 50 : 100, delayYears: 0, earlyYears: 0 },
     gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
@@ -3821,10 +3823,6 @@ init();  //render();
 // ===== 연간 계획 =====
 const ANNUAL_PLAN_KEY = 'pension_annual_plan_v1';
 let annualPlan = loadAnnualPlan();
-
-// My 4 accounts / wife 3 accounts
-const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp', 'isa'];
-const WIFE_ACC_IDS = ['wife_pension1', 'wife_pension2', 'wife_isa'];
 
 function getActiveAccounts() {
   const myActive = appSettings.my?.activeAccIds || MY_ACC_IDS;
