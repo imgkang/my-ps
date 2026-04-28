@@ -982,73 +982,85 @@
       <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('my')">+ 계좌 추가</button>
 
       <div class="cfg-sub">🧓 국민연금 설정</div>
-      <div class="cfg-grid">
+      <div class="cfg-grid cfg-toggle-row">
         <label>사용여부</label>
         <div class="toggle-row">
           <button id="cfgMyNPYes" class="toggle-btn" onclick="setCfgPersonToggle('myNP',true)">사용</button>
           <button id="cfgMyNPNo"  class="toggle-btn" onclick="setCfgPersonToggle('myNP',false)">미사용</button>
         </div>
-        <label>수급 시작 연도</label>
-        <div>
-          <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
-          <div id="cfgMyNPAutoHint" class="cfg-note"></div>
-        </div>
-        <label>수급 시작 월</label>
-        <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1">
-        <label>월 수령액 (만원)</label>
-        <input id="cfg_myNPMonthly" type="number" min="0" step="1">
-        <label>연기연금 (년, 0~5)</label>
-        <input id="cfg_myNPDelay" type="number" min="0" max="5" step="1">
-        <label>조기수령 (년, 0~5)</label>
-        <input id="cfg_myNPEarly" type="number" min="0" max="5" step="1">
       </div>
-      <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
+      <div id="cfgMyNPFields">
+        <div class="cfg-grid">
+          <label>수급 시작 연도</label>
+          <div>
+            <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
+            <div id="cfgMyNPAutoHint" class="cfg-note"></div>
+          </div>
+          <label>수급 시작 월</label>
+          <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1">
+          <label>월 수령액 (만원)</label>
+          <input id="cfg_myNPMonthly" type="number" min="0" step="1">
+          <label>연기연금 (년, 0~5)</label>
+          <input id="cfg_myNPDelay" type="number" min="0" max="5" step="1">
+          <label>조기수령 (년, 0~5)</label>
+          <input id="cfg_myNPEarly" type="number" min="0" max="5" step="1">
+        </div>
+        <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
+      </div>
 
       <div class="cfg-sub">🏛️ 공무원연금 설정</div>
-      <div class="cfg-grid">
+      <div class="cfg-grid cfg-toggle-row">
         <label>사용여부</label>
         <div class="toggle-row">
           <button id="cfgMyGPYes" class="toggle-btn" onclick="setCfgPersonToggle('myGP',true)">사용</button>
           <button id="cfgMyGPNo"  class="toggle-btn" onclick="setCfgPersonToggle('myGP',false)">미사용</button>
         </div>
-        <label>수령 시작 연도</label>
-        <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1">
-        <label>수령 시작 월</label>
-        <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1">
-        <label>월 수령액 (만원)</label>
-        <input id="cfg_myGPMonthly" type="number" min="0" step="1">
-        <label>조기연금 (년, 0~5)</label>
-        <input id="cfg_myGPEarly" type="number" min="0" max="5" step="1">
+      </div>
+      <div id="cfgMyGPFields">
+        <div class="cfg-grid">
+          <label>수령 시작 연도</label>
+          <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1">
+          <label>수령 시작 월</label>
+          <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1">
+          <label>월 수령액 (만원)</label>
+          <input id="cfg_myGPMonthly" type="number" min="0" step="1">
+          <label>조기연금 (년, 0~5)</label>
+          <input id="cfg_myGPEarly" type="number" min="0" max="5" step="1">
+        </div>
       </div>
 
       <div class="cfg-sub">🎓 사학연금 설정</div>
-      <div class="cfg-grid">
+      <div class="cfg-grid cfg-toggle-row">
         <label>사용여부</label>
         <div class="toggle-row">
           <button id="cfgMySPYes" class="toggle-btn" onclick="setCfgPersonToggle('mySP',true)">사용</button>
           <button id="cfgMySPNo"  class="toggle-btn" onclick="setCfgPersonToggle('mySP',false)">미사용</button>
         </div>
-        <label>수령 시작 연도</label>
-        <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1">
-        <label>수령 시작 월</label>
-        <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1">
-        <label>월 수령액 (만원)</label>
-        <input id="cfg_mySPMonthly" type="number" min="0" step="1">
-        <label>연기연금 (년, 0~5)</label>
-        <input id="cfg_mySPDelay" type="number" min="0" max="5" step="1">
-        <label>조기연금 (년, 0~5)</label>
-        <input id="cfg_mySPEarly" type="number" min="0" max="5" step="1">
+      </div>
+      <div id="cfgMySPFields">
+        <div class="cfg-grid">
+          <label>수령 시작 연도</label>
+          <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1">
+          <label>수령 시작 월</label>
+          <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1">
+          <label>월 수령액 (만원)</label>
+          <input id="cfg_mySPMonthly" type="number" min="0" step="1">
+          <label>연기연금 (년, 0~5)</label>
+          <input id="cfg_mySPDelay" type="number" min="0" max="5" step="1">
+          <label>조기연금 (년, 0~5)</label>
+          <input id="cfg_mySPEarly" type="number" min="0" max="5" step="1">
+        </div>
       </div>
 
       <div class="cfg-sub">💰 퇴직소득세율</div>
-      <div class="cfg-note">DC 인출 시 자동 감면: 1~10년차 70%, 11~20년차 60%, 21년차~ 50%</div>
+      <div class="cfg-note">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
       <div class="cfg-grid">
         <label>퇴직소득세율 (%)</label>
         <input id="cfg_myRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
         <label>1~10년 잔여세율 (%)</label>
-        <input id="cfg_myBenefit10y" type="number" min="0" max="100" step="1" placeholder="30">
+        <input id="cfg_myBenefit10y" type="number" min="0" max="100" step="1" placeholder="70">
         <label>11~20년 잔여세율 (%)</label>
-        <input id="cfg_myBenefit20y" type="number" min="0" max="100" step="1" placeholder="40">
+        <input id="cfg_myBenefit20y" type="number" min="0" max="100" step="1" placeholder="60">
         <label>21년~ 잔여세율 (%)</label>
         <input id="cfg_myBenefit30y" type="number" min="0" max="100" step="1" placeholder="50">
       </div>
@@ -1062,73 +1074,85 @@
       <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('wife')">+ 계좌 추가</button>
 
       <div class="cfg-sub">🧓 국민연금 설정</div>
-      <div class="cfg-grid">
+      <div class="cfg-grid cfg-toggle-row">
         <label>사용여부</label>
         <div class="toggle-row">
           <button id="cfgWifeNPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeNP',true)">사용</button>
           <button id="cfgWifeNPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeNP',false)">미사용</button>
         </div>
-        <label>수급 시작 연도</label>
-        <div>
-          <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
-          <div id="cfgWifeNPAutoHint" class="cfg-note"></div>
-        </div>
-        <label>수급 시작 월</label>
-        <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1">
-        <label>월 수령액 (만원)</label>
-        <input id="cfg_wifeNPMonthly" type="number" min="0" step="1">
-        <label>연기연금 (년, 0~5)</label>
-        <input id="cfg_wifeNPDelay" type="number" min="0" max="5" step="1">
-        <label>조기수령 (년, 0~5)</label>
-        <input id="cfg_wifeNPEarly" type="number" min="0" max="5" step="1">
       </div>
-      <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
+      <div id="cfgWifeNPFields">
+        <div class="cfg-grid">
+          <label>수급 시작 연도</label>
+          <div>
+            <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
+            <div id="cfgWifeNPAutoHint" class="cfg-note"></div>
+          </div>
+          <label>수급 시작 월</label>
+          <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1">
+          <label>월 수령액 (만원)</label>
+          <input id="cfg_wifeNPMonthly" type="number" min="0" step="1">
+          <label>연기연금 (년, 0~5)</label>
+          <input id="cfg_wifeNPDelay" type="number" min="0" max="5" step="1">
+          <label>조기수령 (년, 0~5)</label>
+          <input id="cfg_wifeNPEarly" type="number" min="0" max="5" step="1">
+        </div>
+        <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
+      </div>
 
       <div class="cfg-sub">🏛️ 공무원연금 설정</div>
-      <div class="cfg-grid">
+      <div class="cfg-grid cfg-toggle-row">
         <label>사용여부</label>
         <div class="toggle-row">
           <button id="cfgWifeGPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeGP',true)">사용</button>
           <button id="cfgWifeGPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeGP',false)">미사용</button>
         </div>
-        <label>수령 시작 연도</label>
-        <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1">
-        <label>수령 시작 월</label>
-        <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1">
-        <label>월 수령액 (만원)</label>
-        <input id="cfg_wifeGPMonthly" type="number" min="0" step="1">
-        <label>조기연금 (년, 0~5)</label>
-        <input id="cfg_wifeGPEarly" type="number" min="0" max="5" step="1">
+      </div>
+      <div id="cfgWifeGPFields">
+        <div class="cfg-grid">
+          <label>수령 시작 연도</label>
+          <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1">
+          <label>수령 시작 월</label>
+          <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1">
+          <label>월 수령액 (만원)</label>
+          <input id="cfg_wifeGPMonthly" type="number" min="0" step="1">
+          <label>조기연금 (년, 0~5)</label>
+          <input id="cfg_wifeGPEarly" type="number" min="0" max="5" step="1">
+        </div>
       </div>
 
       <div class="cfg-sub">🎓 사학연금 설정</div>
-      <div class="cfg-grid">
+      <div class="cfg-grid cfg-toggle-row">
         <label>사용여부</label>
         <div class="toggle-row">
           <button id="cfgWifeSPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeSP',true)">사용</button>
           <button id="cfgWifeSPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeSP',false)">미사용</button>
         </div>
-        <label>수령 시작 연도</label>
-        <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1">
-        <label>수령 시작 월</label>
-        <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1">
-        <label>월 수령액 (만원)</label>
-        <input id="cfg_wifeSPMonthly" type="number" min="0" step="1">
-        <label>연기연금 (년, 0~5)</label>
-        <input id="cfg_wifeSPDelay" type="number" min="0" max="5" step="1">
-        <label>조기연금 (년, 0~5)</label>
-        <input id="cfg_wifeSPEarly" type="number" min="0" max="5" step="1">
+      </div>
+      <div id="cfgWifeSPFields">
+        <div class="cfg-grid">
+          <label>수령 시작 연도</label>
+          <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1">
+          <label>수령 시작 월</label>
+          <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1">
+          <label>월 수령액 (만원)</label>
+          <input id="cfg_wifeSPMonthly" type="number" min="0" step="1">
+          <label>연기연금 (년, 0~5)</label>
+          <input id="cfg_wifeSPDelay" type="number" min="0" max="5" step="1">
+          <label>조기연금 (년, 0~5)</label>
+          <input id="cfg_wifeSPEarly" type="number" min="0" max="5" step="1">
+        </div>
       </div>
 
       <div class="cfg-sub">💰 퇴직소득세율</div>
-      <div class="cfg-note">DC 인출 시 자동 감면: 1~10년차 70%, 11~20년차 60%, 21년차~ 50%</div>
+      <div class="cfg-note">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
       <div class="cfg-grid">
         <label>퇴직소득세율 (%)</label>
         <input id="cfg_wifeRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
         <label>1~10년 잔여세율 (%)</label>
-        <input id="cfg_wifeBenefit10y" type="number" min="0" max="100" step="1" placeholder="30">
+        <input id="cfg_wifeBenefit10y" type="number" min="0" max="100" step="1" placeholder="70">
         <label>11~20년 잔여세율 (%)</label>
-        <input id="cfg_wifeBenefit20y" type="number" min="0" max="100" step="1" placeholder="40">
+        <input id="cfg_wifeBenefit20y" type="number" min="0" max="100" step="1" placeholder="60">
         <label>21년~ 잔여세율 (%)</label>
         <input id="cfg_wifeBenefit30y" type="number" min="0" max="100" step="1" placeholder="50">
       </div>
@@ -1602,7 +1626,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.88';
+const APP_VERSION = 'MyPM v1.89';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1644,8 +1668,8 @@ function getDefaultPersonCfg(isWife) {
     gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
     sp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, delayYears: 0, earlyYears: 0 },
     retireTaxRate:    12,
-    pensionBenefit10y: 30,
-    pensionBenefit20y: 40,
+    pensionBenefit10y: 70,
+    pensionBenefit20y: 60,
     pensionBenefit30y: 50,
   };
 }
@@ -4687,8 +4711,8 @@ if (!appSettings.myBirthYear && wdPlan.myBirthYear) {
     }
     if (wdPlan.retireTaxRate) {
       appSettings.my.retireTaxRate     = wdPlan.retireTaxRate;
-      appSettings.my.pensionBenefit10y = wdPlan.pensionBenefit10y ?? 30;
-      appSettings.my.pensionBenefit20y = wdPlan.pensionBenefit20y ?? 40;
+      appSettings.my.pensionBenefit10y = wdPlan.pensionBenefit10y ?? 70;
+      appSettings.my.pensionBenefit20y = wdPlan.pensionBenefit20y ?? 60;
       appSettings.my.pensionBenefit30y = wdPlan.pensionBenefit30y ?? 50;
     }
   }
@@ -4701,7 +4725,7 @@ function getWdDefaults() {
     startYear: cy + 2, retireAge: 60, annualTarget: 120,
     inflation: 2.2, returnRate: 4.0,
     retireTaxRate: 12, pensionTaxRate: 3.3, npTaxRate: 4, excessPensionTaxRate: 16.5,
-    pensionBenefit10y: 30, pensionBenefit20y: 40, pensionBenefit30y: 50,
+    pensionBenefit10y: 70, pensionBenefit20y: 60, pensionBenefit30y: 50,
     myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
     wifeNPStartYear: cy + 9, wifeNPStartMonth: 1, wifeNPMonthly: 50, wifeNPDelay: 0,
     basicWithdraw: 15, privateOnlyPeriod: 5, wifeFixWithdraw: 0, wifeFixStartYear: cy + 2,
@@ -4741,6 +4765,8 @@ function setCfgPersonToggle(key, val) {
   const cap = key.charAt(0).toUpperCase() + key.slice(1);
   document.getElementById(`cfg${cap}Yes`)?.classList.toggle('active', !!val);
   document.getElementById(`cfg${cap}No`) ?.classList.toggle('active', !val);
+  const fieldsEl = document.getElementById(`cfg${cap}Fields`);
+  if (fieldsEl) fieldsEl.style.display = val ? '' : 'none';
 }
 function toggleCfgAcc(person, accId) {
   const arr = _cfgActiveAccIds[person];
@@ -4830,8 +4856,8 @@ function openSettingsModal() {
   sv('cfg_mySPDelay',       msp.delayYears   || 0);
   sv('cfg_mySPEarly',       msp.earlyYears   || 0);
   sv('cfg_myRetireTaxRate', my.retireTaxRate    ?? 12);
-  sv('cfg_myBenefit10y',    my.pensionBenefit10y ?? 30);
-  sv('cfg_myBenefit20y',    my.pensionBenefit20y ?? 40);
+  sv('cfg_myBenefit10y',    my.pensionBenefit10y ?? 70);
+  sv('cfg_myBenefit20y',    my.pensionBenefit20y ?? 60);
   sv('cfg_myBenefit30y',    my.pensionBenefit30y ?? 50);
   onCfgBirthYearChange('my');
 
@@ -4864,8 +4890,8 @@ function openSettingsModal() {
   sv('cfg_wifeSPDelay',       wsp.delayYears   || 0);
   sv('cfg_wifeSPEarly',       wsp.earlyYears   || 0);
   sv('cfg_wifeRetireTaxRate', wife.retireTaxRate    ?? 12);
-  sv('cfg_wifeBenefit10y',    wife.pensionBenefit10y ?? 30);
-  sv('cfg_wifeBenefit20y',    wife.pensionBenefit20y ?? 40);
+  sv('cfg_wifeBenefit10y',    wife.pensionBenefit10y ?? 70);
+  sv('cfg_wifeBenefit20y',    wife.pensionBenefit20y ?? 60);
   sv('cfg_wifeBenefit30y',    wife.pensionBenefit30y ?? 50);
   onCfgBirthYearChange('wife');
 
@@ -4912,8 +4938,8 @@ function saveSettingsModal() {
       earlyYears:    n(`cfg_${prefix}SPEarly`),
     },
     retireTaxRate:    nv(`cfg_${prefix}RetireTaxRate`, 12),
-    pensionBenefit10y: nv(`cfg_${prefix}Benefit10y`,  30),
-    pensionBenefit20y: nv(`cfg_${prefix}Benefit20y`,  40),
+    pensionBenefit10y: nv(`cfg_${prefix}Benefit10y`,  70),
+    pensionBenefit20y: nv(`cfg_${prefix}Benefit20y`,  60),
     pensionBenefit30y: nv(`cfg_${prefix}Benefit30y`,  50),
   });
 
@@ -5038,8 +5064,8 @@ function computeWithdrawalSim() {
   const myPersonCfg   = appSettings.my   || getDefaultPersonCfg(false);
   const wifePersonCfg = appSettings.wife || getDefaultPersonCfg(true);
   const myRTR_base = (myPersonCfg.retireTaxRate  ?? wp.retireTaxRate ?? 12) / 100;
-  const myB10 = ((myPersonCfg.pensionBenefit10y  ?? wp.pensionBenefit10y ?? 30)) / 100;
-  const myB20 = ((myPersonCfg.pensionBenefit20y  ?? wp.pensionBenefit20y ?? 40)) / 100;
+  const myB10 = ((myPersonCfg.pensionBenefit10y  ?? wp.pensionBenefit10y ?? 70)) / 100;
+  const myB20 = ((myPersonCfg.pensionBenefit20y  ?? wp.pensionBenefit20y ?? 60)) / 100;
   const myB30 = ((myPersonCfg.pensionBenefit30y  ?? wp.pensionBenefit30y ?? 50)) / 100;
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...getActiveWifeAccIds()];
