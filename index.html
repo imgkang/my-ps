@@ -888,10 +888,26 @@
       </div>
       <button class="close-btn" onclick="closeAddStockModal()" aria-label="닫기">×</button>
     </div>
-    <div class="add-form" style="grid-template-columns: 1fr 1fr; gap: 12px;">
-      <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off" style="grid-column: 1 / -1;">
-      <input type="text" id="stockName" placeholder="종목명 (자동입력)" autocomplete="off" style="grid-column: 1 / -1;">
-      <input type="number" id="quantity" placeholder="수량" min="0" step="1" autocomplete="off">
+    <div class="add-form" style="grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px;">
+      <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off">
+      <input type="text" id="stockName" placeholder="종목명 (자동입력)" autocomplete="off">
+    </div>
+    <div class="account-head">
+      <div>계좌</div>
+      <div>주식수</div>
+      <div>매입단가 (원)</div>
+      <div>매입총액 (원)</div>
+    </div>
+    <div class="account-grid" id="addStockAccountInputs"></div>
+    <div class="modal-total">
+      <span>합계</span>
+      <span>
+        <span id="addStockTotalQty" style="margin-right:16px;color:var(--text);font-weight:600;">0 주</span>
+        <strong id="addStockTotalCost">0 원</strong>
+      </span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeAddStockModal()">취소</button>
       <button class="btn-primary" onclick="addStock()">+ 추가</button>
     </div>
   </div>
@@ -2492,8 +2508,37 @@ async function fetchKoreanName(code) {
 
 // ===== 종목 추가 모달 =====
 function openAddStockModal() {
+  document.getElementById('stockCode').value = '';
+  document.getElementById('stockName').value = '';
+  const grid = document.getElementById('addStockAccountInputs');
+  grid.innerHTML = ACCOUNTS.map(a => `
+    <div class="account-row">
+      <label>${a.name}</label>
+      <input type="number" id="addQty_${a.id}" min="0" step="1" value="" placeholder="0" inputmode="numeric" oninput="updateAddStockTotal()">
+      <input type="number" id="addAvg_${a.id}" min="0" step="1" value="" placeholder="0" inputmode="numeric" oninput="updateAddStockTotal()">
+      <div class="total-display zero" id="addTotal_${a.id}">0 원</div>
+    </div>`).join('');
+  updateAddStockTotal();
   document.getElementById('addStockModal').classList.add('open');
   setTimeout(() => document.getElementById('stockCode').focus(), 50);
+}
+
+function updateAddStockTotal() {
+  let totalQty = 0, totalCost = 0;
+  for (const acc of ACCOUNTS) {
+    const qty = Number(document.getElementById('addQty_' + acc.id)?.value) || 0;
+    const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
+    const rowTotal = qty * avg;
+    const el = document.getElementById('addTotal_' + acc.id);
+    if (el) {
+      el.textContent = rowTotal > 0 ? Math.round(rowTotal).toLocaleString('ko-KR') + ' 원' : '0 원';
+      el.classList.toggle('zero', rowTotal === 0);
+    }
+    totalQty += qty;
+    totalCost += rowTotal;
+  }
+  document.getElementById('addStockTotalQty').textContent = totalQty.toLocaleString('ko-KR') + ' 주';
+  document.getElementById('addStockTotalCost').textContent = Math.round(totalCost).toLocaleString('ko-KR') + ' 원';
 }
 function closeAddStockModal() {
   document.getElementById('addStockModal').classList.remove('open');
@@ -2506,15 +2551,21 @@ function handleAddStockBackdropClick(e) {
 async function addStock() {
   const codeEl = document.getElementById('stockCode');
   const nameEl = document.getElementById('stockName');
-  const qtyEl = document.getElementById('quantity');
 
   const code = codeEl.value.trim().padStart(6, '0');
   const name = nameEl.value.trim();
-  const qty = Number(qtyEl.value);
 
   if (!/^\d{6}$/.test(code)) { alert('종목코드는 6자리 숫자입니다 (예: 005930)'); return; }
-  if (!qty || qty <= 0) { alert('수량을 올바르게 입력해 주세요'); return; }
   if (holdings.some(h => h.code === code)) { alert('이미 추가된 종목입니다'); return; }
+
+  const accounts = {};
+  let totalQty = 0;
+  for (const acc of ACCOUNTS) {
+    const qty = Number(document.getElementById('addQty_' + acc.id)?.value) || 0;
+    const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
+    if (qty > 0) { accounts[acc.id] = { qty, avgPrice: avg }; totalQty += qty; }
+  }
+  if (totalQty <= 0) { alert('최소 한 계좌에 수량을 입력해 주세요'); return; }
 
   // 이름이 비어있으면 조회로 자동 입력
   let stockName = name;
@@ -2533,11 +2584,9 @@ async function addStock() {
     }
   }
 
-  holdings.push({ code, name: stockName, quantity: qty, accounts: {}, price, change, changeRate, suffix, updatedAt: Date.now() });
+  holdings.push({ code, name: stockName, quantity: totalQty, accounts, price, change, changeRate, suffix, updatedAt: Date.now() });
   saveHoldings();
   render();
-
-  codeEl.value = ''; nameEl.value = ''; qtyEl.value = '';
   closeAddStockModal();
 }
 
@@ -4341,15 +4390,26 @@ function loadWdFormValues() {
 }
 function applyWdSettings() {
   const n = id => Number(document.getElementById(id)?.value) || 0;
+  const currentYear = new Date().getFullYear();
+  const startYear = n('wd_startYear') || currentYear + 2;
+  const wifeFixStartYear = n('wd_wifeFixStartYear') || currentYear + 2;
+  if (startYear < currentYear) {
+    alert(`인출 시작연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+    return;
+  }
+  if (wifeFixStartYear < currentYear) {
+    alert(`아내계좌 인출 시작연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+    return;
+  }
   wdPlan = {
-    startYear: n('wd_startYear') || new Date().getFullYear() + 2,
+    startYear,
     retireAge: n('wd_retireAge') || 60,
     annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
     retireTaxRate: n('wd_retireTaxRate'), pensionTaxRate: n('wd_pensionTaxRate'),
     npTaxRate: n('wd_npTaxRate'), excessPensionTaxRate: n('wd_excessPensionTaxRate'),
     basicWithdraw: n('wd_basicWithdraw'), privateOnlyPeriod: n('wd_privateOnlyPeriod'),
     wifeFixWithdraw: n('wd_wifeFixWithdraw'),
-    wifeFixStartYear: n('wd_wifeFixStartYear') || new Date().getFullYear() + 2,
+    wifeFixStartYear,
     myBirthYear: n('wd_myBirthYear'), myBirthMonth: n('wd_myBirthMonth') || 1,
     wifeBirthYear: n('wd_wifeBirthYear'), wifeBirthMonth: n('wd_wifeBirthMonth') || 1,
     myNPStartYear: n('wd_myNPStartYear'), myNPStartMonth: n('wd_myNPStartMonth')||1,
@@ -4591,7 +4651,14 @@ function loadQuickWdValues() {
 }
 function saveQuickWdPlan() {
   const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) || v === 0 ? def : v; };
-  wdPlan.startYear    = nv('qwd_startYear',    wdPlan.startYear);
+  const currentYear = new Date().getFullYear();
+  const newStartYear = nv('qwd_startYear', wdPlan.startYear);
+  if (newStartYear < currentYear) {
+    alert(`인출 시작연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+    document.getElementById('qwd_startYear').value = wdPlan.startYear;
+    return;
+  }
+  wdPlan.startYear    = newStartYear;
   wdPlan.annualTarget = nv('qwd_annualTarget', wdPlan.annualTarget);
   wdPlan.returnRate   = nv('qwd_returnRate',   wdPlan.returnRate);
   saveWdPlan();
@@ -5106,6 +5173,15 @@ function clearConsolidate() {
 
 // wdPlan이 모두 초기화된 후 빠른 편집 패널 초기값 설정
 loadQuickWdValues();
+
+// 인출 시작연도 입력 필드의 min을 현재 연도로 설정
+(function() {
+  const cy = new Date().getFullYear();
+  ['qwd_startYear', 'wd_startYear', 'wd_wifeFixStartYear'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.min = cy;
+  });
+})();
 </script>
 <div class="app-version" id="appVersion"></div>
 </body>
