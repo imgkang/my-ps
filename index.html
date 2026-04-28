@@ -817,6 +817,22 @@
   .cons-table .cons-auto { color: #6366f1; font-weight: 600; }
   .cons-table input[type=number] { width: 62px; text-align: right; padding: 1px 4px;
     border: 1px solid #93c5fd; border-radius: 3px; font-size: 10px; }
+  /* 설정 모달 */
+  .cfg-section { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 10px 0 5px; border-top: 1px solid var(--border); margin-top: 6px; }
+  .cfg-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .cfg-grid { display: grid; grid-template-columns: auto 1fr; gap: 9px 18px; align-items: center; margin-bottom: 8px; }
+  .cfg-grid label { font-size: 14px; color: var(--text); white-space: nowrap; }
+  .cfg-grid input { padding: 8px 12px; text-align: right; width: 100%; }
+  .toggle-row { display: flex; gap: 6px; }
+  .toggle-btn { flex: 1; padding: 7px 0; border: 1.5px solid var(--border); border-radius: 6px;
+    background: #f3f4f6; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 500;
+    transition: all 0.15s; }
+  .toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-settings { padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+    background: var(--card); color: var(--muted); font-size: 13px; cursor: pointer;
+    transition: all 0.15s; }
+  .btn-settings:hover { background: #f3f4f6; color: var(--text); }
 </style>
 </head>
 <body>
@@ -833,6 +849,7 @@
         분
       </label>
       <span id="refreshStatus"></span>
+      <button class="btn-settings" onclick="openSettingsModal()" title="앱 설정">⚙️ 설정</button>
     </div>
   </header>
 
@@ -880,6 +897,46 @@
 </div>
 
 <!-- 종목 추가 모달 -->
+<!-- ⚙️ 앱 설정 모달 -->
+<div class="modal-backdrop" id="settingsModal" onclick="handleSettingsBackdropClick(event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div><h2>⚙️ 설정</h2></div>
+      <button class="close-btn" onclick="closeSettingsModal()" aria-label="닫기">×</button>
+    </div>
+
+    <div class="cfg-section">👤 본인 정보</div>
+    <div class="cfg-grid">
+      <label>생년 (년)</label>
+      <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1985">
+      <label>생월 (월)</label>
+      <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
+    </div>
+
+    <div class="cfg-section">👫 배우자 계좌</div>
+    <div class="cfg-grid">
+      <label>배우자 계좌</label>
+      <div class="toggle-row">
+        <button id="cfgWifeYes" class="toggle-btn" onclick="setCfgWife(true)">있음</button>
+        <button id="cfgWifeNo"  class="toggle-btn" onclick="setCfgWife(false)">없음</button>
+      </div>
+    </div>
+    <div id="cfgWifeRows">
+      <div class="cfg-grid">
+        <label>배우자 생년 (년)</label>
+        <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1987">
+        <label>배우자 생월 (월)</label>
+        <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-secondary" onclick="closeSettingsModal()">취소</button>
+      <button class="btn-primary" onclick="saveSettingsModal()">저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="addStockModal" onclick="handleAddStockBackdropClick(event)">
   <div class="modal" style="max-width: 480px;">
     <div class="modal-header">
@@ -1226,12 +1283,6 @@
     <!-- 설정 패널 -->
     <div id="wdSettingsPanel" style="display:none;border:1px solid #e9d5ff;border-radius:8px;padding:14px;margin-bottom:12px;background:#faf5ff;flex-shrink:0">
       <div class="wd-settings-grid">
-        <div class="wd-section">👤 개인 정보</div>
-        <label><span>나 생년 (년)</span><input id="wd_myBirthYear" type="number" min="1940" max="2010" step="1"></label>
-        <label><span>나 생월 (월)</span><input id="wd_myBirthMonth" type="number" min="1" max="12" step="1"></label>
-        <label><span>배우자 생년 (년)</span><input id="wd_wifeBirthYear" type="number" min="1940" max="2010" step="1"></label>
-        <label><span>배우자 생월 (월)</span><input id="wd_wifeBirthMonth" type="number" min="1" max="12" step="1"></label>
-
         <div class="wd-section">📅 인출 기본 설정</div>
         <label><span>인출 시작 연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
         <label><span>은퇴 시작나이 (세)</span><input id="wd_retireAge" type="number" min="40" max="90" step="1"></label>
@@ -1363,7 +1414,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.84';
+const APP_VERSION = 'MyPM v1.85';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1380,6 +1431,20 @@ const ACCOUNTS = [
   { id: 'wife_pension2', name: '아내 개인연금 2' },
   { id: 'wife_isa',      name: '아내 ISA' }
 ];
+
+// ===== 앱 설정 =====
+const APP_SETTINGS_KEY = 'pension_app_settings_v1';
+function getDefaultAppSettings() {
+  return { myBirthYear: 0, myBirthMonth: 1, hasWife: true, wifeBirthYear: 0, wifeBirthMonth: 1 };
+}
+function loadAppSettings() {
+  try {
+    const r = localStorage.getItem(APP_SETTINGS_KEY);
+    return r ? { ...getDefaultAppSettings(), ...JSON.parse(r) } : getDefaultAppSettings();
+  } catch(_) { return getDefaultAppSettings(); }
+}
+function saveAppSettings() { localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(appSettings)); }
+let appSettings = loadAppSettings();
 
 // ===== 상태 관리 =====
 const STORAGE_KEY = 'pension_portfolio_v1';
@@ -1632,7 +1697,7 @@ function updateTxnAnseVisibility() {
 function openTxnEditor(editId) {
   editingTxnId = editId || null;
   const selAcc = document.getElementById('txnAccount');
-  selAcc.innerHTML = ACCOUNTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  selAcc.innerHTML = getActiveAccounts().map(a => `<option value="${a.id}">${a.name}</option>`).join('');
   const titleEl = document.getElementById('txnEditorTitle');
   if (editId) {
     const t = depositData.transactions.find(x => x.id === editId);
@@ -1676,7 +1741,7 @@ function saveTxn() {
   const rawAnse = String(document.getElementById('txnAnse').value || '').replace(/[^\d]/g, '');
   const anse = type === 'deposit' ? (Number(rawAnse) || 0) : 0;
 
-  if (!accId || !ACCOUNTS.find(a => a.id === accId)) { alert('계좌를 선택해 주세요.'); return; }
+  if (!accId || !getActiveAccounts().find(a => a.id === accId)) { alert('계좌를 선택해 주세요.'); return; }
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('유효한 입출금일을 선택해 주세요.'); return; }
   if (!amount || amount <= 0) { alert('금액을 올바르게 입력해 주세요 (0보다 큰 숫자).'); return; }
 
@@ -1719,7 +1784,7 @@ function openAccountModal(code) {
 
   const container = document.getElementById('accountInputs');
   let html = '';
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const val = accounts[acc.id] || { qty: 0, avgPrice: 0 };
     const qty = val.qty || 0;
     const avg = val.avgPrice || 0;
@@ -1753,7 +1818,7 @@ function handleBackdropClick(e) {
 function updateModalTotal() {
   let totalQty = 0;
   let totalCost = 0;
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const qtyEl = document.getElementById('qty_' + acc.id);
     const avgEl = document.getElementById('avg_' + acc.id);
     const totalEl = document.getElementById('total_' + acc.id);
@@ -1784,7 +1849,7 @@ function saveAccountQuantities() {
 
   const accounts = {};
   let totalQty = 0;
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const qtyEl = document.getElementById('qty_' + acc.id);
     const avgEl = document.getElementById('avg_' + acc.id);
     if (!qtyEl || !avgEl) continue;
@@ -1820,6 +1885,7 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('accountRecordsModal').classList.contains('open')) { closeRecordsModal(); return; }
   if (document.getElementById('dividendModal').classList.contains('open')) { closeDividendModal(); return; }
   if (document.getElementById('annualPlanModal').classList.contains('open')) { closeAnnualPlanModal(); return; }
+  if (document.getElementById('settingsModal').classList.contains('open')) { closeSettingsModal(); return; }
 });
 
 // 금액 입력란 자동 콤마 포맷
@@ -1839,7 +1905,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===== 계좌별 상세 보기 =====
 function renderAccountButtons() {
   const grid = document.getElementById('accountButtonsGrid');
-  grid.innerHTML = ACCOUNTS.map(a => {
+  grid.innerHTML = getActiveAccounts().map(a => {
     const val = computeAccountValue(a.id);
     const valueText = val > 0 ? formatKRW(val) : '보유 없음';
     return `<button class="btn-account-view" onclick="openAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${valueText}</span></button>`;
@@ -1898,7 +1964,7 @@ function renderAccSummary() {
   const getVal = (accId) => computeAccountValue(accId);
 
   // 행 데이터 계산
-  const rows = ACCOUNTS.map(a => {
+  const rows = getActiveAccounts().map(a => {
     const principal = getPrincipal(a.id);
     const anse      = getAnse(a.id);
     const val       = getVal(a.id);
@@ -2152,7 +2218,7 @@ function handleDetailBackdropClick(e) {
 function openCashAccountModal() {
   const container = document.getElementById('cashAccountInputs');
   let html = '';
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const val = Number(cashAccounts[acc.id]) || 0;
     html += `
       <div class="account-row cash-row-modal">
@@ -2181,7 +2247,7 @@ function handleCashBackdropClick(e) {
 
 function updateCashModalTotal() {
   let total = 0;
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const el = document.getElementById('cash_' + acc.id);
     if (el) total += Number(el.value) || 0;
   }
@@ -2189,8 +2255,8 @@ function updateCashModalTotal() {
 }
 
 function saveCashAccounts() {
-  const next = {};
-  for (const acc of ACCOUNTS) {
+  const next = { ...cashAccounts };
+  for (const acc of getActiveAccounts()) {
     const el = document.getElementById('cash_' + acc.id);
     next[acc.id] = el ? (Number(el.value) || 0) : 0;
   }
@@ -2511,7 +2577,7 @@ function openAddStockModal() {
   document.getElementById('stockCode').value = '';
   document.getElementById('stockName').value = '';
   const grid = document.getElementById('addStockAccountInputs');
-  grid.innerHTML = ACCOUNTS.map(a => `
+  grid.innerHTML = getActiveAccounts().map(a => `
     <div class="account-row">
       <label>${a.name}</label>
       <input type="number" id="addQty_${a.id}" min="0" step="1" value="" placeholder="0" inputmode="numeric" oninput="updateAddStockTotal()">
@@ -2525,7 +2591,7 @@ function openAddStockModal() {
 
 function updateAddStockTotal() {
   let totalQty = 0, totalCost = 0;
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const qty = Number(document.getElementById('addQty_' + acc.id)?.value) || 0;
     const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
     const rowTotal = qty * avg;
@@ -2560,7 +2626,7 @@ async function addStock() {
 
   const accounts = {};
   let totalQty = 0;
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const qty = Number(document.getElementById('addQty_' + acc.id)?.value) || 0;
     const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
     if (qty > 0) { accounts[acc.id] = { qty, avgPrice: avg }; totalQty += qty; }
@@ -3522,6 +3588,13 @@ let annualPlan = loadAnnualPlan();
 const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp', 'isa'];
 const WIFE_ACC_IDS = ['wife_pension1', 'wife_pension2', 'wife_isa'];
 
+function getActiveAccounts() {
+  return appSettings.hasWife ? ACCOUNTS : ACCOUNTS.filter(a => !WIFE_ACC_IDS.includes(a.id));
+}
+function getActiveWifeAccIds() {
+  return appSettings.hasWife ? WIFE_ACC_IDS : [];
+}
+
 function loadAnnualPlan() {
   try {
     const raw = localStorage.getItem(ANNUAL_PLAN_KEY);
@@ -4339,6 +4412,15 @@ let wdPlan = loadWdPlan();
 let wdConsolidated = null;
 let _consTotals = null;
 
+// appSettings에 생년 데이터가 없으면 wdPlan에서 마이그레이션
+if (!appSettings.myBirthYear && wdPlan.myBirthYear) {
+  appSettings.myBirthYear    = wdPlan.myBirthYear;
+  appSettings.myBirthMonth   = wdPlan.myBirthMonth  || 1;
+  appSettings.wifeBirthYear  = wdPlan.wifeBirthYear  || 0;
+  appSettings.wifeBirthMonth = wdPlan.wifeBirthMonth || 1;
+  saveAppSettings();
+}
+
 function getWdDefaults() {
   const cy = new Date().getFullYear();
   return {
@@ -4366,6 +4448,45 @@ function openWithdrawalModal() {
   renderWithdrawalPlan();
 }
 function closeWithdrawalModal() { document.getElementById('withdrawalModal').classList.remove('open'); }
+
+// ===== ⚙️ 앱 설정 모달 =====
+function openSettingsModal() {
+  const s = appSettings;
+  document.getElementById('cfg_myBirthYear').value    = s.myBirthYear  || '';
+  document.getElementById('cfg_myBirthMonth').value   = s.myBirthMonth || '';
+  document.getElementById('cfg_wifeBirthYear').value  = s.wifeBirthYear  || '';
+  document.getElementById('cfg_wifeBirthMonth').value = s.wifeBirthMonth || '';
+  _updateCfgWifeUI(s.hasWife);
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
+function handleSettingsBackdropClick(e) { if (e.target.id === 'settingsModal') closeSettingsModal(); }
+function setCfgWife(val) { _updateCfgWifeUI(val); }
+function _updateCfgWifeUI(hasWife) {
+  document.getElementById('cfgWifeYes').classList.toggle('active', !!hasWife);
+  document.getElementById('cfgWifeNo').classList.toggle('active',  !hasWife);
+  document.getElementById('cfgWifeRows').style.display = hasWife ? '' : 'none';
+}
+function saveSettingsModal() {
+  const n  = id => Number(document.getElementById(id)?.value) || 0;
+  const hasWife = document.getElementById('cfgWifeYes').classList.contains('active');
+  appSettings = {
+    myBirthYear:   n('cfg_myBirthYear'),
+    myBirthMonth:  n('cfg_myBirthMonth')  || 1,
+    hasWife,
+    wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
+    wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
+  };
+  saveAppSettings();
+  // wdPlan과 동기화
+  wdPlan.myBirthYear    = appSettings.myBirthYear;
+  wdPlan.myBirthMonth   = appSettings.myBirthMonth;
+  wdPlan.wifeBirthYear  = appSettings.wifeBirthYear;
+  wdPlan.wifeBirthMonth = appSettings.wifeBirthMonth;
+  saveWdPlan();
+  closeSettingsModal();
+  render();
+}
 function handleWdBackdropClick(e) { if (e.target.id === 'withdrawalModal') closeWithdrawalModal(); }
 function toggleWdSettings() {
   const p = document.getElementById('wdSettingsPanel');
@@ -4381,8 +4502,6 @@ function loadWdFormValues() {
   s('wd_wifeFixWithdraw', wp.wifeFixWithdraw||0); s('wd_wifeFixStartYear', wp.wifeFixStartYear||wp.startYear);
   s('wd_retireTaxRate', wp.retireTaxRate); s('wd_pensionTaxRate', wp.pensionTaxRate);
   s('wd_npTaxRate', wp.npTaxRate); s('wd_excessPensionTaxRate', wp.excessPensionTaxRate ?? 16.5);
-  s('wd_myBirthYear', wp.myBirthYear || ''); s('wd_myBirthMonth', wp.myBirthMonth || '');
-  s('wd_wifeBirthYear', wp.wifeBirthYear || ''); s('wd_wifeBirthMonth', wp.wifeBirthMonth || '');
   s('wd_myNPStartYear', wp.myNPStartYear); s('wd_myNPStartMonth', wp.myNPStartMonth||1);
   s('wd_myNPMonthly', wp.myNPMonthly); s('wd_myNPDelay', wp.myNPDelay||0);
   s('wd_wifeNPStartYear', wp.wifeNPStartYear); s('wd_wifeNPStartMonth', wp.wifeNPStartMonth||1);
@@ -4410,8 +4529,8 @@ function applyWdSettings() {
     basicWithdraw: n('wd_basicWithdraw'), privateOnlyPeriod: n('wd_privateOnlyPeriod'),
     wifeFixWithdraw: n('wd_wifeFixWithdraw'),
     wifeFixStartYear,
-    myBirthYear: n('wd_myBirthYear'), myBirthMonth: n('wd_myBirthMonth') || 1,
-    wifeBirthYear: n('wd_wifeBirthYear'), wifeBirthMonth: n('wd_wifeBirthMonth') || 1,
+    myBirthYear: appSettings.myBirthYear, myBirthMonth: appSettings.myBirthMonth || 1,
+    wifeBirthYear: appSettings.wifeBirthYear, wifeBirthMonth: appSettings.wifeBirthMonth || 1,
     myNPStartYear: n('wd_myNPStartYear'), myNPStartMonth: n('wd_myNPStartMonth')||1,
     myNPMonthly: n('wd_myNPMonthly'), myNPDelay: n('wd_myNPDelay'),
     wifeNPStartYear: n('wd_wifeNPStartYear'), wifeNPStartMonth: n('wd_wifeNPStartMonth')||1,
@@ -4473,7 +4592,7 @@ function computeWithdrawalSim() {
   const epTR = (wp.excessPensionTaxRate ?? 16.5) / 100;
   const npTR = (wp.npTaxRate || 4) / 100;
   const DC_ID = 'dc';
-  const allAccIds = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
+  const allAccIds = [...MY_ACC_IDS, ...getActiveWifeAccIds()];
   const endDate = `${startYear - 1}-12-31`;
   const wifeStartYear = wp.wifeFixStartYear || startYear;
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
@@ -4623,7 +4742,7 @@ function computeWithdrawalSim() {
     };
 
     doWithdraw(MY_ACC_IDS, myRemaining);
-    doWithdraw(WIFE_ACC_IDS, wifeRemaining);
+    doWithdraw(getActiveWifeAccIds(), wifeRemaining);
 
     const totalPriv = allAccIds.reduce((s, id) =>
       s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
@@ -4714,7 +4833,7 @@ function renderWdCharts(sim) {
   const myBals = years.map(yr => balances[yr] === null ? 0 :
     Math.round(MY_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
   const wifeBals = years.map(yr => balances[yr] === null ? 0 :
-    Math.round(WIFE_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
+    Math.round(getActiveWifeAccIds().reduce((s, id) => s + (balances[yr][id]?.total || 0), 0) / M));
 
   // Chart 3 데이터: 누적 세금
   let cumRT = 0, cumPT = 0, cumNP = 0;
