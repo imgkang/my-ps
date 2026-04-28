@@ -1509,6 +1509,8 @@
         <label><span>그래프 시작 나이 (세)</span><input id="wd_retireAge" type="number" min="40" max="90" step="1"></label>
         <label><span>본인 은퇴연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
         <label><span>사적연금 기본인출액 (백만원/계좌/년)</span><input id="wd_basicWithdraw" type="number" min="0" step="1"></label>
+        <label><span>아내 은퇴연도</span><input id="wd_wifeRetireYear" type="number" min="2020" max="2080" step="1"></label>
+        <label><span>아내 사적연금 기본인출액 (백만원/계좌/년)</span><input id="wd_wifeBasicWithdraw" type="number" min="0" step="1"></label>
         <label><span>아내 계좌 인출금액 (백만원/년)</span><input id="wd_wifeFixWithdraw" type="number" min="0" step="1"></label>
         <label><span>아내계좌 인출 시작연도</span><input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1"></label>
         <label><span>연간 인출 목표액 (백만원)</span><input id="wd_annualTarget" type="number" min="0" step="1"></label>
@@ -1617,7 +1619,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.95';
+const APP_VERSION = 'MyPM v1.96';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4719,7 +4721,8 @@ function getWdDefaults() {
     pensionBenefit10y: 70, pensionBenefit20y: 60, pensionBenefit30y: 50,
     myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
     wifeNPStartYear: cy + 9, wifeNPStartMonth: 1, wifeNPMonthly: 50, wifeNPDelay: 0,
-    basicWithdraw: 15, targetStartYear: cy + 7, wifeFixWithdraw: 0, wifeFixStartYear: cy + 2,
+    basicWithdraw: 15, wifeRetireYear: cy + 4, wifeBasicWithdraw: 15,
+    targetStartYear: cy + 7, wifeFixWithdraw: 0, wifeFixStartYear: cy + 4,
     myBirthYear: 0, myBirthMonth: 1, wifeBirthYear: 0, wifeBirthMonth: 1,
   };
 }
@@ -4962,6 +4965,8 @@ function loadWdFormValues() {
   s('wd_startYear', wp.startYear); s('wd_retireAge', wp.retireAge ?? 60);
   s('wd_annualTarget', wp.annualTarget); s('wd_inflation', wp.inflation);
   s('wd_returnRate', wp.returnRate); s('wd_basicWithdraw', wp.basicWithdraw);
+  s('wd_wifeRetireYear', wp.wifeRetireYear || wp.startYear);
+  s('wd_wifeBasicWithdraw', wp.wifeBasicWithdraw ?? 15);
   s('wd_targetStartYear', wp.targetStartYear ?? (new Date().getFullYear() + 7));
   s('wd_wifeFixWithdraw', wp.wifeFixWithdraw||0); s('wd_wifeFixStartYear', wp.wifeFixStartYear||wp.startYear);
 }
@@ -4990,7 +4995,10 @@ function applyWdSettings() {
     retireTaxRate: wdPlan.retireTaxRate, pensionTaxRate: wdPlan.pensionTaxRate,
     npTaxRate: wdPlan.npTaxRate, excessPensionTaxRate: wdPlan.excessPensionTaxRate,
     pensionBenefit10y: wdPlan.pensionBenefit10y, pensionBenefit20y: wdPlan.pensionBenefit20y, pensionBenefit30y: wdPlan.pensionBenefit30y,
-    basicWithdraw: n('wd_basicWithdraw'), targetStartYear,
+    basicWithdraw: n('wd_basicWithdraw'),
+    wifeRetireYear: n('wd_wifeRetireYear') || currentYear + 4,
+    wifeBasicWithdraw: n('wd_wifeBasicWithdraw'),
+    targetStartYear,
     wifeFixWithdraw: n('wd_wifeFixWithdraw'),
     wifeFixStartYear,
     myBirthYear: appSettings.myBirthYear, myBirthMonth: appSettings.myBirthMonth || 1,
@@ -5061,7 +5069,7 @@ function computeWithdrawalSim() {
   const DC_ID = 'dc';
   const allAccIds = [...MY_ACC_IDS, ...getActiveWifeAccIds()];
   const endDate = `${startYear - 1}-12-31`;
-  const wifeStartYear = wp.wifeFixStartYear || startYear;
+  const wifeStartYear = wp.wifeRetireYear || wp.wifeFixStartYear || startYear;
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
 
   // 초기 잔액 계산 (통합 모드 or 개별 계산)
@@ -5189,7 +5197,8 @@ function computeWithdrawalSim() {
     const wifePublicInc = wifeNP + wifeGP + wifeSP;
 
     // 3. 인출 목표 및 계좌별 배분
-    const basic = (wp.basicWithdraw || 0) * 1_000_000;
+    const basic      = (wp.basicWithdraw      || 0) * 1_000_000;
+    const wifeBasic  = (wp.wifeBasicWithdraw  || 0) * 1_000_000;
     const targetStartYear = wp.targetStartYear ?? (startYear + 5);
     const isPrivateOnly = yr >= startYear && yr < targetStartYear;
     let myRemaining, wifeRemaining, target;
@@ -5197,14 +5206,14 @@ function computeWithdrawalSim() {
       // 인출 시작 전: 잔액만 유지 (인출 없음)
       myRemaining = 0; wifeRemaining = 0; target = 0;
     } else if (isPrivateOnly) {
-      // 목표액 시작 전: 사적연금 기본인출액만 인출
+      // 목표액 시작 전: 각자 은퇴연도 기준 기본인출액만 인출
       myRemaining   = basic;
-      wifeRemaining = basic;
-      target = basic * 2;
+      wifeRemaining = yr >= wifeStartYear ? wifeBasic : 0;
+      target = myRemaining + wifeRemaining;
     } else {
       target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
       const needPriv = Math.max(0, target - myPublicInc - wifePublicInc);
-      const wifeActive = yr >= (wp.wifeFixStartYear || startYear);
+      const wifeActive = yr >= wifeStartYear && yr >= (wp.wifeFixStartYear || wifeStartYear);
       const wifeBudget = wifeActive
         ? Math.min((wp.wifeFixWithdraw || 0) * 1_000_000 * Math.pow(1+inf, yr - todayYear), needPriv)
         : 0;
