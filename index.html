@@ -1479,7 +1479,7 @@
     <!-- 빠른 편집 바 -->
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;flex-shrink:0">
       <label style="display:flex;align-items:center;gap:4px;font-size:12px">
-        <span style="white-space:nowrap;color:var(--muted)">인출 시작연도</span>
+        <span style="white-space:nowrap;color:var(--muted)">본인 은퇴연도</span>
         <input id="qwd_startYear" type="number" min="2020" max="2080" step="1"
                style="width:72px;font-size:12px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px"
                oninput="saveQuickWdPlan()">
@@ -1504,15 +1504,15 @@
     <div id="wdSettingsPanel" style="display:none;border:1px solid #e9d5ff;border-radius:8px;padding:14px;margin-bottom:12px;background:#faf5ff;flex-shrink:0">
       <div class="wd-settings-grid">
         <div class="wd-section">📅 인출 기본 설정</div>
-        <label><span>인출 시작 연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
-        <label><span>은퇴 시작나이 (세)</span><input id="wd_retireAge" type="number" min="40" max="90" step="1"></label>
-        <label><span>연간 인출 목표액 (백만원)</span><input id="wd_annualTarget" type="number" min="0" step="1"></label>
         <label><span>물가상승률 (%)</span><input id="wd_inflation" type="number" min="0" max="20" step="0.1"></label>
         <label><span>인출기간 수익률 (%/년)</span><input id="wd_returnRate" type="number" min="0" max="20" step="0.1"></label>
+        <label><span>그래프 시작 나이 (세)</span><input id="wd_retireAge" type="number" min="40" max="90" step="1"></label>
+        <label><span>본인 은퇴연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
         <label><span>사적연금 기본인출액 (백만원/계좌/년)</span><input id="wd_basicWithdraw" type="number" min="0" step="1"></label>
-        <label><span>목표액 인출 시작연도</span><input id="wd_targetStartYear" type="number" min="2020" max="2080" step="1"></label>
         <label><span>아내 계좌 인출금액 (백만원/년)</span><input id="wd_wifeFixWithdraw" type="number" min="0" step="1"></label>
         <label><span>아내계좌 인출 시작연도</span><input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1"></label>
+        <label><span>연간 인출 목표액 (백만원)</span><input id="wd_annualTarget" type="number" min="0" step="1"></label>
+        <label><span>목표액 인출 시작연도</span><input id="wd_targetStartYear" type="number" min="2020" max="2080" step="1"></label>
 
       </div>
       <div style="margin-top:12px;text-align:right">
@@ -1617,7 +1617,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.91';
+const APP_VERSION = 'MyPM v1.92';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4972,11 +4972,11 @@ function applyWdSettings() {
   const targetStartYear = n('wd_targetStartYear') || currentYear + 7;
   const wifeFixStartYear = n('wd_wifeFixStartYear') || currentYear + 2;
   if (startYear < currentYear) {
-    alert(`인출 시작연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+    alert(`본인 은퇴연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
     return;
   }
   if (targetStartYear <= startYear) {
-    alert(`목표액 인출 시작연도(${targetStartYear})는 인출 시작연도(${startYear})보다 나중이어야 합니다.`);
+    alert(`목표액 인출 시작연도(${targetStartYear})는 본인 은퇴연도(${startYear})보다 나중이어야 합니다.`);
     return;
   }
   if (wifeFixStartYear < currentYear) {
@@ -5290,7 +5290,7 @@ function saveQuickWdPlan() {
   if (rawStartYear.length >= 4) {
     const newStartYear = Number(rawStartYear);
     if (newStartYear < currentYear) {
-      alert(`인출 시작연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+      alert(`본인 은퇴연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
       document.getElementById('qwd_startYear').value = wdPlan.startYear;
       return;
     }
@@ -5623,7 +5623,7 @@ function computeAccComponents(accId, year) {
 
 function openConsolidateModal() {
   const wp = wdPlan;
-  if (!wp.startYear) { alert('먼저 인출 계획의 인출 시작연도를 설정해 주세요.'); return; }
+  if (!wp.startYear) { alert('먼저 인출 계획의 본인 은퇴연도를 설정해 주세요.'); return; }
   const baseYear     = wp.startYear - 1;
   const wifeBaseYear = ((wp.wifeFixStartYear || wp.startYear) > wp.startYear)
     ? (wp.wifeFixStartYear - 1) : baseYear;
