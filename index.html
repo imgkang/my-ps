@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.05';
+const APP_VERSION = 'MyPM v2.06';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1825,7 +1825,8 @@ function persistCashAccounts() {
   localStorage.setItem(CASH_ACCOUNTS_KEY, JSON.stringify(cashAccounts));
 }
 function getTotalCash() {
-  return Object.values(cashAccounts).reduce((s, v) => s + (Number(v) || 0), 0);
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  return Object.entries(cashAccounts).reduce((s, [id, v]) => activeIds.has(id) ? s + (Number(v) || 0) : s, 0);
 }
 
 // ===== 입출금 내역 저장/불러오기 =====
@@ -3613,9 +3614,10 @@ function xirrCalc(cashflows) {
 }
 
 function calcXIRR(totalCurrentValue, accId = null) {
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
   const txns = accId
     ? depositData.transactions.filter(t => t.accId === accId)
-    : depositData.transactions;
+    : depositData.transactions.filter(t => activeIds.has(t.accId));
   if (!txns.length || totalCurrentValue <= 0) return null;
   const sorted = txns.slice().sort((a, b) => a.date.localeCompare(b.date));
   const cashflows = sorted.map(t => ({
@@ -3657,6 +3659,7 @@ function render() {
       code: h.code, name: h.name,
       qty, cost, avgPrice,
       price: h.price || 0,
+      change: h.change || 0,
       currentValue, profit, profitRate,
       hasCost: cost > 0,
       hasAccounts,
@@ -3701,8 +3704,8 @@ function render() {
   const xirrCls  = xirrRate != null && xirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const xirrText = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
 
-  // 오늘의 손익액 전체 합계
-  const totalDayChange = holdings.reduce((s, h) => s + ((Number(h.change) || 0) * (Number(h.quantity) || 0)), 0);
+  // 오늘의 손익액 전체 합계 (활성 계좌 기준 수량만 반영)
+  const totalDayChange = items.reduce((s, x) => s + x.change * x.qty, 0);
 
   const dayChangeCls  = totalDayChange >= 0 ? 'diff-positive' : 'diff-negative';
   const dayChangeSign = totalDayChange >= 0 ? '+' : '';
@@ -3805,7 +3808,7 @@ function render() {
   // 현금 행 (평가금액·비중만 표시)
   {
     const cashWeight = totalValue > 0 ? (totalCash / totalValue) * 100 : 0;
-    const cashAccountCount = Object.values(cashAccounts).filter(v => (Number(v) || 0) > 0).length;
+    const cashAccountCount = Object.entries(cashAccounts).filter(([id, v]) => _activeAccIdSet.has(id) && (Number(v) || 0) > 0).length;
     html += `
       <tr class="row-cash">
         <td>
