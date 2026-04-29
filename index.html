@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.10';
+const APP_VERSION = 'MyPM v2.11';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1913,7 +1913,7 @@ function renderDepositTotals() {
   const el = document.getElementById('depositTotals');
   let grand = 0;
   let html = '';
-  for (const acc of ACCOUNTS) {
+  for (const acc of getActiveAccounts()) {
     const total = getAccountNetTotal(acc.id);
     grand += total;
     const anseTotal = depositData.transactions
@@ -1925,7 +1925,7 @@ function renderDepositTotals() {
       ? `<span class="acc-anse">안세공 ${anseTotal.toLocaleString('ko-KR')} 원</span>` : '';
     html += `
       <div class="deposit-total-card ${cls}">
-        <span class="acc-name">${acc.name}</span>
+        <span class="acc-name">${getAccName(acc.id)}</span>
         <span class="acc-amount">${display}</span>
         ${anseHtml}
       </div>`;
@@ -1950,8 +1950,7 @@ function renderDepositList() {
   }
 
   list.innerHTML = txns.map(t => {
-    const acc = ACCOUNTS.find(a => a.id === t.accId);
-    const accName = acc ? acc.name : t.accId;
+    const accName = getAccName(t.accId) || t.accId;
     const amt = Number(t.amount) || 0;
     const amountCls = amt >= 0 ? 'pos' : 'neg';
     const amountStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
@@ -2010,7 +2009,7 @@ function updateTxnAnseVisibility() {
 function openTxnEditor(editId) {
   editingTxnId = editId || null;
   const selAcc = document.getElementById('txnAccount');
-  selAcc.innerHTML = getActiveAccounts().map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  selAcc.innerHTML = getActiveAccounts().map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
   const titleEl = document.getElementById('txnEditorTitle');
   if (editId) {
     const t = depositData.transactions.find(x => x.id === editId);
@@ -4096,16 +4095,18 @@ function renderPrincipalTable() {
     return `<td>${inp}<div class="anse-sub">${anseInp}</div></td>`;
   };
 
+  const _allAccs = getActiveAccounts();
+  const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
+  const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
+
   let body = '<tbody>';
 
   // MY accounts
-  for (const id of MY_ACC_IDS) {
-    const acc = ACCOUNTS.find(a => a.id === id);
-    if (!acc) continue;
+  for (const id of _activeMyIds) {
     const showAnse = id !== DC_ID;
     const nameCell = showAnse
-      ? `<div class="acc-name">${acc.name}</div><div class="acc-meta">안세공</div>`
-      : `<div class="acc-name">${acc.name}</div>`;
+      ? `<div class="acc-name">${getAccName(id)}</div><div class="acc-meta">안세공</div>`
+      : `<div class="acc-name">${getAccName(id)}</div>`;
     body += `<tr><td>${nameCell}</td>`;
     for (const yr of years) {
       body += isActualCell(id, yr) ? mkActualCell(id, yr, showAnse) : mkPlanCell(id, yr, showAnse);
@@ -4116,36 +4117,37 @@ function renderPrincipalTable() {
   // 나-연금총합
   body += '<tr class="r-sub"><td>나-연금총합</td>';
   for (const yr of years) {
-    const total = MY_ACC_IDS.reduce((s, id) => s + getCellManwon(id, yr), 0);
+    const total = _activeMyIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
     body += `<td>${fmt(total)}</td>`;
   }
   body += '</tr>';
 
   // WIFE accounts (all show anse)
-  for (const id of WIFE_ACC_IDS) {
-    const acc = ACCOUNTS.find(a => a.id === id);
-    if (!acc) continue;
-    const nameCell = `<div class="acc-name">${acc.name}</div><div class="acc-meta">안세공</div>`;
-    body += `<tr><td style="padding-left:14px;color:var(--muted)">${nameCell}</td>`;
+  if (_activeWifeIds.length) {
+    for (const id of _activeWifeIds) {
+      const nameCell = `<div class="acc-name">${getAccName(id)}</div><div class="acc-meta">안세공</div>`;
+      body += `<tr><td style="padding-left:14px;color:var(--muted)">${nameCell}</td>`;
+      for (const yr of years) {
+        body += isActualCell(id, yr) ? mkActualCell(id, yr, true) : mkPlanCell(id, yr, true);
+      }
+      body += '</tr>';
+    }
+
+    // 배우자-연금총합
+    body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
     for (const yr of years) {
-      body += isActualCell(id, yr) ? mkActualCell(id, yr, true) : mkPlanCell(id, yr, true);
+      const total = _activeWifeIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
+      body += `<td>${fmt(total)}</td>`;
     }
     body += '</tr>';
   }
 
-  // 아내-연금총합
-  body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
-  for (const yr of years) {
-    const total = WIFE_ACC_IDS.reduce((s, id) => s + getCellManwon(id, yr), 0);
-    body += `<td>${fmt(total)}</td>`;
-  }
-  body += '</tr>';
-
   // 연금총합
+  const _allActiveIds = [..._activeMyIds, ..._activeWifeIds];
   const grandTotals = {};
   body += '<tr class="r-total"><td>연금총합</td>';
   for (const yr of years) {
-    const total = [...MY_ACC_IDS, ...WIFE_ACC_IDS].reduce((s, id) => s + getCellManwon(id, yr), 0);
+    const total = _allActiveIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
     grandTotals[yr] = total;
     body += `<td>${fmt(total)}</td>`;
   }
@@ -4221,8 +4223,13 @@ function renderEvalTable() {
     return vals;
   };
 
-  const myVals   = computeGroupVals(MY_ACC_IDS);
-  const wifeVals = computeGroupVals(WIFE_ACC_IDS);
+  const _evalAllAccs    = getActiveAccounts();
+  const _evalMyIds      = _evalAllAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
+  const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
+  const _evalAllIds     = [..._evalMyIds, ..._evalWifeIds];
+
+  const myVals   = computeGroupVals(_evalMyIds);
+  const wifeVals = _evalWifeIds.length ? computeGroupVals(_evalWifeIds) : {};
 
   // header
   let h = '<thead><tr><th>계좌/그룹</th>';
@@ -4234,12 +4241,10 @@ function renderEvalTable() {
 
   let body = '<tbody>';
 
-  // Individual accounts
-  for (const id of MY_ACC_IDS) {
-    const acc = ACCOUNTS.find(a => a.id === id);
-    if (!acc) continue;
+  // Individual MY accounts
+  for (const id of _evalMyIds) {
     const vals = computeGroupVals([id]);
-    body += `<tr><td>${acc.name}</td>`;
+    body += `<tr><td>${getAccName(id)}</td>`;
     for (const yr of years) {
       const v = vals[yr];
       const mw = v != null ? Math.round(v / 1000000) : null;
@@ -4258,28 +4263,29 @@ function renderEvalTable() {
   }
   body += '</tr>';
 
-  for (const id of WIFE_ACC_IDS) {
-    const acc = ACCOUNTS.find(a => a.id === id);
-    if (!acc) continue;
-    const vals = computeGroupVals([id]);
-    body += `<tr><td style="padding-left:14px;color:var(--muted)">${acc.name}</td>`;
+  // Individual WIFE accounts
+  if (_evalWifeIds.length) {
+    for (const id of _evalWifeIds) {
+      const vals = computeGroupVals([id]);
+      body += `<tr><td style="padding-left:14px;color:var(--muted)">${getAccName(id)}</td>`;
+      for (const yr of years) {
+        const v = vals[yr];
+        const mw = v != null ? Math.round(v / 1000000) : null;
+        const isProj = yr > lastRecYear;
+        body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
+      }
+      body += '</tr>';
+    }
+
+    // 배우자-연금총합
+    body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
     for (const yr of years) {
-      const v = vals[yr];
+      const v = wifeVals[yr];
       const mw = v != null ? Math.round(v / 1000000) : null;
-      const isProj = yr > lastRecYear;
-      body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
+      body += `<td>${mw ? fmt(mw) : '-'}</td>`;
     }
     body += '</tr>';
   }
-
-  // 아내-연금총합
-  body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
-  for (const yr of years) {
-    const v = wifeVals[yr];
-    const mw = v != null ? Math.round(v / 1000000) : null;
-    body += `<td>${mw ? fmt(mw) : '-'}</td>`;
-  }
-  body += '</tr>';
 
   // 총 평가금 (원) per year
   const totalWon = {};
@@ -4289,10 +4295,9 @@ function renderEvalTable() {
   }
 
   // 원금 (백만원) per year
-  const ALL_IDS = [...MY_ACC_IDS, ...WIFE_ACC_IDS];
   const princMil = {};
   for (const yr of years) {
-    princMil[yr] = ALL_IDS.reduce((s, id) => s + getCellManwon(id, yr), 0);
+    princMil[yr] = _evalAllIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
   }
 
   // 직전 연도 평가금 (range 밖) — monthlyRecords에서 조회
@@ -4301,7 +4306,7 @@ function renderEvalTable() {
   const prevRecs = monthlyRecords.filter(r => r.year === firstYear - 1);
   if (prevRecs.length) {
     const last = prevRecs.sort((a, b) => b.month - a.month)[0];
-    prevTotalWon = ALL_IDS.reduce((s, id) => s + (Number(last.accounts[id]) || 0), 0);
+    prevTotalWon = _evalAllIds.reduce((s, id) => s + (Number(last.accounts[id]) || 0), 0);
   }
 
   const getTotalWonPrev = (i) => i === 0 ? prevTotalWon : totalWon[years[i - 1]];
