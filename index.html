@@ -960,6 +960,9 @@
       </div>
       <div id="cfgWifeRows">
         <div class="cfg-grid">
+          <label>호칭 (예: 아내, 남편)</label>
+          <input id="cfg_wifeTitle" type="text" placeholder="아내" maxlength="10"
+                 style="text-align:left;padding:8px 12px">
           <label>배우자 생년 (년)</label>
           <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1987"
                  oninput="onCfgBirthYearChange('wife')">
@@ -1511,7 +1514,7 @@
         <div style="position:relative;height:220px"><canvas id="wdChart1"></canvas></div>
       </div>
       <div>
-        <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 나 / 아내 잔액 추이 (백만원)</h3>
+        <h3 id="wdChart2Title" style="margin:0 0 6px;font-size:13px;color:#374151">📊 나 / 아내 잔액 추이 (백만원)</h3>
         <div style="position:relative;height:220px"><canvas id="wdChart2"></canvas></div>
       </div>
     </div>
@@ -1574,7 +1577,7 @@
           <label>사적연금 기본인출액 (백만원/계좌/년)</label>
           <input id="wd_basicWithdraw" type="number" min="0" step="1">
         </div>
-        <div class="cfg-sub">👩 아내</div>
+        <div class="cfg-sub" id="wdCfgWifeSubLabel">👩 아내</div>
         <div class="cfg-grid">
           <label>은퇴연도</label>
           <input id="wd_wifeRetireYear" type="number" min="2020" max="2080" step="1">
@@ -1661,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.03';
+const APP_VERSION = 'MyPM v2.04';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1675,13 +1678,21 @@ const ACCOUNTS = [
   { id: 'irp',           name: 'IRP' },
   { id: 'isa',           name: 'ISA' },
   { id: 'wife_dc',       name: '아내 DC' },
-  { id: 'wife_irp',      name: '아내 IRP' },
   { id: 'wife_pension1', name: '아내 개인연금 1' },
   { id: 'wife_pension2', name: '아내 개인연금 2' },
+  { id: 'wife_irp',      name: '아내 IRP' },
   { id: 'wife_isa',      name: '아내 ISA' }
 ];
 const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp', 'isa'];
-const WIFE_ACC_IDS = ['wife_dc', 'wife_irp', 'wife_pension1', 'wife_pension2', 'wife_isa'];
+const WIFE_ACC_IDS = ['wife_dc', 'wife_pension1', 'wife_pension2', 'wife_irp', 'wife_isa'];
+
+function getWifeTitle() { return (typeof appSettings !== 'undefined' && appSettings.wifeTitle) || '아내'; }
+function getAccName(id) {
+  const acc = ACCOUNTS.find(a => a.id === id);
+  if (!acc) return id;
+  const t = getWifeTitle();
+  return t === '아내' ? acc.name : acc.name.replace(/^아내/, t);
+}
 
 // ===== 앱 설정 =====
 const APP_SETTINGS_KEY = 'pension_app_settings_v1';
@@ -1699,7 +1710,7 @@ function npStartAge(birthYear) {
 function getDefaultPersonCfg(isWife) {
   const cy = new Date().getFullYear();
   return {
-    activeAccIds:   isWife ? ['wife_dc', 'wife_irp', 'wife_pension1', 'wife_pension2', 'wife_isa'] : ['dc', 'pension1', 'pension2', 'irp', 'isa'],
+    activeAccIds:   isWife ? ['wife_dc', 'wife_pension1', 'wife_pension2', 'wife_irp', 'wife_isa'] : ['dc', 'pension1', 'pension2', 'irp', 'isa'],
     extraAccounts:  [],
     np:  { use: true,  startYear: cy+7, startMonth: 1, monthlyManwon: isWife ? 50 : 100, delayYears: 0, earlyYears: 0 },
     gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
@@ -4118,7 +4129,7 @@ function renderPrincipalTable() {
   }
 
   // 아내-연금총합
-  body += '<tr class="r-sub"><td>아내-연금총합</td>';
+  body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
   for (const yr of years) {
     const total = WIFE_ACC_IDS.reduce((s, id) => s + getCellManwon(id, yr), 0);
     body += `<td>${fmt(total)}</td>`;
@@ -4257,7 +4268,7 @@ function renderEvalTable() {
   }
 
   // 아내-연금총합
-  body += '<tr class="r-sub"><td>아내-연금총합</td>';
+  body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
   for (const yr of years) {
     const v = wifeVals[yr];
     const mw = v != null ? Math.round(v / 1000000) : null;
@@ -4830,7 +4841,7 @@ function cfgRemoveExtraAcc(person, idx) {
 }
 function _renderCfgAccGrid(person) {
   const fixedIds = person === 'my' ? MY_ACC_IDS : WIFE_ACC_IDS;
-  const accNames = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const accNames = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
   const active   = _cfgActiveAccIds[person];
   const gridEl   = document.getElementById(person === 'my' ? 'cfgMyAccGrid' : 'cfgWifeAccGrid');
   if (gridEl) {
@@ -4863,6 +4874,7 @@ function openSettingsModal() {
   // 일반 탭
   sv('cfg_myBirthYear',   s.myBirthYear  || '');
   sv('cfg_myBirthMonth',  s.myBirthMonth || '');
+  sv('cfg_wifeTitle',      s.wifeTitle       || '');
   sv('cfg_wifeBirthYear',  s.wifeBirthYear  || '');
   sv('cfg_wifeBirthMonth', s.wifeBirthMonth || '');
   _updateCfgWifeUI(s.hasWife);
@@ -4983,10 +4995,12 @@ function saveSettingsModal() {
     pensionBenefit30y: 50,
   });
 
+  const wifeTitle = (document.getElementById('cfg_wifeTitle')?.value.trim()) || '';
   appSettings = {
     myBirthYear:   n('cfg_myBirthYear'),
     myBirthMonth:  n('cfg_myBirthMonth') || 1,
     hasWife,
+    wifeTitle:      hasWife ? wifeTitle : appSettings.wifeTitle,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
     my:   buildPersonCfg('my'),
@@ -5009,6 +5023,9 @@ function saveSettingsModal() {
 function handleWdBackdropClick(e) { if (e.target.id === 'withdrawalModal') closeWithdrawalModal(); }
 function openWdSettingsModal() {
   loadWdFormValues();
+  const t = getWifeTitle();
+  const lbl = document.getElementById('wdCfgWifeSubLabel');
+  if (lbl) lbl.textContent = `👩 ${t}`;
   document.getElementById('wdSettingsModal').classList.add('open');
 }
 function closeWdSettingsModal() { document.getElementById('wdSettingsModal').classList.remove('open'); }
@@ -5466,7 +5483,7 @@ function renderWithdrawalPlan() {
       sp('퇴직세', `${appSettings.my?.retireTaxRate ?? 12}%`),
       pubRow(_myNPCfg, _myGPCfg, _mySPCfg, _myNPYear),
     ),
-    appSettings.hasWife ? makeRow('👩 아내', '#be185d',
+    appSettings.hasWife ? makeRow(`👩 ${getWifeTitle()}`, '#be185d',
       sp('은퇴', `${wp.wifeRetireYear || wp.startYear}년`),
       sp('기본인출', `${wp.wifeBasicWithdraw}백만/계좌`),
       wp.wifeFixWithdraw ? sp('최대인출', `${wp.wifeFixWithdraw}백만/년`) : '',
@@ -5486,6 +5503,9 @@ function renderWdCharts(sim) {
   const { years, balances, summary, allAccIds } = sim;
   const M = 1_000_000;
   const round = v => Math.round(v / M);
+  const _wTitle = getWifeTitle();
+  const ch2TitleEl = document.getElementById('wdChart2Title');
+  if (ch2TitleEl) ch2TitleEl.textContent = `📊 나 / ${_wTitle} 잔액 추이 (백만원)`;
 
   // Chart 1 데이터
   const withdrawAmts = years.map(yr => round(summary[yr].totalInc));
@@ -5546,8 +5566,8 @@ function renderWdCharts(sim) {
     data: {
       labels: years,
       datasets: [
-        { label: '나 총잔액',   data: myBals,   borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)',  fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 },
-        { label: '아내 총잔액', data: wifeBals, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.12)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 }
+        { label: '나 총잔액',              data: myBals,   borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)',  fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 },
+        { label: `${_wTitle} 총잔액`, data: wifeBals, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.12)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 }
       ]
     },
     options: { ...sharedOpts }
@@ -5596,9 +5616,10 @@ function renderWdWithdrawTable(sim) {
   const { years, withdrawals, summary, initState, allAccIds, startYear } = sim;
   const wp = wdPlan;
   const DC_ID = 'dc';
-  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
+  const _wt = getWifeTitle();
   const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
-    wife_pension1:'개인연금1(아내)', wife_pension2:'개인연금2(아내)' };
+    wife_pension1:`개인연금1(${_wt})`, wife_pension2:`개인연금2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const dispAccIds = isConsolidated ? allAccIds.filter(id => initState[id].total > 0) : allAccIds;
   const accName = id => (isConsolidated && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
@@ -5626,7 +5647,7 @@ function renderWdWithdrawTable(sim) {
   h += `<tr class="wd-np-row"><td>나 공적연금</td><td></td><td></td>`;
   for (const yr of years) h += cell(yr, (summary[yr].myPublicInc||0) > 0 ? mv(summary[yr].myPublicInc) : '');
   h += '</tr>';
-  h += `<tr class="wd-np-row"><td>아내 공적연금</td><td></td><td></td>`;
+  h += `<tr class="wd-np-row"><td>${getWifeTitle()} 공적연금</td><td></td><td></td>`;
   for (const yr of years) h += cell(yr, (summary[yr].wifePublicInc||0) > 0 ? mv(summary[yr].wifePublicInc) : '');
   h += '</tr>';
 
@@ -5686,9 +5707,10 @@ function renderWdBalanceTable(sim) {
   const { years, balances, initState, allAccIds, startYear, wifeStartYear } = sim;
   const wp = wdPlan;
   const DC_ID = 'dc';
-  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
+  const _wt = getWifeTitle();
   const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
-    wife_pension1:'개인연금1(아내)', wife_pension2:'개인연금2(아내)' };
+    wife_pension1:`개인연금1(${_wt})`, wife_pension2:`개인연금2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const dispAccIds = isConsolidated ? allAccIds.filter(id => initState[id].total > 0) : allAccIds;
   const accName = id => (isConsolidated && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
@@ -5827,7 +5849,7 @@ function handleConsBackdropClick(e) { if (e.target.id === 'consolidateModal') cl
 function renderConsLeftTable(comps) {
   const t = _consTotals;
   const mv = won => Math.round(won / 1_000_000);
-  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, a.name]));
+  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
   let h = `<table class="cons-table"><thead>
     <tr><th>계좌</th><th>구분</th><th>백만원</th></tr></thead><tbody>`;
   for (const accId of MY_ACC_IDS) {
@@ -5886,12 +5908,13 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
   h += `<tr class="cons-anse"><td rowspan="2">나 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_reg">${pp2Reg}</td></tr>`;
   h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
-  h += `<tr class="cons-anse"><td rowspan="3">아내 개인연금1</td><td>총잔액</td>
+  const _cWt = getWifeTitle();
+  h += `<tr class="cons-anse"><td rowspan="3">${_cWt} 개인연금1</td><td>총잔액</td>
     <td><input type="number" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="updateConsWP2()"></td></tr>`;
   h += `<tr class="cons-anse"><td>안세공</td>
     <td><input type="number" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp1_reg">${wp1Reg}</td></tr>`;
-  h += `<tr class="cons-anse"><td rowspan="2">아내 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
+  h += `<tr class="cons-anse"><td rowspan="2">${_cWt} 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_reg">${wp2Reg}</td></tr>`;
   h += `</tbody></table>`;
   document.getElementById('consRightWrap').innerHTML = h;
