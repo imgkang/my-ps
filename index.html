@@ -1619,7 +1619,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.96';
+const APP_VERSION = 'MyPM v1.97';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5211,14 +5211,16 @@ function computeWithdrawalSim() {
       wifeRemaining = yr >= wifeStartYear ? wifeBasic : 0;
       target = myRemaining + wifeRemaining;
     } else {
+      const wifeBasisAmt = yr >= wifeStartYear ? wifeBasic : 0;
       target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
-      const needPriv = Math.max(0, target - myPublicInc - wifePublicInc);
+      // 기본인출액은 항상 먼저 인출, 부족분만 추가 배분
+      const needExtra = Math.max(0, target - myPublicInc - wifePublicInc - basic - wifeBasisAmt);
       const wifeActive = yr >= wifeStartYear && yr >= (wp.wifeFixStartYear || wifeStartYear);
-      const wifeBudget = wifeActive
-        ? Math.min((wp.wifeFixWithdraw || 0) * 1_000_000 * Math.pow(1+inf, yr - todayYear), needPriv)
+      const wifeExtra = wifeActive
+        ? Math.min((wp.wifeFixWithdraw || 0) * 1_000_000 * Math.pow(1+inf, yr - todayYear), needExtra)
         : 0;
-      myRemaining   = needPriv - wifeBudget;
-      wifeRemaining = wifeBudget;
+      myRemaining   = basic + (needExtra - wifeExtra);
+      wifeRemaining = wifeBasisAmt + wifeExtra;
     }
     let totalRT = 0, totalPT = 0;
 
