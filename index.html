@@ -1661,7 +1661,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.02';
+const APP_VERSION = 'MyPM v2.03';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1674,12 +1674,14 @@ const ACCOUNTS = [
   { id: 'pension2',      name: '개인연금 2' },
   { id: 'irp',           name: 'IRP' },
   { id: 'isa',           name: 'ISA' },
+  { id: 'wife_dc',       name: '아내 DC' },
+  { id: 'wife_irp',      name: '아내 IRP' },
   { id: 'wife_pension1', name: '아내 개인연금 1' },
   { id: 'wife_pension2', name: '아내 개인연금 2' },
   { id: 'wife_isa',      name: '아내 ISA' }
 ];
 const MY_ACC_IDS   = ['dc', 'pension1', 'pension2', 'irp', 'isa'];
-const WIFE_ACC_IDS = ['wife_pension1', 'wife_pension2', 'wife_isa'];
+const WIFE_ACC_IDS = ['wife_dc', 'wife_irp', 'wife_pension1', 'wife_pension2', 'wife_isa'];
 
 // ===== 앱 설정 =====
 const APP_SETTINGS_KEY = 'pension_app_settings_v1';
@@ -1697,7 +1699,7 @@ function npStartAge(birthYear) {
 function getDefaultPersonCfg(isWife) {
   const cy = new Date().getFullYear();
   return {
-    activeAccIds:   isWife ? ['wife_pension1', 'wife_pension2', 'wife_isa'] : ['dc', 'pension1', 'pension2', 'irp', 'isa'],
+    activeAccIds:   isWife ? ['wife_dc', 'wife_irp', 'wife_pension1', 'wife_pension2', 'wife_isa'] : ['dc', 'pension1', 'pension2', 'irp', 'isa'],
     extraAccounts:  [],
     np:  { use: true,  startYear: cy+7, startMonth: 1, monthlyManwon: isWife ? 50 : 100, delayYears: 0, earlyYears: 0 },
     gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
@@ -3619,16 +3621,21 @@ function render() {
   const totalCash = getTotalCash();
   renderAccountButtons();
 
-  // 종목별 집계 (계좌 합산 매입액 · 가중평균 매입단가 · 손익)
+  // 종목별 집계 — 활성 계좌만 합산 (미사용 계좌 제외)
+  const _activeAccIdSet = new Set(getActiveAccounts().map(a => a.id));
   const items = holdings.map(h => {
-    let cost = 0;
-    if (h.accounts) {
-      for (const accId of Object.keys(h.accounts)) {
-        const a = h.accounts[accId];
-        cost += (Number(a.qty) || 0) * (Number(a.avgPrice) || 0);
+    let cost = 0, qty = 0;
+    if (h.accounts && Object.keys(h.accounts).length > 0) {
+      for (const [accId, a] of Object.entries(h.accounts)) {
+        if (!_activeAccIdSet.has(accId)) continue;
+        const q = Number(a.qty) || 0;
+        qty += q;
+        cost += q * (Number(a.avgPrice) || 0);
       }
+    } else {
+      // 레거시: accounts 미분류 → 전체 수량 사용
+      qty = Number(h.quantity) || 0;
     }
-    const qty = Number(h.quantity) || 0;
     const avgPrice = qty > 0 && cost > 0 ? cost / qty : 0;
     const currentValue = (h.price || 0) * qty;
     const profit = cost > 0 ? currentValue - cost : 0;
@@ -3643,7 +3650,7 @@ function render() {
       hasAccounts,
       accountCount: hasAccounts ? Object.keys(h.accounts).length : 0
     };
-  }).sort((a, b) => b.currentValue - a.currentValue);
+  }).filter(it => it.qty > 0 || it.hasCost).sort((a, b) => b.currentValue - a.currentValue);
 
    // 전체 합계
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
@@ -4935,6 +4942,9 @@ function _updateCfgWifeUI(hasWife) {
   document.getElementById('cfgWifeYes').classList.toggle('active', !!hasWife);
   document.getElementById('cfgWifeNo').classList.toggle('active',  !hasWife);
   document.getElementById('cfgWifeRows').style.display = hasWife ? '' : 'none';
+  const wTab = document.getElementById('cfgTabWife');
+  wTab.style.display = hasWife ? '' : 'none';
+  if (!hasWife && wTab.classList.contains('active')) switchCfgTab('general');
 }
 function saveSettingsModal() {
   const n  = id => Number(document.getElementById(id)?.value) || 0;
