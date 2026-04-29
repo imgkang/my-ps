@@ -1537,7 +1537,7 @@
       </div>
     </div>
     <div style="margin-bottom:20px;flex-shrink:0">
-      <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 세금 누적 추이 (백만원)</h3>
+      <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 총 잔액 &amp; 세금 누적 추이 (백만원)</h3>
       <div style="position:relative;height:220px"><canvas id="wdChart3"></canvas></div>
     </div>
 
@@ -1619,7 +1619,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.98';
+const APP_VERSION = 'MyPM v1.99';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5201,6 +5201,10 @@ function computeWithdrawalSim() {
     const wifeBasic  = (wp.wifeBasicWithdraw  || 0) * 1_000_000;
     const targetStartYear = wp.targetStartYear ?? (startYear + 5);
     const isPrivateOnly = yr >= startYear && yr < targetStartYear;
+    // 퇴직소득세 연차별 감면 (목표액 역산에도 사용)
+    const _yrFromStart = yr - startYear;
+    const _benefit = _yrFromStart < 10 ? myB10 : _yrFromStart < 20 ? myB20 : myB30;
+    const _rTR = myRTR_base * _benefit;
     let myRemaining, wifeRemaining, target;
     if (yr < startYear) {
       // 인출 시작 전: 잔액만 유지 (인출 없음)
@@ -5212,8 +5216,24 @@ function computeWithdrawalSim() {
       target = myRemaining + wifeRemaining;
     } else {
       const wifeBasisAmt = yr >= wifeStartYear ? wifeBasic : 0;
-      target = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
-      const needExtra = Math.max(0, target - myPublicInc - wifePublicInc - basic - wifeBasisAmt);
+      // netTarget: 세후 실수령액이 현재가치 기준 annualTarget이 되도록 설정
+      const netTarget = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
+      target = netTarget;
+      // 계좌 잔액 기준 추정 사적소득 실효세율
+      const privTotalBal    = allAccIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
+      const anseTotalBal    = allAccIds.reduce((s, id) => s + Math.max(0, state[id].anse), 0);
+      const dcTotalBal      = allAccIds.reduce((s, id) => s + Math.max(0, state[id].dcPrincipal || 0), 0);
+      const regularTotalBal = Math.max(0, privTotalBal - anseTotalBal - dcTotalBal);
+      const estPrivRate = privTotalBal > 0
+        ? (anseTotalBal * pTR + dcTotalBal * _rTR + regularTotalBal * epTR) / privTotalBal
+        : pTR;
+      // 세후 기준으로 필요한 추가 사적인출액 계산 후 역산
+      const pubNet       = (myPublicInc + wifePublicInc) * (1 - npTR);
+      const basicNet     = basic * (1 - estPrivRate);
+      const wifeBasisNet = wifeBasisAmt * (1 - estPrivRate);
+      const extraNetNeeded = Math.max(0, netTarget - pubNet - basicNet - wifeBasisNet);
+      const grossMult = estPrivRate < 1 ? 1 / (1 - estPrivRate) : 1;
+      const needExtra = extraNetNeeded * grossMult;
       const wifeActive = yr >= wifeStartYear && yr >= (wp.wifeFixStartYear || wifeStartYear);
       // wifeFixWithdraw = 아내 계좌 최대인출금액 (기본인출 포함 총액 상한)
       const wifeMaxTotal = wifeActive
@@ -5280,7 +5300,9 @@ function computeWithdrawalSim() {
       totalPriv, totalInc: totalPriv + myPublicInc + wifePublicInc,
       retireTax: totalRT, pensionTax: totalPT, npTax,
       totalTax: totalRT + totalPT + npTax,
-      shortfall: Math.max(0, target - myPublicInc - wifePublicInc - totalPriv),
+      shortfall: yr >= targetStartYear
+        ? Math.max(0, target - (totalPriv + myPublicInc + wifePublicInc - totalRT - totalPT - npTax))
+        : Math.max(0, target - myPublicInc - wifePublicInc - totalPriv),
       inflFactor: Math.pow(1+inf, yr - startYear),
     };
     balances[yr] = {};
@@ -5427,6 +5449,7 @@ function renderWdCharts(sim) {
       data: {
         labels: years,
         datasets: [
+          { label: '총 잔액',         data: totalBals,  borderColor: '#10b981', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2.5 },
           { label: '퇴직소득세 누적', data: cumRetire,  borderColor: '#ef4444', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
           { label: '연금소득세 누적', data: cumPension, borderColor: '#f97316', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
           { label: '국민연금세 누적', data: cumNPTax,   borderColor: '#eab308', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
