@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.11';
+const APP_VERSION = 'MyPM v2.12';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5169,7 +5169,8 @@ function computeWithdrawalSim() {
   const myB20 = ((myPersonCfg.pensionBenefit20y  ?? wp.pensionBenefit20y ?? 60)) / 100;
   const myB30 = ((myPersonCfg.pensionBenefit30y  ?? wp.pensionBenefit30y ?? 50)) / 100;
   const DC_ID = 'dc';
-  const allAccIds = [...MY_ACC_IDS, ...getActiveWifeAccIds()];
+  const activeMyIds = MY_ACC_IDS.filter(id => (appSettings.my?.activeAccIds || MY_ACC_IDS).includes(id));
+  const allAccIds = [...activeMyIds, ...getActiveWifeAccIds()];
   const endDate = `${startYear - 1}-12-31`;
   const wifeStartYear = wp.wifeRetireYear || wp.wifeFixStartYear || startYear;
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
@@ -5540,7 +5541,7 @@ function renderWdCharts(sim) {
 
   // Chart 2 데이터
   const myBals = years.map(yr => balances[yr] === null ? 0 :
-    Math.round(MY_ACC_IDS.reduce((s, id) => s + balances[yr][id].total, 0) / M));
+    Math.round(allAccIds.filter(id => !WIFE_ACC_IDS.includes(id)).reduce((s, id) => s + (balances[yr][id]?.total || 0), 0) / M));
   const wifeBals = years.map(yr => balances[yr] === null ? 0 :
     Math.round(getActiveWifeAccIds().reduce((s, id) => s + (balances[yr][id]?.total || 0), 0) / M));
 
@@ -5823,39 +5824,49 @@ function openConsolidateModal() {
   const wifeBaseYear     = wifeActualStart > wp.startYear ? wifeActualStart - 1 : baseYear;
   document.getElementById('consSubtitle').textContent =
     wifeBaseYear !== baseYear
-      ? `내 계좌: ${baseYear}년말 기준 / 아내 계좌: ${wifeBaseYear}년말 기준`
+      ? `내 계좌: ${baseYear}년말 기준 / ${getWifeTitle()} 계좌: ${wifeBaseYear}년말 기준`
       : `${baseYear}년말 예상 잔액 기준 → ${wp.startYear}년 인출 시작`;
 
+  const _consMyIds   = MY_ACC_IDS.filter(id => (appSettings.my?.activeAccIds || MY_ACC_IDS).includes(id));
+  const _consWifeIds = appSettings.hasWife
+    ? WIFE_ACC_IDS.filter(id => (appSettings.wife?.activeAccIds || WIFE_ACC_IDS).includes(id))
+    : [];
+  const _zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+
   const comps = {};
-  for (const accId of MY_ACC_IDS)   comps[accId] = computeAccComponents(accId, baseYear);
-  for (const accId of WIFE_ACC_IDS) comps[accId] = computeAccComponents(accId, wifeBaseYear);
+  for (const accId of _consMyIds)   comps[accId] = computeAccComponents(accId, baseYear);
+  for (const accId of _consWifeIds) comps[accId] = computeAccComponents(accId, wifeBaseYear);
+  if (!comps['pension1'])      comps['pension1']      = { ..._zero };
+  if (!comps['wife_pension1']) comps['wife_pension1'] = { ..._zero };
 
   // 미래 연도: 거래 대신 연간계획에 입력된 계좌별 안세공 값으로 덮어쓰기
   {
     const currentYear = new Date().getFullYear();
     const overrideAnse = (accIds, refYear) => {
-      if (refYear <= currentYear) return; // 과거/현재는 거래 기반 그대로 사용
+      if (refYear <= currentYear) return;
       for (const id of accIds) {
+        if (!comps[id]) continue;
         const planMv = getPlanAnseManwon(id, refYear);
         if (planMv == null) continue;
         const newAnse = Math.min(planMv * 1_000_000, comps[id].total);
         comps[id] = { ...comps[id], anse: newAnse, regular: Math.max(0, comps[id].total - newAnse) };
       }
     };
-    overrideAnse(MY_ACC_IDS.filter(id => id !== 'dc'), baseYear);
-    overrideAnse(WIFE_ACC_IDS, wifeBaseYear);
+    overrideAnse(_consMyIds.filter(id => id !== 'dc'), baseYear);
+    overrideAnse(_consWifeIds, wifeBaseYear);
   }
 
-  const myNonDcIds = MY_ACC_IDS.filter(id => id !== 'dc');
+  const myNonDcIds = _consMyIds.filter(id => id !== 'dc');
   const myAnseTotal      = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
   const myRegularTotal   = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-  const wifeAnseTotal    = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].anse, 0);
-  const wifeRegularTotal = WIFE_ACC_IDS.reduce((s, id) => s + comps[id].regular, 0);
+  const wifeAnseTotal    = _consWifeIds.reduce((s, id) => s + comps[id].anse, 0);
+  const wifeRegularTotal = _consWifeIds.reduce((s, id) => s + comps[id].regular, 0);
 
   _consTotals = { baseYear, wifeBaseYear, comps, myAnseTotal, myRegularTotal,
     wifeAnseTotal, wifeRegularTotal,
-    myDCPrincipal: comps['dc'].dcPrincipal, myDCRegular: comps['dc'].regular,
-    pp1Total: comps['pension1'].total, wifePP1Total: comps['wife_pension1'].total };
+    myDCPrincipal: (comps['dc'] || _zero).dcPrincipal, myDCRegular: (comps['dc'] || _zero).regular,
+    pp1Total: comps['pension1'].total, wifePP1Total: comps['wife_pension1'].total,
+    _consMyIds, _consWifeIds };
 
   const mv = won => Math.round(won / 1_000_000);
   const c = wdConsolidated;
@@ -5873,11 +5884,13 @@ function handleConsBackdropClick(e) { if (e.target.id === 'consolidateModal') cl
 function renderConsLeftTable(comps) {
   const t = _consTotals;
   const mv = won => Math.round(won / 1_000_000);
-  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
+  const consMyIds   = t._consMyIds   || MY_ACC_IDS;
+  const consWifeIds = t._consWifeIds || [];
   let h = `<table class="cons-table"><thead>
     <tr><th>계좌</th><th>구분</th><th>백만원</th></tr></thead><tbody>`;
-  for (const accId of MY_ACC_IDS) {
-    const c = comps[accId], nm = accMap[accId] || accId;
+  for (const accId of consMyIds) {
+    const c = comps[accId] || { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+    const nm = getAccName(accId);
     if (accId === 'dc') {
       h += `<tr class="cons-dc"><td rowspan="2">${nm}</td><td>퇴직금</td><td>${mv(c.dcPrincipal)}</td></tr>`;
       h += `<tr class="cons-dc"><td>연금세</td><td>${mv(c.regular)}</td></tr>`;
@@ -5888,14 +5901,17 @@ function renderConsLeftTable(comps) {
   }
   h += `<tr class="cons-sub"><td>내 계좌 (비DC)</td><td>안세공합계</td><td>${mv(t.myAnseTotal)}</td></tr>`;
   h += `<tr class="cons-sub"><td></td><td>연금세합계</td><td>${mv(t.myRegularTotal)}</td></tr>`;
-  h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
-  for (const accId of WIFE_ACC_IDS) {
-    const c = comps[accId], nm = accMap[accId] || accId;
-    h += `<tr class="cons-anse"><td rowspan="2">${nm}</td><td>안세공</td><td>${mv(c.anse)}</td></tr>`;
-    h += `<tr><td>연금세</td><td>${mv(c.regular)}</td></tr>`;
+  if (consWifeIds.length) {
+    h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
+    for (const accId of consWifeIds) {
+      const c = comps[accId] || { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+      const nm = getAccName(accId);
+      h += `<tr class="cons-anse"><td rowspan="2">${nm}</td><td>안세공</td><td>${mv(c.anse)}</td></tr>`;
+      h += `<tr><td>연금세</td><td>${mv(c.regular)}</td></tr>`;
+    }
+    h += `<tr class="cons-sub"><td>${getWifeTitle()} 계좌</td><td>안세공합계</td><td>${mv(t.wifeAnseTotal)}</td></tr>`;
+    h += `<tr class="cons-sub"><td></td><td>연금세합계</td><td>${mv(t.wifeRegularTotal)}</td></tr>`;
   }
-  h += `<tr class="cons-sub"><td>아내 계좌</td><td>안세공합계</td><td>${mv(t.wifeAnseTotal)}</td></tr>`;
-  h += `<tr class="cons-sub"><td></td><td>연금세합계</td><td>${mv(t.wifeRegularTotal)}</td></tr>`;
   h += `</tbody></table>`;
   document.getElementById('consLeftWrap').innerHTML = h;
 }
