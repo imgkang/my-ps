@@ -801,9 +801,10 @@
   }
   .wd-section { font-size: 11px; font-weight: 700; color: #6d28d9;
     margin: 10px 0 4px; grid-column: 1 / -1; padding-bottom: 3px; border-bottom: 1px solid #e9d5ff; }
-  .wd-info-bar { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px;
+  .wd-info-bar { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px;
     color: #374151; padding: 8px 12px; background: #f8fafc; border-radius: 6px; margin-bottom: 12px; }
   .wd-info-bar b { color: #1e40af; }
+  .wd-info-row { display: flex; flex-wrap: wrap; gap: 3px 10px; align-items: center; }
   /* 계좌 통합 모달 */
   .cons-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
   @media (max-width: 680px) { .cons-wrap { grid-template-columns: 1fr; } }
@@ -1470,7 +1471,7 @@
         <h2>💸 인출 계획</h2>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="toggleWdSettings()">⚙️ 설정</button>
+        <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openWdSettingsModal()">⚙️ 설정</button>
         <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합 및 정리</button>
         <button class="close-btn" onclick="closeWithdrawalModal()">×</button>
       </div>
@@ -1500,28 +1501,6 @@
       </label>
     </div>
 
-    <!-- 설정 패널 -->
-    <div id="wdSettingsPanel" style="display:none;border:1px solid #e9d5ff;border-radius:8px;padding:14px;margin-bottom:12px;background:#faf5ff;flex-shrink:0">
-      <div class="wd-settings-grid">
-        <div class="wd-section">📅 인출 기본 설정</div>
-        <label><span>물가상승률 (%)</span><input id="wd_inflation" type="number" min="0" max="20" step="0.1"></label>
-        <label><span>인출기간 수익률 (%/년)</span><input id="wd_returnRate" type="number" min="0" max="20" step="0.1"></label>
-        <label><span>그래프 시작 나이 (세)</span><input id="wd_retireAge" type="number" min="40" max="90" step="1"></label>
-        <label><span>본인 은퇴연도</span><input id="wd_startYear" type="number" min="2020" max="2080" step="1"></label>
-        <label><span>사적연금 기본인출액 (백만원/계좌/년)</span><input id="wd_basicWithdraw" type="number" min="0" step="1"></label>
-        <label><span>아내 은퇴연도</span><input id="wd_wifeRetireYear" type="number" min="2020" max="2080" step="1"></label>
-        <label><span>아내 사적연금 기본인출액 (백만원/계좌/년)</span><input id="wd_wifeBasicWithdraw" type="number" min="0" step="1"></label>
-        <label><span>아내 계좌 최대인출금액 (백만원/년)</span><input id="wd_wifeFixWithdraw" type="number" min="0" step="1"></label>
-        <label><span>아내계좌 인출 시작연도</span><input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1"></label>
-        <label><span>연간 인출 목표액 (백만원)</span><input id="wd_annualTarget" type="number" min="0" step="1"></label>
-        <label><span>목표액 인출 시작연도</span><input id="wd_targetStartYear" type="number" min="2020" max="2080" step="1"></label>
-
-      </div>
-      <div style="margin-top:12px;text-align:right">
-        <button class="btn-primary" onclick="applyWdSettings()">✔ 적용</button>
-      </div>
-    </div>
-
     <!-- 설정 요약 바 -->
     <div class="wd-info-bar" id="wdInfoBar"></div>
 
@@ -1549,6 +1528,69 @@
 
     <div class="modal-actions" style="flex-shrink:0">
       <button class="btn-secondary" onclick="closeWithdrawalModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 인출계획 설정 모달 -->
+<div class="modal-backdrop" id="wdSettingsModal" onclick="handleWdSettingsBackdropClick(event)">
+  <div class="modal" style="max-width:420px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div><h2>⚙️ 인출계획 설정</h2></div>
+      <button class="close-btn" onclick="closeWdSettingsModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="cfg-tabs">
+      <button class="cfg-tab active" id="wdCfgTabCommon"   onclick="switchWdCfgTab('common')">공통</button>
+      <button class="cfg-tab"        id="wdCfgTabPersonal" onclick="switchWdCfgTab('personal')">개인별</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:0 4px 4px">
+
+      <!-- 공통 탭 -->
+      <div class="cfg-tab-pane active" id="wdCfgPaneCommon">
+        <div class="cfg-section">📈 수익률 / 물가</div>
+        <div class="cfg-grid">
+          <label>물가상승률 (%)</label>
+          <input id="wd_inflation" type="number" min="0" max="20" step="0.1">
+          <label>인출기간 수익률 (%/년)</label>
+          <input id="wd_returnRate" type="number" min="0" max="20" step="0.1">
+          <label>그래프 시작 나이 (세)</label>
+          <input id="wd_retireAge" type="number" min="40" max="90" step="1">
+        </div>
+        <div class="cfg-section">🎯 인출 목표</div>
+        <div class="cfg-grid">
+          <label>연간 인출 목표액 (백만원)</label>
+          <input id="wd_annualTarget" type="number" min="0" step="1">
+          <label>목표액 인출 시작연도</label>
+          <input id="wd_targetStartYear" type="number" min="2020" max="2080" step="1">
+        </div>
+      </div>
+
+      <!-- 개인별 탭 -->
+      <div class="cfg-tab-pane" id="wdCfgPanePersonal">
+        <div class="cfg-sub">👤 본인</div>
+        <div class="cfg-grid">
+          <label>은퇴연도</label>
+          <input id="wd_startYear" type="number" min="2020" max="2080" step="1">
+          <label>사적연금 기본인출액 (백만원/계좌/년)</label>
+          <input id="wd_basicWithdraw" type="number" min="0" step="1">
+        </div>
+        <div class="cfg-sub">👩 아내</div>
+        <div class="cfg-grid">
+          <label>은퇴연도</label>
+          <input id="wd_wifeRetireYear" type="number" min="2020" max="2080" step="1">
+          <label>사적연금 기본인출액 (백만원/계좌/년)</label>
+          <input id="wd_wifeBasicWithdraw" type="number" min="0" step="1">
+          <label>계좌 최대인출금액 (백만원/년)</label>
+          <input id="wd_wifeFixWithdraw" type="number" min="0" step="1">
+          <label>계좌 인출 시작연도</label>
+          <input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1">
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions" style="flex-shrink:0">
+      <button class="btn-secondary" onclick="closeWdSettingsModal()">취소</button>
+      <button class="btn-primary" onclick="applyWdSettings()">✔ 적용</button>
     </div>
   </div>
 </div>
@@ -1619,7 +1661,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.00';
+const APP_VERSION = 'MyPM v2.01';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4955,9 +4997,18 @@ function saveSettingsModal() {
   render();
 }
 function handleWdBackdropClick(e) { if (e.target.id === 'withdrawalModal') closeWithdrawalModal(); }
-function toggleWdSettings() {
-  const p = document.getElementById('wdSettingsPanel');
-  p.style.display = p.style.display === 'none' ? '' : 'none';
+function openWdSettingsModal() {
+  loadWdFormValues();
+  document.getElementById('wdSettingsModal').classList.add('open');
+}
+function closeWdSettingsModal() { document.getElementById('wdSettingsModal').classList.remove('open'); }
+function handleWdSettingsBackdropClick(e) { if (e.target.id === 'wdSettingsModal') closeWdSettingsModal(); }
+function switchWdCfgTab(name) {
+  ['common','personal'].forEach(t => {
+    const cap = t.charAt(0).toUpperCase() + t.slice(1);
+    document.getElementById(`wdCfgTab${cap}`)?.classList.toggle('active', t === name);
+    document.getElementById(`wdCfgPane${cap}`)?.classList.toggle('active', t === name);
+  });
 }
 function loadWdFormValues() {
   const wp = wdPlan;
@@ -5006,7 +5057,7 @@ function applyWdSettings() {
   };
   saveWdPlan();
   loadQuickWdValues();
-  document.getElementById('wdSettingsPanel').style.display = 'none';
+  closeWdSettingsModal();
   renderWithdrawalPlan();
 }
 
@@ -5346,23 +5397,46 @@ function renderWithdrawalPlan() {
   // 설정 요약 바
   const _myNPCfg = appSettings.my?.np || {};
   const _wifeNPCfg = appSettings.wife?.np || {};
+  const _myGPCfg = appSettings.my?.gp || {};
+  const _wifeGPCfg = appSettings.wife?.gp || {};
+  const _mySPCfg = appSettings.my?.sp || {};
+  const _wifeSPCfg = appSettings.wife?.sp || {};
   const _myNPYear = (_myNPCfg.startYear||0) + (_myNPCfg.delayYears||0);
   const _wifeNPYear = (_wifeNPCfg.startYear||0) + (_wifeNPCfg.delayYears||0);
-  document.getElementById('wdInfoBar').innerHTML =
-    `<span>인출시작: <b>${wp.startYear}년</b></span>` +
-    `<span>은퇴나이: <b>${wp.retireAge || 60}세</b></span>` +
-    `<span>종료: <b>95세</b></span>` +
-    `<span>연간목표: <b>${wp.annualTarget}백만원</b></span>` +
-    `<span>물가상승: <b>${wp.inflation}%</b></span>` +
-    `<span>수익률: <b>${wp.returnRate}%</b></span>` +
-    `<span>나 퇴직세: <b>${appSettings.my?.retireTaxRate ?? 12}%</b></span>` +
-    `<span>연금세: <b>${wp.pensionTaxRate}%</b></span>` +
-    `<span>국민연금세: <b>${wp.npTaxRate}%</b></span>` +
-    (_myNPYear > 0 && _myNPCfg.use !== false ? `<span>나 국민연금: <b>${_myNPYear}년 ${_myNPCfg.startMonth||1}월${_myNPCfg.delayYears ? ` (연기${_myNPCfg.delayYears}년)` : ''}</b></span>` : '') +
-    (appSettings.hasWife && _wifeNPYear > 0 && _wifeNPCfg.use !== false ? `<span>아내 국민연금: <b>${_wifeNPYear}년 ${_wifeNPCfg.startMonth||1}월${_wifeNPCfg.delayYears ? ` (연기${_wifeNPCfg.delayYears}년)` : ''}</b></span>` : '') +
-    `<span>기본인출액: <b>${wp.basicWithdraw}백만원/계좌</b></span>` +
-    `<span>목표액시작: <b>${wp.targetStartYear ?? ''}년</b></span>` +
-    (wp.wifeFixWithdraw ? `<span>아내계좌 인출: <b>${wp.wifeFixStartYear}년부터 ${wp.wifeFixWithdraw}백만원/년</b></span>` : '');
+  const sp = (label, val) => `<span>${label} <b>${val}</b></span>`;
+  const ifsp = (cond, label, val) => cond ? sp(label, val) : '';
+  const pubRow = (cfg, gpCfg, spCfg, npYear) => {
+    const parts = [];
+    if (npYear > 0 && cfg.use !== false) parts.push(sp('국민연금', `${npYear}년${cfg.delayYears ? ` (연기${cfg.delayYears}년)` : ''}`));
+    if (gpCfg?.use && gpCfg.startYear) parts.push(sp('공무원연금', `${gpCfg.startYear}년`));
+    if (spCfg?.use && spCfg.startYear) parts.push(sp('사학연금', `${spCfg.startYear}년`));
+    return parts.join('');
+  };
+  const makeRow = (icon, color, ...items) =>
+    `<div class="wd-info-row"><span style="font-weight:700;color:${color};min-width:28px;font-size:11px">${icon}</span>${items.filter(Boolean).join('')}</div>`;
+  document.getElementById('wdInfoBar').innerHTML = [
+    makeRow('공통', '#6d28d9',
+      sp('목표', `${wp.annualTarget}백만원`),
+      sp('목표시작', `${wp.targetStartYear}년`),
+      sp('물가', `${wp.inflation}%`),
+      sp('수익률', `${wp.returnRate}%`),
+      sp('그래프시작', `${wp.retireAge||60}세`),
+      sp('연금세', `${wp.pensionTaxRate}%`),
+      sp('국민연금세', `${wp.npTaxRate}%`),
+    ),
+    makeRow('👤 본인', '#1d4ed8',
+      sp('은퇴', `${wp.startYear}년`),
+      sp('기본인출', `${wp.basicWithdraw}백만/계좌`),
+      sp('퇴직세', `${appSettings.my?.retireTaxRate ?? 12}%`),
+      pubRow(_myNPCfg, _myGPCfg, _mySPCfg, _myNPYear),
+    ),
+    appSettings.hasWife ? makeRow('👩 아내', '#be185d',
+      sp('은퇴', `${wp.wifeRetireYear || wp.startYear}년`),
+      sp('기본인출', `${wp.wifeBasicWithdraw}백만/계좌`),
+      wp.wifeFixWithdraw ? sp('최대인출', `${wp.wifeFixWithdraw}백만/년`) : '',
+      pubRow(_wifeNPCfg, _wifeGPCfg, _wifeSPCfg, _wifeNPYear),
+    ) : '',
+  ].join('');
 
   renderWdWithdrawTable(sim);
   renderWdBalanceTable(sim);
