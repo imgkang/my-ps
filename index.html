@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.06';
+const APP_VERSION = 'MyPM v2.07';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2221,7 +2221,7 @@ function renderAccountButtons() {
   grid.innerHTML = getActiveAccounts().map(a => {
     const val = computeAccountValue(a.id);
     const valueText = val > 0 ? formatKRW(val) : '보유 없음';
-    return `<button class="btn-account-view" onclick="openAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${valueText}</span></button>`;
+    return `<button class="btn-account-view" onclick="openAccountDetail('${a.id}')">💼 ${getAccName(a.id)}<span class="acc-value">${valueText}</span></button>`;
   }).join('');
   renderAccSummary();
 }
@@ -3413,17 +3413,18 @@ function buildChartSeries(accId) {
     a.year !== b.year ? a.year - b.year : a.month - b.month
   );
 
+  const activeAccs = getActiveAccounts();
   const principalData = sorted.map(r => {
     const total = accId
       ? getAccountPrincipalAt(accId, r.year, r.month)
-      : ACCOUNTS.reduce((s, a) => s + getAccountPrincipalAt(a.id, r.year, r.month), 0);
+      : activeAccs.reduce((s, a) => s + getAccountPrincipalAt(a.id, r.year, r.month), 0);
     return { x: r.year * 12 + r.month, y: Math.round(total / 100000) / 10 };
   });
 
   const evalData = sorted.map(r => {
     const total = accId
       ? (Number(r.accounts[accId]) || 0)
-      : ACCOUNTS.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0);
+      : activeAccs.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0);
     return { x: r.year * 12 + r.month, y: Math.round(total / 100000) / 10 };
   });
 
