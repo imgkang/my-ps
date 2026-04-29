@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.04';
+const APP_VERSION = 'MyPM v2.05';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1889,10 +1889,10 @@ function getAccountNetTotal(accId) {
 }
 
 function getGrandTotalPrincipal() {
-  const totPrincipal = ACCOUNTS.reduce((sum, acc) => {
-  		return sum + getAccountNetTotal(acc.id);
-		}, 0);
-    return totPrincipal;
+  const totPrincipal = getActiveAccounts().reduce((sum, acc) => {
+      return sum + getAccountNetTotal(acc.id);
+    }, 0);
+  return totPrincipal;
 }
 
 // ===== 계좌 입출금 메인 모달 =====
@@ -3244,11 +3244,11 @@ function handleRecordsBackdropClick(event) {
 function renderRecordInputs(values) {
   const wrap = document.getElementById('recAccountInputs');
   if (!wrap) return;
-  wrap.innerHTML = ACCOUNTS.map(a => {
+  wrap.innerHTML = getActiveAccounts().map(a => {
     const v = values && values[a.id] != null ? values[a.id] : '';
     return `
       <div class="acc-field">
-        <label>${a.name}</label>
+        <label>${getAccName(a.id)}</label>
         <input type="number" min="0" step="1" data-acc-id="${a.id}" value="${v}" oninput="updateRecordTotal()" placeholder="0">
       </div>
     `;
@@ -3281,7 +3281,7 @@ function clearRecordInputs() {
 function fillCurrentValues() {
   // 현재 포트폴리오 상태로 계좌별 평가금액 자동 채움
   const values = {};
-  for (const a of ACCOUNTS) {
+  for (const a of getActiveAccounts()) {
     values[a.id] = Math.round(computeAccountValue(a.id));
   }
   renderRecordInputs(values);
@@ -3343,12 +3343,12 @@ function deleteMonthlyRecord(id) {
 function renderRecordsTableHeader() {
   const header = document.getElementById('recordsTableHeader');
   if (!header) return;
-  // 컬럼: 연/월 + 계좌들 + 총합 + 삭제
-  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
+  const activeAccs = getActiveAccounts();
+  const cols = `90px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>연/월</span>
-    ${ACCOUNTS.map(a => `<span style="text-align:right">${a.name}<br><small>(백만원)</small></span>`).join('')}
+    ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}<br><small>(백만원)</small></span>`).join('')}
     <span style="text-align:right">총합<br><small>(백만원)</small></span>
     <span></span>
   `;
@@ -3369,11 +3369,12 @@ function renderRecordsList() {
     return b.month - a.month;
   });
 
-  const cols = `90px ${ACCOUNTS.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
+  const activeAccs = getActiveAccounts();
+  const cols = `90px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
 
   list.innerHTML = sorted.map(rec => {
-    const total = ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
-    const accCells = ACCOUNTS.map(a => {
+    const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const accCells = activeAccs.map(a => {
       const v = Number(rec.accounts[a.id]) || 0;
       return `<span class="amount">${v ? formatMil(v) : '-'}</span>`;
     }).join('');
