@@ -1661,7 +1661,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.01';
+const APP_VERSION = 'MyPM v2.02';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5340,8 +5340,34 @@ function computeWithdrawalSim() {
       }
     };
 
+    // 2-pass 보정용 상태 스냅샷 (목표액 구간에서만 사용)
+    const _snap = {};
+    for (const id of allAccIds) _snap[id] = { ...state[id] };
+
     doWithdraw(MY_ACC_IDS, myRemaining);
     doWithdraw(getActiveWifeAccIds(), wifeRemaining);
+
+    // 목표액 구간: 세후 실수령액 = target이 되도록 2차 보정
+    if (yr >= targetStartYear) {
+      const _priv1 = allAccIds.reduce((s, id) =>
+        s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
+      const _actualNet1 = _priv1 + myPublicInc + wifePublicInc
+        - totalRT - totalPT - (myPublicInc + wifePublicInc) * npTR;
+      const _deficit = target - _actualNet1;
+      if (Math.abs(_deficit) > 10000) {
+        // 패스1 직후 잔여 잔액으로 한계세율 결정
+        const _margRate = allAccIds.some(id => state[id].anse > 0) ? 0
+          : (state[DC_ID] && state[DC_ID].dcPrincipal > 0 ? rTR : epTR);
+        const _corrGross = _deficit / (1 - _margRate);
+        // 상태 복원 후 보정된 금액으로 재인출
+        for (const id of allAccIds) state[id] = { ..._snap[id] };
+        for (const id of allAccIds) withdrawals[yr][id] = { anseOut: 0, dcOut: 0, regularOut: 0 };
+        totalRT = 0; totalPT = 0;
+        myRemaining = Math.max(0, myRemaining + _corrGross);
+        doWithdraw(MY_ACC_IDS, myRemaining);
+        doWithdraw(getActiveWifeAccIds(), wifeRemaining);
+      }
+    }
 
     const totalPriv = allAccIds.reduce((s, id) =>
       s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
