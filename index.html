@@ -1619,7 +1619,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v1.99';
+const APP_VERSION = 'MyPM v2.00';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5662,9 +5662,9 @@ function computeAccComponents(accId, year) {
 function openConsolidateModal() {
   const wp = wdPlan;
   if (!wp.startYear) { alert('먼저 인출 계획의 본인 은퇴연도를 설정해 주세요.'); return; }
-  const baseYear     = wp.startYear - 1;
-  const wifeBaseYear = ((wp.wifeFixStartYear || wp.startYear) > wp.startYear)
-    ? (wp.wifeFixStartYear - 1) : baseYear;
+  const baseYear         = wp.startYear - 1;
+  const wifeActualStart  = wp.wifeRetireYear || wp.wifeFixStartYear || wp.startYear;
+  const wifeBaseYear     = wifeActualStart > wp.startYear ? wifeActualStart - 1 : baseYear;
   document.getElementById('consSubtitle').textContent =
     wifeBaseYear !== baseYear
       ? `내 계좌: ${baseYear}년말 기준 / 아내 계좌: ${wifeBaseYear}년말 기준`
