@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.08';
+const APP_VERSION = 'MyPM v2.09';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4447,7 +4447,18 @@ function handleDividendBackdropClick(event) {
 function renderDivStockInputs(perShareMap) {
   const tbody = document.getElementById('divStockInputs');
   if (!tbody) return;
-  const active = holdings.filter(h => h.quantity > 0);
+  const activeAccIds = new Set(getActiveAccounts().map(a => a.id));
+  const active = holdings.map(h => {
+    let qty = 0;
+    if (h.accounts && Object.keys(h.accounts).length > 0) {
+      for (const [id, a] of Object.entries(h.accounts)) {
+        if (activeAccIds.has(id)) qty += Number(a.qty) || 0;
+      }
+    } else {
+      qty = Number(h.quantity) || 0;
+    }
+    return { ...h, activeQty: qty };
+  }).filter(h => h.activeQty > 0);
   if (!active.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">보유 종목이 없습니다.</td></tr>';
     updateDivGrandTotal();
@@ -4455,7 +4466,7 @@ function renderDivStockInputs(perShareMap) {
   }
   tbody.innerHTML = active.map(h => {
     const ps = perShareMap && perShareMap[h.code] != null ? perShareMap[h.code] : '';
-    const qty = h.quantity || 0;
+    const qty = h.activeQty;
     const totalStr = ps !== '' && Number(ps) > 0 ? Math.round(Number(ps) * qty).toLocaleString('ko-KR') + ' 원' : '-';
     return `
       <tr>
@@ -4534,12 +4545,13 @@ async function loadDividendData() {
 }
 
 function calcDivAccounts(stockPerShareData) {
+  const activeAccs = getActiveAccounts();
   const result = {};
-  for (const acc of ACCOUNTS) result[acc.id] = 0;
+  for (const acc of activeAccs) result[acc.id] = 0;
   for (const h of holdings) {
     const ps = Number(stockPerShareData[h.code]) || 0;
     if (!ps) continue;
-    for (const acc of ACCOUNTS) {
+    for (const acc of activeAccs) {
       const a = h.accounts && h.accounts[acc.id];
       if (a && a.qty > 0) result[acc.id] += Math.round(a.qty * ps);
     }
@@ -4655,18 +4667,19 @@ function renderDivAccRecordsList() {
     return;
   }
 
-  const cols = `80px ${ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
+  const activeAccs = getActiveAccounts();
+  const cols = `80px ${activeAccs.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>연/월</span>
-    ${ACCOUNTS.map(a => `<span style="text-align:right">${a.name}</span>`).join('')}
+    ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}</span>`).join('')}
     <span style="text-align:right">합계</span>
   `;
 
   const sorted = [...dividendRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
   list.innerHTML = sorted.map(rec => {
-    const total = ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
-    const cells = ACCOUNTS.map(a => {
+    const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const cells = activeAccs.map(a => {
       const v = Number(rec.accounts[a.id]) || 0;
       return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
     }).join('');
