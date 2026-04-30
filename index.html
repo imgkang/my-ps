@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.16';
+const APP_VERSION = 'MyPM v2.17';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4009,7 +4009,7 @@ function hasActualTxnInYear(accId, year) {
 // Is the cell for (accId, year) "actual" (read-only)?
 function isActualCell(accId, year) {
   const currentYear = new Date().getFullYear();
-  if (year <= currentYear) return true;
+  if (year < currentYear) return true;
   return hasActualTxnInYear(accId, year);
 }
 
