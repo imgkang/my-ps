@@ -6,6 +6,13 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MyPM">
+<meta name="theme-color" content="#03c75a">
 <title>My PM</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -864,6 +871,33 @@
   .cfg-add-acc-btn { font-size: 12px; color: var(--primary); background: none; border: 1px dashed var(--primary);
     border-radius: 6px; padding: 4px 10px; cursor: pointer; margin-bottom: 4px; }
   .cfg-note { font-size: 11px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
+  /* Google Drive 동기화 */
+  .drive-btn { padding: 7px 12px; border: 1.5px solid #4285f4; border-radius: 8px;
+    background: white; color: #4285f4; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 5px; transition: all 0.15s; white-space: nowrap; }
+  .drive-btn:hover { background: #4285f4; color: white; }
+  .drive-btn.connected { border-color: var(--primary); color: var(--primary); }
+  .drive-btn.connected:hover { background: var(--primary); color: white; }
+  .drive-modal-body { display: flex; flex-direction: column; gap: 14px; }
+  .drive-status { padding: 8px 12px; border-radius: 6px; font-size: 13px; text-align: center; }
+  .drive-status.idle     { background: #f1f5f9; color: #64748b; }
+  .drive-status.ok       { background: #dcfce7; color: #15803d; }
+  .drive-status.error    { background: #fee2e2; color: #dc2626; }
+  .drive-status.loading  { background: #dbeafe; color: #1d4ed8; }
+  .drive-action-row { display: flex; gap: 8px; }
+  .drive-action-row button { flex: 1; padding: 10px 0; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: 1.5px solid; transition: all 0.15s; }
+  .drive-btn-load { border-color: #4285f4; color: #4285f4; background: white; }
+  .drive-btn-load:hover { background: #4285f4; color: white; }
+  .drive-btn-save { border-color: var(--primary); color: var(--primary); background: white; }
+  .drive-btn-save:hover { background: var(--primary); color: white; }
+  .drive-btn-logout { border-color: #dc2626; color: #dc2626; background: white; }
+  .drive-btn-logout:hover { background: #dc2626; color: white; }
+  .drive-setup { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px;
+    padding: 12px; font-size: 12px; line-height: 1.7; color: #78350f; }
+  .drive-setup code { background: #fef3c7; padding: 1px 5px; border-radius: 3px;
+    font-family: monospace; font-size: 11px; }
+  .drive-setup ol { margin: 6px 0 0 16px; padding: 0; }
 </style>
 </head>
 <body>
@@ -875,6 +909,9 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <span id="refreshStatus"></span>
+      <button class="drive-btn" id="driveNavBtn" onclick="openDriveModal()" title="Google Drive 동기화">
+        ☁️ <span id="driveNavLabel">Drive</span>
+      </button>
       <button class="btn-settings" onclick="openSettingsModal()" title="앱 설정">⚙️ 설정</button>
     </div>
   </header>
@@ -923,6 +960,64 @@
 </div>
 
 <!-- 종목 추가 모달 -->
+
+<!-- ☁️ Google Drive 동기화 모달 -->
+<div class="modal-backdrop" id="driveModal" onclick="handleDriveBackdropClick(event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div><h2>☁️ Google Drive 동기화</h2></div>
+      <button class="close-btn" onclick="closeDriveModal()">×</button>
+    </div>
+    <div class="drive-modal-body" style="padding:4px 0 8px">
+
+      <!-- 상태 표시 -->
+      <div class="drive-status idle" id="driveStatusMsg">연결되지 않음</div>
+
+      <!-- Client ID 설정 -->
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Google Client ID</label>
+        <input id="driveClientIdInput" type="text" placeholder="123456789-xxx.apps.googleusercontent.com"
+               style="width:100%;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;font-family:monospace"
+               oninput="onDriveClientIdChange()">
+      </div>
+
+      <!-- 연결 버튼 (로그인 전) -->
+      <div id="driveLoginSection">
+        <button onclick="driveSignIn()"
+                style="width:100%;padding:11px;background:#4285f4;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFF" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
+          Google 로그인
+        </button>
+      </div>
+
+      <!-- 연결 후 동작 버튼 -->
+      <div id="driveActionSection" style="display:none">
+        <div class="drive-action-row">
+          <button class="drive-btn-load" onclick="driveLoad()">⬇️ Drive에서 불러오기</button>
+          <button class="drive-btn-save" onclick="driveSave()">⬆️ Drive에 저장</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:right" id="driveLastSync"></div>
+        <button class="drive-btn-logout" onclick="driveSignOut()" style="width:100%;padding:8px">연결 해제</button>
+      </div>
+
+      <!-- 설정 안내 -->
+      <div class="drive-setup" id="driveSetupGuide">
+        <strong>⚙️ 최초 설정 방법 (1회만)</strong>
+        <ol>
+          <li><a href="https://console.cloud.google.com" target="_blank" style="color:#92400e">console.cloud.google.com</a> 접속</li>
+          <li>새 프로젝트 생성 → <strong>APIs & Services → 사용자 인증 정보</strong></li>
+          <li><strong>OAuth 2.0 클라이언트 ID</strong> 생성 (웹 애플리케이션)</li>
+          <li>승인된 JavaScript 출처에 이 앱의 주소 입력</li>
+          <li><strong>Google Drive API</strong> 활성화</li>
+          <li>발급된 클라이언트 ID를 위 입력란에 붙여넣기</li>
+        </ol>
+        <div style="margin-top:8px">💡 데이터는 본인 구글 드라이브의 앱 전용 폴더에 저장되어 다른 앱에서 볼 수 없습니다.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- ⚙️ 앱 설정 모달 -->
 <div class="modal-backdrop" id="settingsModal" onclick="handleSettingsBackdropClick(event)">
   <div class="modal" style="max-width:460px;max-height:90vh;display:flex;flex-direction:column">
@@ -1671,7 +1766,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.20';
+const APP_VERSION = 'MyPM v2.21';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6187,6 +6282,275 @@ loadQuickWdValues();
     if (el) el.min = cy;
   });
 })();
+
+// =============================================
+// ☁️ Google Drive 동기화
+// =============================================
+const DRIVE_SETTINGS_KEY = 'mypm_drive_settings_v1';
+let driveClientId = '';
+let driveAccessToken = null;
+let driveFileId = null;
+let driveLastSync = null;
+
+function loadDriveSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(DRIVE_SETTINGS_KEY) || '{}');
+    driveClientId = s.clientId || '';
+    driveFileId   = s.fileId   || null;
+    driveLastSync = s.lastSync || null;
+  } catch(_) {}
+}
+function saveDriveSettings() {
+  localStorage.setItem(DRIVE_SETTINGS_KEY, JSON.stringify({
+    clientId: driveClientId, fileId: driveFileId, lastSync: driveLastSync
+  }));
+}
+loadDriveSettings();
+
+function openDriveModal() {
+  document.getElementById('driveClientIdInput').value = driveClientId;
+  updateDriveUI();
+  document.getElementById('driveModal').classList.add('open');
+}
+function closeDriveModal() {
+  document.getElementById('driveModal').classList.remove('open');
+}
+function handleDriveBackdropClick(e) {
+  if (e.target.id === 'driveModal') closeDriveModal();
+}
+
+function onDriveClientIdChange() {
+  driveClientId = document.getElementById('driveClientIdInput').value.trim();
+  saveDriveSettings();
+  updateDriveUI();
+}
+
+function setDriveStatus(type, msg) {
+  const el = document.getElementById('driveStatusMsg');
+  el.className = 'drive-status ' + type;
+  el.textContent = msg;
+}
+
+function updateDriveUI() {
+  const connected = !!driveAccessToken;
+  document.getElementById('driveLoginSection').style.display  = connected ? 'none' : 'block';
+  document.getElementById('driveActionSection').style.display = connected ? 'block' : 'none';
+  const navBtn   = document.getElementById('driveNavBtn');
+  const navLabel = document.getElementById('driveNavLabel');
+  if (navBtn && navLabel) {
+    navBtn.className = 'drive-btn' + (connected ? ' connected' : '');
+    navLabel.textContent = connected ? '동기화됨' : 'Drive';
+  }
+  if (driveLastSync) {
+    const el = document.getElementById('driveLastSync');
+    if (el) el.textContent = '마지막 동기화: ' + new Date(driveLastSync).toLocaleString('ko-KR');
+  }
+  if (!connected) setDriveStatus('idle', driveClientId ? '로그인이 필요합니다' : '연결되지 않음');
+}
+
+// Google Identity Services 초기화 (GIS)
+function initGIS() {
+  if (!driveClientId) return;
+  if (typeof google === 'undefined' || !google.accounts) {
+    setTimeout(initGIS, 500); return;
+  }
+  window._gisClient = google.accounts.oauth2.initTokenClient({
+    client_id: driveClientId,
+    scope: 'https://www.googleapis.com/auth/drive.appdata',
+    callback: resp => {
+      if (resp.error) { setDriveStatus('error', '로그인 실패: ' + resp.error); return; }
+      driveAccessToken = resp.access_token;
+      updateDriveUI();
+      setDriveStatus('ok', '✅ Google Drive 연결됨');
+    }
+  });
+}
+
+function driveSignIn() {
+  if (!driveClientId) { alert('Client ID를 입력해주세요.'); return; }
+  if (!window._gisClient) { initGIS(); setTimeout(driveSignIn, 600); return; }
+  window._gisClient.requestAccessToken({ prompt: 'consent' });
+}
+function driveSignOut() {
+  if (driveAccessToken && typeof google !== 'undefined') {
+    google.accounts.oauth2.revoke(driveAccessToken);
+  }
+  driveAccessToken = null;
+  updateDriveUI();
+}
+
+// Drive REST API 요청 헬퍼
+async function driveReq(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + driveAccessToken, ...(opts.headers || {}) }
+  });
+  if (res.status === 401) {
+    driveAccessToken = null; updateDriveUI();
+    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+  }
+  return res;
+}
+
+async function driveFindFile() {
+  if (driveFileId) return driveFileId;
+  const res = await driveReq(
+    "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'mypm-data.json'&fields=files(id)"
+  );
+  const data = await res.json();
+  const id = data.files && data.files[0] ? data.files[0].id : null;
+  if (id) { driveFileId = id; saveDriveSettings(); }
+  return id;
+}
+
+// 모든 데이터를 번들로 묶기 (exportToFile과 동일한 포맷)
+function buildDriveBundle() {
+  const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
+  return {
+    version: 9,
+    exportedAt: new Date().toISOString(),
+    mypm: {
+      cashAccounts: cashAccounts,
+      holdings: holdings,
+      deposits: depositData,
+      monthlyRecords: monthlyRecords,
+      dividendRecords: dividendRecords,
+      annualPlan: annualPlan,
+      wdPlan: wdPlan,
+      wdConsolidated: wdConsolidated
+    },
+    nonk: {
+      holdings:  tryParse('nonk_holdings_v1')  || [],
+      cash:      tryParse('nonk_cash_v1')      || { ds: 0, nk1: 0 },
+      deposits:  tryParse('nonk_deposits_v1')  || { transactions: [] },
+      monthly:   tryParse('nonk_monthly_v1')   || [],
+      dividends: tryParse('nonk_dividends_v1') || []
+    }
+  };
+}
+
+async function driveSave() {
+  if (!driveAccessToken) { driveSignIn(); return; }
+  setDriveStatus('loading', '⏳ Drive에 저장 중...');
+  try {
+    const content = JSON.stringify(buildDriveBundle(), null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const fileId = await driveFindFile();
+
+    if (fileId) {
+      await driveReq(
+        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+        { method: 'PATCH', body: blob, headers: { 'Content-Type': 'application/json' } }
+      );
+    } else {
+      const meta = JSON.stringify({ name: 'mypm-data.json', parents: ['appDataFolder'] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file', blob);
+      const res = await driveReq(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        { method: 'POST', body: form }
+      );
+      const created = await res.json();
+      driveFileId = created.id;
+    }
+    driveLastSync = new Date().toISOString();
+    saveDriveSettings();
+    updateDriveUI();
+    setDriveStatus('ok', '✅ 저장 완료 — ' + new Date().toLocaleTimeString('ko-KR'));
+  } catch(e) {
+    setDriveStatus('error', '❌ ' + e.message);
+  }
+}
+
+async function driveLoad() {
+  if (!driveAccessToken) { driveSignIn(); return; }
+  setDriveStatus('loading', '⏳ Drive에서 불러오는 중...');
+  try {
+    const fileId = await driveFindFile();
+    if (!fileId) { setDriveStatus('idle', 'Drive에 저장된 데이터가 없습니다'); return; }
+    const res  = await driveReq(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+    const data = await res.json();
+    const savedAt = data.exportedAt ? new Date(data.exportedAt).toLocaleString('ko-KR') : '알 수 없음';
+    if (!confirm(`Drive에서 데이터를 불러옵니다.\n저장 일시: ${savedAt}\n\n현재 기기의 데이터가 덮어쓰여집니다. 계속할까요?`)) {
+      setDriveStatus('idle', '취소됨');
+      return;
+    }
+    // importFromFile 로직 재사용: 같은 포맷이므로 직접 처리
+    const evt = { target: { result: JSON.stringify(data) } };
+    const reader = { onload: null };
+    // importFromFile이 FileReader 이벤트를 기대하므로 직접 호출
+    _applyImportData(data);
+    driveLastSync = new Date().toISOString();
+    saveDriveSettings();
+    setDriveStatus('ok', '✅ 불러오기 완료 — 페이지 새로고침 중...');
+    setTimeout(() => location.reload(), 1200);
+  } catch(e) {
+    setDriveStatus('error', '❌ ' + e.message);
+  }
+}
+
+// importFromFile의 데이터 적용 로직 분리 (Drive load에서 재사용)
+function _applyImportData(data) {
+  const src = (data.version >= 8 && data.mypm) ? data.mypm : data;
+  const newHoldings = Array.isArray(src.holdings) ? src.holdings : [];
+  const newCashAccounts = {};
+  for (const a of ACCOUNTS) newCashAccounts[a.id] = 0;
+  if (src.cashAccounts && typeof src.cashAccounts === 'object') {
+    for (const a of ACCOUNTS) newCashAccounts[a.id] = Number(src.cashAccounts[a.id]) || 0;
+  } else if (typeof src.cash === 'number' && src.cash > 0) {
+    newCashAccounts[ACCOUNTS[0].id] = src.cash;
+  }
+  localStorage.setItem(STORAGE_KEY,       JSON.stringify(newHoldings));
+  localStorage.setItem(CASH_ACCOUNTS_KEY, JSON.stringify(newCashAccounts));
+  if (src.deposits)       localStorage.setItem(DEPOSITS_KEY,        JSON.stringify(src.deposits));
+  if (src.monthlyRecords) localStorage.setItem(MONTHLY_RECORDS_KEY, JSON.stringify(src.monthlyRecords));
+  if (src.dividendRecords)localStorage.setItem(DIVIDEND_KEY,        JSON.stringify(src.dividendRecords));
+  if (src.annualPlan)     localStorage.setItem(ANNUAL_PLAN_KEY,     JSON.stringify(src.annualPlan));
+  if (src.wdPlan)         localStorage.setItem(WITHDRAWAL_KEY,      JSON.stringify(src.wdPlan));
+  if (data.nonk) {
+    if (data.nonk.holdings)  localStorage.setItem('nonk_holdings_v1',  JSON.stringify(data.nonk.holdings));
+    if (data.nonk.cash)      localStorage.setItem('nonk_cash_v1',      JSON.stringify(data.nonk.cash));
+    if (data.nonk.deposits)  localStorage.setItem('nonk_deposits_v1',  JSON.stringify(data.nonk.deposits));
+    if (data.nonk.monthly)   localStorage.setItem('nonk_monthly_v1',   JSON.stringify(data.nonk.monthly));
+    if (data.nonk.dividends) localStorage.setItem('nonk_dividends_v1', JSON.stringify(data.nonk.dividends));
+  }
+}
+
+// GIS 라이브러리 동적 로드 후 초기화
+(function loadGIS() {
+  if (!driveClientId) return;
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.defer = true;
+  s.onload = initGIS;
+  document.head.appendChild(s);
+})();
+
+// =============================================
+// 📱 Service Worker 등록 (PWA)
+// =============================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        // 새 버전이 감지되면 사용자에게 알림
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              if (confirm('새 버전이 있습니다. 지금 업데이트할까요?')) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                location.reload();
+              }
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW 등록 실패:', err));
+  });
+}
 </script>
 <div class="app-version" id="appVersion"></div>
 </body>
