@@ -1671,7 +1671,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.19';
+const APP_VERSION = 'MyPM v2.20';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3934,13 +3934,35 @@ function getActiveWifeAccIds() {
 function loadAnnualPlan() {
   try {
     const raw = localStorage.getItem(ANNUAL_PLAN_KEY);
-    if (!raw) return { deposits: {}, projRate: 7 };
+    if (!raw) return { format: 2, deposits: {}, projRate: 7 };
     const p = JSON.parse(raw);
-    return {
-      deposits: (p.deposits && typeof p.deposits === 'object') ? p.deposits : {},
-      projRate: Number(p.projRate) || 7
-    };
-  } catch (_) { return { deposits: {}, projRate: 7 }; }
+    const deposits = (p.deposits && typeof p.deposits === 'object') ? p.deposits : {};
+    if (p.format !== 2) {
+      // Migrate cumulative plan values to annual increments
+      const years = Object.keys(deposits).map(Number).sort((a, b) => a - b);
+      const allKeys = new Set();
+      for (const yr of years) {
+        for (const k of Object.keys(deposits[String(yr)])) {
+          if (!k.endsWith('_extra')) allKeys.add(k);
+        }
+      }
+      for (const key of allKeys) {
+        let prevCum = 0;
+        for (const yr of years) {
+          const yStr = String(yr);
+          if (deposits[yStr] && deposits[yStr][key] != null) {
+            const cum = Number(deposits[yStr][key]);
+            deposits[yStr][key] = Math.max(0, cum - prevCum);
+            prevCum = cum;
+          }
+        }
+      }
+      const migrated = { format: 2, deposits, projRate: Number(p.projRate) || 7 };
+      localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+    return { format: 2, deposits, projRate: Number(p.projRate) || 7 };
+  } catch (_) { return { format: 2, deposits: {}, projRate: 7 }; }
 }
 
 function openAnnualPlanModal() {
@@ -3974,7 +3996,7 @@ function saveAnnualPlan() {
     else deps[year][key] = val;
   });
   const projRate = Number(document.getElementById('projRate').value) || 7;
-  annualPlan = { deposits: deps, projRate };
+  annualPlan = { format: 2, deposits: deps, projRate };
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderPrincipalTable();
   renderEvalTable();
@@ -4060,8 +4082,24 @@ function getCellManwon(accId, year) {
     const extra  = getPlanExtraManwon(accId, year);
     return actual + (extra != null ? extra : 0);
   }
-  const p = getPlanManwon(accId, year);
-  return p != null ? p : 0;
+  // Future year: cumulative = prev year cumulative + this year's increment
+  const prev = getCellManwon(accId, year - 1);
+  const inc = getPlanManwon(accId, year);
+  return prev + (inc != null ? inc : 0);
+}
+
+// Cumulative anse (백만원) for an account cell (actual or plan)
+function getCellAnseManwon(accId, year) {
+  const currentYear = new Date().getFullYear();
+  if (year < currentYear) return getActualAnseManwon([accId], year);
+  if (year === currentYear) {
+    const actual = getActualAnseManwon([accId], year);
+    const extra  = getPlanExtraManwon(accId + '_anse', year);
+    return actual + (extra != null ? extra : 0);
+  }
+  const prev = getCellAnseManwon(accId, year - 1);
+  const inc  = getPlanAnseManwon(accId, year);
+  return prev + (inc != null ? inc : 0);
 }
 
 function fmt(v) {
@@ -4107,29 +4145,39 @@ function renderPrincipalTable() {
     const anse = getActualAnseManwon([id], yr);
     return `<td>${fmt(v)}<div class="anse-sub"><span class="anse-val">${anse || '-'}</span></div></td>`;
   };
-  const mkPlanCell = (id, yr, showAnse) => {
-    const v = getPlanManwon(id, yr);
-    const inp = `<input class="plan-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}" value="${v != null ? Math.round(+v) : ''}" placeholder="0">`;
-    if (!showAnse) return `<td>${inp}</td>`;
-    const anse = getPlanAnseManwon(id, yr);
-    const anseInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse" value="${anse != null ? Math.round(+anse) : ''}" placeholder="0">`;
-    return `<td>${inp}<div class="anse-sub">${anseInp}</div></td>`;
-  };
-  // Split cell for current year: actual (read-only) + extra plan input
-  const mkSplitCell = (id, yr, showAnse) => {
-    const actual = getActualCumManwon(id, yr);
-    const extra  = getPlanExtraManwon(id, yr);
-    const extraInp = `<input class="plan-inp extra-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_extra" value="${extra != null ? Math.round(+extra) : ''}" placeholder="+0">`;
-    if (!showAnse) return `<td><span class="actual-ro">${fmt(actual)}</span>${extraInp}</td>`;
-    const anseActual = getActualAnseManwon([id], yr);
-    const anseExtra  = getPlanExtraManwon(id + '_anse', yr);
-    const anseExtraInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse_extra" value="${anseExtra != null ? Math.round(+anseExtra) : ''}" placeholder="+0">`;
-    return `<td><span class="actual-ro">${fmt(actual)}</span>${extraInp}<div class="anse-sub"><span class="anse-val">${anseActual || '-'}</span>${anseExtraInp}</div></td>`;
+  // Unified non-actual cell: cumulative (read-only) + increment input for current & future years
+  const mkNonActualCell = (id, yr, showAnse) => {
+    const isCurrentYr = yr === currentYear;
+    let cum, incInpHtml, anseHtml = '';
+    if (isCurrentYr) {
+      const actual = getActualCumManwon(id, yr);
+      const extra  = getPlanExtraManwon(id, yr);
+      cum = actual + (extra != null ? extra : 0);
+      incInpHtml = `<input class="plan-inp extra-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_extra" value="${extra != null ? Math.round(+extra) : ''}" placeholder="+0" oninput="updatePlanCumulatives()">`;
+      if (showAnse) {
+        const anseActual = getActualAnseManwon([id], yr);
+        const anseExtra  = getPlanExtraManwon(id + '_anse', yr);
+        const anseCum    = anseActual + (anseExtra != null ? anseExtra : 0);
+        const anseExtraInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse_extra" value="${anseExtra != null ? Math.round(+anseExtra) : ''}" placeholder="+0" oninput="updatePlanCumulatives()">`;
+        anseHtml = `<div class="anse-sub"><span class="anse-val" id="pacum-${id}-${yr}">${anseCum || '-'}</span>${anseExtraInp}</div>`;
+      }
+    } else {
+      cum = getCellManwon(id, yr);
+      const inc = getPlanManwon(id, yr);
+      incInpHtml = `<input class="plan-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}" value="${inc != null ? Math.round(+inc) : ''}" placeholder="0" oninput="updatePlanCumulatives()">`;
+      if (showAnse) {
+        const anseCum = getCellAnseManwon(id, yr);
+        const anseInc = getPlanAnseManwon(id, yr);
+        const anseIncInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse" value="${anseInc != null ? Math.round(+anseInc) : ''}" placeholder="0" oninput="updatePlanCumulatives()">`;
+        anseHtml = `<div class="anse-sub"><span class="anse-val" id="pacum-${id}-${yr}">${anseCum || '-'}</span>${anseIncInp}</div>`;
+      }
+    }
+    return `<td><span class="actual-ro" id="pcum-${id}-${yr}">${fmt(cum)}</span>${incInpHtml}${anseHtml}</td>`;
   };
 
   const mkCell = (id, yr, showAnse) => {
-    if (yr === currentYear) return mkSplitCell(id, yr, showAnse);
-    return isActualCell(id, yr) ? mkActualCell(id, yr, showAnse) : mkPlanCell(id, yr, showAnse);
+    if (isActualCell(id, yr)) return mkActualCell(id, yr, showAnse);
+    return mkNonActualCell(id, yr, showAnse);
   };
 
   const _allAccs = getActiveAccounts();
@@ -4201,6 +4249,47 @@ function renderPrincipalTable() {
   body += '</tbody>';
   const cg = buildColgroup(years);
   wrap.innerHTML = `<table class="apt" style="width:${152 + years.length * 88}px">${cg}${h}${body}</table>`;
+}
+
+function updatePlanCumulatives() {
+  const currentYear = new Date().getFullYear();
+  const years = getPlanYearRange().filter(yr => yr >= currentYear);
+  const _allAccs = getActiveAccounts();
+  const allIds = _allAccs.map(a => a.id)
+    .filter(id => MY_ACC_IDS.includes(id) || WIFE_ACC_IDS.includes(id));
+  for (const id of allIds) {
+    let prevCum = getActualCumManwon(id, currentYear - 1);
+    let prevAnseCum = DC_ACC_IDS.has(id) ? 0 : getActualAnseManwon([id], currentYear - 1);
+    for (const yr of years) {
+      const isCurrentYr = yr === currentYear;
+      let cum, anseCum;
+      if (isCurrentYr) {
+        const actual = getActualCumManwon(id, yr);
+        const extraInp = document.querySelector(`input[data-pk="${id}_extra"][data-py="${yr}"]`);
+        cum = actual + (extraInp ? (Number(extraInp.value) || 0) : 0);
+        if (!DC_ACC_IDS.has(id)) {
+          const anseActual = getActualAnseManwon([id], yr);
+          const anseExtraInp = document.querySelector(`input[data-pk="${id}_anse_extra"][data-py="${yr}"]`);
+          anseCum = anseActual + (anseExtraInp ? (Number(anseExtraInp.value) || 0) : 0);
+        }
+      } else {
+        const incInp = document.querySelector(`input[data-pk="${id}"][data-py="${yr}"]`);
+        cum = prevCum + (incInp ? (Number(incInp.value) || 0) : 0);
+        if (!DC_ACC_IDS.has(id)) {
+          const anseInp = document.querySelector(`input[data-pk="${id}_anse"][data-py="${yr}"]`);
+          anseCum = prevAnseCum + (anseInp ? (Number(anseInp.value) || 0) : 0);
+        }
+      }
+      const cumSpan = document.getElementById(`pcum-${id}-${yr}`);
+      if (cumSpan) cumSpan.textContent = fmt(cum) || '-';
+      if (!DC_ACC_IDS.has(id)) {
+        const anseCumSpan = document.getElementById(`pacum-${id}-${yr}`);
+        if (anseCumSpan) anseCumSpan.textContent = anseCum != null ? (anseCum || '-') : '-';
+        prevAnseCum = anseCum != null ? anseCum : prevAnseCum;
+      }
+      prevCum = cum;
+    }
+  }
 }
 
 // Year-end evaluation (원) for an account group from monthlyRecords
@@ -5240,9 +5329,7 @@ function computeWithdrawalSim() {
       if (DC_ACC_IDS.has(accId)) {
         anse = 0;
       } else if (initYr > currentYear) {
-        // 미래 연도: 연간계획에 입력된 계좌별 안세공 값 사용
-        const planMv = getPlanAnseManwon(accId, initYr);
-        anse = planMv != null ? Math.min(planMv * 1_000_000, total) : 0;
+        anse = Math.min(getCellAnseManwon(accId, initYr) * 1_000_000, total);
       } else {
         anse = Math.min(
           depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.anse) > 0)
@@ -5252,13 +5339,7 @@ function computeWithdrawalSim() {
       let dcPrincipal = 0;
       if (DC_ACC_IDS.has(accId)) {
         if (initYr > currentYear) {
-          const planMv = getPlanManwon(accId, initYr);
-          dcPrincipal = planMv != null
-            ? Math.min(planMv * 1_000_000, total)
-            : Math.min(
-                depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.amount) > 0)
-                  .reduce((s, t) => s + Number(t.amount), 0),
-                total);
+          dcPrincipal = Math.min(getCellManwon(accId, initYr) * 1_000_000, total);
         } else {
           dcPrincipal = Math.min(
             depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.amount) > 0)
@@ -5864,13 +5945,7 @@ function computeAccComponents(accId, year) {
   let dcPrincipal = 0;
   if (DC_ACC_IDS.has(accId)) {
     if (year > currentYear) {
-      const planMv = getPlanManwon(accId, year);
-      dcPrincipal = planMv != null
-        ? Math.min(planMv * 1_000_000, total)
-        : Math.min(
-            depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.amount) > 0)
-              .reduce((s, t) => s + Number(t.amount), 0),
-            Math.max(0, total - anse));
+      dcPrincipal = Math.min(getCellManwon(accId, year) * 1_000_000, Math.max(0, total - anse));
     } else {
       dcPrincipal = Math.min(
           depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.amount) > 0)
@@ -5911,9 +5986,9 @@ function openConsolidateModal() {
       if (refYear <= currentYear) return;
       for (const id of accIds) {
         if (!comps[id]) continue;
-        const planMv = getPlanAnseManwon(id, refYear);
-        if (planMv == null) continue;
-        const newAnse = Math.min(planMv * 1_000_000, comps[id].total);
+        const anseMv = getCellAnseManwon(id, refYear);
+        if (!anseMv) continue;
+        const newAnse = Math.min(anseMv * 1_000_000, comps[id].total);
         comps[id] = { ...comps[id], anse: newAnse, regular: Math.max(0, comps[id].total - newAnse) };
       }
     };
