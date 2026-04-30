@@ -742,6 +742,13 @@
     border: 1px solid #fbbf24; border-radius: 3px;
     text-align: right; background: #fefce8;
   }
+  .apt .actual-ro {
+    display: block; text-align: right; font-size: 11px;
+    color: #6b7280; border-bottom: 1px dashed #d1d5db; margin-bottom: 2px; padding-bottom: 1px;
+  }
+  .apt input.plan-inp.extra-inp {
+    border-color: #6ee7b7; background: #ecfdf5;
+  }
   .apt .acc-name { font-weight: 500; line-height: 1.2; }
   .apt .acc-meta {
     font-size: 9px; color: #92400e; margin-top: 2px; line-height: 1.1;
@@ -1664,7 +1671,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.18';
+const APP_VERSION = 'MyPM v2.19';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4010,6 +4017,7 @@ function hasActualTxnInYear(accId, year) {
 function isActualCell(accId, year) {
   const currentYear = new Date().getFullYear();
   if (year < currentYear) return true;
+  if (year === currentYear) return false; // current year: always show split cell
   return hasActualTxnInYear(accId, year);
 }
 
@@ -4026,6 +4034,13 @@ function getPlanAnseManwon(accId, year) {
   return (y && y[k] != null) ? Number(y[k]) : null;
 }
 
+// Get current-year extra plan deposit (on top of actual records), in 백만원
+function getPlanExtraManwon(accId, year) {
+  const y = annualPlan.deposits[String(year)];
+  const k = accId + '_extra';
+  return (y && y[k] != null) ? Number(y[k]) : null;
+}
+
 // Cumulative anse deposits for accId list up to end of year, in 백만원 (integer)
 function getActualAnseManwon(accIds, year) {
   const end = `${year}-12-31`;
@@ -4036,9 +4051,15 @@ function getActualAnseManwon(accIds, year) {
   return Math.round(won / 1000000); // 원 → 백만원 (정수)
 }
 
-// Get the display value (만원) for an account cell (actual or plan)
+// Get the display value (백만원) for an account cell (actual or plan)
 function getCellManwon(accId, year) {
   if (isActualCell(accId, year)) return getActualCumManwon(accId, year);
+  const currentYear = new Date().getFullYear();
+  if (year === currentYear) {
+    const actual = getActualCumManwon(accId, year);
+    const extra  = getPlanExtraManwon(accId, year);
+    return actual + (extra != null ? extra : 0);
+  }
   const p = getPlanManwon(accId, year);
   return p != null ? p : 0;
 }
@@ -4070,7 +4091,6 @@ function renderPrincipalTable() {
   if (!wrap) return;
   const years = getPlanYearRange();
   const currentYear = new Date().getFullYear();
-  const DC_ID = 'dc';
 
   // header
   let h = '<thead><tr><th>계좌</th>';
@@ -4095,6 +4115,22 @@ function renderPrincipalTable() {
     const anseInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse" value="${anse != null ? Math.round(+anse) : ''}" placeholder="0">`;
     return `<td>${inp}<div class="anse-sub">${anseInp}</div></td>`;
   };
+  // Split cell for current year: actual (read-only) + extra plan input
+  const mkSplitCell = (id, yr, showAnse) => {
+    const actual = getActualCumManwon(id, yr);
+    const extra  = getPlanExtraManwon(id, yr);
+    const extraInp = `<input class="plan-inp extra-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_extra" value="${extra != null ? Math.round(+extra) : ''}" placeholder="+0">`;
+    if (!showAnse) return `<td><span class="actual-ro">${fmt(actual)}</span>${extraInp}</td>`;
+    const anseActual = getActualAnseManwon([id], yr);
+    const anseExtra  = getPlanExtraManwon(id + '_anse', yr);
+    const anseExtraInp = `<input class="anse-inp" type="number" min="0" step="1" data-py="${yr}" data-pk="${id}_anse_extra" value="${anseExtra != null ? Math.round(+anseExtra) : ''}" placeholder="+0">`;
+    return `<td><span class="actual-ro">${fmt(actual)}</span>${extraInp}<div class="anse-sub"><span class="anse-val">${anseActual || '-'}</span>${anseExtraInp}</div></td>`;
+  };
+
+  const mkCell = (id, yr, showAnse) => {
+    if (yr === currentYear) return mkSplitCell(id, yr, showAnse);
+    return isActualCell(id, yr) ? mkActualCell(id, yr, showAnse) : mkPlanCell(id, yr, showAnse);
+  };
 
   const _allAccs = getActiveAccounts();
   const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
@@ -4104,14 +4140,12 @@ function renderPrincipalTable() {
 
   // MY accounts
   for (const id of _activeMyIds) {
-    const showAnse = id !== DC_ID;
+    const showAnse = !DC_ACC_IDS.has(id);
     const nameCell = showAnse
       ? `<div class="acc-name">${getAccName(id)}</div><div class="acc-meta">안세공</div>`
       : `<div class="acc-name">${getAccName(id)}</div>`;
     body += `<tr><td>${nameCell}</td>`;
-    for (const yr of years) {
-      body += isActualCell(id, yr) ? mkActualCell(id, yr, showAnse) : mkPlanCell(id, yr, showAnse);
-    }
+    for (const yr of years) body += mkCell(id, yr, showAnse);
     body += '</tr>';
   }
 
@@ -4123,14 +4157,15 @@ function renderPrincipalTable() {
   }
   body += '</tr>';
 
-  // WIFE accounts (all show anse)
+  // WIFE accounts
   if (_activeWifeIds.length) {
     for (const id of _activeWifeIds) {
-      const nameCell = `<div class="acc-name">${getAccName(id)}</div><div class="acc-meta">안세공</div>`;
+      const showAnse = !DC_ACC_IDS.has(id);
+      const nameCell = showAnse
+        ? `<div class="acc-name">${getAccName(id)}</div><div class="acc-meta">안세공</div>`
+        : `<div class="acc-name">${getAccName(id)}</div>`;
       body += `<tr><td style="padding-left:14px;color:var(--muted)">${nameCell}</td>`;
-      for (const yr of years) {
-        body += isActualCell(id, yr) ? mkActualCell(id, yr, true) : mkPlanCell(id, yr, true);
-      }
+      for (const yr of years) body += mkCell(id, yr, showAnse);
       body += '</tr>';
     }
 
