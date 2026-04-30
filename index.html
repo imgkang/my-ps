@@ -1664,7 +1664,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.17';
+const APP_VERSION = 'MyPM v2.18';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3897,14 +3897,14 @@ function init() {
   }
 }
 
+// ===== 연간 계획 =====
+const ANNUAL_PLAN_KEY = 'pension_annual_plan_v1';
+let annualPlan = loadAnnualPlan();
+
 // 기존의 render(); 대신 init(); 을 호출
 init();  //render();
 
 // 페이지 로드(F5) 시 init()에서 이미 refreshAll()이 호출되므로 별도 처리 불필요
-
-// ===== 연간 계획 =====
-const ANNUAL_PLAN_KEY = 'pension_annual_plan_v1';
-let annualPlan = loadAnnualPlan();
 
 function getActiveAccounts() {
   const myActive = appSettings.my?.activeAccIds || MY_ACC_IDS;
