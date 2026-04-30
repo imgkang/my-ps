@@ -1549,6 +1549,7 @@
       </div>
       <button class="close-btn" onclick="closeConsolidateModal()">×</button>
     </div>
+    <div id="consAutoLogWrap" style="display:none;margin-bottom:12px"></div>
     <div class="cons-wrap">
       <div>
         <div class="cons-section-title">현재 계좌 현황</div>
@@ -1770,7 +1771,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.24';
+const APP_VERSION = 'MyPM v2.25';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4982,6 +4983,7 @@ const WITHDRAWAL_KEY = 'pension_withdrawal_v1';
 let wdPlan = loadWdPlan();
 let wdConsolidated = null;
 let _consTotals = null;
+let autoConsolidateLog = null; // { my: {pp2Ids, pp1Ids, totalAnse, pp2Total, pp1Total} | null, wife: ... | null }
 
 // appSettings에 생년 데이터가 없으면 wdPlan에서 마이그레이션
 if (!appSettings.myBirthYear && wdPlan.myBirthYear) {
@@ -5371,7 +5373,7 @@ function computeAccStartBal(accId, startYear) {
 
 function autoConsolidateForSim(nonDcIds, state, pp1Key, pp2Key) {
   const totalAnse = nonDcIds.reduce((s, id) => s + (state[id]?.anse || 0), 0);
-  if (totalAnse <= 0) return;
+  if (totalAnse <= 0) return null;
 
   // Determine which accounts become pp2 (need combined total > totalAnse)
   let pp2Ids = [];
@@ -5386,7 +5388,7 @@ function autoConsolidateForSim(nonDcIds, state, pp1Key, pp2Key) {
       pp2Ids.push(id);
       if (running > totalAnse) break;
     }
-    if (running <= totalAnse) return; // can't exceed totalAnse — fail silently
+    if (running <= totalAnse) return null; // can't exceed totalAnse — fail silently
   }
 
   const pp2Total = pp2Ids.reduce((s, id) => s + (state[id]?.total || 0), 0);
@@ -5398,6 +5400,7 @@ function autoConsolidateForSim(nonDcIds, state, pp1Key, pp2Key) {
   }
   state[pp2Key] = { anse: totalAnse, dcPrincipal: 0, regular: Math.max(0, pp2Total - totalAnse), total: pp2Total };
   state[pp1Key] = { anse: 0, dcPrincipal: 0, regular: pp1Total, total: pp1Total };
+  return { pp2Ids, pp1Ids, totalAnse, pp2Total, pp1Total };
 }
 
 function computeWithdrawalSim() {
@@ -5435,6 +5438,7 @@ function computeWithdrawalSim() {
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
 
   // 초기 잔액 계산 (통합 모드 or 개별 계산)
+  autoConsolidateLog = null;
   const state = {};
   if (wdConsolidated && wdConsolidated.startYear === startYear) {
     const c = wdConsolidated;
@@ -5485,14 +5489,15 @@ function computeWithdrawalSim() {
       state[accId] = { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
     }
     // 자동 통합설정 적용
+    autoConsolidateLog = { my: null, wife: null };
     if (wp.myAutoConsolidate) {
       const myNonDcIds = activeMyIds.filter(id => !DC_ACC_IDS.has(id));
-      autoConsolidateForSim(myNonDcIds, state, 'pension1', 'pension2');
+      autoConsolidateLog.my = autoConsolidateForSim(myNonDcIds, state, 'pension1', 'pension2');
     }
     if (wp.wifeAutoConsolidate) {
       const activeWifeIds = getActiveWifeAccIds();
       const wifeNonDcIds  = activeWifeIds.filter(id => !DC_ACC_IDS.has(id));
-      autoConsolidateForSim(wifeNonDcIds, state, 'wife_pension1', 'wife_pension2');
+      autoConsolidateLog.wife = autoConsolidateForSim(wifeNonDcIds, state, 'wife_pension1', 'wife_pension2');
     }
   }
   const initState = {};
@@ -6161,12 +6166,44 @@ function openConsolidateModal() {
   const wp1Anse = c ? mv(c.wifePP1Anse)  : mv(comps['wife_pension1'].anse);
   const wp1Total = c ? mv(c.wifePP1Anse + c.wifePP1Regular) : mv(comps['wife_pension1'].total);
 
+  renderConsAutoLog();
   renderConsLeftTable(comps);
   renderConsRightTable(pp1Anse, wp1Anse, wp1Total);
   document.getElementById('consolidateModal').classList.add('open');
 }
 function closeConsolidateModal() { document.getElementById('consolidateModal').classList.remove('open'); }
 function handleConsBackdropClick(e) { if (e.target.id === 'consolidateModal') closeConsolidateModal(); }
+
+function renderConsAutoLog() {
+  const wrap = document.getElementById('consAutoLogWrap');
+  if (!wrap) return;
+  const log = autoConsolidateLog;
+  if (!log || (!log.my && !log.wife)) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const mv = won => Math.round(won / 1_000_000).toLocaleString();
+  const accNames = ids => ids.length ? ids.map(getAccName).join(' + ') : '없음';
+  let h = `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px">
+    <div style="font-weight:600;font-size:13px;color:#166534;margin-bottom:8px">🔀 자동 통합 적용 결과</div>`;
+  if (log.my) {
+    const r = log.my;
+    h += `<div style="font-size:12px;color:#15803d;margin-bottom:4px"><b>본인</b></div>
+    <div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:6px">
+      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)<br>
+      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}
+    </div>`;
+  }
+  if (log.wife) {
+    const r = log.wife;
+    const wt = getWifeTitle();
+    h += `<div style="font-size:12px;color:#15803d;margin-bottom:4px"><b>${wt}</b></div>
+    <div style="font-size:12px;color:#374151;line-height:1.8">
+      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)<br>
+      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}
+    </div>`;
+  }
+  h += `</div>`;
+  wrap.innerHTML = h;
+  wrap.style.display = 'block';
+}
 
 function renderConsLeftTable(comps) {
   const t = _consTotals;
