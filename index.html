@@ -1011,7 +1011,7 @@
           <li><strong>Google Drive API</strong> 활성화</li>
           <li>발급된 클라이언트 ID를 위 입력란에 붙여넣기</li>
         </ol>
-        <div style="margin-top:8px">💡 데이터는 본인 구글 드라이브의 앱 전용 폴더에 저장되어 다른 앱에서 볼 수 없습니다.</div>
+        <div style="margin-top:8px">💡 데이터는 본인 구글 드라이브에 <code>mypm-data.json</code> 파일로 저장됩니다.</div>
       </div>
 
     </div>
@@ -1766,7 +1766,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.21';
+const APP_VERSION = 'MyPM v2.22';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6356,7 +6356,7 @@ function initGIS() {
   }
   window._gisClient = google.accounts.oauth2.initTokenClient({
     client_id: driveClientId,
-    scope: 'https://www.googleapis.com/auth/drive.appdata',
+    scope: 'https://www.googleapis.com/auth/drive.file',
     callback: resp => {
       if (resp.error) { setDriveStatus('error', '로그인 실패: ' + resp.error); return; }
       driveAccessToken = resp.access_token;
@@ -6395,7 +6395,7 @@ async function driveReq(url, opts = {}) {
 async function driveFindFile() {
   if (driveFileId) return driveFileId;
   const res = await driveReq(
-    "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'mypm-data.json'&fields=files(id)"
+    "https://www.googleapis.com/drive/v3/files?q=name%3D'mypm-data.json'+and+trashed%3Dfalse&fields=files(id)"
   );
   const data = await res.json();
   const id = data.files && data.files[0] ? data.files[0].id : null;
@@ -6443,7 +6443,7 @@ async function driveSave() {
         { method: 'PATCH', body: blob, headers: { 'Content-Type': 'application/json' } }
       );
     } else {
-      const meta = JSON.stringify({ name: 'mypm-data.json', parents: ['appDataFolder'] });
+      const meta = JSON.stringify({ name: 'mypm-data.json' });
       const form = new FormData();
       form.append('metadata', new Blob([meta], { type: 'application/json' }));
       form.append('file', blob);
