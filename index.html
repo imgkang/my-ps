@@ -1766,7 +1766,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.22';
+const APP_VERSION = 'MyPM v2.23';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6299,6 +6299,9 @@ function loadDriveSettings() {
     driveFileId   = s.fileId   || null;
     driveLastSync = s.lastSync || null;
   } catch(_) {}
+  // 새로고침 후에도 토큰 유지 (sessionStorage는 탭 닫으면 자동 삭제)
+  const saved = sessionStorage.getItem('drive_token');
+  if (saved) driveAccessToken = saved;
 }
 function saveDriveSettings() {
   localStorage.setItem(DRIVE_SETTINGS_KEY, JSON.stringify({
@@ -6360,6 +6363,7 @@ function initGIS() {
     callback: resp => {
       if (resp.error) { setDriveStatus('error', '로그인 실패: ' + resp.error); return; }
       driveAccessToken = resp.access_token;
+      sessionStorage.setItem('drive_token', resp.access_token);
       updateDriveUI();
       setDriveStatus('ok', '✅ Google Drive 연결됨');
     }
@@ -6376,6 +6380,7 @@ function driveSignOut() {
     google.accounts.oauth2.revoke(driveAccessToken);
   }
   driveAccessToken = null;
+  sessionStorage.removeItem('drive_token');
   updateDriveUI();
 }
 
