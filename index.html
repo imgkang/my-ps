@@ -1771,7 +1771,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.26';
+const APP_VERSION = 'MyPM v2.27';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6388,9 +6388,16 @@ function loadDriveSettings() {
     driveFileId   = s.fileId   || null;
     driveLastSync = s.lastSync || null;
   } catch(_) {}
-  // 새로고침 후에도 토큰 유지 (sessionStorage는 탭 닫으면 자동 삭제)
-  const saved = sessionStorage.getItem('drive_token');
-  if (saved) driveAccessToken = saved;
+  // 토큰: localStorage에 만료시각과 함께 저장 (탭 닫아도 유지)
+  try {
+    const t = JSON.parse(localStorage.getItem('drive_token_v2') || 'null');
+    if (t && t.token && t.expiresAt > Date.now()) {
+      driveAccessToken = t.token;
+    } else {
+      localStorage.removeItem('drive_token_v2');
+    }
+  } catch(_) { localStorage.removeItem('drive_token_v2'); }
+  sessionStorage.removeItem('drive_token'); // 구버전 키 정리
 }
 function saveDriveSettings() {
   localStorage.setItem(DRIVE_SETTINGS_KEY, JSON.stringify({
@@ -6398,6 +6405,8 @@ function saveDriveSettings() {
   }));
 }
 loadDriveSettings();
+// clientId가 저장되어 있으면 앱 로드 시 GIS 초기화 + 무음 재인증 시도
+if (driveClientId) initGIS();
 
 function openDriveModal() {
   document.getElementById('driveClientIdInput').value = driveClientId;
@@ -6446,17 +6455,29 @@ function initGIS() {
   if (typeof google === 'undefined' || !google.accounts) {
     setTimeout(initGIS, 500); return;
   }
+  let _silentPending = false;
   window._gisClient = google.accounts.oauth2.initTokenClient({
     client_id: driveClientId,
     scope: 'https://www.googleapis.com/auth/drive.file',
     callback: resp => {
-      if (resp.error) { setDriveStatus('error', '로그인 실패: ' + resp.error); return; }
+      const wasSilent = _silentPending;
+      _silentPending = false;
+      if (resp.error) {
+        if (!wasSilent) setDriveStatus('error', '로그인 실패: ' + resp.error);
+        return;
+      }
+      const expiresAt = Date.now() + ((resp.expires_in || 3600) * 1000) - 60000;
+      localStorage.setItem('drive_token_v2', JSON.stringify({ token: resp.access_token, expiresAt }));
       driveAccessToken = resp.access_token;
-      sessionStorage.setItem('drive_token', resp.access_token);
       updateDriveUI();
       setDriveStatus('ok', '✅ Google Drive 연결됨');
     }
   });
+  // 유효한 토큰이 없으면 무음 재인증 시도 (이미 동의한 계정은 UI 없이 바로 연결)
+  if (!driveAccessToken) {
+    _silentPending = true;
+    window._gisClient.requestAccessToken({ prompt: 'none' });
+  }
 }
 
 function driveSignIn() {
@@ -6469,7 +6490,7 @@ function driveSignOut() {
     google.accounts.oauth2.revoke(driveAccessToken);
   }
   driveAccessToken = null;
-  sessionStorage.removeItem('drive_token');
+  localStorage.removeItem('drive_token_v2');
   updateDriveUI();
 }
 
@@ -6480,8 +6501,12 @@ async function driveReq(url, opts = {}) {
     headers: { 'Authorization': 'Bearer ' + driveAccessToken, ...(opts.headers || {}) }
   });
   if (res.status === 401) {
-    driveAccessToken = null; updateDriveUI();
-    throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    driveAccessToken = null;
+    localStorage.removeItem('drive_token_v2');
+    // 무음 재인증 시도 — 성공하면 UI가 자동 업데이트됨
+    if (window._gisClient) window._gisClient.requestAccessToken({ prompt: 'none' });
+    else updateDriveUI();
+    throw new Error('인증이 만료되었습니다. 잠시 후 다시 시도해주세요.');
   }
   return res;
 }
