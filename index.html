@@ -1506,7 +1506,6 @@
           <option value="no">금액만 이전</option>
         </select>
       </label>
-      <label><span>이전 후 남는 원금</span><input type="text" id="transferRemaining" inputmode="numeric" readonly style="background:#f8fafc;color:var(--muted)"></label>
     </div>
     <div id="trRemainSection" style="display:none;margin:4px 0 10px">
       <div class="transfer-section-title">이전 후 남는 현황 (이전 계좌)</div>
@@ -1841,7 +1840,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.32';
+const APP_VERSION = 'MyPM v2.33';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2316,13 +2315,9 @@ function updateTransferRemaining() {
       document.getElementById('trRemainSection').style.display = 'none';
     }
 
-    // 기존 이전 후 남는 원금 (원금재원 기반)
-    document.getElementById('transferRemaining').value = (bal - principal).toLocaleString('ko-KR');
   } else {
     document.getElementById('trDateInfoSection').style.display = 'none';
     document.getElementById('trRemainSection').style.display   = 'none';
-    const remain = getAccountNetTotal(from) - principal;
-    document.getElementById('transferRemaining').value = remain.toLocaleString('ko-KR');
   }
 }
 function migrateAccountInvestmentHistory(fromAccId, toAccId) {
@@ -2360,31 +2355,24 @@ function saveTransferTxn() {
   const amount = Number(String(document.getElementById('transferAmount').value || '').replace(/[^\d]/g, ''));
   const taxCredit = Number(String(document.getElementById('transferTaxCredit').value || '').replace(/[^\d]/g, '')) || 0;
   const taxLimit = Number(String(document.getElementById('transferTaxLimit').value || '').replace(/[^\d]/g, '')) || 3000000;
-  const remainingPrincipal = Number(String(document.getElementById('transferRemaining').value || '').replace(/[^\d]/g, ''));
   const moveHistory = document.getElementById('transferMoveHistory').value === 'yes';
   if (!fromAccId || !toAccId || fromAccId === toAccId) { alert('서로 다른 이전 계좌를 선택해 주세요.'); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('유효한 이전일을 선택해 주세요.'); return; }
   if (!principal || !amount || principal <= 0 || amount <= 0) { alert('원금재원과 이전액을 입력해 주세요.'); return; }
-  if (isNaN(remainingPrincipal) || remainingPrincipal < 0) { alert('이전 후 남는 원금을 0 이상으로 입력해 주세요.'); return; }
   if (principal > getAccountNetTotal(fromAccId)) { alert('이전 원금재원이 현재 계좌 원금을 초과합니다.'); return; }
   if (moveHistory) migrateAccountInvestmentHistory(fromAccId, toAccId);
-  const cappedCredit = Math.min(taxCredit, taxLimit, amount);
-  const remainingAnsePool = Math.max(principal - amount, 0);
-  const transferAnse = Math.min(Math.max(amount - cappedCredit, 0), remainingAnsePool);
-  const fromPrincipalAfterTransfer = getAccountNetTotal(fromAccId) - amount;
-  const fromAdjust = remainingPrincipal - fromPrincipalAfterTransfer;
+  const fromTxnsBeforeDate = depositData.transactions.filter(t => t.accId === fromAccId && t.date <= date);
+  const fromBal = fromTxnsBeforeDate.reduce((s, t) => s + Number(t.amount), 0);
+  const fromAnse = Math.max(0, fromTxnsBeforeDate.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+  const transferRatio = fromBal > 0 ? Math.min(1, amount / fromBal) : 0;
+  const transferAnse = Math.round(fromAnse * transferRatio);
   depositData.transactions.push({
     id: generateTxnId(), accId: fromAccId, date, amount: -amount,
     ...(transferAnse > 0 ? { anse: -transferAnse } : {}),
-    transfer: { role: 'from', toAccId, principal, amount, taxCredit: cappedCredit, taxLimit }
+    transfer: { role: 'from', toAccId, principal, amount, taxCredit: taxCredit, taxLimit }
   });
-  if (fromAdjust !== 0) {
-    depositData.transactions.push({
-      id: generateTxnId(), accId: fromAccId, date, amount: fromAdjust, transfer: { role: 'from_adjust', toAccId, principal, amount, remainingPrincipal }
-    });
-  }
   depositData.transactions.push({
-    id: generateTxnId(), accId: toAccId, date, amount, anse: transferAnse, transfer: { role: 'to', fromAccId, principal, amount, taxCredit: cappedCredit, taxLimit, remainingAnsePool }
+    id: generateTxnId(), accId: toAccId, date, amount, anse: transferAnse, transfer: { role: 'to', fromAccId, principal, amount, taxCredit: taxCredit, taxLimit }
   });
   saveDeposits();
   closeTransferEditor();
