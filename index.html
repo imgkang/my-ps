@@ -915,6 +915,65 @@
   .drive-setup code { background: #fef3c7; padding: 1px 5px; border-radius: 3px;
     font-family: monospace; font-size: 11px; }
   .drive-setup ol { margin: 6px 0 0 16px; padding: 0; }
+
+  /* ===== 모바일 최적화 ===== */
+  @media (max-width: 640px) {
+    /* iOS 자동 줌인 방지: 입력칸 폰트 16px 이상 */
+    input[type="text"], input[type="number"], input[type="date"],
+    input[type="email"], input[type="password"], input[type="tel"],
+    select, textarea {
+      font-size: 16px !important;
+    }
+    .txn-form select,
+    .txn-form input[type="date"],
+    .txn-form input[type="text"] {
+      font-size: 16px !important;
+      padding: 10px 12px;
+    }
+    /* 모달 패딩 축소 */
+    .modal-backdrop { padding: 8px; }
+    .modal { padding: 16px; border-radius: 10px; max-height: 95vh; }
+    .modal-header { margin-bottom: 12px; }
+    .modal-header h2 { font-size: 16px; }
+    .modal-header .close-btn { font-size: 28px; padding: 4px 10px; }
+    /* txn-form 라벨을 세로 스택으로 */
+    .txn-form label {
+      grid-template-columns: 1fr;
+      gap: 4px;
+      font-size: 13px;
+    }
+    .txn-form label > span { font-size: 12px; }
+    /* 버튼 터치 영역 확대 */
+    .btn-primary, .btn-secondary, .btn-danger {
+      padding: 10px 14px; font-size: 14px;
+      min-height: 40px;
+    }
+    .modal-actions { gap: 8px; flex-wrap: wrap; }
+    .modal-actions button { flex: 1; min-width: 100px; }
+    /* deposit toolbar */
+    .deposit-toolbar { flex-wrap: wrap; gap: 6px; }
+    .deposit-toolbar button { flex: 1; min-width: 130px; font-size: 13px; padding: 10px 12px; }
+    .deposit-toolbar .btn-primary { padding: 10px 12px; font-size: 13px; }
+    /* 입출금 리스트: 컬럼 압축 */
+    .deposit-list-header {
+      grid-template-columns: 88px 1fr 1fr 60px;
+      gap: 4px; padding: 6px 8px; font-size: 10px;
+    }
+    #depositList .txn-row {
+      grid-template-columns: 88px 1fr 1fr 60px;
+      gap: 4px; padding: 6px 8px; font-size: 12px;
+    }
+    #depositList .txn-date { font-size: 11px; padding: 2px 4px; }
+    #depositList .txn-acc { font-size: 12px; }
+    .txn-anse-badge { font-size: 10px; padding: 1px 5px; }
+    /* 이전 모달 정보 그리드 */
+    .transfer-info-grid { padding: 8px 10px; font-size: 12px; gap: 5px 10px; }
+    /* 일반 폼 입력 패딩 */
+    input[type="text"], input[type="number"] { padding: 11px 12px; }
+    /* 상단 카드/섹션 좁힘 */
+    body { padding: 12px; }
+    .card { padding: 14px; }
+  }
 </style>
 </head>
 <body>
@@ -1411,7 +1470,6 @@
     <div class="deposit-grand" id="depositGrand"></div>
     <div class="deposit-totals" id="depositTotals"></div>
     <div class="deposit-toolbar">
-      <button class="btn-secondary" onclick="openTransferModal()" style="font-size:13px;font-weight:600">📂 계좌이전</button>
       <button class="btn-primary" onclick="openTxnEditor()">➕ 입출금 추가</button>
       <button class="btn-secondary" onclick="openTransferEditor()">🔁 계좌이전</button>
     </div>
@@ -1837,7 +1895,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.38';
+const APP_VERSION = 'MyPM v2.39';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2221,7 +2279,6 @@ function handleTxnBackdropClick(e) {
   if (e.target.id === 'txnEditorModal') closeTxnEditor();
 }
 
-// ===== 계좌이전 계산기 =====
 function saveTxn() {
   const accId = document.getElementById('txnAccount').value;
   const type = document.getElementById('txnType').value;
