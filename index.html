@@ -974,6 +974,21 @@
     body { padding: 12px; }
     .card { padding: 14px; }
   }
+  /* 월 적립식 계획 */
+  .mplan-add-form {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 14px;
+  }
+  .mplan-add-form input, .mplan-add-form select {
+    padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 12px; font-family: inherit; background: #fff;
+  }
+  .mplan-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 6px; }
+  .mplan-table th { background: #f3f4f6; padding: 5px 8px; text-align: left; font-weight: 600; color: var(--muted); border: 1px solid var(--border); }
+  .mplan-table td { padding: 5px 8px; border: 1px solid var(--border); }
+  .mplan-table tr:hover td { background: #fafafa; }
+  .mplan-del { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 4px; }
 </style>
 </head>
 <body>
@@ -1637,21 +1652,44 @@
 
     <div class="plan-unit-note" style="margin-bottom:6px">* 단위: 백만원(정수) / 회색 열 = 실적, 초록 입력란 = 계획 / 안세공재원은 항상 편집 가능</div>
 
+    <!-- 월 적립식 계획 -->
+    <div class="apt-section-hdr" style="margin-bottom:8px">
+      📆 월 적립식 계획
+    </div>
+    <div id="monthlyPlanList" style="margin-bottom:10px"></div>
+    <div class="mplan-add-form">
+      <select id="mplanAcc" style="flex:2;min-width:90px"></select>
+      <input type="number" id="mplanAmt" placeholder="월적립(만원)" min="0" step="1" style="flex:1.2;min-width:70px">
+      <input type="number" id="mplanAnse" placeholder="안세공(만원)" min="0" step="1" style="flex:1.2;min-width:70px">
+      <input type="number" id="mplanStartY" placeholder="시작년" min="2020" max="2060" step="1" value="2026" style="flex:1;min-width:60px">
+      <input type="number" id="mplanStartM" placeholder="시작월" min="1" max="12" step="1" value="1" style="flex:.8;min-width:44px">
+      <span style="align-self:center;color:var(--muted);font-size:12px">~</span>
+      <input type="number" id="mplanEndY" placeholder="종료년" min="2020" max="2070" step="1" value="2056" style="flex:1;min-width:60px">
+      <input type="number" id="mplanEndM" placeholder="종료월" min="1" max="12" step="1" value="12" style="flex:.8;min-width:44px">
+      <button class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
+    </div>
+
     <div class="annual-plan-combined">
+      <!-- 원금 차트 -->
       <div class="apt-section-hdr">
-        📋 원금 기록 및 계획
+        📊 원금 추이 (백만원)
         <button class="btn-primary" style="font-size:11px;padding:3px 10px;font-weight:600" onclick="saveAnnualPlan()">💾 저장</button>
       </div>
+      <div style="position:relative;height:200px;margin-bottom:4px"><canvas id="annualPrinChart"></canvas></div>
+      <div class="apt-section-hdr">📋 원금 기록 및 계획</div>
       <div class="annual-plan-wrap" id="principalTableWrap"></div>
 
-      <div class="apt-section-hdr eval-hdr">
-        📈 평가 기록 및 예상
+      <!-- 평가 차트 -->
+      <div class="apt-section-hdr eval-hdr" style="margin-top:16px">
+        📈 평가금액 추이 (백만원)
         <span style="font-size:12px;font-weight:400;color:var(--muted)">예상수익률</span>
         <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
                style="width:56px;padding:2px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;text-align:right"
-               oninput="renderEvalTable(); renderAccSummary()">
+               oninput="renderEvalTable(); renderAnnualCharts(); renderAccSummary()">
         <span style="font-size:12px;font-weight:400;color:var(--muted)">%/년 · 실적 이후 복리 적용</span>
       </div>
+      <div style="position:relative;height:200px;margin-bottom:4px"><canvas id="annualEvalChart"></canvas></div>
+      <div class="apt-section-hdr">📋 평가 기록 및 예상</div>
       <div class="annual-plan-wrap" id="evalTableWrap"></div>
     </div>
 
@@ -1895,7 +1933,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.39';
+const APP_VERSION = 'MyPM v2.40';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3082,7 +3120,8 @@ function importFromFile(event) {
       if (src.annualPlan && typeof src.annualPlan === 'object') {
         newAnnualPlan = {
           deposits: (src.annualPlan.deposits && typeof src.annualPlan.deposits === 'object') ? src.annualPlan.deposits : {},
-          projRate: Number(src.annualPlan.projRate) || 7
+          projRate: Number(src.annualPlan.projRate) || 7,
+          monthlyPlans: Array.isArray(src.annualPlan.monthlyPlans) ? src.annualPlan.monthlyPlans : []
         };
       }
 
@@ -4317,8 +4356,9 @@ function loadAnnualPlan() {
       localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(migrated));
       return migrated;
     }
-    return { format: 2, deposits, projRate: Number(p.projRate) || 7 };
-  } catch (_) { return { format: 2, deposits: {}, projRate: 7 }; }
+    const monthlyPlans = Array.isArray(p.monthlyPlans) ? p.monthlyPlans : [];
+    return { format: 2, deposits, projRate: Number(p.projRate) || 7, monthlyPlans };
+  } catch (_) { return { format: 2, deposits: {}, projRate: 7, monthlyPlans: [] }; }
 }
 
 function openAnnualPlanModal() {
@@ -4326,8 +4366,16 @@ function openAnnualPlanModal() {
   if (!modal) return;
   const pr = document.getElementById('projRate');
   if (pr) pr.value = annualPlan.projRate || 7;
+  // 적립식 계좌 선택 목록 채우기
+  const sel = document.getElementById('mplanAcc');
+  if (sel) {
+    const accs = getActiveAccounts();
+    sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  }
+  renderMonthlyPlanList();
   renderPrincipalTable();
   renderEvalTable();
+  setTimeout(renderAnnualCharts, 50);
   modal.classList.add('open');
 }
 
@@ -4352,10 +4400,11 @@ function saveAnnualPlan() {
     else deps[year][key] = val;
   });
   const projRate = Number(document.getElementById('projRate').value) || 7;
-  annualPlan = { format: 2, deposits: deps, projRate };
+  annualPlan = { format: 2, deposits: deps, projRate, monthlyPlans: annualPlan.monthlyPlans || [] };
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderPrincipalTable();
   renderEvalTable();
+  renderAnnualCharts();
   renderAccSummary();
   alert('저장되었습니다.');
 }
@@ -4371,7 +4420,11 @@ function getPlanYearRange() {
     if (r.year > 2010 && r.year < startYear) startYear = r.year;
   }
   startYear = Math.min(startYear, currentYear - 1);
-  const endYear = currentYear + 7;
+  let endYear = currentYear + 7;
+  if (annualPlan.monthlyPlans && annualPlan.monthlyPlans.length) {
+    const mpEnd = Math.max(...annualPlan.monthlyPlans.map(p => p.endYear || currentYear));
+    endYear = Math.max(endYear, mpEnd);
+  }
   return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
 }
 
@@ -4428,6 +4481,40 @@ function getActualAnseManwon(accIds, year) {
   return Math.round(won / 1000000); // 원 → 백만원 (정수)
 }
 
+// Monthly plan increment for accId in a specific year (만원)
+function getMonthlyPlanIncrManwon(accId, year) {
+  const plans = (annualPlan.monthlyPlans || []).filter(p => p.accId === accId);
+  let total = 0;
+  for (const p of plans) {
+    const sy = p.startYear, sm = p.startMonth || 1;
+    const ey = p.endYear, em = p.endMonth || 12;
+    if (year < sy || year > ey) continue;
+    for (let m = 1; m <= 12; m++) {
+      if (year === sy && m < sm) continue;
+      if (year === ey && m > em) continue;
+      total += (p.monthlyAmt || 0);
+    }
+  }
+  return total;
+}
+
+// Monthly plan anse increment for accId in a specific year (만원)
+function getMonthlyPlanAnseIncrManwon(accId, year) {
+  const plans = (annualPlan.monthlyPlans || []).filter(p => p.accId === accId);
+  let total = 0;
+  for (const p of plans) {
+    const sy = p.startYear, sm = p.startMonth || 1;
+    const ey = p.endYear, em = p.endMonth || 12;
+    if (year < sy || year > ey) continue;
+    for (let m = 1; m <= 12; m++) {
+      if (year === sy && m < sm) continue;
+      if (year === ey && m > em) continue;
+      total += (p.monthlyAnse || 0);
+    }
+  }
+  return total;
+}
+
 // Get the display value (백만원) for an account cell (actual or plan)
 function getCellManwon(accId, year) {
   if (isActualCell(accId, year)) return getActualCumManwon(accId, year);
@@ -4440,7 +4527,8 @@ function getCellManwon(accId, year) {
   // Future year: cumulative = prev year cumulative + this year's increment
   const prev = getCellManwon(accId, year - 1);
   const inc = getPlanManwon(accId, year);
-  return prev + (inc != null ? inc : 0);
+  const mpInc = getMonthlyPlanIncrManwon(accId, year);
+  return prev + (inc != null ? inc : 0) + mpInc;
 }
 
 // Cumulative anse (백만원) for an account cell (actual or plan)
@@ -4454,7 +4542,8 @@ function getCellAnseManwon(accId, year) {
   }
   const prev = getCellAnseManwon(accId, year - 1);
   const inc  = getPlanAnseManwon(accId, year);
-  return prev + (inc != null ? inc : 0);
+  const mpAnse = getMonthlyPlanAnseIncrManwon(accId, year);
+  return prev + (inc != null ? inc : 0) + mpAnse;
 }
 
 function fmt(v) {
@@ -4883,6 +4972,180 @@ function renderEvalTable() {
   body += '</tbody>';
   const cg = buildColgroup(years);
   wrap.innerHTML = `<table class="apt" style="width:${152 + years.length * 88}px">${cg}${h}${body}</table>`;
+}
+
+// ===== 월 적립식 계획 =====
+function renderMonthlyPlanList() {
+  const wrap = document.getElementById('monthlyPlanList');
+  if (!wrap) return;
+  const plans = annualPlan.monthlyPlans || [];
+  if (!plans.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:6px">등록된 적립식 계획이 없습니다.</div>'; return; }
+  const rows = plans.map(p => `
+    <tr>
+      <td>${getAccName(p.accId)}</td>
+      <td style="text-align:right">${(p.monthlyAmt||0).toLocaleString('ko-KR')} 만원/월</td>
+      <td style="text-align:right">${(p.monthlyAnse||0) > 0 ? (p.monthlyAnse).toLocaleString('ko-KR')+'만원' : '-'}</td>
+      <td>${p.startYear}년 ${p.startMonth}월</td>
+      <td>${p.endYear}년 ${p.endMonth}월</td>
+      <td><button class="mplan-del" onclick="deleteMonthlyPlan('${p.id}')">🗑</button></td>
+    </tr>`).join('');
+  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>월적립</th><th>안세공</th><th>시작</th><th>종료</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function addMonthlyPlan() {
+  const accId = document.getElementById('mplanAcc').value;
+  const monthlyAmt = Number(document.getElementById('mplanAmt').value) || 0;
+  const monthlyAnse = Number(document.getElementById('mplanAnse').value) || 0;
+  const startYear = Number(document.getElementById('mplanStartY').value) || 2026;
+  const startMonth = Number(document.getElementById('mplanStartM').value) || 1;
+  const endYear = Number(document.getElementById('mplanEndY').value) || 2056;
+  const endMonth = Number(document.getElementById('mplanEndM').value) || 12;
+  if (!accId) { alert('계좌를 선택해 주세요.'); return; }
+  if (monthlyAmt <= 0) { alert('월 적립금액을 입력해 주세요.'); return; }
+  if (startYear > endYear || (startYear === endYear && startMonth > endMonth)) { alert('종료 시점이 시작 시점보다 빨리 설정되었습니다.'); return; }
+  if (!annualPlan.monthlyPlans) annualPlan.monthlyPlans = [];
+  annualPlan.monthlyPlans.push({ id: String(Date.now()), accId, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth });
+  localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+  document.getElementById('mplanAmt').value = '';
+  document.getElementById('mplanAnse').value = '';
+  renderMonthlyPlanList();
+  renderPrincipalTable();
+  renderEvalTable();
+  renderAnnualCharts();
+}
+
+function deleteMonthlyPlan(id) {
+  if (!annualPlan.monthlyPlans) return;
+  annualPlan.monthlyPlans = annualPlan.monthlyPlans.filter(p => p.id !== id);
+  localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+  renderMonthlyPlanList();
+  renderPrincipalTable();
+  renderEvalTable();
+  renderAnnualCharts();
+}
+
+// ===== 연간 계획 차트 =====
+let _annualPrinChart = null;
+let _annualEvalChart = null;
+
+function renderAnnualCharts() {
+  const years = getPlanYearRange();
+  const currentYear = new Date().getFullYear();
+  const projRate = (Number((document.getElementById('projRate') || {}).value) || annualPlan.projRate || 7) / 100;
+
+  const activeAccs = getActiveAccounts();
+  const myIds   = activeAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
+  const wifeIds = activeAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
+
+  // 원금 데이터
+  const prinMy   = years.map(yr => myIds.reduce((s, id) => s + getCellManwon(id, yr), 0));
+  const prinWife = years.map(yr => wifeIds.reduce((s, id) => s + getCellManwon(id, yr), 0));
+  const prinAll  = years.map((_, i) => prinMy[i] + prinWife[i]);
+
+  // 평가금액 데이터 (computeGroupVals와 동일 로직)
+  const recYears = [...new Set(monthlyRecords.map(r => r.year))].sort((a, b) => b - a);
+  const lastRecYear = recYears[0] || (currentYear - 1);
+
+  function computeEvalVals(accIds) {
+    const getGroupYearEnd = (ids, yr) => {
+      const recs = monthlyRecords.filter(r => r.year === yr);
+      if (!recs.length) return null;
+      const sorted = recs.sort((a, b) => b.month - a.month);
+      const last = sorted[0];
+      return ids.reduce((s, id) => s + (Number(last.accounts[id]) || 0), 0);
+    };
+    const getLastKnown = (ids) => {
+      if (!monthlyRecords.length) return 0;
+      const sorted = [...monthlyRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+      return ids.reduce((s, id) => s + (Number(sorted[0].accounts[id]) || 0), 0);
+    };
+    const vals = {};
+    let base = getLastKnown(accIds);
+    for (const yr of years) {
+      if (yr <= lastRecYear) {
+        const actual = getGroupYearEnd(accIds, yr);
+        vals[yr] = actual != null ? actual / 1_000_000 : null;
+        if (actual != null) base = actual;
+      } else {
+        const prevMil = accIds.reduce((s, id) => s + getCellManwon(id, yr - 1), 0);
+        const currMil = accIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
+        const newDeposit = Math.max(0, currMil - prevMil) * 1_000_000;
+        base = (base + newDeposit) * (1 + projRate);
+        vals[yr] = base / 1_000_000;
+      }
+    }
+    return years.map(yr => vals[yr] != null ? Math.round(vals[yr]) : null);
+  }
+
+  const evalMy   = computeEvalVals(myIds);
+  const evalWife = computeEvalVals(wifeIds);
+  const evalAll  = years.map((_, i) => {
+    const m = evalMy[i], w = evalWife[i];
+    return (m != null && w != null) ? m + w : (m ?? w);
+  });
+
+  const labels = years.map(yr => String(yr));
+  const splitIdx = years.indexOf(lastRecYear);
+
+  // 원금 차트
+  const prinCtx = document.getElementById('annualPrinChart');
+  if (prinCtx) {
+    if (_annualPrinChart) { _annualPrinChart.destroy(); _annualPrinChart = null; }
+    _annualPrinChart = new Chart(prinCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '나', data: prinMy, backgroundColor: 'rgba(59,130,246,0.7)', stack: 'a' },
+          { label: '배우자', data: prinWife.some(v => v > 0) ? prinWife : [], backgroundColor: 'rgba(249,115,22,0.6)', stack: 'a' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('ko-KR')} 백만원` } } },
+        scales: {
+          x: { stacked: true, ticks: { font: { size: 10 } } },
+          y: { stacked: true, beginAtZero: true, title: { display: true, text: '백만원', font: { size: 10 } }, ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // 평가 차트
+  const evalCtx = document.getElementById('annualEvalChart');
+  if (evalCtx) {
+    if (_annualEvalChart) { _annualEvalChart.destroy(); _annualEvalChart = null; }
+    const mkDataset = (label, data, color, dash) => ({
+      label, data: data.map((v, i) => v),
+      borderColor: color, backgroundColor: color.replace(')', ',0.1)').replace('rgb', 'rgba'),
+      pointRadius: 2, pointHoverRadius: 4, borderWidth: 2,
+      borderDash: dash || [], tension: 0.2,
+      segment: { borderDash: ctx => years[ctx.p1DataIndex] > lastRecYear ? [4, 3] : [] }
+    });
+    _annualEvalChart = new Chart(evalCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          mkDataset('합계 평가', evalAll, 'rgb(16,185,129)'),
+          mkDataset('나 평가', evalMy, 'rgb(59,130,246)'),
+          ...(wifeIds.length ? [mkDataset('배우자 평가', evalWife, 'rgb(249,115,22)')] : []),
+          { label: '합계 원금', data: prinAll, borderColor: 'rgb(107,114,128)', backgroundColor: 'rgba(107,114,128,0.05)',
+            pointRadius: 1, borderWidth: 1.5, borderDash: [3, 3], tension: 0.2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${(c.parsed.y||0).toLocaleString('ko-KR')} 백만원` } } },
+        scales: {
+          x: { ticks: { font: { size: 10 } } },
+          y: { beginAtZero: true, title: { display: true, text: '백만원', font: { size: 10 } }, ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  }
 }
 
 // ===== 배당 기록 =====
