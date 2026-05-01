@@ -1395,6 +1395,7 @@
     <div class="deposit-totals" id="depositTotals"></div>
     <div class="deposit-toolbar">
       <button class="btn-primary" onclick="openTxnEditor()">➕ 입출금 추가</button>
+      <button class="btn-secondary" onclick="openTransferEditor()">🔁 계좌이전</button>
     </div>
     <div class="deposit-list-header">
       <span>입출금일</span><span>계좌</span><span>금액</span><span></span>
@@ -1449,6 +1450,39 @@
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeTxnEditor()">취소</button>
       <button class="btn-primary" onclick="saveTxn()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 계좌이전 서브 모달 -->
+<div class="modal-backdrop" id="transferEditorModal" onclick="handleTransferBackdropClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>계좌이전</h2>
+        <div class="modal-subtitle">이전 계좌/이전받을 계좌와 원금재원·이전액·세액공제를 입력하세요</div>
+      </div>
+      <button class="close-btn" onclick="closeTransferEditor()" aria-label="닫기">×</button>
+    </div>
+    <div class="txn-form">
+      <label><span>이전할 계좌</span><select id="transferFrom"></select></label>
+      <label><span>이전받을 계좌</span><select id="transferTo"></select></label>
+      <label><span>이전일</span><input type="date" id="transferDate"></label>
+      <label><span>원금재원 (원)</span><input type="text" id="transferPrincipal" inputmode="numeric"></label>
+      <label><span>실제 이전액 (원)</span><input type="text" id="transferAmount" inputmode="numeric"></label>
+      <label><span>세액공제액 (원)</span><input type="text" id="transferTaxCredit" inputmode="numeric"></label>
+      <label><span>세공 한도 (원)</span><input type="text" id="transferTaxLimit" inputmode="numeric" value="3,000,000"></label>
+      <label><span>투자기록 이전</span>
+        <select id="transferMoveHistory">
+          <option value="yes">이전받는 계좌로 전부 이동</option>
+          <option value="no">금액만 이전</option>
+        </select>
+      </label>
+      <label><span>이전 후 남는 원금</span><input type="text" id="transferRemaining" inputmode="numeric"></label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeTransferEditor()">취소</button>
+      <button class="btn-primary" onclick="saveTransferTxn()">저장</button>
     </div>
   </div>
 </div>
@@ -1771,7 +1805,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.27';
+const APP_VERSION = 'MyPM v2.30';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1955,7 +1989,8 @@ function loadDeposits() {
           accId: String(t.accId || ''),
           date: String(t.date || ''),
           amount: Number(t.amount) || 0,
-          ...(Number(t.anse) > 0 ? { anse: Number(t.anse) } : {})
+          ...(Number(t.anse) > 0 ? { anse: Number(t.anse) } : {}),
+          ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {})
         }))
         .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
       return { transactions: txns };
@@ -2064,11 +2099,13 @@ function renderDepositList() {
     const amountStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
     const anseBadge = (t.anse && Number(t.anse) > 0)
       ? `<span class="txn-anse-badge">안세공 ${Number(t.anse).toLocaleString('ko-KR')}원</span>` : '';
+    const transferBadge = t.transfer
+      ? `<span class="txn-anse-badge" style="background:#eef2ff;color:#3730a3">계좌이전</span>` : '';
     return `
       <div class="txn-row">
         <input type="date" class="txn-date" value="${t.date}" data-txnid="${t.id}" onchange="updateTxnDate('${t.id}', this.value)" title="입출금일 수정">
         <span class="txn-acc">${accName}</span>
-        <span class="txn-amount ${amountCls}">${amountStr}${anseBadge}</span>
+        <span class="txn-amount ${amountCls}">${amountStr}${anseBadge}${transferBadge}</span>
         <span style="display:flex;align-items:center;gap:2px">
           <button class="edit-btn" onclick="openTxnEditor('${t.id}')" title="편집">편집</button>
           <button class="txn-delete" onclick="deleteTxn('${t.id}')" title="삭제">×</button>
@@ -2176,6 +2213,104 @@ function saveTxn() {
   }
   saveDeposits();
   closeTxnEditor();
+  renderDepositTotals();
+  renderDepositList();
+  renderPortfolioChart();
+}
+
+function openTransferEditor() {
+  const active = getActiveAccounts();
+  const fromEl = document.getElementById('transferFrom');
+  const toEl = document.getElementById('transferTo');
+  fromEl.innerHTML = active.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  toEl.innerHTML = active.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  if (active.length > 1) toEl.value = active[1].id;
+  const now = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  document.getElementById('transferDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('transferPrincipal').value = '';
+  document.getElementById('transferAmount').value = '';
+  document.getElementById('transferTaxCredit').value = '';
+  document.getElementById('transferTaxLimit').value = '3,000,000';
+  document.getElementById('transferMoveHistory').value = 'yes';
+  updateTransferRemaining();
+  fromEl.onchange = updateTransferRemaining;
+  document.getElementById('transferPrincipal').oninput = updateTransferRemaining;
+  document.getElementById('transferEditorModal').classList.add('open');
+}
+function closeTransferEditor() {
+  document.getElementById('transferEditorModal').classList.remove('open');
+}
+function handleTransferBackdropClick(e) {
+  if (e.target.id === 'transferEditorModal') closeTransferEditor();
+}
+function updateTransferRemaining() {
+  const from = document.getElementById('transferFrom').value;
+  const principal = Number(String(document.getElementById('transferPrincipal').value || '').replace(/[^\d]/g, '')) || 0;
+  const remain = getAccountNetTotal(from) - principal;
+  document.getElementById('transferRemaining').value = `${remain.toLocaleString('ko-KR')}`;
+}
+function migrateAccountInvestmentHistory(fromAccId, toAccId) {
+  // 1) 종목별 계좌 수량/평단 기록 이전
+  holdings.forEach(h => {
+    if (!h.accounts || !h.accounts[fromAccId]) return;
+    const src = h.accounts[fromAccId];
+    const dst = h.accounts[toAccId] || { qty: 0, avgPrice: 0 };
+    const srcQty = Number(src.qty) || 0;
+    const srcAvg = Number(src.avgPrice) || 0;
+    const dstQty = Number(dst.qty) || 0;
+    const dstAvg = Number(dst.avgPrice) || 0;
+    const totalQty = srcQty + dstQty;
+    const weightedAvg = totalQty > 0 ? ((srcQty * srcAvg) + (dstQty * dstAvg)) / totalQty : 0;
+    h.accounts[toAccId] = { qty: totalQty, avgPrice: Math.round(weightedAvg) };
+    delete h.accounts[fromAccId];
+  });
+
+  // 2) 월별 계좌 평가기록 이전
+  monthlyRecords.forEach(r => {
+    if (!r.accounts || typeof r.accounts !== 'object') return;
+    const fromVal = Number(r.accounts[fromAccId]) || 0;
+    if (!fromVal) return;
+    r.accounts[toAccId] = (Number(r.accounts[toAccId]) || 0) + fromVal;
+    delete r.accounts[fromAccId];
+  });
+  saveHoldings();
+  saveMonthlyRecords();
+}
+function saveTransferTxn() {
+  const fromAccId = document.getElementById('transferFrom').value;
+  const toAccId = document.getElementById('transferTo').value;
+  const date = document.getElementById('transferDate').value;
+  const principal = Number(String(document.getElementById('transferPrincipal').value || '').replace(/[^\d]/g, ''));
+  const amount = Number(String(document.getElementById('transferAmount').value || '').replace(/[^\d]/g, ''));
+  const taxCredit = Number(String(document.getElementById('transferTaxCredit').value || '').replace(/[^\d]/g, '')) || 0;
+  const taxLimit = Number(String(document.getElementById('transferTaxLimit').value || '').replace(/[^\d]/g, '')) || 3000000;
+  const remainingPrincipal = Number(String(document.getElementById('transferRemaining').value || '').replace(/[^\d]/g, ''));
+  const moveHistory = document.getElementById('transferMoveHistory').value === 'yes';
+  if (!fromAccId || !toAccId || fromAccId === toAccId) { alert('서로 다른 이전 계좌를 선택해 주세요.'); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('유효한 이전일을 선택해 주세요.'); return; }
+  if (!principal || !amount || principal <= 0 || amount <= 0) { alert('원금재원과 이전액을 입력해 주세요.'); return; }
+  if (isNaN(remainingPrincipal) || remainingPrincipal < 0) { alert('이전 후 남는 원금을 0 이상으로 입력해 주세요.'); return; }
+  if (principal > getAccountNetTotal(fromAccId)) { alert('이전 원금재원이 현재 계좌 원금을 초과합니다.'); return; }
+  if (moveHistory) migrateAccountInvestmentHistory(fromAccId, toAccId);
+  const cappedCredit = Math.min(taxCredit, taxLimit, amount);
+  const remainingAnsePool = Math.max(principal - amount, 0);
+  const transferAnse = Math.min(Math.max(amount - cappedCredit, 0), remainingAnsePool);
+  const fromPrincipalAfterTransfer = getAccountNetTotal(fromAccId) - amount;
+  const fromAdjust = remainingPrincipal - fromPrincipalAfterTransfer;
+  depositData.transactions.push({
+    id: generateTxnId(), accId: fromAccId, date, amount: -amount, transfer: { role: 'from', toAccId, principal, amount, taxCredit: cappedCredit, taxLimit }
+  });
+  if (fromAdjust !== 0) {
+    depositData.transactions.push({
+      id: generateTxnId(), accId: fromAccId, date, amount: fromAdjust, transfer: { role: 'from_adjust', toAccId, principal, amount, remainingPrincipal }
+    });
+  }
+  depositData.transactions.push({
+    id: generateTxnId(), accId: toAccId, date, amount, anse: transferAnse, transfer: { role: 'to', fromAccId, principal, amount, taxCredit: cappedCredit, taxLimit, remainingAnsePool }
+  });
+  saveDeposits();
+  closeTransferEditor();
   renderDepositTotals();
   renderDepositList();
   renderPortfolioChart();
