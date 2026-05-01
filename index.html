@@ -1841,7 +1841,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.31';
+const APP_VERSION = 'MyPM v2.32';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2025,7 +2025,7 @@ function loadDeposits() {
           accId: String(t.accId || ''),
           date: String(t.date || ''),
           amount: Number(t.amount) || 0,
-          ...(Number(t.anse) > 0 ? { anse: Number(t.anse) } : {}),
+          ...(Number(t.anse) ? { anse: Number(t.anse) } : {}),
           ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {})
         }))
         .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
@@ -2095,9 +2095,9 @@ function renderDepositTotals() {
   for (const acc of getActiveAccounts()) {
     const total = getAccountNetTotal(acc.id);
     grand += total;
-    const anseTotal = depositData.transactions
-      .filter(t => t.accId === acc.id && Number(t.anse) > 0)
-      .reduce((s, t) => s + Number(t.anse), 0);
+    const anseTotal = Math.max(0, depositData.transactions
+      .filter(t => t.accId === acc.id)
+      .reduce((s, t) => s + (Number(t.anse) || 0), 0));
     const cls = total === 0 ? 'is-zero' : (total < 0 ? 'is-negative' : '');
     const display = total === 0 ? '-' : total.toLocaleString('ko-KR') + ' 원';
     const anseHtml = anseTotal > 0
@@ -2133,7 +2133,7 @@ function renderDepositList() {
     const amt = Number(t.amount) || 0;
     const amountCls = amt >= 0 ? 'pos' : 'neg';
     const amountStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
-    const anseBadge = (t.anse && Number(t.anse) > 0)
+    const anseBadge = (t.anse && Number(t.anse) !== 0)
       ? `<span class="txn-anse-badge">안세공 ${Number(t.anse).toLocaleString('ko-KR')}원</span>` : '';
     const transferBadge = t.transfer
       ? `<span class="txn-anse-badge" style="background:#eef2ff;color:#3730a3">계좌이전</span>` : '';
@@ -2242,7 +2242,11 @@ function saveTxn() {
   const signedAmount = type === 'withdraw' ? -amount : amount;
   if (editingTxnId) {
     const t = depositData.transactions.find(x => x.id === editingTxnId);
-    if (t) { t.accId = accId; t.date = date; t.amount = signedAmount; t.anse = anse || undefined; }
+    if (t) {
+      t.accId = accId; t.date = date; t.amount = signedAmount;
+      // 계좌이전 거래의 anse(차감 음수 포함)는 보존
+      if (!t.transfer) t.anse = anse || undefined;
+    }
   } else {
     const entry = { id: generateTxnId(), accId, date, amount: signedAmount };
     if (anse) entry.anse = anse;
@@ -2294,7 +2298,7 @@ function updateTransferRemaining() {
     const txns = depositData.transactions.filter(t => t.accId === from && t.date <= date);
     const bal   = txns.reduce((s, t) => s + Number(t.amount), 0);
     const prin  = txns.filter(t => Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount), 0);
-    const anse  = txns.reduce((s, t) => s + (Number(t.anse) || 0), 0);
+    const anse  = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
     const fmt = v => Math.round(v).toLocaleString('ko-KR') + ' 원';
     document.getElementById('tr_date_bal').textContent  = fmt(bal);
     document.getElementById('tr_date_prin').textContent = fmt(prin);
@@ -2370,7 +2374,9 @@ function saveTransferTxn() {
   const fromPrincipalAfterTransfer = getAccountNetTotal(fromAccId) - amount;
   const fromAdjust = remainingPrincipal - fromPrincipalAfterTransfer;
   depositData.transactions.push({
-    id: generateTxnId(), accId: fromAccId, date, amount: -amount, transfer: { role: 'from', toAccId, principal, amount, taxCredit: cappedCredit, taxLimit }
+    id: generateTxnId(), accId: fromAccId, date, amount: -amount,
+    ...(transferAnse > 0 ? { anse: -transferAnse } : {}),
+    transfer: { role: 'from', toAccId, principal, amount, taxCredit: cappedCredit, taxLimit }
   });
   if (fromAdjust !== 0) {
     depositData.transactions.push({
@@ -2566,9 +2572,9 @@ function renderAccSummary() {
 
   // 안세공 (원): 해당 계좌 전체 anse 합
   const getAnse = (accId) =>
-    depositData.transactions
-      .filter(t => t.accId === accId && Number(t.anse) > 0)
-      .reduce((s, t) => s + Number(t.anse), 0);
+    Math.max(0, depositData.transactions
+      .filter(t => t.accId === accId)
+      .reduce((s, t) => s + (Number(t.anse) || 0), 0));
 
   // 올해 목표: (전년도 평가액 + 올해 계획 입금 증분) × (1 + projRate)
   const getGoal = (accId) => {
@@ -2968,7 +2974,8 @@ function importFromFile(event) {
               accId: String(t.accId || ''),
               date: String(t.date || ''),
               amount: Number(t.amount) || 0,
-              ...(Number(t.anse) > 0 ? { anse: Number(t.anse) } : {})
+              ...(Number(t.anse) ? { anse: Number(t.anse) } : {}),
+              ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {})
             }))
             .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
         } else if (Array.isArray(src.deposits.years) && src.deposits.entries) {
@@ -4372,10 +4379,9 @@ function getPlanExtraManwon(accId, year) {
 // Cumulative anse deposits for accId list up to end of year, in 백만원 (integer)
 function getActualAnseManwon(accIds, year) {
   const end = `${year}-12-31`;
-  const won = depositData.transactions
-    .filter(t => accIds.includes(t.accId) && typeof t.date === 'string'
-              && t.date <= end && Number(t.anse) > 0)
-    .reduce((s, t) => s + Number(t.anse), 0);
+  const won = Math.max(0, depositData.transactions
+    .filter(t => accIds.includes(t.accId) && typeof t.date === 'string' && t.date <= end)
+    .reduce((s, t) => s + (Number(t.anse) || 0), 0));
   return Math.round(won / 1000000); // 원 → 백만원 (정수)
 }
 
@@ -5677,8 +5683,8 @@ function computeWithdrawalSim() {
         anse = Math.min(getCellAnseManwon(accId, initYr) * 1_000_000, total);
       } else {
         anse = Math.min(
-          depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd && Number(t.anse) > 0)
-            .reduce((s, t) => s + Number(t.anse), 0),
+          Math.max(0, depositData.transactions.filter(t => t.accId === accId && t.date <= initEnd)
+            .reduce((s, t) => s + (Number(t.anse) || 0), 0)),
           total);
       }
       let dcPrincipal = 0;
@@ -6297,8 +6303,8 @@ function computeAccComponents(accId, year) {
   const endDate = `${year}-12-31`;
   const currentYear = new Date().getFullYear();
   const anse = DC_ACC_IDS.has(accId) ? 0 : Math.min(
-    depositData.transactions.filter(t => t.accId === accId && t.date <= endDate && Number(t.anse) > 0)
-      .reduce((s, t) => s + Number(t.anse), 0),
+    Math.max(0, depositData.transactions.filter(t => t.accId === accId && t.date <= endDate)
+      .reduce((s, t) => s + (Number(t.anse) || 0), 0)),
     total);
   let dcPrincipal = 0;
   if (DC_ACC_IDS.has(accId)) {
