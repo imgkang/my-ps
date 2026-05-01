@@ -1496,6 +1496,7 @@
     </div>
     <div class="txn-form">
       <label><span>이전할 원금 (원)</span><input type="text" id="transferPrin" inputmode="numeric" oninput="updateTransferRemaining()"></label>
+      <label><span>이전할 안세공 (원)</span><input type="text" id="transferAnse" inputmode="numeric" oninput="updateTransferRemaining()"></label>
       <label><span>이전 후 남는 안세공 (원)</span><input type="text" id="transferAnseRemain" inputmode="numeric" oninput="updateTransferRemaining()"></label>
       <label><span>투자기록 이전</span>
         <select id="transferMoveHistory">
@@ -1836,7 +1837,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.36';
+const APP_VERSION = 'MyPM v2.37';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2265,6 +2266,7 @@ function openTransferEditor() {
   const pad = x => String(x).padStart(2, '0');
   document.getElementById('transferDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   document.getElementById('transferPrin').value = '';
+  document.getElementById('transferAnse').value = '';
   document.getElementById('transferAnseRemain').value = '';
   document.getElementById('transferMoveHistory').value = 'yes';
   document.getElementById('trDateInfoSection').style.display = 'none';
@@ -2283,6 +2285,8 @@ function updateTransferRemaining() {
   const from = document.getElementById('transferFrom').value;
   const date = document.getElementById('transferDate').value;
   const trPrin = Number(String(document.getElementById('transferPrin').value || '').replace(/[^\d]/g, '')) || 0;
+  const trAnseRaw = document.getElementById('transferAnse').value.trim();
+  const trAnse = trAnseRaw === '' ? null : Number(trAnseRaw.replace(/[^\d]/g, ''));
   const anseRemainRaw = document.getElementById('transferAnseRemain').value.trim();
   const trAnseRemain = anseRemainRaw === '' ? null : Number(anseRemainRaw.replace(/[^\d]/g, ''));
 
@@ -2297,7 +2301,7 @@ function updateTransferRemaining() {
     document.getElementById('trDateInfoSection').style.display = '';
 
     // 이전 후 남는 현황 (이전 입력 시)
-    if (trPrin > 0 || trAnseRemain !== null) {
+    if (trPrin > 0 || trAnse !== null || trAnseRemain !== null) {
       document.getElementById('tr_rem_prin').textContent = fmt(prin - trPrin);
       document.getElementById('tr_rem_anse').textContent = trAnseRemain !== null ? fmt(trAnseRemain) : fmt(anse);
       document.getElementById('trRemainSection').style.display = '';
@@ -2342,6 +2346,7 @@ function saveTransferTxn() {
   const toAccId = document.getElementById('transferTo').value;
   const date = document.getElementById('transferDate').value;
   const trPrin = Number(String(document.getElementById('transferPrin').value || '').replace(/[^\d]/g, ''));
+  const trAnseRaw = document.getElementById('transferAnse').value.trim();
   const anseRemainRaw = document.getElementById('transferAnseRemain').value.trim();
   const moveHistory = document.getElementById('transferMoveHistory').value === 'yes';
   if (!fromAccId || !toAccId || fromAccId === toAccId) { alert('서로 다른 이전 계좌를 선택해 주세요.'); return; }
@@ -2349,14 +2354,17 @@ function saveTransferTxn() {
   if (!trPrin || trPrin <= 0) { alert('이전할 원금을 입력해 주세요.'); return; }
   const fromTxns = depositData.transactions.filter(t => t.accId === fromAccId && t.date <= date);
   const fromAnse = Math.max(0, fromTxns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+  const trAnse = trAnseRaw === '' ? 0 : Number(trAnseRaw.replace(/[^\d]/g, ''));
   const anseRemain = anseRemainRaw === '' ? fromAnse : Number(anseRemainRaw.replace(/[^\d]/g, ''));
+  if (isNaN(trAnse) || trAnse < 0) { alert('이전할 안세공은 0 이상이어야 합니다.'); return; }
+  if (trAnse > fromAnse) { alert(`이전할 안세공(${trAnse.toLocaleString()})이 현재 안세공(${fromAnse.toLocaleString()})보다 클 수 없습니다.`); return; }
   if (isNaN(anseRemain) || anseRemain < 0) { alert('이전 후 남는 안세공은 0 이상이어야 합니다.'); return; }
   if (anseRemain > fromAnse) { alert(`이전 후 남는 안세공(${anseRemain.toLocaleString()})이 현재 안세공(${fromAnse.toLocaleString()})보다 클 수 없습니다.`); return; }
-  const trAnse = Math.round(fromAnse - anseRemain);
+  const fromAnseDelta = Math.round(fromAnse - anseRemain);
   if (moveHistory) migrateAccountInvestmentHistory(fromAccId, toAccId);
   depositData.transactions.push({
     id: generateTxnId(), accId: fromAccId, date, amount: -trPrin,
-    ...(trAnse > 0 ? { anse: -trAnse } : {}),
+    ...(fromAnseDelta > 0 ? { anse: -fromAnseDelta } : {}),
     transfer: { role: 'from', toAccId, principal: trPrin, amount: trPrin }
   });
   depositData.transactions.push({
