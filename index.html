@@ -1650,11 +1650,11 @@
       <button class="close-btn" onclick="closeAnnualPlanModal()" aria-label="닫기">×</button>
     </div>
 
-    <div class="plan-unit-note" style="margin-bottom:6px">* 단위: 백만원(정수) / 회색 열 = 실적, 초록 입력란 = 계획 / 안세공재원은 항상 편집 가능</div>
+    <div class="plan-unit-note" style="margin-bottom:6px">* 원금·평가 표 단위: 백만원 / 적립 입력 단위: 만원 / 회색 = 실적, 초록 = 계획</div>
 
-    <!-- 월 적립식 계획 -->
+    <!-- 계좌적립 계획 -->
     <div class="apt-section-hdr" style="margin-bottom:8px">
-      📆 월 적립식 계획
+      📆 계좌적립 계획
     </div>
     <div id="monthlyPlanList" style="margin-bottom:10px"></div>
     <div class="mplan-add-form">
@@ -1933,7 +1933,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.41';
+const APP_VERSION = 'MyPM v2.42';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4510,7 +4510,7 @@ function getCellManwon(accId, year) {
   // Future year: cumulative = prev year cumulative + this year's increment
   const prev = getCellManwon(accId, year - 1);
   const inc = getPlanManwon(accId, year);
-  const mpInc = getMonthlyPlanIncrManwon(accId, year);
+  const mpInc = getMonthlyPlanIncrManwon(accId, year) / 100; // 만원 → 백만원
   return prev + (inc != null ? inc : 0) + mpInc;
 }
 
@@ -4525,7 +4525,7 @@ function getCellAnseManwon(accId, year) {
   }
   const prev = getCellAnseManwon(accId, year - 1);
   const inc  = getPlanAnseManwon(accId, year);
-  const mpAnse = getMonthlyPlanAnseIncrManwon(accId, year);
+  const mpAnse = getMonthlyPlanAnseIncrManwon(accId, year) / 100; // 만원 → 백만원
   return prev + (inc != null ? inc : 0) + mpAnse;
 }
 
@@ -4558,7 +4558,7 @@ function renderPrincipalTable() {
   const currentYear = new Date().getFullYear();
 
   // header
-  let h = '<thead><tr><th>계좌</th>';
+  let h = '<thead><tr><th>계좌 (단위: 백만원)</th>';
   for (const yr of years) {
     const cls = yr > currentYear ? 'yr-future' : yr === currentYear ? 'yr-current' : '';
     h += `<th class="${cls}">${yr}</th>`;
@@ -4713,7 +4713,7 @@ function renderEvalTable() {
   const wifeVals = _evalWifeIds.length ? computeGroupVals(_evalWifeIds) : {};
 
   // header
-  let h = '<thead><tr><th>계좌/그룹</th>';
+  let h = '<thead><tr><th>계좌/그룹 (단위: 백만원)</th>';
   for (const yr of years) {
     const cls = yr > lastRecYear ? 'yr-future' : yr === lastRecYear ? 'yr-current' : '';
     h += `<th class="${cls}">${yr}${yr > lastRecYear ? '(예상)' : ''}</th>`;
@@ -4886,7 +4886,7 @@ function renderEvalTable() {
   wrap.innerHTML = `<table class="apt" style="width:${152 + years.length * 88}px">${cg}${h}${body}</table>`;
 }
 
-// ===== 월 적립식 계획 =====
+// ===== 계좌적립 계획 =====
 function renderMonthlyPlanList() {
   const wrap = document.getElementById('monthlyPlanList');
   if (!wrap) return;
@@ -5008,8 +5008,8 @@ function renderAnnualCharts() {
         {
           label: '평가금액',
           data: evalAll,
-          borderColor: '#86efac',
-          backgroundColor: 'rgba(187,247,208,0.55)',
+          borderColor: '#60a5fa',
+          backgroundColor: 'rgba(147,197,253,0.45)',
           fill: 'origin',
           tension: 0.25, pointRadius: 2, borderWidth: 2,
           yAxisID: 'yAmt',
@@ -5018,8 +5018,8 @@ function renderAnnualCharts() {
         {
           label: '원금',
           data: prinAll,
-          borderColor: '#15803d',
-          backgroundColor: 'rgba(34,197,94,0.45)',
+          borderColor: '#1d4ed8',
+          backgroundColor: 'rgba(59,130,246,0.5)',
           fill: 'origin',
           tension: 0.25, pointRadius: 2, borderWidth: 2,
           yAxisID: 'yAmt',
