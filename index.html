@@ -1606,12 +1606,8 @@
     <div class="records-input-card">
       <div class="records-input-top">
         <label>
-          <span>연도</span>
-          <input type="number" id="recYear" min="2000" max="2100" step="1" placeholder="YYYY">
-        </label>
-        <label>
-          <span>월</span>
-          <input type="number" id="recMonth" min="1" max="12" step="1" placeholder="M">
+          <span>기록일</span>
+          <input type="date" id="recDate">
         </label>
         <button class="btn-secondary" onclick="fillCurrentValues()">💾 현재값 저장</button>
         <button class="btn-secondary" onclick="loadHistoricalValues()">📅 이전 가치 불러오기</button>
@@ -1933,7 +1929,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.42';
+const APP_VERSION = 'MyPM v2.43';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3616,6 +3612,7 @@ function loadMonthlyRecords() {
       id: String(r.id || (Date.now() + Math.random())),
       year: parseInt(r.year, 10) || 0,
       month: parseInt(r.month, 10) || 0,
+      day: parseInt(r.day, 10) || null,
       accounts: (r.accounts && typeof r.accounts === 'object') ? r.accounts : {}
     }));
   } catch (_) { return []; }
@@ -3627,10 +3624,10 @@ function saveMonthlyRecords() {
 function openRecordsModal() {
   const modal = document.getElementById('accountRecordsModal');
   if (!modal) return;
-  // 입력 폼 초기화: 현재 연/월을 기본값으로
+  // 입력 폼 초기화: 오늘 날짜를 기본값으로
   const now = new Date();
-  document.getElementById('recYear').value = now.getFullYear();
-  document.getElementById('recMonth').value = now.getMonth() + 1;
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('recDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   renderRecordInputs(); // 계좌별 입력칸 생성 (빈값)
   renderRecordsTableHeader();
   renderRecordsList();
@@ -3691,20 +3688,21 @@ function fillCurrentValues() {
 }
 
 function addMonthlyRecord() {
-  const year = parseInt(document.getElementById('recYear').value, 10);
-  const month = parseInt(document.getElementById('recMonth').value, 10);
+  const dateVal = document.getElementById('recDate').value;
+  if (!dateVal || !/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) { alert('유효한 날짜를 선택해 주세요.'); return; }
+  const [year, month, day] = dateVal.split('-').map(Number);
   if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
   if (!month || month < 1 || month > 12) { alert('월을 1~12 사이로 입력해 주세요.'); return; }
 
   const accounts = getRecordInputAmounts();
   if (editingRecordId) {
     const rec = monthlyRecords.find(r => r.id === editingRecordId);
-    if (rec) { rec.year = year; rec.month = month; rec.accounts = accounts; }
+    if (rec) { rec.year = year; rec.month = month; rec.day = day; rec.accounts = accounts; }
     cancelRecordEdit();
   } else {
     const hasAny = Object.values(accounts).some(v => (Number(v) || 0) > 0);
     if (!hasAny && !confirm('모든 계좌 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
-    monthlyRecords.push({ id: String(Date.now()) + Math.floor(Math.random() * 1000), year, month, accounts });
+    monthlyRecords.push({ id: String(Date.now()) + Math.floor(Math.random() * 1000), year, month, day, accounts });
   }
   saveMonthlyRecords();
   renderRecordsList();
@@ -3715,8 +3713,9 @@ function editMonthlyRecord(id) {
   const rec = monthlyRecords.find(r => r.id === id);
   if (!rec) return;
   editingRecordId = id;
-  document.getElementById('recYear').value  = rec.year;
-  document.getElementById('recMonth').value = rec.month;
+  const pad = n => String(n).padStart(2, '0');
+  const d = rec.day || 1;
+  document.getElementById('recDate').value = `${rec.year}-${pad(rec.month)}-${pad(d)}`;
   renderRecordInputs(rec.accounts);
   const addBtn    = document.getElementById('recAddBtn');
   const cancelBtn = document.getElementById('recCancelBtn');
@@ -3736,7 +3735,8 @@ function cancelRecordEdit() {
 function deleteMonthlyRecord(id) {
   const rec = monthlyRecords.find(r => r.id === id);
   if (!rec) return;
-  if (!confirm(`${rec.year}년 ${rec.month}월 기록을 삭제하시겠습니까?`)) return;
+  const dayStr = rec.day ? ` ${rec.day}일` : '';
+  if (!confirm(`${rec.year}년 ${rec.month}월${dayStr} 기록을 삭제하시겠습니까?`)) return;
   monthlyRecords = monthlyRecords.filter(r => r.id !== id);
   saveMonthlyRecords();
   renderRecordsList();
@@ -3747,10 +3747,10 @@ function renderRecordsTableHeader() {
   const header = document.getElementById('recordsTableHeader');
   if (!header) return;
   const activeAccs = getActiveAccounts();
-  const cols = `90px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
+  const cols = `100px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
-    <span>연/월</span>
+    <span>기록일</span>
     ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}<br><small>(백만원)</small></span>`).join('')}
     <span style="text-align:right">총합<br><small>(백만원)</small></span>
     <span></span>
@@ -3766,14 +3766,15 @@ function renderRecordsList() {
     return;
   }
 
-  // 연/월 내림차순 정렬 (최신이 위)
+  // 날짜 내림차순 정렬 (최신이 위)
   const sorted = [...monthlyRecords].sort((a, b) => {
     if (b.year !== a.year) return b.year - a.year;
-    return b.month - a.month;
+    if (b.month !== a.month) return b.month - a.month;
+    return (b.day || 0) - (a.day || 0);
   });
 
   const activeAccs = getActiveAccounts();
-  const cols = `90px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
+  const cols = `100px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
 
   list.innerHTML = sorted.map(rec => {
     const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
@@ -3781,9 +3782,12 @@ function renderRecordsList() {
       const v = Number(rec.accounts[a.id]) || 0;
       return `<span class="amount">${v ? formatMil(v) : '-'}</span>`;
     }).join('');
+    const dateStr = rec.day
+      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
+      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
     return `
       <div class="records-row" style="grid-template-columns:${cols}">
-        <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
+        <span>${dateStr}</span>
         ${accCells}
         <span class="total">${formatMil(total)}</span>
         <span>
@@ -4985,12 +4989,15 @@ function renderAnnualCharts() {
 
   const evalAll = computeEvalMil(allIds);
 
-  // 연간 이익률 (%) — 실적: 전년 대비 평가 증가율, 예상: projRate
+  // 연간 이익률 (%) — 표의 당해년도이익률과 동일: (평가 - 전년평가 - 원금증가) / (전년평가 + 원금증가) × 100
   const profitRate = years.map((yr, i) => {
     if (i === 0) return null;
     const prev = evalAll[i - 1], curr = evalAll[i];
-    if (prev == null || prev === 0 || curr == null) return null;
-    return Math.round((curr / prev - 1) * 1000) / 10;
+    if (prev == null || curr == null) return null;
+    const princInc = (prinAll[i] || 0) - (prinAll[i - 1] || 0); // 백만원
+    const base = prev + princInc;
+    if (base <= 0) return null;
+    return Math.round((curr - prev - princInc) / base * 1000) / 10;
   });
 
   // 실적/예상 분기점 index
@@ -5083,6 +5090,7 @@ function loadDividendRecords() {
       id: String(r.id || (Date.now() + Math.random())),
       year: parseInt(r.year, 10) || 0,
       month: parseInt(r.month, 10) || 0,
+      day: parseInt(r.day, 10) || null,
       stocks: (r.stocks && typeof r.stocks === 'object') ? r.stocks : {},
       accounts: (r.accounts && typeof r.accounts === 'object') ? r.accounts : {}
     })).filter(r => r.year > 0 && r.month >= 1 && r.month <= 12);
