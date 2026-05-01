@@ -1929,7 +1929,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.43';
+const APP_VERSION = 'MyPM v2.44';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3112,10 +3112,10 @@ function importFromFile(event) {
       const newDivCount = newDividendRecords.length;
 
       // 연간 계획 파싱
-      let newAnnualPlan = { deposits: {}, projRate: 7 };
+      let newAnnualPlan = { format: 2, projRate: 7, monthlyPlans: [] };
       if (src.annualPlan && typeof src.annualPlan === 'object') {
         newAnnualPlan = {
-          deposits: (src.annualPlan.deposits && typeof src.annualPlan.deposits === 'object') ? src.annualPlan.deposits : {},
+          format: 2,
           projRate: Number(src.annualPlan.projRate) || 7,
           monthlyPlans: Array.isArray(src.annualPlan.monthlyPlans) ? src.annualPlan.monthlyPlans : []
         };
@@ -4333,36 +4333,14 @@ function getActiveWifeAccIds() {
 function loadAnnualPlan() {
   try {
     const raw = localStorage.getItem(ANNUAL_PLAN_KEY);
-    if (!raw) return { format: 2, deposits: {}, projRate: 7 };
+    if (!raw) return { format: 2, projRate: 7, monthlyPlans: [] };
     const p = JSON.parse(raw);
-    const deposits = (p.deposits && typeof p.deposits === 'object') ? p.deposits : {};
-    if (p.format !== 2) {
-      // Migrate cumulative plan values to annual increments
-      const years = Object.keys(deposits).map(Number).sort((a, b) => a - b);
-      const allKeys = new Set();
-      for (const yr of years) {
-        for (const k of Object.keys(deposits[String(yr)])) {
-          if (!k.endsWith('_extra')) allKeys.add(k);
-        }
-      }
-      for (const key of allKeys) {
-        let prevCum = 0;
-        for (const yr of years) {
-          const yStr = String(yr);
-          if (deposits[yStr] && deposits[yStr][key] != null) {
-            const cum = Number(deposits[yStr][key]);
-            deposits[yStr][key] = Math.max(0, cum - prevCum);
-            prevCum = cum;
-          }
-        }
-      }
-      const migrated = { format: 2, deposits, projRate: Number(p.projRate) || 7 };
-      localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(migrated));
-      return migrated;
-    }
     const monthlyPlans = Array.isArray(p.monthlyPlans) ? p.monthlyPlans : [];
-    return { format: 2, deposits, projRate: Number(p.projRate) || 7, monthlyPlans };
-  } catch (_) { return { format: 2, deposits: {}, projRate: 7, monthlyPlans: [] }; }
+    const plan = { format: 2, projRate: Number(p.projRate) || 7, monthlyPlans };
+    // Clear legacy deposits (manual edits no longer used)
+    localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(plan));
+    return plan;
+  } catch (_) { return { format: 2, projRate: 7, monthlyPlans: [] }; }
 }
 
 function openAnnualPlanModal() {
@@ -4394,7 +4372,7 @@ function handleAnnualPlanBackdropClick(e) {
 
 function saveAnnualPlan() {
   const projRate = Number(document.getElementById('projRate').value) || 7;
-  annualPlan = { format: 2, deposits: annualPlan.deposits || {}, projRate, monthlyPlans: annualPlan.monthlyPlans || [] };
+  annualPlan = { format: 2, projRate, monthlyPlans: annualPlan.monthlyPlans || [] };
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderEvalTable();
   renderAnnualCharts();
@@ -4444,25 +4422,6 @@ function isActualCell(accId, year) {
   return hasActualTxnInYear(accId, year);
 }
 
-// Get plan value (in 만원) from annualPlan, or null if not set
-function getPlanManwon(accId, year) {
-  const y = annualPlan.deposits[String(year)];
-  return (y && y[accId] != null) ? Number(y[accId]) : null;
-}
-
-// Get per-account anse plan value (만원) for accId in year
-function getPlanAnseManwon(accId, year) {
-  const y = annualPlan.deposits[String(year)];
-  const k = accId + '_anse';
-  return (y && y[k] != null) ? Number(y[k]) : null;
-}
-
-// Get current-year extra plan deposit (on top of actual records), in 백만원
-function getPlanExtraManwon(accId, year) {
-  const y = annualPlan.deposits[String(year)];
-  const k = accId + '_extra';
-  return (y && y[k] != null) ? Number(y[k]) : null;
-}
 
 // Cumulative anse deposits for accId list up to end of year, in 백만원 (integer)
 function getActualAnseManwon(accIds, year) {
@@ -4506,31 +4465,21 @@ function getMonthlyPlanAnseIncrManwon(accId, year) {
 function getCellManwon(accId, year) {
   if (isActualCell(accId, year)) return getActualCumManwon(accId, year);
   const currentYear = new Date().getFullYear();
-  if (year === currentYear) {
-    const actual = getActualCumManwon(accId, year);
-    const extra  = getPlanExtraManwon(accId, year);
-    return actual + (extra != null ? extra : 0);
-  }
-  // Future year: cumulative = prev year cumulative + this year's increment
+  if (year === currentYear) return getActualCumManwon(accId, year);
+  // Future year: cumulative = prev year cumulative + 적립계획 증분만
   const prev = getCellManwon(accId, year - 1);
-  const inc = getPlanManwon(accId, year);
   const mpInc = getMonthlyPlanIncrManwon(accId, year) / 100; // 만원 → 백만원
-  return prev + (inc != null ? inc : 0) + mpInc;
+  return prev + mpInc;
 }
 
 // Cumulative anse (백만원) for an account cell (actual or plan)
 function getCellAnseManwon(accId, year) {
   const currentYear = new Date().getFullYear();
-  if (year < currentYear) return getActualAnseManwon([accId], year);
-  if (year === currentYear) {
-    const actual = getActualAnseManwon([accId], year);
-    const extra  = getPlanExtraManwon(accId + '_anse', year);
-    return actual + (extra != null ? extra : 0);
-  }
+  if (year <= currentYear) return getActualAnseManwon([accId], year);
+  // Future year: cumulative = prev year cumulative + 적립계획 증분만
   const prev = getCellAnseManwon(accId, year - 1);
-  const inc  = getPlanAnseManwon(accId, year);
   const mpAnse = getMonthlyPlanAnseIncrManwon(accId, year) / 100; // 만원 → 백만원
-  return prev + (inc != null ? inc : 0) + mpAnse;
+  return prev + mpAnse;
 }
 
 function fmt(v) {
