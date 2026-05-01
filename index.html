@@ -1680,7 +1680,8 @@
                oninput="renderEvalTable(); renderAnnualCharts(); renderAccSummary()">
         <span style="font-size:12px;font-weight:400;color:var(--muted)">%/년</span>
       </div>
-      <div style="position:relative;height:280px;margin-bottom:8px"><canvas id="annualCombinedChart"></canvas></div>
+      <div style="position:relative;height:280px;margin-bottom:4px"><canvas id="annualCombinedChart"></canvas></div>
+      <div style="position:relative;height:160px;margin-bottom:8px"><canvas id="annualRateChart"></canvas></div>
 
       <!-- 원금 표 (읽기 전용) -->
       <div class="apt-section-hdr">📋 원금 기록 및 계획</div>
@@ -1930,7 +1931,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.45';
+const APP_VERSION = 'MyPM v2.46';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4936,6 +4937,7 @@ function deleteMonthlyPlan(id) {
 
 // ===== 연간 계획 통합 차트 =====
 let _annualCombinedChart = null;
+let _annualRateChart = null;
 
 function renderAnnualCharts() {
   const ctx = document.getElementById('annualCombinedChart');
@@ -5023,16 +5025,6 @@ function renderAnnualCharts() {
           yAxisID: 'yAmt',
           segment: { borderDash: ctx => years[ctx.p1DataIndex] > lastRecYear ? [5,3] : [] }
         },
-        {
-          label: '연간이익률(%)',
-          data: profitRate,
-          borderColor: '#f97316',
-          backgroundColor: 'rgba(251,146,60,0.15)',
-          fill: false,
-          tension: 0.25, pointRadius: 2, borderWidth: 2,
-          yAxisID: 'yRate',
-          segment: { borderDash: ctx => years[ctx.p1DataIndex] > lastRecYear ? [5,3] : [] }
-        }
       ]
     },
     options: {
@@ -5042,10 +5034,7 @@ function renderAnnualCharts() {
         legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
         tooltip: {
           callbacks: {
-            label: c => {
-              if (c.dataset.yAxisID === 'yRate') return `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(1)+'%' : '-'}`;
-              return `${c.dataset.label}: ${c.parsed.y != null ? Math.round(c.parsed.y).toLocaleString('ko-KR')+' 백만원' : '-'}`;
-            }
+            label: c => `${c.dataset.label}: ${c.parsed.y != null ? Math.round(c.parsed.y).toLocaleString('ko-KR')+' 백만원' : '-'}`
           }
         }
       },
@@ -5055,12 +5044,53 @@ function renderAnnualCharts() {
           type: 'linear', position: 'left', beginAtZero: true,
           title: { display: true, text: '백만원', font: { size: 10 } },
           ticks: { font: { size: 10 }, callback: v => v.toLocaleString('ko-KR') }
-        },
-        yRate: {
-          type: 'linear', position: 'right', beginAtZero: false,
+        }
+      }
+    }
+  });
+
+  // 이익률 막대 차트
+  const rateCtx = document.getElementById('annualRateChart');
+  if (!rateCtx) return;
+  if (_annualRateChart) { _annualRateChart.destroy(); _annualRateChart = null; }
+
+  const rateColors = profitRate.map((v, i) => {
+    if (v == null) return 'rgba(0,0,0,0)';
+    const actual = years[i] <= lastRecYear;
+    if (v >= 0) return actual ? 'rgba(59,130,246,0.85)' : 'rgba(147,197,253,0.75)';
+    return actual ? 'rgba(239,68,68,0.85)' : 'rgba(252,165,165,0.75)';
+  });
+
+  _annualRateChart = new Chart(rateCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '연간이익률(%)',
+        data: profitRate,
+        backgroundColor: rateColors,
+        borderColor: rateColors.map(c => c.replace(/[\d.]+\)$/, '1)')),
+        borderWidth: 1,
+        borderRadius: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: c => `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(1)+'%' : '-'}`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 }, maxRotation: 45 } },
+        y: {
+          beginAtZero: false,
           title: { display: true, text: '이익률(%)', font: { size: 10 } },
-          ticks: { font: { size: 10 }, callback: v => v.toFixed(0)+'%' },
-          grid: { drawOnChartArea: false }
+          ticks: { font: { size: 10 }, callback: v => v.toFixed(0)+'%' }
         }
       }
     }
