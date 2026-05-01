@@ -1931,7 +1931,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.46';
+const APP_VERSION = 'MyPM v2.47';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6873,6 +6873,8 @@ function saveDriveSettings() {
   }));
 }
 loadDriveSettings();
+// 앱 로드 즉시 UI 반영 (토큰이 있으면 "동기화됨" 표시)
+updateDriveUI();
 // clientId가 저장되어 있으면 앱 로드 시 GIS 초기화 + 무음 재인증 시도
 if (driveClientId) initGIS();
 
@@ -6932,19 +6934,30 @@ function initGIS() {
       _silentPending = false;
       if (resp.error) {
         if (!wasSilent) setDriveStatus('error', '로그인 실패: ' + resp.error);
+        // silent 실패 시에도 UI 갱신 (nav 버튼 상태 정확히 반영)
+        updateDriveUI();
         return;
       }
       const expiresAt = Date.now() + ((resp.expires_in || 3600) * 1000) - 60000;
       localStorage.setItem('drive_token_v2', JSON.stringify({ token: resp.access_token, expiresAt }));
       driveAccessToken = resp.access_token;
       updateDriveUI();
-      setDriveStatus('ok', '✅ Google Drive 연결됨');
+      if (!wasSilent) setDriveStatus('ok', '✅ Google Drive 연결됨');
     }
   });
   // 유효한 토큰이 없으면 무음 재인증 시도 (이미 동의한 계정은 UI 없이 바로 연결)
   if (!driveAccessToken) {
     _silentPending = true;
     window._gisClient.requestAccessToken({ prompt: 'none' });
+  } else {
+    // 토큰이 있어도 만료 5분 이내이면 백그라운드에서 선제 갱신
+    try {
+      const stored = JSON.parse(localStorage.getItem('drive_token_v2') || 'null');
+      if (stored && stored.expiresAt - Date.now() < 5 * 60 * 1000) {
+        _silentPending = true;
+        window._gisClient.requestAccessToken({ prompt: 'none' });
+      }
+    } catch(_) {}
   }
 }
 
