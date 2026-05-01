@@ -1837,7 +1837,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.37';
+const APP_VERSION = 'MyPM v2.38';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2024,7 +2024,7 @@ function loadDeposits() {
           ...(Number(t.anse) ? { anse: Number(t.anse) } : {}),
           ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {})
         }))
-        .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
+        .filter(t => t.accId && t.date && (t.amount !== 0 || t.anse) && ACCOUNTS.find(a => a.id === t.accId));
       return { transactions: txns };
     }
 
@@ -2233,7 +2233,7 @@ function saveTxn() {
 
   if (!accId || !getActiveAccounts().find(a => a.id === accId)) { alert('계좌를 선택해 주세요.'); return; }
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('유효한 입출금일을 선택해 주세요.'); return; }
-  if (!amount || amount <= 0) { alert('금액을 올바르게 입력해 주세요 (0보다 큰 숫자).'); return; }
+  if (amount < 0 || (amount === 0 && (type !== 'deposit' || !anse))) { alert('금액을 올바르게 입력해 주세요 (0보다 큰 숫자).'); return; }
 
   const signedAmount = type === 'withdraw' ? -amount : amount;
   if (editingTxnId) {
@@ -2963,7 +2963,7 @@ function importFromFile(event) {
               ...(Number(t.anse) ? { anse: Number(t.anse) } : {}),
               ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {})
             }))
-            .filter(t => t.accId && t.date && t.amount !== 0 && ACCOUNTS.find(a => a.id === t.accId));
+            .filter(t => t.accId && t.date && (t.amount !== 0 || t.anse) && ACCOUNTS.find(a => a.id === t.accId));
         } else if (Array.isArray(src.deposits.years) && src.deposits.entries) {
           // 구형식 → 신형식 변환
           for (const acc of ACCOUNTS) {
