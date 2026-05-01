@@ -1666,7 +1666,8 @@
       <span style="align-self:center;color:var(--muted);font-size:12px">~</span>
       <input type="number" id="mplanEndY" placeholder="종료년" min="2020" max="2070" step="1" value="2056" style="flex:1;min-width:60px">
       <input type="number" id="mplanEndM" placeholder="종료월" min="1" max="12" step="1" value="12" style="flex:.8;min-width:44px">
-      <button class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
+      <button id="mplanSaveBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
+      <button id="mplanCancelBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;flex-shrink:0;display:none" onclick="cancelEditMonthlyPlan()">취소</button>
     </div>
 
     <div class="annual-plan-combined">
@@ -1929,7 +1930,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.44';
+const APP_VERSION = 'MyPM v2.45';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4840,6 +4841,8 @@ function renderEvalTable() {
 }
 
 // ===== 계좌적립 계획 =====
+let _editingMplanId = null;
+
 function renderMonthlyPlanList() {
   const wrap = document.getElementById('monthlyPlanList');
   if (!wrap) return;
@@ -4847,16 +4850,46 @@ function renderMonthlyPlanList() {
   if (!plans.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:6px">등록된 적립식 계획이 없습니다.</div>'; return; }
   const rows = plans.map(p => {
     const freq = p.frequency === 'annual' ? '연' : '월';
-    return `<tr>
+    const editing = p.id === _editingMplanId;
+    return `<tr${editing ? ' style="background:var(--highlight-bg,#fffbe6)"' : ''}>
       <td>${getAccName(p.accId)}</td>
       <td style="text-align:center">${freq}적립</td>
       <td style="text-align:right">${(p.monthlyAmt||0).toLocaleString('ko-KR')} 만원/${freq}</td>
       <td style="text-align:right">${(p.monthlyAnse||0) > 0 ? (p.monthlyAnse).toLocaleString('ko-KR')+'만원' : '-'}</td>
       <td>${p.startYear}년 ${p.startMonth}월</td>
       <td>${p.endYear}년 ${p.endMonth}월</td>
-      <td><button class="mplan-del" onclick="deleteMonthlyPlan('${p.id}')">🗑</button></td>
+      <td style="white-space:nowrap">
+        <button class="mplan-del" onclick="startEditMonthlyPlan('${p.id}')" title="편집">✏️</button>
+        <button class="mplan-del" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑</button>
+      </td>
     </tr>`;}).join('');
   wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function startEditMonthlyPlan(id) {
+  const p = (annualPlan.monthlyPlans || []).find(x => x.id === id);
+  if (!p) return;
+  _editingMplanId = id;
+  document.getElementById('mplanAcc').value = p.accId;
+  document.getElementById('mplanFreq').value = p.frequency || 'monthly';
+  document.getElementById('mplanAmt').value = p.monthlyAmt || 0;
+  document.getElementById('mplanAnse').value = p.monthlyAnse || 0;
+  document.getElementById('mplanStartY').value = p.startYear;
+  document.getElementById('mplanStartM').value = p.startMonth;
+  document.getElementById('mplanEndY').value = p.endYear;
+  document.getElementById('mplanEndM').value = p.endMonth;
+  document.getElementById('mplanSaveBtn').textContent = '저장';
+  document.getElementById('mplanCancelBtn').style.display = '';
+  renderMonthlyPlanList();
+}
+
+function cancelEditMonthlyPlan() {
+  _editingMplanId = null;
+  document.getElementById('mplanAmt').value = '';
+  document.getElementById('mplanAnse').value = '';
+  document.getElementById('mplanSaveBtn').textContent = '+ 추가';
+  document.getElementById('mplanCancelBtn').style.display = 'none';
+  renderMonthlyPlanList();
 }
 
 function addMonthlyPlan() {
@@ -4869,10 +4902,18 @@ function addMonthlyPlan() {
   const endYear = Number(document.getElementById('mplanEndY').value) || 2056;
   const endMonth = Number(document.getElementById('mplanEndM').value) || 12;
   if (!accId) { alert('계좌를 선택해 주세요.'); return; }
-  if (monthlyAmt <= 0) { alert('월 적립금액을 입력해 주세요.'); return; }
+  if (monthlyAmt <= 0) { alert('적립금액을 입력해 주세요.'); return; }
   if (startYear > endYear || (startYear === endYear && startMonth > endMonth)) { alert('종료 시점이 시작 시점보다 빨리 설정되었습니다.'); return; }
   if (!annualPlan.monthlyPlans) annualPlan.monthlyPlans = [];
-  annualPlan.monthlyPlans.push({ id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth });
+  if (_editingMplanId) {
+    const idx = annualPlan.monthlyPlans.findIndex(p => p.id === _editingMplanId);
+    if (idx !== -1) annualPlan.monthlyPlans[idx] = { id: _editingMplanId, accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth };
+    _editingMplanId = null;
+    document.getElementById('mplanSaveBtn').textContent = '+ 추가';
+    document.getElementById('mplanCancelBtn').style.display = 'none';
+  } else {
+    annualPlan.monthlyPlans.push({ id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth });
+  }
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   document.getElementById('mplanAmt').value = '';
   document.getElementById('mplanAnse').value = '';
@@ -4884,6 +4925,7 @@ function addMonthlyPlan() {
 
 function deleteMonthlyPlan(id) {
   if (!annualPlan.monthlyPlans) return;
+  if (_editingMplanId === id) cancelEditMonthlyPlan();
   annualPlan.monthlyPlans = annualPlan.monthlyPlans.filter(p => p.id !== id);
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderMonthlyPlanList();
