@@ -588,6 +588,23 @@
     display: grid; grid-template-columns: 90px 1fr; align-items: center;
     gap: 10px; font-size: 13px; color: var(--text);
   }
+  .transfer-section-title {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.4px;
+    margin: 14px 0 6px;
+  }
+  .transfer-info-grid {
+    display: grid; grid-template-columns: auto 1fr;
+    gap: 7px 16px; padding: 10px 14px;
+    background: #f8fafc; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 13px; margin-bottom: 2px;
+  }
+  .transfer-info-grid span:nth-child(even) {
+    text-align: right; font-weight: 600;
+    font-variant-numeric: tabular-nums; color: var(--text);
+  }
+  .transfer-info-grid.is-remain { background: #f0fdf4; border-color: #86efac; }
+  .transfer-info-grid.is-remain span:nth-child(even) { color: #166534; }
   .txn-form label > span { font-weight: 500; color: var(--muted); }
   .txn-form select,
   .txn-form input[type="date"],
@@ -1394,6 +1411,7 @@
     <div class="deposit-grand" id="depositGrand"></div>
     <div class="deposit-totals" id="depositTotals"></div>
     <div class="deposit-toolbar">
+      <button class="btn-secondary" onclick="openTransferModal()" style="font-size:13px;font-weight:600">📂 계좌이전</button>
       <button class="btn-primary" onclick="openTxnEditor()">➕ 입출금 추가</button>
       <button class="btn-secondary" onclick="openTransferEditor()">🔁 계좌이전</button>
     </div>
@@ -1467,9 +1485,19 @@
     <div class="txn-form">
       <label><span>이전할 계좌</span><select id="transferFrom"></select></label>
       <label><span>이전받을 계좌</span><select id="transferTo"></select></label>
-      <label><span>이전일</span><input type="date" id="transferDate"></label>
+      <label><span>이전일</span><input type="date" id="transferDate" oninput="updateTransferRemaining()"></label>
+    </div>
+    <div id="trDateInfoSection" style="display:none;margin:4px 0 10px">
+      <div class="transfer-section-title">이전일 기준 현황 (이전 계좌)</div>
+      <div class="transfer-info-grid">
+        <span>잔액</span><span id="tr_date_bal">-</span>
+        <span>원금</span><span id="tr_date_prin">-</span>
+        <span>안세공</span><span id="tr_date_anse">-</span>
+      </div>
+    </div>
+    <div class="txn-form">
       <label><span>원금재원 (원)</span><input type="text" id="transferPrincipal" inputmode="numeric"></label>
-      <label><span>실제 이전액 (원)</span><input type="text" id="transferAmount" inputmode="numeric"></label>
+      <label><span>실제 이전액 (원)</span><input type="text" id="transferAmount" inputmode="numeric" oninput="updateTransferRemaining()"></label>
       <label><span>세액공제액 (원)</span><input type="text" id="transferTaxCredit" inputmode="numeric"></label>
       <label><span>세공 한도 (원)</span><input type="text" id="transferTaxLimit" inputmode="numeric" value="3,000,000"></label>
       <label><span>투자기록 이전</span>
@@ -1478,7 +1506,15 @@
           <option value="no">금액만 이전</option>
         </select>
       </label>
-      <label><span>이전 후 남는 원금</span><input type="text" id="transferRemaining" inputmode="numeric"></label>
+      <label><span>이전 후 남는 원금</span><input type="text" id="transferRemaining" inputmode="numeric" readonly style="background:#f8fafc;color:var(--muted)"></label>
+    </div>
+    <div id="trRemainSection" style="display:none;margin:4px 0 10px">
+      <div class="transfer-section-title">이전 후 남는 현황 (이전 계좌)</div>
+      <div class="transfer-info-grid is-remain">
+        <span>남는 잔액</span><span id="tr_rem_bal">-</span>
+        <span>남는 원금</span><span id="tr_rem_prin">-</span>
+        <span>남는 안세공</span><span id="tr_rem_anse">-</span>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeTransferEditor()">취소</button>
@@ -1805,7 +1841,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.30';
+const APP_VERSION = 'MyPM v2.31';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2189,6 +2225,7 @@ function handleTxnBackdropClick(e) {
   if (e.target.id === 'txnEditorModal') closeTxnEditor();
 }
 
+// ===== 계좌이전 계산기 =====
 function saveTxn() {
   const accId = document.getElementById('txnAccount').value;
   const type = document.getElementById('txnType').value;
@@ -2233,6 +2270,8 @@ function openTransferEditor() {
   document.getElementById('transferTaxCredit').value = '';
   document.getElementById('transferTaxLimit').value = '3,000,000';
   document.getElementById('transferMoveHistory').value = 'yes';
+  document.getElementById('trDateInfoSection').style.display = 'none';
+  document.getElementById('trRemainSection').style.display   = 'none';
   updateTransferRemaining();
   fromEl.onchange = updateTransferRemaining;
   document.getElementById('transferPrincipal').oninput = updateTransferRemaining;
@@ -2246,9 +2285,41 @@ function handleTransferBackdropClick(e) {
 }
 function updateTransferRemaining() {
   const from = document.getElementById('transferFrom').value;
+  const date = document.getElementById('transferDate').value;
   const principal = Number(String(document.getElementById('transferPrincipal').value || '').replace(/[^\d]/g, '')) || 0;
-  const remain = getAccountNetTotal(from) - principal;
-  document.getElementById('transferRemaining').value = `${remain.toLocaleString('ko-KR')}`;
+  const amount    = Number(String(document.getElementById('transferAmount').value    || '').replace(/[^\d]/g, '')) || 0;
+
+  // 이전일 기준 현황
+  if (from && date) {
+    const txns = depositData.transactions.filter(t => t.accId === from && t.date <= date);
+    const bal   = txns.reduce((s, t) => s + Number(t.amount), 0);
+    const prin  = txns.filter(t => Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount), 0);
+    const anse  = txns.reduce((s, t) => s + (Number(t.anse) || 0), 0);
+    const fmt = v => Math.round(v).toLocaleString('ko-KR') + ' 원';
+    document.getElementById('tr_date_bal').textContent  = fmt(bal);
+    document.getElementById('tr_date_prin').textContent = fmt(prin);
+    document.getElementById('tr_date_anse').textContent = fmt(anse);
+    document.getElementById('trDateInfoSection').style.display = '';
+
+    // 이전 후 남는 현황 (이전금액 입력 시)
+    if (amount > 0) {
+      const ratio = bal > 0 ? Math.max(0, bal - amount) / bal : 0;
+      document.getElementById('tr_rem_bal').textContent  = fmt(bal - amount);
+      document.getElementById('tr_rem_prin').textContent = fmt(prin * ratio);
+      document.getElementById('tr_rem_anse').textContent = fmt(anse * ratio);
+      document.getElementById('trRemainSection').style.display = '';
+    } else {
+      document.getElementById('trRemainSection').style.display = 'none';
+    }
+
+    // 기존 이전 후 남는 원금 (원금재원 기반)
+    document.getElementById('transferRemaining').value = (bal - principal).toLocaleString('ko-KR');
+  } else {
+    document.getElementById('trDateInfoSection').style.display = 'none';
+    document.getElementById('trRemainSection').style.display   = 'none';
+    const remain = getAccountNetTotal(from) - principal;
+    document.getElementById('transferRemaining').value = remain.toLocaleString('ko-KR');
+  }
 }
 function migrateAccountInvestmentHistory(fromAccId, toAccId) {
   // 1) 종목별 계좌 수량/평단 기록 이전
