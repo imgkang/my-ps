@@ -1882,7 +1882,10 @@
           <label>사적연금 기본인출액 (백만원/계좌/년)</label>
           <input id="wd_basicWithdraw" type="number" min="0" step="1">
           <label>연금계좌 통합설정 사용여부</label>
-          <select id="wd_myAutoConsolidate"><option value="0">사용 안함</option><option value="1">사용</option></select>
+          <div class="toggle-row">
+            <button id="wd_myAutoConsolidate_yes" class="toggle-btn" onclick="setWdAutoConsolidate('my',true)">사용</button>
+            <button id="wd_myAutoConsolidate_no"  class="toggle-btn" onclick="setWdAutoConsolidate('my',false)">사용 안함</button>
+          </div>
         </div>
         <div class="cfg-sub" id="wdCfgWifeSubLabel">👩 아내</div>
         <div class="cfg-grid">
@@ -1895,7 +1898,10 @@
           <label>계좌 인출 시작연도</label>
           <input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1">
           <label>연금계좌 통합설정 사용여부</label>
-          <select id="wd_wifeAutoConsolidate"><option value="0">사용 안함</option><option value="1">사용</option></select>
+          <div class="toggle-row">
+            <button id="wd_wifeAutoConsolidate_yes" class="toggle-btn" onclick="setWdAutoConsolidate('wife',true)">사용</button>
+            <button id="wd_wifeAutoConsolidate_no"  class="toggle-btn" onclick="setWdAutoConsolidate('wife',false)">사용 안함</button>
+          </div>
         </div>
       </div>
 
@@ -1973,7 +1979,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.52';
+const APP_VERSION = 'MyPM v2.53';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5808,10 +5814,16 @@ function loadWdFormValues() {
   s('wd_wifeBasicWithdraw', wp.wifeBasicWithdraw ?? 15);
   s('wd_targetStartYear', wp.targetStartYear ?? (new Date().getFullYear() + 7));
   s('wd_wifeFixWithdraw', wp.wifeFixWithdraw||0); s('wd_wifeFixStartYear', wp.wifeFixStartYear||wp.startYear);
-  const sv = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  sv('wd_myAutoConsolidate',   wp.myAutoConsolidate   ? '1' : '0');
-  sv('wd_wifeAutoConsolidate', wp.wifeAutoConsolidate ? '1' : '0');
+  setWdAutoConsolidate('my',   !!wp.myAutoConsolidate);
+  setWdAutoConsolidate('wife', !!wp.wifeAutoConsolidate);
 }
+function setWdAutoConsolidate(person, val) {
+  const yes = document.getElementById(`wd_${person}AutoConsolidate_yes`);
+  const no  = document.getElementById(`wd_${person}AutoConsolidate_no`);
+  if (yes) yes.classList.toggle('active', val);
+  if (no)  no.classList.toggle('active', !val);
+}
+
 function applyWdSettings() {
   const n = id => Number(document.getElementById(id)?.value) || 0;
   const currentYear = new Date().getFullYear();
@@ -5845,8 +5857,8 @@ function applyWdSettings() {
     wifeFixStartYear,
     myBirthYear: appSettings.myBirthYear, myBirthMonth: appSettings.myBirthMonth || 1,
     wifeBirthYear: appSettings.wifeBirthYear, wifeBirthMonth: appSettings.wifeBirthMonth || 1,
-    myAutoConsolidate:   document.getElementById('wd_myAutoConsolidate')?.value === '1',
-    wifeAutoConsolidate: document.getElementById('wd_wifeAutoConsolidate')?.value === '1',
+    myAutoConsolidate:   document.getElementById('wd_myAutoConsolidate_yes')?.classList.contains('active'),
+    wifeAutoConsolidate: document.getElementById('wd_wifeAutoConsolidate_yes')?.classList.contains('active'),
   };
   saveWdPlan();
   loadQuickWdValues();
