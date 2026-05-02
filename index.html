@@ -1037,6 +1037,7 @@
     <div class="nav-group">
       <button class="nav-btn active" onclick="return false">📊 My PM</button>
       <a href="NonK.html" class="nav-btn">🇺🇸 NonK</a>
+      <a href="KDeal.html" class="nav-btn">🇰🇷 KDeal</a>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <span id="refreshStatus"></span>
@@ -2047,7 +2048,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.66';
+const APP_VERSION = 'MyPM v2.68';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3182,6 +3183,10 @@ function exportToFile() {
       deposits:  tryParse('nonk_deposits_v1')  || { transactions: [] },
       monthly:   tryParse('nonk_monthly_v1')   || [],
       dividends: tryParse('nonk_dividends_v1') || []
+    },
+    kdeal: {
+      trades: tryParse('kdeal_trades_v1') || [],
+      cash:   tryParse('kdeal_cash_v1')   || 0
     }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -3359,6 +3364,11 @@ function importFromFile(event) {
         if (nk.deposits)  localStorage.setItem('nonk_deposits_v1',  JSON.stringify(nk.deposits));
         if (nk.monthly)   localStorage.setItem('nonk_monthly_v1',   JSON.stringify(nk.monthly));
         if (nk.dividends) localStorage.setItem('nonk_dividends_v1', JSON.stringify(nk.dividends));
+      }
+      if (data.kdeal) {
+        const kd = data.kdeal;
+        if (kd.trades !== undefined) localStorage.setItem('kdeal_trades_v1', JSON.stringify(kd.trades));
+        if (kd.cash   !== undefined) localStorage.setItem('kdeal_cash_v1',   JSON.stringify(kd.cash));
       }
       alert('불러오기 완료' + (data.nonk ? '\n(My PM + NonK 통합 데이터)' : ''));
     } catch (err) {
@@ -7639,6 +7649,10 @@ function buildDriveBundle() {
       deposits:  tryParse('nonk_deposits_v1')  || { transactions: [] },
       monthly:   tryParse('nonk_monthly_v1')   || [],
       dividends: tryParse('nonk_dividends_v1') || []
+    },
+    kdeal: {
+      trades: tryParse('kdeal_trades_v1') || [],
+      cash:   tryParse('kdeal_cash_v1')   || 0
     }
   };
 }
@@ -7730,6 +7744,11 @@ function _applyImportData(data) {
     if (data.nonk.deposits)  localStorage.setItem('nonk_deposits_v1',  JSON.stringify(data.nonk.deposits));
     if (data.nonk.monthly)   localStorage.setItem('nonk_monthly_v1',   JSON.stringify(data.nonk.monthly));
     if (data.nonk.dividends) localStorage.setItem('nonk_dividends_v1', JSON.stringify(data.nonk.dividends));
+  }
+  if (data.kdeal) {
+    const kd = data.kdeal;
+    if (kd.trades !== undefined) localStorage.setItem('kdeal_trades_v1', JSON.stringify(kd.trades));
+    if (kd.cash   !== undefined) localStorage.setItem('kdeal_cash_v1',   JSON.stringify(kd.cash));
   }
 }
 
