@@ -1973,7 +1973,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.51';
+const APP_VERSION = 'MyPM v2.52';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6373,13 +6373,12 @@ function promptSaveWdScenario() {
   const existing = loadWdScenarios();
   const name = prompt('시나리오 이름을 입력하세요:', `시나리오 ${existing.length + 1}`);
   if (!name) return;
-  const wp = wdPlan;
   const now = new Date();
   existing.push({
     name: name.trim(),
     savedAt: `${now.getMonth() + 1}/${now.getDate()}`,
-    settings: { startYear: wp.startYear, retireAge: wp.retireAge || 60,
-      returnRate: wp.returnRate, annualTarget: wp.annualTarget, inflation: wp.inflation },
+    wdPlan: { ...wdPlan },
+    appSettings: JSON.parse(JSON.stringify(appSettings)),
     metrics: computeWdMetrics(sim),
   });
   localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(existing));
@@ -6397,8 +6396,20 @@ function loadWdScenario(idx) {
   const list = loadWdScenarios();
   const sc = list[idx];
   if (!sc) return;
-  Object.assign(wdPlan, sc.settings);
-  saveWdPlan();
+  if (sc.wdPlan) {
+    wdPlan = { ...getWdDefaults(), ...sc.wdPlan };
+    saveWdPlan();
+  } else if (sc.settings) {
+    Object.assign(wdPlan, sc.settings);
+    saveWdPlan();
+  }
+  if (sc.appSettings) {
+    const def = getDefaultAppSettings();
+    appSettings = { ...def, ...sc.appSettings };
+    appSettings.my   = _deepMergePersonCfg(def.my,   sc.appSettings.my);
+    appSettings.wife = _deepMergePersonCfg(def.wife,  sc.appSettings.wife);
+    saveAppSettings();
+  }
   loadWdFormValues();
   loadQuickWdValues();
   renderWithdrawalPlan();
@@ -6421,10 +6432,11 @@ function renderWdScenarioTable() {
   list.forEach((sc, i) => {
     const m = sc.metrics;
     const best = m.score === maxScore;
+    const cfg = sc.wdPlan || sc.settings || {};
     h += `<tr>
       <td>${sc.name}</td><td>${sc.savedAt}</td>
-      <td>${sc.settings.startYear}년</td><td>${sc.settings.retireAge}세</td>
-      <td>${sc.settings.returnRate}%</td>
+      <td>${cfg.startYear}년</td><td>${cfg.retireAge || 60}세</td>
+      <td>${cfg.returnRate}%</td>
       <td>${fmt(m.totalWithdraw)}</td><td>${fmt(m.finalBalance)}</td>
       <td style="color:#dc2626">${fmt(m.totalTax)}</td>
       <td ${best ? 'class="wd-scenario-best"' : 'style="color:#7c3aed;font-weight:700"'}>
