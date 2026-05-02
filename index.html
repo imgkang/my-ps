@@ -519,6 +519,11 @@
   .txn-anse-badge {
     font-size: 10px; color: #92400e; font-weight: 500; margin-left: 4px;
   }
+  .deposit-chart-wrap {
+    background: #f9fafb; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 12px 8px;
+    margin-bottom: 10px;
+  }
 
   .deposit-toolbar {
     display: flex; justify-content: flex-end; align-items: center;
@@ -1506,6 +1511,10 @@
     </div>
     <div class="deposit-grand" id="depositGrand"></div>
     <div class="deposit-totals" id="depositTotals"></div>
+    <div class="deposit-chart-wrap" id="depositChartWrap">
+      <div style="position:relative;height:200px"><canvas id="depositChart"></canvas></div>
+      <div id="depositChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:50px 0">입출금 내역을 추가하면 차트가 표시됩니다</div>
+    </div>
     <div class="deposit-toolbar">
       <button class="btn-primary" onclick="openTxnEditor()">➕ 입출금 추가</button>
       <button class="btn-secondary" onclick="openTransferEditor()">🔁 계좌이전</button>
@@ -2015,7 +2024,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.63';
+const APP_VERSION = 'MyPM v2.64';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2250,9 +2259,73 @@ function getGrandTotalPrincipal() {
 }
 
 // ===== 계좌 입출금 메인 모달 =====
+let _depositChart = null;
+
+function renderDepositChart() {
+  const canvas = document.getElementById('depositChart');
+  const empty  = document.getElementById('depositChartEmpty');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const txns = depositData.transactions.filter(t => t.date);
+  if (!txns.length) {
+    if (_depositChart) { _depositChart.destroy(); _depositChart = null; }
+    canvas.style.display = 'none';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  canvas.style.display = '';
+  if (empty) empty.style.display = 'none';
+
+  const years = [...new Set(txns.map(t => t.date.slice(0, 4)))].sort();
+  const activeAccs = getActiveAccounts();
+
+  // 연도 × 계좌 집계
+  const sums = {};
+  for (const acc of activeAccs) {
+    sums[acc.id] = {};
+    for (const y of years) sums[acc.id][y] = 0;
+  }
+  for (const t of txns) {
+    const y = t.date.slice(0, 4);
+    if (sums[t.accId] && sums[t.accId][y] !== undefined)
+      sums[t.accId][y] += Number(t.amount) || 0;
+  }
+
+  const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#6366f1','#f97316','#06b6d4'];
+  const datasets = activeAccs.map((acc, i) => ({
+    label: divShortName(getAccName(acc.id)),
+    data: years.map(y => Math.round(sums[acc.id][y] / 10000)),
+    backgroundColor: COLORS[i % COLORS.length],
+    borderWidth: 0,
+  }));
+
+  if (_depositChart) { _depositChart.destroy(); _depositChart = null; }
+  _depositChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels: years, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: {
+          label: c => `${getAccName(activeAccs[c.datasetIndex].id)}: ${c.parsed.y.toLocaleString('ko-KR')} 만원`,
+          footer: items => `합계: ${items.reduce((s, c) => s + c.parsed.y, 0).toLocaleString('ko-KR')} 만원`
+        }}
+      },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 11 } } },
+        y: { stacked: true, title: { display: true, text: '순입금 (만원)' },
+          ticks: { callback: v => v.toLocaleString('ko-KR') } }
+      }
+    }
+  });
+}
+
 function openDepositModal() {
   renderDepositTotals();
   renderDepositList();
+  renderDepositChart();
   document.getElementById('accountDepositModal').classList.add('open');
 }
 function closeDepositModal() {
@@ -2290,6 +2363,7 @@ function renderDepositTotals() {
   grandEl.innerHTML = `
     <span class="grand-label">전체 순입금 합계</span>
     <span class="grand-amount">${grand === 0 ? '-' : grand.toLocaleString('ko-KR') + ' 원'}</span>`;
+  renderDepositChart();
 }
 
 function renderDepositList() {
@@ -2335,6 +2409,7 @@ function updateTxnDate(id, newDate) {
   t.date = newDate;
   saveDeposits();
   renderDepositList();  // 정렬 재반영
+  renderDepositChart();
   renderPortfolioChart();
 }
 
