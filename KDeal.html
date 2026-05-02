@@ -125,6 +125,7 @@
     font-size:13px; font-weight:600; cursor:pointer; background:#fff; color:var(--muted); }
   .kd-type-btn.active-buy { background:#dcfce7; border-color:#16a34a; color:#166534; }
   .kd-type-btn.active-sell { background:#fee2e2; border-color:#dc2626; color:#991b1b; }
+  .kd-sell-hint { font-size:11px; color:var(--muted); margin-top:2px; min-height:14px; }
 
   /* Refresh status */
   #kdRefreshStatus { font-size:12px; color:var(--muted); }
@@ -134,6 +135,15 @@
   .kd-tab { padding:5px 14px; border-radius:6px; font-size:12px; font-weight:600;
     cursor:pointer; border:1px solid var(--border); background:#fff; color:var(--muted); }
   .kd-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+
+  /* Timeline */
+  .kd-tl-toggle {
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%; background:#f9fafb; border:1px solid var(--border);
+    border-radius:8px; padding:8px 12px; font-size:12px; font-weight:600;
+    color:var(--muted); cursor:pointer; margin-top:6px;
+  }
+  .kd-tl-chevron { font-size:10px; transition:transform 0.15s; display:inline-block; }
 
   /* Mobile */
   @media (max-width:600px) {
@@ -169,7 +179,22 @@
   <!-- Summary -->
   <div class="kd-summary-card">
     <div class="kd-summary-grid" id="kdSummaryGrid">
-      <div class="kd-summary-item"><div class="kd-summary-label">투입 원금</div><div class="kd-summary-value">-</div></div>
+      <div><div class="kd-summary-label">투입 원금</div><div class="kd-summary-value">-</div></div>
+    </div>
+  </div>
+
+  <!-- Portfolio timeline -->
+  <div class="card" id="kdTimelineWrap" style="display:none">
+    <h2>📊 자산 변화 추이</h2>
+    <div style="position:relative;height:200px;margin-bottom:8px">
+      <canvas id="kdTimelineChart"></canvas>
+    </div>
+    <button class="kd-tl-toggle" onclick="kdToggleTlTable()">
+      <span>📋 거래별 상세 내역</span>
+      <span class="kd-tl-chevron" id="kdTlChevron">▶</span>
+    </button>
+    <div id="kdTlTableWrap" style="display:none;margin-top:8px">
+      <div id="kdTimelineContainer"></div>
     </div>
   </div>
 
@@ -201,6 +226,7 @@
       <button class="close-btn" onclick="kdCloseTradeModal()">×</button>
     </div>
     <div class="kd-form">
+      <!-- 1. 구분 -->
       <div class="kd-field">
         <label>구분</label>
         <div class="kd-type-toggle">
@@ -209,6 +235,20 @@
         </div>
         <input type="hidden" id="kdTradeType" value="buy">
       </div>
+      <!-- 2. 거래일 (구분 바로 다음) -->
+      <div class="kd-field">
+        <label>거래일</label>
+        <input type="date" id="kdTradeDate" onchange="kdUpdateSellStockOptions()">
+      </div>
+      <!-- 3. 보유 종목 선택 (매도시만 표시) -->
+      <div class="kd-field" id="kdSellStockRow" style="display:none">
+        <label>보유 종목 선택</label>
+        <select id="kdSellStockSelect" onchange="kdOnSellStockSelect(this.value)">
+          <option value="">-- 날짜 기준 보유 종목 --</option>
+        </select>
+        <div class="kd-sell-hint" id="kdSellQtyHint"></div>
+      </div>
+      <!-- 4. 종목코드 + 종목명 -->
       <div class="kd-form-row">
         <div class="kd-field">
           <label>종목코드 (6자리)</label>
@@ -220,28 +260,25 @@
           <input type="text" id="kdTradeName" placeholder="예: 삼성전자">
         </div>
       </div>
+      <!-- 5. 단가 + 수량 -->
       <div class="kd-form-row">
-        <div class="kd-field">
-          <label>거래일</label>
-          <input type="date" id="kdTradeDate">
-        </div>
         <div class="kd-field">
           <label>단가 (원)</label>
           <input type="number" id="kdTradePrice" min="1" step="1" placeholder="예: 75000"
             oninput="kdUpdateTradePreview()">
         </div>
-      </div>
-      <div class="kd-form-row">
         <div class="kd-field">
           <label>수량 (주)</label>
           <input type="number" id="kdTradeQty" min="1" step="1" placeholder="예: 100"
             oninput="kdUpdateTradePreview()">
         </div>
-        <div class="kd-field">
-          <label>수수료+세금 (원)</label>
-          <input type="number" id="kdTradeFee" min="0" step="1" placeholder="0">
-        </div>
       </div>
+      <!-- 6. 수수료 -->
+      <div class="kd-field">
+        <label>수수료+세금 (원)</label>
+        <input type="number" id="kdTradeFee" min="0" step="1" placeholder="0">
+      </div>
+      <!-- 7. 메모 -->
       <div class="kd-field">
         <label>메모 (선택)</label>
         <input type="text" id="kdTradeMemo" placeholder="거래 메모">
@@ -289,7 +326,7 @@ const KD_YAHOO = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
 // ===== 데이터 =====
 let kdTrades  = kdLoadTrades();
 let kdCash    = kdLoadCash();
-let kdPrices  = {};  // code -> {price, change, changeRate, name}
+let kdPrices  = {};
 let kdEditingTradeId = null;
 let kdCurrentTab = 'all';
 
@@ -297,10 +334,10 @@ function kdLoadTrades() {
   try { return JSON.parse(localStorage.getItem(KD_TRADES_KEY)) || []; } catch(_) { return []; }
 }
 function kdSaveTrades() { localStorage.setItem(KD_TRADES_KEY, JSON.stringify(kdTrades)); }
-function kdLoadCash()   {
+function kdLoadCash() {
   try { return Number(localStorage.getItem(KD_CASH_KEY)) || 0; } catch(_) { return 0; }
 }
-function kdSaveCash()   { localStorage.setItem(KD_CASH_KEY, String(kdCash)); }
+function kdSaveCash() { localStorage.setItem(KD_CASH_KEY, String(kdCash)); }
 
 // ===== FIFO 분석 =====
 function kdDaysBetween(d1, d2) {
@@ -311,8 +348,8 @@ function kdFifoAnalysis() {
   const sorted = [...kdTrades].sort((a, b) =>
     a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
 
-  const openLots = {}; // code -> [{id,date,price,qty,remaining,fee,name}]
-  const closedMap = {}; // sellId -> {pnl, simpleReturn, annReturn, holdingDays, buyCost, sellNet, qty}
+  const openLots = {};
+  const closedMap = {};
   let totalRealizedPnl = 0;
 
   for (const t of sorted) {
@@ -354,7 +391,6 @@ function kdFifoAnalysis() {
     }
   }
 
-  // 오픈 포지션 정리
   const positions = [];
   for (const [code, lots] of Object.entries(openLots)) {
     const qty = lots.reduce((s, l) => s + l.remaining, 0);
@@ -363,21 +399,217 @@ function kdFifoAnalysis() {
       const feePerShare = l.qty > 0 ? l.fee / l.qty : 0;
       return s + (l.price + feePerShare) * l.remaining;
     }, 0);
-    const avgPrice = cost / qty;
     positions.push({ code, name: lots[lots.length-1].name || code,
-                     qty, avgPrice, cost, firstDate: lots[0].date });
+                     qty, avgPrice: cost / qty, cost, firstDate: lots[0].date });
   }
   positions.sort((a, b) => a.code.localeCompare(b.code));
   return { positions, closedMap, totalRealizedPnl };
 }
 
-// ===== 수익률 포매터 =====
-function kdFmtKRW(v)    { return Math.round(v).toLocaleString('ko-KR') + ' 원'; }
-function kdFmtPct(v, d=1) {
-  const s = v >= 0 ? '+' : '';
-  return s + (v * 100).toFixed(d) + '%';
+// ===== 포트폴리오 타임라인 =====
+function kdPortfolioTimeline() {
+  const sorted = [...kdTrades].sort((a, b) =>
+    a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
+
+  const openLots = {};
+  let cumulativeRealizedPnl = 0;
+  const events = [];
+
+  for (const t of sorted) {
+    const fee = Number(t.fee) || 0;
+    if (t.type === 'buy') {
+      if (!openLots[t.code]) openLots[t.code] = [];
+      openLots[t.code].push({ id: t.id, date: t.date, price: t.price,
+        qty: t.qty, remaining: t.qty, fee, name: t.name });
+    } else {
+      const lots = openLots[t.code] || [];
+      let sellRemain = t.qty;
+      let matchedCost = 0, matchedQty = 0;
+      while (sellRemain > 0 && lots.length > 0) {
+        const lot = lots[0];
+        const take = Math.min(lot.remaining, sellRemain);
+        const feeAlloc = lot.qty > 0 ? (lot.fee / lot.qty) * take : 0;
+        matchedCost += lot.price * take + feeAlloc;
+        matchedQty += take;
+        lot.remaining -= take;
+        sellRemain -= take;
+        if (lot.remaining === 0) lots.shift();
+      }
+      if (matchedQty > 0) {
+        const sellFee = t.qty > 0 ? fee * (matchedQty / t.qty) : 0;
+        cumulativeRealizedPnl += t.price * matchedQty - sellFee - matchedCost;
+      }
+    }
+
+    let openCost = 0;
+    for (const lots of Object.values(openLots)) {
+      for (const lot of lots) {
+        if (lot.remaining > 0) {
+          openCost += (lot.price + (lot.qty > 0 ? lot.fee / lot.qty : 0)) * lot.remaining;
+        }
+      }
+    }
+
+    events.push({ id: t.id, date: t.date, type: t.type,
+      name: t.name || t.code, code: t.code, qty: t.qty, price: t.price,
+      openCost, realizedPnl: cumulativeRealizedPnl,
+      totalEquity: openCost + cumulativeRealizedPnl });
+  }
+  return events;
 }
-function kdFmtSigned(v) {
+
+let _kdTimelineChart = null;
+
+function kdToggleTlTable() {
+  const wrap = document.getElementById('kdTlTableWrap');
+  const chevron = document.getElementById('kdTlChevron');
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : '';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+function kdRenderTimeline() {
+  const events = kdPortfolioTimeline();
+  const wrap = document.getElementById('kdTimelineWrap');
+  if (!events.length) {
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+
+  // Chart
+  const ctx = document.getElementById('kdTimelineChart');
+  if (ctx) {
+    if (_kdTimelineChart) { _kdTimelineChart.destroy(); _kdTimelineChart = null; }
+    _kdTimelineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: events.map(e => e.date),
+        datasets: [
+          {
+            label: '투자원금(장부)',
+            data: events.map(e => Math.round(e.openCost / 10000)),
+            borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)',
+            fill: true, tension: 0.1, pointRadius: 4, borderWidth: 2
+          },
+          {
+            label: '총자산(장부)',
+            data: events.map(e => Math.round(e.totalEquity / 10000)),
+            borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)',
+            fill: true, tension: 0.1, pointRadius: 4, borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+          tooltip: {
+            callbacks: {
+              title: items => {
+                const e = events[items[0].dataIndex];
+                return `${e.date}  ${e.type === 'buy' ? '매수' : '매도'}  ${e.name} ${Number(e.qty).toLocaleString()}주`;
+              },
+              label: item => ` ${item.dataset.label}: ${item.raw.toLocaleString('ko-KR')} 만원`
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { font: { size: 10 }, maxTicksLimit: 8 } },
+          y: { ticks: { font: { size: 10 }, callback: v => v.toLocaleString('ko-KR') + ' 만' } }
+        }
+      }
+    });
+  }
+
+  // Table
+  const container = document.getElementById('kdTimelineContainer');
+  if (container) {
+    const rows = [...events].reverse().map(e => {
+      const openMon = Math.round(e.openCost / 10000);
+      const rlzMon  = Math.round(e.realizedPnl / 10000);
+      const totMon  = Math.round(e.totalEquity / 10000);
+      const rlzCls  = e.realizedPnl >= 0 ? 'pos' : 'neg';
+      return `<tr>
+        <td style="white-space:nowrap">${e.date}</td>
+        <td><span class="kd-type-badge ${e.type === 'buy' ? 'buy' : 'sell'}">${e.type === 'buy' ? '매수' : '매도'}</span></td>
+        <td><div class="kd-name">${e.name}</div><div class="kd-code">${e.code}</div></td>
+        <td class="ta-r muted" style="white-space:nowrap">${Number(e.qty).toLocaleString()} × ${Math.round(e.price).toLocaleString('ko-KR')}</td>
+        <td class="ta-r">${openMon.toLocaleString('ko-KR')} 만</td>
+        <td class="ta-r ${rlzCls}">${rlzMon >= 0 ? '+' : ''}${rlzMon.toLocaleString('ko-KR')} 만</td>
+        <td class="ta-r" style="font-weight:700">${totMon.toLocaleString('ko-KR')} 만</td>
+      </tr>`;
+    }).join('');
+    container.innerHTML = `<div style="overflow-x:auto"><table class="kd-table">
+      <thead><tr>
+        <th>날짜</th><th>구분</th><th>종목</th><th class="ta-r">거래</th>
+        <th class="ta-r">투자원금</th><th class="ta-r">누적실현손익</th>
+        <th class="ta-r" style="font-weight:700">총자산(장부)</th>
+      </tr></thead><tbody>${rows}</tbody>
+    </table></div>`;
+  }
+}
+
+// ===== 매도시 보유 종목 조회 =====
+function kdGetHeldStocksAsOf(date) {
+  const sorted = [...kdTrades]
+    .filter(t => t.date <= date)
+    .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
+
+  const openLots = {};
+  for (const t of sorted) {
+    const fee = Number(t.fee) || 0;
+    if (t.type === 'buy') {
+      if (!openLots[t.code]) openLots[t.code] = [];
+      openLots[t.code].push({ id: t.id, date: t.date, price: t.price,
+        qty: t.qty, remaining: t.qty, fee, name: t.name });
+    } else {
+      const lots = openLots[t.code] || [];
+      let sellRemain = t.qty;
+      while (sellRemain > 0 && lots.length > 0) {
+        const lot = lots[0];
+        const take = Math.min(lot.remaining, sellRemain);
+        lot.remaining -= take; sellRemain -= take;
+        if (lot.remaining === 0) lots.shift();
+      }
+    }
+  }
+  return Object.entries(openLots)
+    .map(([code, lots]) => {
+      const qty = lots.reduce((s, l) => s + l.remaining, 0);
+      return qty > 0 ? { code, name: lots[lots.length - 1].name || code, qty } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.code.localeCompare(b.code));
+}
+
+function kdUpdateSellStockOptions() {
+  const sel = document.getElementById('kdSellStockSelect');
+  if (!sel) return;
+  const type = document.getElementById('kdTradeType')?.value;
+  if (type !== 'sell') return;
+  const date = document.getElementById('kdTradeDate').value;
+  const prevCode = sel.value;
+  const held = date ? kdGetHeldStocksAsOf(date) : [];
+  sel.innerHTML = '<option value="">-- 날짜 기준 보유 종목 --</option>' +
+    held.map(h => `<option value="${h.code}" data-name="${h.name}" data-qty="${h.qty}">${h.name} (${h.code}) · ${h.qty.toLocaleString()}주</option>`).join('');
+  if (prevCode) sel.value = prevCode;
+}
+
+function kdOnSellStockSelect(val) {
+  const sel = document.getElementById('kdSellStockSelect');
+  if (!sel || !val) return;
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('kdTradeCode').value = val;
+  document.getElementById('kdTradeName').value = opt.dataset.name || '';
+  const hintEl = document.getElementById('kdSellQtyHint');
+  if (hintEl) hintEl.textContent = opt.dataset.qty ? `최대 ${Number(opt.dataset.qty).toLocaleString()}주 매도 가능` : '';
+}
+
+// ===== 수익률 포매터 =====
+function kdFmtKRW(v)      { return Math.round(v).toLocaleString('ko-KR') + ' 원'; }
+function kdFmtPct(v, d=1) { return (v >= 0 ? '+' : '') + (v * 100).toFixed(d) + '%'; }
+function kdFmtSigned(v)   {
   const abs = Math.abs(Math.round(v)).toLocaleString('ko-KR');
   return (v >= 0 ? '+' : '−') + abs + ' 원';
 }
@@ -399,12 +631,12 @@ function kdRender() {
   const grid = document.getElementById('kdSummaryGrid');
   if (grid) {
     const items = [
-      { label:'투입 원금',    val: kdFmtKRW(totalCost),        cls: '' },
-      { label:'평가금액',     val: kdFmtKRW(totalEval),         cls: '' },
-      { label:'미실현 손익',  val: kdFmtSigned(unrealPnl),      cls: unrealPnl >= 0 ? 'pos' : 'neg' },
-      { label:'실현 손익',    val: kdFmtSigned(totalRealizedPnl), cls: totalRealizedPnl >= 0 ? 'pos' : 'neg' },
-      { label:'현금 잔고',    val: kdFmtKRW(kdCash),            cls: '' },
-      { label:'총 수익률',    val: kdFmtPct(totalReturn),       cls: totalReturn >= 0 ? 'pos' : 'neg' },
+      { label:'투입 원금',   val: kdFmtKRW(totalCost),            cls: '' },
+      { label:'평가금액',    val: kdFmtKRW(totalEval),             cls: '' },
+      { label:'미실현 손익', val: kdFmtSigned(unrealPnl),          cls: unrealPnl >= 0 ? 'pos' : 'neg' },
+      { label:'실현 손익',   val: kdFmtSigned(totalRealizedPnl),   cls: totalRealizedPnl >= 0 ? 'pos' : 'neg' },
+      { label:'현금 잔고',   val: kdFmtKRW(kdCash),               cls: '' },
+      { label:'총 수익률',   val: kdFmtPct(totalReturn),           cls: totalReturn >= 0 ? 'pos' : 'neg' },
     ];
     grid.innerHTML = items.map(it => `
       <div><div class="kd-summary-label">${it.label}</div>
@@ -531,6 +763,11 @@ function kdSetTradeType(type) {
   document.getElementById('kdTradeType').value = type;
   document.getElementById('kdTypeBuyBtn').className  = 'kd-type-btn' + (type==='buy'  ? ' active-buy'  : '');
   document.getElementById('kdTypeSellBtn').className = 'kd-type-btn' + (type==='sell' ? ' active-sell' : '');
+  const sellRow = document.getElementById('kdSellStockRow');
+  if (sellRow) sellRow.style.display = type === 'sell' ? '' : 'none';
+  const hintEl = document.getElementById('kdSellQtyHint');
+  if (hintEl) hintEl.textContent = '';
+  if (type === 'sell') kdUpdateSellStockOptions();
 }
 
 function kdOpenTradeModal(editId = null) {
@@ -540,26 +777,36 @@ function kdOpenTradeModal(editId = null) {
     const t = kdTrades.find(x => x.id === editId);
     if (!t) return;
     if (titleEl) titleEl.textContent = '거래 수정';
+    // 날짜 먼저 설정 (sell stock options가 날짜 기준으로 로드되므로)
+    document.getElementById('kdTradeDate').value  = t.date;
     kdSetTradeType(t.type);
     document.getElementById('kdTradeCode').value  = t.code;
     document.getElementById('kdTradeName').value  = t.name || '';
-    document.getElementById('kdTradeDate').value  = t.date;
     document.getElementById('kdTradePrice').value = t.price;
     document.getElementById('kdTradeQty').value   = t.qty;
     document.getElementById('kdTradeFee').value   = t.fee || '';
     document.getElementById('kdTradeMemo').value  = t.memo || '';
+    // 매도인 경우 드롭다운에서 해당 종목 선택
+    if (t.type === 'sell') {
+      setTimeout(() => {
+        const sel = document.getElementById('kdSellStockSelect');
+        if (sel) sel.value = t.code;
+        const hintEl = document.getElementById('kdSellQtyHint');
+        if (hintEl) hintEl.textContent = '';
+      }, 0);
+    }
   } else {
     if (titleEl) titleEl.textContent = '거래 추가';
-    kdSetTradeType('buy');
-    document.getElementById('kdTradeCode').value  = '';
-    document.getElementById('kdTradeName').value  = '';
-    document.getElementById('kdTradeFee').value   = '';
-    document.getElementById('kdTradeMemo').value  = '';
     const now = new Date();
     document.getElementById('kdTradeDate').value =
       `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    kdSetTradeType('buy');
+    document.getElementById('kdTradeCode').value  = '';
+    document.getElementById('kdTradeName').value  = '';
     document.getElementById('kdTradePrice').value = '';
     document.getElementById('kdTradeQty').value   = '';
+    document.getElementById('kdTradeFee').value   = '';
+    document.getElementById('kdTradeMemo').value  = '';
   }
   kdUpdateTradePreview();
   document.getElementById('kdTradeModal').classList.add('open');
@@ -567,12 +814,24 @@ function kdOpenTradeModal(editId = null) {
 
 function kdQuickTrade(code, name, type) {
   kdOpenTradeModal();
+  // 날짜 설정 후 타입 변경
   kdSetTradeType(type);
   document.getElementById('kdTradeCode').value = code;
   document.getElementById('kdTradeName').value = name;
-  // 현재가 자동 입력
   const info = kdPrices[code];
   if (info) document.getElementById('kdTradePrice').value = Math.round(info.price);
+  // 매도시 드롭다운 선택
+  if (type === 'sell') {
+    setTimeout(() => {
+      const sel = document.getElementById('kdSellStockSelect');
+      if (sel) sel.value = code;
+      const hintEl = document.getElementById('kdSellQtyHint');
+      if (hintEl) {
+        const opt = sel?.options[sel.selectedIndex];
+        hintEl.textContent = opt?.dataset.qty ? `최대 ${Number(opt.dataset.qty).toLocaleString()}주 매도 가능` : '';
+      }
+    }, 0);
+  }
   kdUpdateTradePreview();
 }
 
@@ -585,7 +844,6 @@ function kdHandleTradeBackdrop(e) {
 }
 
 function kdOnCodeInput(val) {
-  // 숫자만 허용
   document.getElementById('kdTradeCode').value = val.replace(/\D/g, '').slice(0, 6);
 }
 
@@ -644,6 +902,7 @@ function kdSaveTrade() {
   kdCloseTradeModal();
   kdRender();
   kdRenderTradeHistory();
+  kdRenderTimeline();
 }
 
 function kdDeleteTrade(id) {
@@ -654,6 +913,7 @@ function kdDeleteTrade(id) {
   kdSaveTrades();
   kdRender();
   kdRenderTradeHistory();
+  kdRenderTimeline();
 }
 
 // ===== 현금 모달 =====
@@ -670,7 +930,7 @@ function kdSaveCashModal() {
   kdRender();
 }
 
-// ===== 가격 조회 (한국 주식 Yahoo Finance .KS/.KQ) =====
+// ===== 가격 조회 =====
 async function kdFetchWithTimeout(url, ms = 8000) {
   const ctrl = new AbortController();
   const tid  = setTimeout(() => ctrl.abort(), ms);
@@ -725,13 +985,11 @@ async function kdRefreshAll() {
       const info = await kdFetchStockInfo(p.code);
       if (info) {
         kdPrices[p.code] = info;
-        // 종목명 자동 업데이트
         if (info.name && info.name !== p.code) {
-          const t = kdTrades.filter(x => x.code === p.code).pop();
-          if (t && (!t.name || t.name === t.code)) {
-            kdTrades.filter(x => x.code === p.code).forEach(x => { if (!x.name || x.name === x.code) x.name = info.name; });
-            kdSaveTrades();
-          }
+          kdTrades.filter(x => x.code === p.code).forEach(x => {
+            if (!x.name || x.name === x.code) x.name = info.name;
+          });
+          kdSaveTrades();
         }
       }
     } catch(_) {}
@@ -770,6 +1028,7 @@ function kdImportFromFile(event) {
       if (src.cash != null) { kdCash = Number(src.cash) || 0; kdSaveCash(); }
       kdRender();
       kdRenderTradeHistory();
+      kdRenderTimeline();
       kdRefreshAll();
       alert('불러오기 완료');
     } catch(err) { alert('실패: ' + err.message); }
@@ -782,6 +1041,7 @@ function kdImportFromFile(event) {
 document.addEventListener('DOMContentLoaded', () => {
   kdRender();
   kdRenderTradeHistory();
+  kdRenderTimeline();
   setTimeout(kdRefreshAll, 300);
 });
 </script>
