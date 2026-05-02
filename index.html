@@ -2015,7 +2015,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.61';
+const APP_VERSION = 'MyPM v2.62';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5278,6 +5278,11 @@ function toggleDivForm(forceOpen) {
 let _divStockChart = null, _divAccChart = null;
 const _DIV_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
 
+function divShortName(name, max = 8) {
+  if (!name) return name;
+  return name.length > max ? name.slice(0, max) + '…' : name;
+}
+
 function renderDivCharts() {
   if (typeof Chart === 'undefined') { setTimeout(renderDivCharts, 200); return; }
   const sorted = [...dividendRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
@@ -5295,18 +5300,18 @@ function renderDivCharts() {
       stockCanvas.style.display = '';
       if (stockEmpty) stockEmpty.style.display = 'none';
       const allCodes = [];
-      const codeNames = {};
+      const codeFullNames = {};
       for (const rec of dividendRecords) {
         for (const code of Object.keys(rec.stocks)) {
           if (!allCodes.includes(code)) {
             allCodes.push(code);
             const h = holdings.find(x => x.code === code);
-            codeNames[code] = h ? h.name : code;
+            codeFullNames[code] = h ? h.name : code;
           }
         }
       }
       const stockDatasets = allCodes.map((code, i) => ({
-        label: codeNames[code],
+        label: divShortName(codeFullNames[code]),
         data: sorted.map(r => Math.round((Number(r.stocks[code]) || 0) / 10000)),
         backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
         borderWidth: 0,
@@ -5320,7 +5325,10 @@ function renderDivCharts() {
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('ko-KR')} 만원` } }
+            tooltip: { callbacks: {
+              label: c => `${codeFullNames[allCodes[c.datasetIndex]]}: ${c.parsed.y.toLocaleString('ko-KR')} 만원`,
+              footer: items => `합계: ${items.reduce((s, c) => s + c.parsed.y, 0).toLocaleString('ko-KR')} 만원`
+            }}
           },
           scales: {
             x: { stacked: true, ticks: { font: { size: 10 } } },
@@ -5345,7 +5353,7 @@ function renderDivCharts() {
       if (accEmpty) accEmpty.style.display = 'none';
       const activeAccs = getActiveAccounts();
       const accDatasets = activeAccs.map((acc, i) => ({
-        label: getAccName(acc.id),
+        label: divShortName(getAccName(acc.id)),
         data: sorted.map(r => Math.round((Number(r.accounts[acc.id]) || 0) / 10000)),
         backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
         borderWidth: 0,
@@ -5359,7 +5367,10 @@ function renderDivCharts() {
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('ko-KR')} 만원` } }
+            tooltip: { callbacks: {
+              label: c => `${getAccName(activeAccs[c.datasetIndex].id)}: ${c.parsed.y.toLocaleString('ko-KR')} 만원`,
+              footer: items => `합계: ${items.reduce((s, c) => s + c.parsed.y, 0).toLocaleString('ko-KR')} 만원`
+            }}
           },
           scales: {
             x: { stacked: true, ticks: { font: { size: 10 } } },
@@ -5585,7 +5596,7 @@ function renderDivStockRecordsList() {
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>연/월</span>
-    ${allCodes.map(c => `<span style="text-align:right">${codeNames[c]}<br><small>${c}</small></span>`).join('')}
+    ${allCodes.map(c => `<span style="text-align:right">${divShortName(codeNames[c])}<br><small>${c}</small></span>`).join('')}
     <span style="text-align:right">합계</span>
     <span></span>
   `;
