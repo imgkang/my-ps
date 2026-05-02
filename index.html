@@ -1979,7 +1979,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.54';
+const APP_VERSION = 'MyPM v2.55';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3029,7 +3029,7 @@ function saveCashAccounts() {
 function exportToFile() {
   const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
   const payload = {
-    version: 9,
+    version: 10,
     exportedAt: new Date().toISOString(),
     mypm: {
       cashAccounts: cashAccounts,
@@ -3039,7 +3039,8 @@ function exportToFile() {
       dividendRecords: dividendRecords,
       annualPlan: annualPlan,
       wdPlan: wdPlan,
-      wdConsolidated: wdConsolidated
+      wdConsolidated: wdConsolidated,
+      wdScenarios: loadWdScenarios(),
     },
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
@@ -3183,7 +3184,10 @@ function importFromFile(event) {
         newWdConsolidated = src.wdConsolidated;
       }
 
-      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n- 배당 기록 ${newDivCount}건\n- 인출계획: ${newWdPlan ? '있음' : '없음'}\n\n현재 데이터를 덮어쓸까요?`;
+      // 시나리오 비교 파싱
+      const newWdScenarios = Array.isArray(src.wdScenarios) ? src.wdScenarios : null;
+
+      const summary = `불러온 파일 내용:\n- 종목 ${newHoldings.length}개\n- 총 현금 ${newTotalCash.toLocaleString('ko-KR')} 원\n- 입출금 ${newDepositCount}건\n- 계좌 기록 ${newRecordsCount}건\n- 배당 기록 ${newDivCount}건\n- 인출계획: ${newWdPlan ? '있음' : '없음'}\n- 시나리오: ${newWdScenarios ? newWdScenarios.length + '개' : '없음'}\n\n현재 데이터를 덮어쓸까요?`;
       if (!confirm(summary)) { event.target.value = ''; return; }
 
       holdings = newHoldings.map(h => ({
@@ -3210,6 +3214,7 @@ function importFromFile(event) {
       saveDividendRecords();
       localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
       if (newWdPlan) localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan));
+      if (newWdScenarios) localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(newWdScenarios));
       render();
       renderPortfolioChart();
       setTimeout(() => refreshPricesSilent(), 100);
