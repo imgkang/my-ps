@@ -25,11 +25,14 @@
   .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px 80px; }
   header { display:flex; justify-content:space-between; align-items:center;
     margin-bottom:18px; flex-wrap:wrap; gap:10px; }
-  .nav-btn { display:inline-flex; align-items:center; padding:7px 14px;
-    border:1px solid var(--border); border-radius:8px; font-size:13px; font-weight:600;
-    color:var(--muted); background:#fff; cursor:pointer; text-decoration:none; }
-  .nav-btn:hover { background:#f3f4f6; border-color:#9ca3af; color:var(--text); }
-  .nav-btn.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .nav-btn {
+    padding: 8px 20px; border: 2px solid var(--border); border-radius: 20px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    background: var(--card); color: var(--muted);
+    transition: all 0.15s; text-decoration: none; display: inline-block;
+  }
+  .nav-btn:hover { background: #f3f4f6; border-color: #9ca3af; color: var(--text); }
+  .nav-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
   .card { background:#fff; border:1px solid var(--border); border-radius:12px;
     padding:16px; margin-bottom:16px; box-shadow:var(--shadow); }
   .card h2 { font-size:14px; font-weight:700; margin:0 0 12px; color:var(--text); }

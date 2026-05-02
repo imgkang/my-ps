@@ -2048,7 +2048,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.68';
+const APP_VERSION = 'MyPM v2.70';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7498,8 +7498,11 @@ function saveDriveSettings() {
 loadDriveSettings();
 // 앱 로드 즉시 UI 반영 (토큰이 있으면 "동기화됨" 표시)
 updateDriveUI();
+// NonK/KDeal에서 넘어온 경우 silent 재인증 생략 (화면 껌벅임 방지)
+const _driveFromInternalPage = !!document.referrer &&
+  (document.referrer.includes('NonK.html') || document.referrer.includes('KDeal.html'));
 // clientId가 저장되어 있으면 앱 로드 시 GIS 초기화 + 무음 재인증 시도
-if (driveClientId) initGIS();
+if (driveClientId) initGIS(_driveFromInternalPage);
 
 function openDriveModal() {
   document.getElementById('driveClientIdInput').value = driveClientId;
@@ -7543,10 +7546,10 @@ function updateDriveUI() {
 }
 
 // Google Identity Services 초기화 (GIS)
-function initGIS() {
+function initGIS(skipSilentAuth = false) {
   if (!driveClientId) return;
   if (typeof google === 'undefined' || !google.accounts) {
-    setTimeout(initGIS, 500); return;
+    setTimeout(() => initGIS(skipSilentAuth), 500); return;
   }
   let _silentPending = false;
   window._gisClient = google.accounts.oauth2.initTokenClient({
@@ -7568,6 +7571,7 @@ function initGIS() {
       if (!wasSilent) setDriveStatus('ok', '✅ Google Drive 연결됨');
     }
   });
+  if (skipSilentAuth) return;
   // 유효한 토큰이 없으면 무음 재인증 시도 (이미 동의한 계정은 UI 없이 바로 연결)
   if (!driveAccessToken) {
     _silentPending = true;
@@ -7759,7 +7763,7 @@ function _applyImportData(data) {
   s.src = 'https://accounts.google.com/gsi/client';
   s.async = true;
   s.defer = true;
-  s.onload = initGIS;
+  s.onload = () => initGIS(_driveFromInternalPage);
   document.head.appendChild(s);
 })();
 
