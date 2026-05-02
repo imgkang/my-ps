@@ -1016,6 +1016,19 @@
   .mplan-table td { padding: 5px 8px; border: 1px solid var(--border); }
   .mplan-table tr:hover td { background: #fafafa; }
   .mplan-del { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 4px; }
+  .apt-toggle-btn {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
+    padding: 9px 14px; font-size: 13px; font-weight: 700; color: #166534;
+    cursor: pointer; margin-bottom: 8px; text-align: left;
+  }
+  .apt-toggle-btn:hover { background: #dcfce7; }
+  .apt-toggle-btn .apt-chevron { font-style: normal; font-size: 11px; margin-right: 2px; transition: transform 0.15s; display: inline-block; }
+  .apt-toggle-btn.open .apt-chevron { transform: rotate(90deg); }
+  .apt-section-hdr.apt-collapsible { cursor: pointer; user-select: none; }
+  .apt-section-hdr.apt-collapsible:hover { filter: brightness(0.96); }
+  .apt-section-hdr .apt-chevron { font-style: normal; font-size: 10px; transition: transform 0.15s; display: inline-block; }
+  .apt-section-hdr.open .apt-chevron { transform: rotate(90deg); }
 </style>
 </head>
 <body>
@@ -1691,26 +1704,28 @@
 
     <div class="plan-unit-note" style="margin-bottom:6px">* 원금·평가 표 단위: 백만원 / 적립 입력 단위: 만원 / 회색 = 실적, 초록 = 계획</div>
 
-    <!-- 계좌적립 계획 -->
-    <div class="apt-section-hdr" style="margin-bottom:8px">
-      📆 계좌적립 계획
-    </div>
-    <div id="monthlyPlanList" style="margin-bottom:10px"></div>
-    <div class="mplan-add-form">
-      <select id="mplanAcc" style="flex:2;min-width:90px"></select>
-      <select id="mplanFreq" style="flex:1.2;min-width:72px">
-        <option value="monthly">월 적립</option>
-        <option value="annual">연 적립</option>
-      </select>
-      <input type="number" id="mplanAmt" placeholder="적립금액(만원)" min="0" step="1" style="flex:1.4;min-width:80px">
-      <input type="number" id="mplanAnse" placeholder="안세공(만원)" min="0" step="1" style="flex:1.2;min-width:70px">
-      <input type="number" id="mplanStartY" placeholder="시작년" min="2020" max="2060" step="1" value="2026" style="flex:1;min-width:60px">
-      <input type="number" id="mplanStartM" placeholder="시작월" min="1" max="12" step="1" value="1" style="flex:.8;min-width:44px">
-      <span style="align-self:center;color:var(--muted);font-size:12px">~</span>
-      <input type="number" id="mplanEndY" placeholder="종료년" min="2020" max="2070" step="1" value="2056" style="flex:1;min-width:60px">
-      <input type="number" id="mplanEndM" placeholder="종료월" min="1" max="12" step="1" value="12" style="flex:.8;min-width:44px">
-      <button id="mplanSaveBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
-      <button id="mplanCancelBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;flex-shrink:0;display:none" onclick="cancelEditMonthlyPlan()">취소</button>
+    <!-- 계좌적립 계획 (접기/펼치기) -->
+    <button class="apt-toggle-btn" id="mplanToggleBtn" onclick="toggleAptSection('mplanBody', this)">
+      <i class="apt-chevron">▶</i> 📆 계좌 적립 계획 <span id="mplanCountBadge" style="font-size:11px;font-weight:400;color:#4ade80;margin-left:4px"></span>
+    </button>
+    <div id="mplanBody" style="display:none">
+      <div id="monthlyPlanList" style="margin-bottom:10px"></div>
+      <div class="mplan-add-form">
+        <select id="mplanAcc" style="flex:2;min-width:90px"></select>
+        <select id="mplanFreq" style="flex:1.2;min-width:72px">
+          <option value="monthly">월 적립</option>
+          <option value="annual">연 적립</option>
+        </select>
+        <input type="number" id="mplanAmt" placeholder="적립금액(만원)" min="0" step="1" style="flex:1.4;min-width:80px">
+        <input type="number" id="mplanAnse" placeholder="안세공(만원)" min="0" step="1" style="flex:1.2;min-width:70px">
+        <input type="number" id="mplanStartY" placeholder="시작년" min="2020" max="2060" step="1" value="2026" style="flex:1;min-width:60px">
+        <input type="number" id="mplanStartM" placeholder="시작월" min="1" max="12" step="1" value="1" style="flex:.8;min-width:44px">
+        <span style="align-self:center;color:var(--muted);font-size:12px">~</span>
+        <input type="number" id="mplanEndY" placeholder="종료년" min="2020" max="2070" step="1" value="2056" style="flex:1;min-width:60px">
+        <input type="number" id="mplanEndM" placeholder="종료월" min="1" max="12" step="1" value="12" style="flex:.8;min-width:44px">
+        <button id="mplanSaveBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
+        <button id="mplanCancelBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;flex-shrink:0;display:none" onclick="cancelEditMonthlyPlan()">취소</button>
+      </div>
     </div>
 
     <div class="annual-plan-combined">
@@ -1726,13 +1741,21 @@
       <div style="position:relative;height:280px;margin-bottom:4px"><canvas id="annualCombinedChart"></canvas></div>
       <div style="position:relative;height:160px;margin-bottom:8px"><canvas id="annualRateChart"></canvas></div>
 
-      <!-- 원금 표 (읽기 전용) -->
-      <div class="apt-section-hdr">📋 원금 기록 및 계획</div>
-      <div class="annual-plan-wrap" id="principalTableWrap"></div>
+      <!-- 원금 표 (접기/펼치기) -->
+      <div class="apt-section-hdr apt-collapsible" id="principalHdr" onclick="toggleAptSection('principalBody', this)">
+        <i class="apt-chevron">▶</i> 📋 원금 기록 및 계획
+      </div>
+      <div id="principalBody" style="display:none">
+        <div class="annual-plan-wrap" id="principalTableWrap"></div>
+      </div>
 
-      <!-- 평가 표 -->
-      <div class="apt-section-hdr" style="margin-top:16px">📈 평가 기록 및 예상</div>
-      <div class="annual-plan-wrap" id="evalTableWrap"></div>
+      <!-- 평가 표 (접기/펼치기) -->
+      <div class="apt-section-hdr apt-collapsible" id="evalHdr" onclick="toggleAptSection('evalBody', this)">
+        <i class="apt-chevron">▶</i> 📈 평가 기록 및 예상
+      </div>
+      <div id="evalBody" style="display:none">
+        <div class="annual-plan-wrap" id="evalTableWrap"></div>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -2024,7 +2047,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.64';
+const APP_VERSION = 'MyPM v2.65';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4558,18 +4581,50 @@ function loadAnnualPlan() {
   } catch (_) { return { format: 2, projRate: 7, monthlyPlans: [] }; }
 }
 
+function toggleAptSection(bodyId, btn) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  if (btn) {
+    btn.classList.toggle('open', !isOpen);
+    const chevron = btn.querySelector('.apt-chevron');
+    if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+  }
+}
+
+function updateMplanCountBadge() {
+  const badge = document.getElementById('mplanCountBadge');
+  if (!badge) return;
+  const n = (annualPlan.monthlyPlans || []).length;
+  badge.textContent = n ? `(${n}개)` : '';
+}
+
 function openAnnualPlanModal() {
   const modal = document.getElementById('annualPlanModal');
   if (!modal) return;
   const pr = document.getElementById('projRate');
   if (pr) pr.value = annualPlan.projRate || 7;
-  // 적립식 계좌 선택 목록 채우기
   const sel = document.getElementById('mplanAcc');
   if (sel) {
     const accs = getActiveAccounts();
     sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
   }
+  // 섹션 초기 상태: 모두 접힘
+  ['mplanBody','principalBody','evalBody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  ['mplanToggleBtn','principalHdr','evalHdr'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('open');
+      const ch = el.querySelector('.apt-chevron');
+      if (ch) ch.style.transform = '';
+    }
+  });
   renderMonthlyPlanList();
+  updateMplanCountBadge();
   renderPrincipalTable();
   renderEvalTable();
   setTimeout(renderAnnualCharts, 50);
@@ -5058,6 +5113,7 @@ function renderEvalTable() {
 let _editingMplanId = null;
 
 function renderMonthlyPlanList() {
+  updateMplanCountBadge();
   const wrap = document.getElementById('monthlyPlanList');
   if (!wrap) return;
   const plans = annualPlan.monthlyPlans || [];
@@ -5095,6 +5151,10 @@ function startEditMonthlyPlan(id) {
   document.getElementById('mplanSaveBtn').textContent = '저장';
   document.getElementById('mplanCancelBtn').style.display = '';
   renderMonthlyPlanList();
+  // 편집 시 섹션 자동 펼침
+  const body = document.getElementById('mplanBody');
+  const btn  = document.getElementById('mplanToggleBtn');
+  if (body && body.style.display === 'none') toggleAptSection('mplanBody', btn);
 }
 
 function cancelEditMonthlyPlan() {
