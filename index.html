@@ -2015,7 +2015,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.60';
+const APP_VERSION = 'MyPM v2.61';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5307,7 +5307,7 @@ function renderDivCharts() {
       }
       const stockDatasets = allCodes.map((code, i) => ({
         label: codeNames[code],
-        data: sorted.map(r => Math.round((Number(r.stocks[code]) || 0) / 100) / 10),
+        data: sorted.map(r => Math.round((Number(r.stocks[code]) || 0) / 10000)),
         backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
         borderWidth: 0,
       }));
@@ -5320,7 +5320,7 @@ function renderDivCharts() {
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)} 만원` } }
+            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('ko-KR')} 만원` } }
           },
           scales: {
             x: { stacked: true, ticks: { font: { size: 10 } } },
@@ -5346,7 +5346,7 @@ function renderDivCharts() {
       const activeAccs = getActiveAccounts();
       const accDatasets = activeAccs.map((acc, i) => ({
         label: getAccName(acc.id),
-        data: sorted.map(r => Math.round((Number(r.accounts[acc.id]) || 0) / 100) / 10),
+        data: sorted.map(r => Math.round((Number(r.accounts[acc.id]) || 0) / 10000)),
         backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
         borderWidth: 0,
       }));
@@ -5359,7 +5359,7 @@ function renderDivCharts() {
           interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)} 만원` } }
+            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('ko-KR')} 만원` } }
           },
           scales: {
             x: { stacked: true, ticks: { font: { size: 10 } } },
