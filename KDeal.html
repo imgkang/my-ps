@@ -421,6 +421,7 @@ function kdPortfolioTimeline() {
 
   const openLots = {};
   let cumulativeRealizedPnl = 0;
+  let cumulativeSellProceeds = 0;
   const events = [];
 
   for (const t of sorted) {
@@ -445,7 +446,9 @@ function kdPortfolioTimeline() {
       }
       if (matchedQty > 0) {
         const sellFee = t.qty > 0 ? fee * (matchedQty / t.qty) : 0;
-        cumulativeRealizedPnl += t.price * matchedQty - sellFee - matchedCost;
+        const sellNet = t.price * matchedQty - sellFee;
+        cumulativeRealizedPnl += sellNet - matchedCost;
+        cumulativeSellProceeds += sellNet;
       }
     }
 
@@ -461,7 +464,7 @@ function kdPortfolioTimeline() {
     events.push({ id: t.id, date: t.date, type: t.type,
       name: t.name || t.code, code: t.code, qty: t.qty, price: t.price,
       openCost, realizedPnl: cumulativeRealizedPnl,
-      totalEquity: openCost + cumulativeRealizedPnl });
+      totalEquity: openCost + cumulativeSellProceeds });
   }
   return events;
 }
@@ -1046,7 +1049,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.1';
+const APP_VERSION = 'KDeal v1.2';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
