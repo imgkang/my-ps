@@ -1979,7 +1979,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.53';
+const APP_VERSION = 'MyPM v2.54';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6514,6 +6514,15 @@ function renderWdCharts(sim) {
     borderColor: (accColors[id] || {}).border || '#666',
     borderWidth: 1,
   }));
+  // 공적연금 데이터셋 추가 (나 / 아내)
+  const myPubData   = years.map(yr => round(summary[yr].myPublicInc   || 0));
+  const wifePubData = years.map(yr => round(summary[yr].wifePublicInc || 0));
+  if (myPubData.some(v => v > 0))
+    chart4Datasets.push({ label: '공적연금(나)', data: myPubData,
+      backgroundColor: 'rgba(16,185,129,0.75)', borderColor: '#10b981', borderWidth: 1 });
+  if (wifePubData.some(v => v > 0))
+    chart4Datasets.push({ label: '공적연금(아내)', data: wifePubData,
+      backgroundColor: 'rgba(20,184,166,0.55)', borderColor: '#14b8a6', borderWidth: 1 });
 
   // Chart 5 데이터: 계좌별 잔액 (스택 에어리어)
   const chart5Datasets = activeAccIds.map(id => ({
