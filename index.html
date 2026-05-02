@@ -1709,7 +1709,6 @@
       <i class="apt-chevron">▶</i> 📆 계좌 적립 계획 <span id="mplanCountBadge" style="font-size:11px;font-weight:400;color:#4ade80;margin-left:4px"></span>
     </button>
     <div id="mplanBody" style="display:none">
-      <div id="monthlyPlanList" style="margin-bottom:10px"></div>
       <div class="mplan-add-form">
         <select id="mplanAcc" style="flex:2;min-width:90px"></select>
         <select id="mplanFreq" style="flex:1.2;min-width:72px">
@@ -1726,6 +1725,7 @@
         <button id="mplanSaveBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
         <button id="mplanCancelBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;flex-shrink:0;display:none" onclick="cancelEditMonthlyPlan()">취소</button>
       </div>
+      <div id="monthlyPlanList" style="margin-bottom:10px"></div>
     </div>
 
     <div class="annual-plan-combined">
@@ -2047,7 +2047,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.65';
+const APP_VERSION = 'MyPM v2.66';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
