@@ -1786,7 +1786,7 @@
     <div id="wdBriefingBar" style="display:none;flex-wrap:wrap;gap:8px 20px;padding:10px 14px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;margin-bottom:12px;flex-shrink:0;font-size:12px;color:#1e3a8a"></div>
 
     <!-- 인출 계획 차트 -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:12px;flex-shrink:0">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:14px;flex-shrink:0">
       <div>
         <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
         <div style="position:relative;height:200px"><canvas id="wdChart1"></canvas></div>
@@ -1796,6 +1796,10 @@
         <div style="position:relative;height:200px"><canvas id="wdChart2"></canvas></div>
       </div>
       <div>
+        <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 세금 누적 추이 (백만원)</h3>
+        <div style="position:relative;height:200px"><canvas id="wdChart3"></canvas></div>
+      </div>
+      <div>
         <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 계좌별 연간 인출액 (백만원)</h3>
         <div style="position:relative;height:200px"><canvas id="wdChart4"></canvas></div>
       </div>
@@ -1803,10 +1807,6 @@
         <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 계좌별 잔액 추이 (백만원)</h3>
         <div style="position:relative;height:200px"><canvas id="wdChart5"></canvas></div>
       </div>
-    </div>
-    <div style="margin-bottom:14px;flex-shrink:0">
-      <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 세금 누적 추이 (백만원)</h3>
-      <div style="position:relative;height:200px"><canvas id="wdChart3"></canvas></div>
     </div>
 
     <!-- 인출 테이블 -->
@@ -1973,7 +1973,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.49';
+const APP_VERSION = 'MyPM v2.50';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
