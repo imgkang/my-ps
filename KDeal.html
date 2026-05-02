@@ -152,6 +152,23 @@
   }
   .kd-tl-chevron { font-size:10px; transition:transform 0.15s; display:inline-block; }
 
+  /* Deposit modal */
+  .kd-dep-summary { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px;
+    padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between;
+    align-items:center; font-size:14px; }
+  .kd-dep-summary strong { font-size:16px; color:#9a3412; }
+  .kd-dep-list { margin-top:12px; max-height:300px; overflow-y:auto; }
+  .kd-dep-row { display:grid; grid-template-columns:90px 1fr 1fr auto; gap:8px;
+    align-items:center; padding:8px 4px; border-bottom:1px solid #f3f4f6; font-size:13px; }
+  .kd-dep-row:last-child { border-bottom:none; }
+  .kd-dep-type-in  { display:inline-block; padding:2px 6px; border-radius:4px;
+    font-size:11px; font-weight:700; background:#dcfce7; color:#166534; }
+  .kd-dep-type-out { display:inline-block; padding:2px 6px; border-radius:4px;
+    font-size:11px; font-weight:700; background:#fee2e2; color:#991b1b; }
+
+  /* Timeline deposit row */
+  .kd-tl-dep td { background:#fffbeb; }
+
   /* Mobile */
   @media (max-width:600px) {
     .kd-form-row { grid-template-columns:1fr; }
@@ -178,7 +195,7 @@
 
   <div class="toolbar">
     <button class="btn-primary" onclick="kdOpenTradeModal()">+ 거래 추가</button>
-    <button class="btn-secondary" onclick="kdOpenCashModal()">💰 현금 설정</button>
+    <button class="btn-secondary" onclick="kdOpenDepositModal()">💳 입출금</button>
     <button class="btn-secondary" onclick="kdExportToFile()">💾 파일로 저장</button>
     <button class="btn-secondary" onclick="document.getElementById('kdImportFile').click()">📂 파일 불러오기</button>
     <input type="file" id="kdImportFile" accept=".json" style="display:none" onchange="kdImportFromFile(event)">
@@ -302,28 +319,56 @@
   </div>
 </div>
 
-<!-- 현금 설정 모달 -->
-<div class="modal-backdrop" id="kdCashModal" onclick="kdHandleCashBackdrop(event)">
-  <div class="modal" style="max-width:320px">
+<!-- 입출금 모달 -->
+<div class="modal-backdrop" id="kdDepositModal" onclick="if(event.target.id==='kdDepositModal')kdCloseDepositModal()">
+  <div class="modal" style="max-width:500px">
     <div class="modal-header">
-      <h2>💰 현금 잔고 설정</h2>
-      <button class="close-btn" onclick="kdCloseCashModal()">×</button>
+      <h2>💳 계좌 입출금</h2>
+      <button class="close-btn" onclick="kdCloseDepositModal()">×</button>
     </div>
-    <div class="kd-field">
-      <label>현금 잔고 (원)</label>
-      <input type="number" id="kdCashInput" min="0" step="10000" placeholder="0">
+    <div class="kd-dep-summary">
+      <span>누적 순입금</span>
+      <strong id="kdDepTotal">-</strong>
     </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="kdCloseCashModal()">취소</button>
-      <button class="btn-primary" onclick="kdSaveCashModal()">저장</button>
+    <!-- 추가 폼 -->
+    <div class="kd-form" id="kdDepForm">
+      <div class="kd-form-row">
+        <div class="kd-field">
+          <label>구분</label>
+          <select id="kdDepType">
+            <option value="deposit">입금 (+)</option>
+            <option value="withdraw">출금 (−)</option>
+          </select>
+        </div>
+        <div class="kd-field">
+          <label>날짜</label>
+          <input type="date" id="kdDepDate">
+        </div>
+      </div>
+      <div class="kd-form-row">
+        <div class="kd-field">
+          <label>금액 (원)</label>
+          <input type="number" id="kdDepAmount" min="0" step="10000" placeholder="0">
+        </div>
+        <div class="kd-field">
+          <label>메모 (선택)</label>
+          <input type="text" id="kdDepMemo" placeholder="메모">
+        </div>
+      </div>
     </div>
+    <div class="modal-actions" style="margin-bottom:0">
+      <button class="btn-secondary" id="kdDepCancelBtn" style="display:none" onclick="kdCancelDepEdit()">취소</button>
+      <button class="btn-primary" id="kdDepSaveBtn" onclick="kdSaveDep()">추가</button>
+    </div>
+    <!-- 목록 -->
+    <div class="kd-dep-list" id="kdDepList"></div>
   </div>
 </div>
 
 <script>
 // ===== 상수 =====
-const KD_TRADES_KEY = 'kdeal_trades_v1';
-const KD_CASH_KEY   = 'kdeal_cash_v1';
+const KD_TRADES_KEY  = 'kdeal_trades_v1';
+const KD_DEP_KEY     = 'kdeal_deposits_v1';
 const KD_PROXIES = [
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -332,9 +377,9 @@ const KD_PROXIES = [
 const KD_YAHOO = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
 
 // ===== 데이터 =====
-let kdTrades  = kdLoadTrades();
-let kdCash    = kdLoadCash();
-let kdPrices  = {};
+let kdTrades   = kdLoadTrades();
+let kdDeposits = kdLoadDeposits();
+let kdPrices   = {};
 let kdEditingTradeId = null;
 let kdCurrentTab = 'all';
 
@@ -342,10 +387,25 @@ function kdLoadTrades() {
   try { return JSON.parse(localStorage.getItem(KD_TRADES_KEY)) || []; } catch(_) { return []; }
 }
 function kdSaveTrades() { localStorage.setItem(KD_TRADES_KEY, JSON.stringify(kdTrades)); }
-function kdLoadCash() {
-  try { return Number(localStorage.getItem(KD_CASH_KEY)) || 0; } catch(_) { return 0; }
+function kdLoadDeposits() {
+  try { return JSON.parse(localStorage.getItem(KD_DEP_KEY)) || []; } catch(_) { return []; }
 }
-function kdSaveCash() { localStorage.setItem(KD_CASH_KEY, String(kdCash)); }
+function kdSaveDeposits() { localStorage.setItem(KD_DEP_KEY, JSON.stringify(kdDeposits)); }
+
+// 누적 순입금
+function kdNetDeposits() {
+  return kdDeposits.reduce((s, d) => s + (d.type === 'withdraw' ? -Number(d.amount) : Number(d.amount)), 0);
+}
+// 자동 현금 잔고 = 순입금 - 매수총액 + 매도총액
+function kdAutoCash() {
+  let buyTotal = 0, sellTotal = 0;
+  for (const t of kdTrades) {
+    const fee = Number(t.fee) || 0;
+    if (t.type === 'buy')  buyTotal  += t.price * t.qty + fee;
+    else                   sellTotal += t.price * t.qty - fee;
+  }
+  return kdNetDeposits() - buyTotal + sellTotal;
+}
 
 // ===== FIFO 분석 =====
 function kdDaysBetween(d1, d2) {
@@ -416,55 +476,64 @@ function kdFifoAnalysis() {
 
 // ===== 포트폴리오 타임라인 =====
 function kdPortfolioTimeline() {
-  const sorted = [...kdTrades].sort((a, b) =>
-    a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
+  // 거래 + 입출금을 날짜순으로 합산
+  const allEvents = [
+    ...kdTrades.map(t  => ({ ...t,  _evKind: 'trade' })),
+    ...kdDeposits.map(d => ({ ...d, _evKind: 'dep'   })),
+  ].sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
 
   const openLots = {};
   let cumulativeRealizedPnl = 0;
   let cumulativeSellProceeds = 0;
+  let cumulativeDeposit = 0;
   const events = [];
 
-  for (const t of sorted) {
-    const fee = Number(t.fee) || 0;
-    if (t.type === 'buy') {
-      if (!openLots[t.code]) openLots[t.code] = [];
-      openLots[t.code].push({ id: t.id, date: t.date, price: t.price,
-        qty: t.qty, remaining: t.qty, fee, name: t.name });
+  for (const ev of allEvents) {
+    if (ev._evKind === 'dep') {
+      const amt = Number(ev.amount) || 0;
+      cumulativeDeposit += ev.type === 'withdraw' ? -amt : amt;
+      let openCost = 0;
+      for (const lots of Object.values(openLots))
+        for (const l of lots) if (l.remaining > 0)
+          openCost += (l.price + (l.qty > 0 ? l.fee / l.qty : 0)) * l.remaining;
+      events.push({ _evKind: 'dep', id: ev.id, date: ev.date, type: ev.type,
+        name: ev.type === 'withdraw' ? '출금' : '입금', amount: Number(ev.amount),
+        memo: ev.memo || '', cumulativeDeposit, openCost,
+        realizedPnl: cumulativeRealizedPnl,
+        totalEquity: openCost + cumulativeSellProceeds });
     } else {
-      const lots = openLots[t.code] || [];
-      let sellRemain = t.qty;
-      let matchedCost = 0, matchedQty = 0;
-      while (sellRemain > 0 && lots.length > 0) {
-        const lot = lots[0];
-        const take = Math.min(lot.remaining, sellRemain);
-        const feeAlloc = lot.qty > 0 ? (lot.fee / lot.qty) * take : 0;
-        matchedCost += lot.price * take + feeAlloc;
-        matchedQty += take;
-        lot.remaining -= take;
-        sellRemain -= take;
-        if (lot.remaining === 0) lots.shift();
-      }
-      if (matchedQty > 0) {
-        const sellFee = t.qty > 0 ? fee * (matchedQty / t.qty) : 0;
-        const sellNet = t.price * matchedQty - sellFee;
-        cumulativeRealizedPnl += sellNet - matchedCost;
-        cumulativeSellProceeds += sellNet;
-      }
-    }
-
-    let openCost = 0;
-    for (const lots of Object.values(openLots)) {
-      for (const lot of lots) {
-        if (lot.remaining > 0) {
-          openCost += (lot.price + (lot.qty > 0 ? lot.fee / lot.qty : 0)) * lot.remaining;
+      const t = ev, fee = Number(t.fee) || 0;
+      if (t.type === 'buy') {
+        if (!openLots[t.code]) openLots[t.code] = [];
+        openLots[t.code].push({ id: t.id, date: t.date, price: t.price,
+          qty: t.qty, remaining: t.qty, fee, name: t.name });
+      } else {
+        const lots = openLots[t.code] || [];
+        let sellRemain = t.qty, matchedCost = 0, matchedQty = 0;
+        while (sellRemain > 0 && lots.length > 0) {
+          const lot = lots[0];
+          const take = Math.min(lot.remaining, sellRemain);
+          const feeAlloc = lot.qty > 0 ? (lot.fee / lot.qty) * take : 0;
+          matchedCost += lot.price * take + feeAlloc;
+          matchedQty += take; lot.remaining -= take; sellRemain -= take;
+          if (lot.remaining === 0) lots.shift();
+        }
+        if (matchedQty > 0) {
+          const sellFee = t.qty > 0 ? fee * (matchedQty / t.qty) : 0;
+          const sellNet = t.price * matchedQty - sellFee;
+          cumulativeRealizedPnl += sellNet - matchedCost;
+          cumulativeSellProceeds += sellNet;
         }
       }
+      let openCost = 0;
+      for (const lots of Object.values(openLots))
+        for (const l of lots) if (l.remaining > 0)
+          openCost += (l.price + (l.qty > 0 ? l.fee / l.qty : 0)) * l.remaining;
+      events.push({ _evKind: 'trade', id: t.id, date: t.date, type: t.type,
+        name: t.name || t.code, code: t.code, qty: t.qty, price: t.price,
+        cumulativeDeposit, openCost, realizedPnl: cumulativeRealizedPnl,
+        totalEquity: openCost + cumulativeSellProceeds });
     }
-
-    events.push({ id: t.id, date: t.date, type: t.type,
-      name: t.name || t.code, code: t.code, qty: t.qty, price: t.price,
-      openCost, realizedPnl: cumulativeRealizedPnl,
-      totalEquity: openCost + cumulativeSellProceeds });
   }
   return events;
 }
@@ -488,29 +557,31 @@ function kdRenderTimeline() {
   }
   if (wrap) wrap.style.display = '';
 
+  const hasDeposit = kdDeposits.length > 0;
+
   // Chart
   const ctx = document.getElementById('kdTimelineChart');
   if (ctx) {
     if (_kdTimelineChart) { _kdTimelineChart.destroy(); _kdTimelineChart = null; }
+    const datasets = [];
+    if (hasDeposit) {
+      datasets.push({
+        label: '누적원금',
+        data: events.map(e => Math.round(e.cumulativeDeposit / 10000)),
+        borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)',
+        fill: true, tension: 0.1, pointRadius: 3, borderWidth: 2,
+        borderDash: [4, 3]
+      });
+    }
+    datasets.push({
+      label: '총자산(장부)',
+      data: events.map(e => Math.round(e.totalEquity / 10000)),
+      borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)',
+      fill: true, tension: 0.1, pointRadius: 4, borderWidth: 2
+    });
     _kdTimelineChart = new Chart(ctx, {
       type: 'line',
-      data: {
-        labels: events.map(e => e.date),
-        datasets: [
-          {
-            label: '투자원금(장부)',
-            data: events.map(e => Math.round(e.openCost / 10000)),
-            borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)',
-            fill: true, tension: 0.1, pointRadius: 4, borderWidth: 2
-          },
-          {
-            label: '총자산(장부)',
-            data: events.map(e => Math.round(e.totalEquity / 10000)),
-            borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)',
-            fill: true, tension: 0.1, pointRadius: 4, borderWidth: 2
-          }
-        ]
-      },
+      data: { labels: events.map(e => e.date), datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
@@ -519,6 +590,8 @@ function kdRenderTimeline() {
             callbacks: {
               title: items => {
                 const e = events[items[0].dataIndex];
+                if (e._evKind === 'dep')
+                  return `${e.date}  ${e.type === 'withdraw' ? '출금' : '입금'}  ${Math.round(e.amount / 10000).toLocaleString()}만원`;
                 return `${e.date}  ${e.type === 'buy' ? '매수' : '매도'}  ${e.name} ${Number(e.qty).toLocaleString()}주`;
               },
               label: item => ` ${item.dataset.label}: ${item.raw.toLocaleString('ko-KR')} 만원`
@@ -537,24 +610,37 @@ function kdRenderTimeline() {
   const container = document.getElementById('kdTimelineContainer');
   if (container) {
     const rows = [...events].reverse().map(e => {
-      const openMon = Math.round(e.openCost / 10000);
-      const rlzMon  = Math.round(e.realizedPnl / 10000);
-      const totMon  = Math.round(e.totalEquity / 10000);
-      const rlzCls  = e.realizedPnl >= 0 ? 'pos' : 'neg';
+      const depMon = Math.round(e.cumulativeDeposit / 10000);
+      const rlzMon = Math.round(e.realizedPnl / 10000);
+      const totMon = Math.round(e.totalEquity / 10000);
+      const rlzCls = e.realizedPnl >= 0 ? 'pos' : 'neg';
+      if (e._evKind === 'dep') {
+        const sign = e.type === 'withdraw' ? '−' : '+';
+        const amtMon = Math.round(e.amount / 10000).toLocaleString('ko-KR');
+        return `<tr class="kd-tl-dep">
+          <td style="white-space:nowrap">${e.date}</td>
+          <td><span class="kd-dep-type-${e.type === 'withdraw' ? 'out' : 'in'}">${e.type === 'withdraw' ? '출금' : '입금'}</span></td>
+          <td class="muted" colspan="2">${sign}${amtMon}만 ${e.memo ? `<span style="font-size:11px">(${e.memo})</span>` : ''}</td>
+          <td class="ta-r">${depMon.toLocaleString('ko-KR')} 만</td>
+          <td class="ta-r ${rlzCls}">${rlzMon >= 0 ? '+' : ''}${rlzMon.toLocaleString('ko-KR')} 만</td>
+          <td class="ta-r" style="font-weight:700">${totMon.toLocaleString('ko-KR')} 만</td>
+        </tr>`;
+      }
       return `<tr>
         <td style="white-space:nowrap">${e.date}</td>
         <td><span class="kd-type-badge ${e.type === 'buy' ? 'buy' : 'sell'}">${e.type === 'buy' ? '매수' : '매도'}</span></td>
         <td><div class="kd-name">${e.name}</div><div class="kd-code">${e.code}</div></td>
         <td class="ta-r muted" style="white-space:nowrap">${Number(e.qty).toLocaleString()} × ${Math.round(e.price).toLocaleString('ko-KR')}</td>
-        <td class="ta-r">${openMon.toLocaleString('ko-KR')} 만</td>
+        <td class="ta-r">${depMon.toLocaleString('ko-KR')} 만</td>
         <td class="ta-r ${rlzCls}">${rlzMon >= 0 ? '+' : ''}${rlzMon.toLocaleString('ko-KR')} 만</td>
         <td class="ta-r" style="font-weight:700">${totMon.toLocaleString('ko-KR')} 만</td>
       </tr>`;
     }).join('');
+    const depCol = hasDeposit ? '누적원금' : '투자원금';
     container.innerHTML = `<div style="overflow-x:auto"><table class="kd-table">
       <thead><tr>
-        <th>날짜</th><th>구분</th><th>종목</th><th class="ta-r">거래</th>
-        <th class="ta-r">투자원금</th><th class="ta-r">누적실현손익</th>
+        <th>날짜</th><th>구분</th><th>종목/내용</th><th class="ta-r">거래</th>
+        <th class="ta-r">${depCol}</th><th class="ta-r">누적실현손익</th>
         <th class="ta-r" style="font-weight:700">총자산(장부)</th>
       </tr></thead><tbody>${rows}</tbody>
     </table></div>`;
@@ -637,17 +723,23 @@ function kdRender() {
   }
 
   const unrealPnl   = totalEval - totalCost;
-  const totalReturn = totalCost > 0 ? (unrealPnl + totalRealizedPnl) / totalCost : 0;
+  const netDep      = kdNetDeposits();
+  const autoCash    = kdAutoCash();
+  // 총자산 = 현금잔고 + 평가금액 (입출금이 없으면 매수원금 기준 fallback)
+  const totalAssets = netDep > 0 ? autoCash + totalEval : totalEval + totalRealizedPnl;
+  const depBase     = netDep > 0 ? netDep : totalCost;
+  const totalReturn = depBase > 0 ? (totalAssets - depBase) / depBase : 0;
+  const cashDisplay = netDep > 0 ? autoCash : 0;
 
   const grid = document.getElementById('kdSummaryGrid');
   if (grid) {
     const items = [
-      { label:'투입 원금',   val: kdFmtKRW(totalCost),            cls: '' },
-      { label:'평가금액',    val: kdFmtKRW(totalEval),             cls: '' },
-      { label:'미실현 손익', val: kdFmtSigned(unrealPnl),          cls: unrealPnl >= 0 ? 'pos' : 'neg' },
-      { label:'실현 손익',   val: kdFmtSigned(totalRealizedPnl),   cls: totalRealizedPnl >= 0 ? 'pos' : 'neg' },
-      { label:'현금 잔고',   val: kdFmtKRW(kdCash),               cls: '' },
-      { label:'총 수익률',   val: kdFmtPct(totalReturn),           cls: totalReturn >= 0 ? 'pos' : 'neg' },
+      { label:'누적 원금',   val: kdFmtKRW(netDep > 0 ? netDep : totalCost), cls: '' },
+      { label:'평가금액',    val: kdFmtKRW(totalEval),                         cls: '' },
+      { label:'미실현 손익', val: kdFmtSigned(unrealPnl),      cls: unrealPnl >= 0 ? 'pos' : 'neg' },
+      { label:'실현 손익',   val: kdFmtSigned(totalRealizedPnl), cls: totalRealizedPnl >= 0 ? 'pos' : 'neg' },
+      { label:'현금 잔고',   val: kdFmtKRW(cashDisplay),                       cls: '' },
+      { label:'누적 수익률', val: kdFmtPct(totalReturn),       cls: totalReturn >= 0 ? 'pos' : 'neg' },
     ];
     grid.innerHTML = items.map(it => `
       <div><div class="kd-summary-label">${it.label}</div>
@@ -927,18 +1019,116 @@ function kdDeleteTrade(id) {
   kdRenderTimeline();
 }
 
-// ===== 현금 모달 =====
-function kdOpenCashModal() {
-  document.getElementById('kdCashInput').value = kdCash || '';
-  document.getElementById('kdCashModal').classList.add('open');
+// ===== 입출금 모달 =====
+let kdEditingDepId = null;
+
+function kdOpenDepositModal() {
+  kdEditingDepId = null;
+  const now = new Date();
+  document.getElementById('kdDepDate').value =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  document.getElementById('kdDepAmount').value = '';
+  document.getElementById('kdDepMemo').value = '';
+  document.getElementById('kdDepType').value = 'deposit';
+  document.getElementById('kdDepSaveBtn').textContent = '추가';
+  document.getElementById('kdDepCancelBtn').style.display = 'none';
+  kdRenderDepList();
+  document.getElementById('kdDepositModal').classList.add('open');
 }
-function kdCloseCashModal() { document.getElementById('kdCashModal').classList.remove('open'); }
-function kdHandleCashBackdrop(e) { if (e.target.id === 'kdCashModal') kdCloseCashModal(); }
-function kdSaveCashModal() {
-  kdCash = parseFloat(document.getElementById('kdCashInput').value) || 0;
-  kdSaveCash();
-  kdCloseCashModal();
+
+function kdCloseDepositModal() {
+  document.getElementById('kdDepositModal').classList.remove('open');
+  kdEditingDepId = null;
+}
+
+function kdRenderDepList() {
+  const net = kdNetDeposits();
+  const totalEl = document.getElementById('kdDepTotal');
+  if (totalEl) totalEl.textContent = Math.round(net).toLocaleString('ko-KR') + ' 원';
+
+  const list = document.getElementById('kdDepList');
+  if (!list) return;
+  if (!kdDeposits.length) {
+    list.innerHTML = '<div class="kd-empty" style="padding:16px 0">입출금 내역이 없습니다.</div>';
+    return;
+  }
+  const sorted = [...kdDeposits].sort((a, b) =>
+    b.date !== a.date ? b.date.localeCompare(a.date) : b.id.localeCompare(a.id));
+  list.innerHTML = sorted.map(d => {
+    const sign = d.type === 'withdraw' ? '−' : '+';
+    const amt  = Math.round(Number(d.amount)).toLocaleString('ko-KR');
+    const cls  = d.type === 'withdraw' ? 'kd-dep-type-out' : 'kd-dep-type-in';
+    const label= d.type === 'withdraw' ? '출금' : '입금';
+    return `<div class="kd-dep-row">
+      <span style="white-space:nowrap">${d.date}</span>
+      <span><span class="${cls}">${label}</span></span>
+      <span>${sign}${amt} 원${d.memo ? `<span style="color:var(--muted);font-size:11px;display:block">${d.memo}</span>` : ''}</span>
+      <span style="display:flex;gap:4px">
+        <button class="kd-btn-sm" onclick="kdEditDep('${d.id}')">편집</button>
+        <button class="kd-btn-sm del" onclick="kdDeleteDep('${d.id}')">삭제</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function kdSaveDep() {
+  const type   = document.getElementById('kdDepType').value;
+  const date   = document.getElementById('kdDepDate').value;
+  const amount = parseFloat(document.getElementById('kdDepAmount').value) || 0;
+  const memo   = document.getElementById('kdDepMemo').value.trim();
+  if (!date)         { alert('날짜를 선택해 주세요.'); return; }
+  if (amount <= 0)   { alert('금액을 입력해 주세요.'); return; }
+
+  if (kdEditingDepId) {
+    const idx = kdDeposits.findIndex(d => d.id === kdEditingDepId);
+    if (idx >= 0) kdDeposits[idx] = { ...kdDeposits[idx], type, date, amount, memo };
+  } else {
+    kdDeposits.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+                      type, date, amount, memo });
+  }
+  kdSaveDeposits();
+  kdEditingDepId = null;
+  document.getElementById('kdDepSaveBtn').textContent = '추가';
+  document.getElementById('kdDepCancelBtn').style.display = 'none';
+  document.getElementById('kdDepAmount').value = '';
+  document.getElementById('kdDepMemo').value = '';
+  document.getElementById('kdDepType').value = 'deposit';
+  kdRenderDepList();
   kdRender();
+  kdRenderTimeline();
+}
+
+function kdDeleteDep(id) {
+  const d = kdDeposits.find(x => x.id === id);
+  if (!d) return;
+  const label = d.type === 'withdraw' ? '출금' : '입금';
+  if (!confirm(`${d.date} ${label} ${Math.round(Number(d.amount)).toLocaleString('ko-KR')}원을 삭제할까요?`)) return;
+  kdDeposits = kdDeposits.filter(x => x.id !== id);
+  kdSaveDeposits();
+  kdRenderDepList();
+  kdRender();
+  kdRenderTimeline();
+}
+
+function kdEditDep(id) {
+  const d = kdDeposits.find(x => x.id === id);
+  if (!d) return;
+  kdEditingDepId = id;
+  document.getElementById('kdDepType').value   = d.type;
+  document.getElementById('kdDepDate').value   = d.date;
+  document.getElementById('kdDepAmount').value = d.amount;
+  document.getElementById('kdDepMemo').value   = d.memo || '';
+  document.getElementById('kdDepSaveBtn').textContent = '수정';
+  document.getElementById('kdDepCancelBtn').style.display = '';
+}
+
+function kdCancelDepEdit() {
+  kdEditingDepId = null;
+  document.getElementById('kdDepSaveBtn').textContent = '추가';
+  document.getElementById('kdDepCancelBtn').style.display = 'none';
+  document.getElementById('kdDepAmount').value = '';
+  document.getElementById('kdDepMemo').value = '';
+  document.getElementById('kdDepType').value = 'deposit';
 }
 
 // ===== 가격 조회 =====
@@ -1014,7 +1204,7 @@ async function kdRefreshAll() {
 // ===== 파일 저장/불러오기 =====
 function kdExportToFile() {
   const payload = { version: 1, exportedAt: new Date().toISOString(),
-                    kdeal: { trades: kdTrades, cash: kdCash } };
+                    kdeal: { trades: kdTrades, deposits: kdDeposits } };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -1036,7 +1226,7 @@ function kdImportFromFile(event) {
       if (!confirm(`${src.trades.length}개 거래를 불러옵니다. 현재 데이터가 덮어쓰여집니다.`)) return;
       kdTrades = src.trades;
       kdSaveTrades();
-      if (src.cash != null) { kdCash = Number(src.cash) || 0; kdSaveCash(); }
+      if (Array.isArray(src.deposits)) { kdDeposits = src.deposits; kdSaveDeposits(); }
       kdRender();
       kdRenderTradeHistory();
       kdRenderTimeline();
@@ -1049,7 +1239,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.2';
+const APP_VERSION = 'KDeal v1.3';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
