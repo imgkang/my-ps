@@ -1973,7 +1973,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.50';
+const APP_VERSION = 'MyPM v2.51';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6393,6 +6393,17 @@ function deleteWdScenario(idx) {
   renderWdScenarioTable();
 }
 
+function loadWdScenario(idx) {
+  const list = loadWdScenarios();
+  const sc = list[idx];
+  if (!sc) return;
+  Object.assign(wdPlan, sc.settings);
+  saveWdPlan();
+  loadWdFormValues();
+  loadQuickWdValues();
+  renderWithdrawalPlan();
+}
+
 function renderWdScenarioTable() {
   const wrap = document.getElementById('wdScenarioWrap');
   if (!wrap) return;
@@ -6418,7 +6429,10 @@ function renderWdScenarioTable() {
       <td style="color:#dc2626">${fmt(m.totalTax)}</td>
       <td ${best ? 'class="wd-scenario-best"' : 'style="color:#7c3aed;font-weight:700"'}>
         ${best ? '⭐ ' : ''}${fmt(m.score)}</td>
-      <td><button onclick="deleteWdScenario(${i})" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:12px" title="삭제">🗑️</button></td>
+      <td style="white-space:nowrap">
+        <button onclick="loadWdScenario(${i})" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:2px 7px;font-size:11px;color:#1d4ed8;cursor:pointer;margin-right:4px">선택</button>
+        <button onclick="deleteWdScenario(${i})" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:12px" title="삭제">🗑️</button>
+      </td>
     </tr>`;
   });
   h += '</tbody></table></div>';
