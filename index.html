@@ -836,6 +836,18 @@
     color: #374151; padding: 8px 12px; background: #f8fafc; border-radius: 6px; margin-bottom: 12px; }
   .wd-info-bar b { color: #1e40af; }
   .wd-info-row { display: flex; flex-wrap: wrap; gap: 3px 10px; align-items: center; }
+  .wd-toggle-btn { display:flex; align-items:center; gap:8px; width:100%; background:#f8fafc;
+    border:1px solid #e2e8f0; border-radius:6px; padding:7px 12px; font-size:12px;
+    font-weight:600; color:#374151; cursor:pointer; text-align:left; }
+  .wd-toggle-btn:hover { background:#f1f5f9; }
+  .wd-scenario-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .wd-scenario-table th { background:#f1f5f9; padding:4px 8px; text-align:right; font-weight:600;
+    color:#475569; border:1px solid #e2e8f0; white-space:nowrap; }
+  .wd-scenario-table th:first-child { text-align:left; }
+  .wd-scenario-table td { padding:4px 8px; text-align:right; border:1px solid #e2e8f0; white-space:nowrap; }
+  .wd-scenario-table td:first-child { text-align:left; font-weight:600; }
+  .wd-scenario-table tr:nth-child(even) td { background:#f8fafc; }
+  .wd-scenario-best { color:#059669 !important; font-weight:700 !important; }
   /* 계좌 통합 모달 */
   .cons-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
   @media (max-width: 680px) { .cons-wrap { grid-template-columns: 1fr; } }
@@ -1770,27 +1782,57 @@
     <!-- 설정 요약 바 -->
     <div class="wd-info-bar" id="wdInfoBar"></div>
 
+    <!-- 브리핑 바 -->
+    <div id="wdBriefingBar" style="display:none;flex-wrap:wrap;gap:8px 20px;padding:10px 14px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;margin-bottom:12px;flex-shrink:0;font-size:12px;color:#1e3a8a"></div>
+
     <!-- 인출 계획 차트 -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:12px;flex-shrink:0">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:12px;flex-shrink:0">
       <div>
         <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
-        <div style="position:relative;height:220px"><canvas id="wdChart1"></canvas></div>
+        <div style="position:relative;height:200px"><canvas id="wdChart1"></canvas></div>
       </div>
       <div>
         <h3 id="wdChart2Title" style="margin:0 0 6px;font-size:13px;color:#374151">📊 나 / 아내 잔액 추이 (백만원)</h3>
-        <div style="position:relative;height:220px"><canvas id="wdChart2"></canvas></div>
+        <div style="position:relative;height:200px"><canvas id="wdChart2"></canvas></div>
+      </div>
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 계좌별 연간 인출액 (백만원)</h3>
+        <div style="position:relative;height:200px"><canvas id="wdChart4"></canvas></div>
+      </div>
+      <div>
+        <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 계좌별 잔액 추이 (백만원)</h3>
+        <div style="position:relative;height:200px"><canvas id="wdChart5"></canvas></div>
       </div>
     </div>
-    <div style="margin-bottom:20px;flex-shrink:0">
-      <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 총 잔액 &amp; 세금 누적 추이 (백만원)</h3>
-      <div style="position:relative;height:220px"><canvas id="wdChart3"></canvas></div>
+    <div style="margin-bottom:14px;flex-shrink:0">
+      <h3 style="margin:0 0 6px;font-size:13px;color:#374151">📊 세금 누적 추이 (백만원)</h3>
+      <div style="position:relative;height:200px"><canvas id="wdChart3"></canvas></div>
     </div>
 
     <!-- 인출 테이블 -->
-    <div id="wdWithdrawWrap" style="overflow-x:auto;margin-bottom:24px"></div>
+    <div style="margin-bottom:10px;flex-shrink:0">
+      <button class="wd-toggle-btn" onclick="toggleWdTable('Withdraw')">
+        <span id="wdWithdrawIcon">▶</span> 💸 연도별 인출 금액 상세 테이블
+      </button>
+      <div id="wdWithdrawWrap" style="overflow-x:auto;display:none;margin-top:4px"></div>
+    </div>
 
     <!-- 잔액 테이블 -->
-    <div id="wdBalanceWrap" style="overflow-x:auto"></div>
+    <div style="margin-bottom:16px;flex-shrink:0">
+      <button class="wd-toggle-btn" onclick="toggleWdTable('Balance')">
+        <span id="wdBalanceIcon">▶</span> 💰 연도별 잔액 상세 테이블
+      </button>
+      <div id="wdBalanceWrap" style="overflow-x:auto;display:none;margin-top:4px"></div>
+    </div>
+
+    <!-- 시나리오 비교 -->
+    <div style="margin-bottom:8px;flex-shrink:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h3 style="margin:0;font-size:13px;color:#374151">🗂️ 시나리오 비교</h3>
+        <button class="btn-secondary" onclick="promptSaveWdScenario()" style="font-size:11px;padding:4px 10px">💾 현재 저장</button>
+      </div>
+      <div id="wdScenarioWrap"></div>
+    </div>
 
     <div class="modal-actions" style="flex-shrink:0">
       <button class="btn-secondary" onclick="closeWithdrawalModal()">닫기</button>
@@ -5512,6 +5554,7 @@ function loadWdPlan() {
 function saveWdPlan() { localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan)); }
 
 function openWithdrawalModal() {
+  _wdScrollSyncDone = false;
   loadWdFormValues();
   loadQuickWdValues();
   document.getElementById('withdrawalModal').classList.add('open');
@@ -6271,13 +6314,121 @@ function renderWithdrawalPlan() {
   renderWdWithdrawTable(sim);
   renderWdBalanceTable(sim);
   renderWdCharts(sim);
+  renderWdBriefing(sim);
+  renderWdScenarioTable();
   setupWdScrollSync();
 }
 
-let _wdChart1 = null, _wdChart2 = null, _wdChart3 = null;
+// ===== 브리핑 =====
+function computeWdMetrics(sim) {
+  const { years, balances, summary, allAccIds } = sim;
+  const M = 1_000_000;
+  const totalWithdraw = Math.round(years.reduce((s, yr) => s + summary[yr].totalInc, 0) / M);
+  const totalTax      = Math.round(years.reduce((s, yr) => s + summary[yr].totalTax, 0) / M);
+  const totalTarget   = Math.round(years.reduce((s, yr) => s + summary[yr].target, 0) / M);
+  const lastYr        = years[years.length - 1];
+  const finalBalance  = Math.round((balances[lastYr] === null ? 0 :
+    allAccIds.reduce((s, id) => s + balances[lastYr][id].total, 0)) / M);
+  return { totalWithdraw, totalTax, totalTarget, finalBalance,
+    score: totalWithdraw + finalBalance - totalTax };
+}
+
+function renderWdBriefing(sim) {
+  const bar = document.getElementById('wdBriefingBar');
+  if (!bar) return;
+  const m = computeWdMetrics(sim);
+  const fmt = v => Math.round(v).toLocaleString('ko-KR');
+  const achieve = m.totalTarget > 0 ? Math.round(m.totalWithdraw / m.totalTarget * 100) : 0;
+  bar.style.display = 'flex';
+  bar.innerHTML =
+    `<span>💰 총 인출액 <b>${fmt(m.totalWithdraw)}M</b></span>` +
+    `<span>🏦 최종 잔액 <b>${fmt(m.finalBalance)}M</b></span>` +
+    `<span>🧾 총 세금 <b style="color:#dc2626">${fmt(m.totalTax)}M</b></span>` +
+    `<span>🎯 목표 달성률 <b>${achieve}%</b></span>` +
+    `<span>⭐ 점수 <b style="color:#7c3aed;font-size:13.5px">${fmt(m.score)}M</b></span>` +
+    `<span style="font-size:10.5px;color:#64748b;align-self:center">점수 = 총인출 + 최종잔액 − 총세금</span>`;
+}
+
+// ===== 테이블 토글 =====
+function toggleWdTable(name) {
+  const wrap = document.getElementById('wd' + name + 'Wrap');
+  const icon = document.getElementById('wd' + name + 'Icon');
+  if (!wrap) return;
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? 'block' : 'none';
+  if (icon) icon.textContent = open ? '▼' : '▶';
+}
+
+// ===== 시나리오 관리 =====
+const WD_SCENARIO_KEY = 'mypm_wdScenarios';
+
+function loadWdScenarios() {
+  try { return JSON.parse(localStorage.getItem(WD_SCENARIO_KEY)) || []; }
+  catch { return []; }
+}
+
+function promptSaveWdScenario() {
+  const sim = computeWithdrawalSim();
+  if (!sim) { alert('인출 계획을 먼저 설정하세요.'); return; }
+  const existing = loadWdScenarios();
+  const name = prompt('시나리오 이름을 입력하세요:', `시나리오 ${existing.length + 1}`);
+  if (!name) return;
+  const wp = wdPlan;
+  const now = new Date();
+  existing.push({
+    name: name.trim(),
+    savedAt: `${now.getMonth() + 1}/${now.getDate()}`,
+    settings: { startYear: wp.startYear, retireAge: wp.retireAge || 60,
+      returnRate: wp.returnRate, annualTarget: wp.annualTarget, inflation: wp.inflation },
+    metrics: computeWdMetrics(sim),
+  });
+  localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(existing));
+  renderWdScenarioTable();
+}
+
+function deleteWdScenario(idx) {
+  const list = loadWdScenarios();
+  list.splice(idx, 1);
+  localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(list));
+  renderWdScenarioTable();
+}
+
+function renderWdScenarioTable() {
+  const wrap = document.getElementById('wdScenarioWrap');
+  if (!wrap) return;
+  const list = loadWdScenarios();
+  if (!list.length) {
+    wrap.innerHTML = `<div style="font-size:11.5px;color:#9ca3af;padding:4px 0">저장된 시나리오가 없습니다. 설정 변경 후 "현재 저장"으로 비교 목록을 만드세요.</div>`;
+    return;
+  }
+  const maxScore = Math.max(...list.map(s => s.metrics.score));
+  const fmt = v => (v || 0).toLocaleString('ko-KR');
+  let h = `<div style="overflow-x:auto"><table class="wd-scenario-table"><thead><tr>
+    <th style="text-align:left">이름</th><th>저장일</th><th>인출시작</th><th>은퇴나이</th>
+    <th>수익률</th><th>총인출(M)</th><th>최종잔액(M)</th><th>총세금(M)</th><th>점수(M)</th><th></th>
+  </tr></thead><tbody>`;
+  list.forEach((sc, i) => {
+    const m = sc.metrics;
+    const best = m.score === maxScore;
+    h += `<tr>
+      <td>${sc.name}</td><td>${sc.savedAt}</td>
+      <td>${sc.settings.startYear}년</td><td>${sc.settings.retireAge}세</td>
+      <td>${sc.settings.returnRate}%</td>
+      <td>${fmt(m.totalWithdraw)}</td><td>${fmt(m.finalBalance)}</td>
+      <td style="color:#dc2626">${fmt(m.totalTax)}</td>
+      <td ${best ? 'class="wd-scenario-best"' : 'style="color:#7c3aed;font-weight:700"'}>
+        ${best ? '⭐ ' : ''}${fmt(m.score)}</td>
+      <td><button onclick="deleteWdScenario(${i})" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:12px" title="삭제">🗑️</button></td>
+    </tr>`;
+  });
+  h += '</tbody></table></div>';
+  wrap.innerHTML = h;
+}
+
+let _wdChart1 = null, _wdChart2 = null, _wdChart3 = null, _wdChart4 = null, _wdChart5 = null;
 
 function renderWdCharts(sim) {
-  const { years, balances, summary, allAccIds } = sim;
+  const { years, balances, summary, allAccIds, withdrawals, initState } = sim;
   const M = 1_000_000;
   const round = v => Math.round(v / M);
   const _wTitle = getWifeTitle();
@@ -6304,13 +6455,51 @@ function renderWdCharts(sim) {
   const cumNPTax   = years.map(yr => { cumNP += round(summary[yr].npTax);      return cumNP; });
   const cumTotal   = years.map((_, i) => cumRetire[i] + cumPension[i] + cumNPTax[i]);
 
+  // Chart 4 데이터: 계좌별 연간 인출액 (스택 바)
+  const accColors = {
+    dc:           { border: '#f59e0b', bg: 'rgba(245,158,11,0.75)' },
+    pension1:     { border: '#3b82f6', bg: 'rgba(59,130,246,0.75)' },
+    pension2:     { border: '#6366f1', bg: 'rgba(99,102,241,0.75)' },
+    wife_pension1:{ border: '#ec4899', bg: 'rgba(236,72,153,0.75)' },
+    wife_pension2:{ border: '#f43f5e', bg: 'rgba(244,63,94,0.75)' },
+    wife_isa:     { border: '#14b8a6', bg: 'rgba(20,184,166,0.75)' },
+  };
+  const accShortNames = {
+    dc: '퇴직연금', pension1: '연금1(나)', pension2: '연금2(나)',
+    wife_pension1: '연금1(아내)', wife_pension2: '연금2(아내)', wife_isa: 'ISA(아내)',
+  };
+  const activeAccIds = allAccIds.filter(id => initState[id].total > 0);
+  const chart4Datasets = activeAccIds.map(id => ({
+    label: accShortNames[id] || id,
+    data: years.map(yr => round((withdrawals[yr][id]?.anseOut || 0) + (withdrawals[yr][id]?.dcOut || 0) + (withdrawals[yr][id]?.regularOut || 0))),
+    backgroundColor: (accColors[id] || {}).bg || 'rgba(100,100,100,0.5)',
+    borderColor: (accColors[id] || {}).border || '#666',
+    borderWidth: 1,
+  }));
+
+  // Chart 5 데이터: 계좌별 잔액 (스택 에어리어)
+  const chart5Datasets = activeAccIds.map(id => ({
+    label: accShortNames[id] || id,
+    data: years.map(yr => balances[yr] === null ? 0 : round(balances[yr][id]?.total || 0)),
+    backgroundColor: (accColors[id] || {}).bg || 'rgba(100,100,100,0.3)',
+    borderColor: (accColors[id] || {}).border || '#666',
+    borderWidth: 1.5,
+    fill: true,
+    tension: 0.3,
+    pointRadius: 0,
+  }));
+
   if (_wdChart1) { _wdChart1.destroy(); _wdChart1 = null; }
   if (_wdChart2) { _wdChart2.destroy(); _wdChart2 = null; }
   if (_wdChart3) { _wdChart3.destroy(); _wdChart3 = null; }
+  if (_wdChart4) { _wdChart4.destroy(); _wdChart4 = null; }
+  if (_wdChart5) { _wdChart5.destroy(); _wdChart5 = null; }
 
   const ctx1 = document.getElementById('wdChart1')?.getContext('2d');
   const ctx2 = document.getElementById('wdChart2')?.getContext('2d');
   const ctx3 = document.getElementById('wdChart3')?.getContext('2d');
+  const ctx4 = document.getElementById('wdChart4')?.getContext('2d');
+  const ctx5 = document.getElementById('wdChart5')?.getContext('2d');
   if (!ctx1 || !ctx2 || typeof Chart === 'undefined') return;
 
   const sharedOpts = {
@@ -6366,12 +6555,36 @@ function renderWdCharts(sim) {
       options: { ...sharedOpts }
     });
   }
+
+  const stackedOpts = {
+    ...sharedOpts,
+    scales: {
+      x: { stacked: true, ticks: { font: { size: 11 } } },
+      y: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 }, callback: v => v.toLocaleString('ko-KR') } }
+    }
+  };
+
+  if (ctx4 && chart4Datasets.length) {
+    _wdChart4 = new Chart(ctx4, {
+      type: 'bar',
+      data: { labels: years, datasets: chart4Datasets },
+      options: { ...stackedOpts }
+    });
+  }
+
+  if (ctx5 && chart5Datasets.length) {
+    _wdChart5 = new Chart(ctx5, {
+      type: 'line',
+      data: { labels: years, datasets: chart5Datasets },
+      options: { ...stackedOpts }
+    });
+  }
 }
 
 let _wdScrollSyncDone = false;
 function setupWdScrollSync() {
   if (_wdScrollSyncDone) return;
-  _wdScrollSyncDone = true;
+  _wdScrollSyncDone = true;  // reset on next modal open via resetWdScrollSync()
   const a = document.getElementById('wdWithdrawWrap');
   const b = document.getElementById('wdBalanceWrap');
   if (!a || !b) return;
