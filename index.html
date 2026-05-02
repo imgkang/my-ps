@@ -342,37 +342,47 @@
 
   /* 계좌 기록(월별 평가금액) 모달 */
   .modal-records { max-width: 1200px; }
+  .rec-chart-wrap { margin-bottom: 14px; }
+  .rec-chart-wrap canvas { display: block; }
+  .rec-form-toggle {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
+    padding: 9px 14px; font-size: 13px; font-weight: 600; color: #166534;
+    cursor: pointer; margin-bottom: 12px; text-align: left;
+  }
+  .rec-form-toggle:hover { background: #dcfce7; }
+  .rec-form-toggle.editing { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
   .records-input-card {
     background: #f9fafb; border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 4px;
   }
-  .records-input-top {
-    display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+  .rec-date-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     margin-bottom: 12px;
   }
-  .records-input-top label {
-    display: flex; flex-direction: column; gap: 4px;
-    font-size: 12px; color: var(--muted);
-  }
-  .records-input-top input[type="number"] {
-    width: 100px; padding: 6px 8px; font-size: 14px;
+  .rec-date-row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .rec-date-row input[type="date"] {
+    flex: 1; min-width: 130px; padding: 8px 10px; font-size: 14px;
     border: 1px solid var(--border); border-radius: 6px;
   }
+  .rec-action-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .rec-action-btns button { flex: 1; min-width: 120px; font-size: 12px; }
   .records-input-accounts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 8px; margin-bottom: 12px;
   }
   .records-input-accounts .acc-field {
-    display: flex; flex-direction: column; gap: 4px;
+    display: flex; align-items: center; gap: 8px;
     background: white; padding: 8px 10px; border-radius: 6px;
     border: 1px solid var(--border);
   }
   .records-input-accounts .acc-field label {
-    font-size: 11px; color: var(--muted); font-weight: 600;
+    font-size: 12px; color: var(--muted); font-weight: 600;
+    flex: 0 0 auto; min-width: 60px;
   }
   .records-input-accounts .acc-field input {
-    width: 100%; padding: 4px 6px; font-size: 13px;
+    flex: 1; min-width: 0; padding: 6px 8px; font-size: 13px;
     border: 1px solid var(--border); border-radius: 4px;
     text-align: right;
   }
@@ -383,7 +393,7 @@
   }
   .records-input-total strong { font-size: 16px; color: #1e40af; }
   .records-input-actions {
-    display: flex; justify-content: flex-end; gap: 8px;
+    display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;
   }
   .records-list-wrap {
     overflow-x: auto; border: 1px solid var(--border);
@@ -1615,24 +1625,36 @@
       <button class="close-btn" onclick="closeRecordsModal()" aria-label="닫기">×</button>
     </div>
 
-    <div class="records-input-card">
-      <div class="records-input-top">
-        <label>
-          <span>기록일</span>
+    <!-- 계좌 잔액 추이 차트 -->
+    <div class="rec-chart-wrap" id="recChartWrap">
+      <div style="position:relative;height:180px"><canvas id="recChart"></canvas></div>
+      <div id="recChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:30px 0">기록을 추가하면 차트가 표시됩니다</div>
+    </div>
+
+    <!-- 입력 폼 토글 버튼 -->
+    <button id="recFormToggleBtn" class="rec-form-toggle" onclick="toggleRecForm()">➕ 새 기록 추가</button>
+
+    <!-- 접히는 입력 폼 -->
+    <div id="recFormPanel" style="display:none">
+      <div class="records-input-card">
+        <div class="rec-date-row">
+          <label>기록일</label>
           <input type="date" id="recDate">
-        </label>
-        <button class="btn-secondary" onclick="fillCurrentValues()">💾 현재값 저장</button>
-        <button class="btn-secondary" onclick="loadHistoricalValues()">📅 이전 가치 불러오기</button>
-      </div>
-      <div class="records-input-accounts" id="recAccountInputs"></div>
-      <div class="records-input-total">
-        <span>전체 총합</span>
-        <strong id="recTotal">0 원</strong>
-      </div>
-      <div class="records-input-actions">
-        <button class="btn-secondary" onclick="clearRecordInputs()">입력 초기화</button>
-        <button class="btn-secondary" id="recCancelBtn" style="display:none" onclick="cancelRecordEdit()">취소</button>
-        <button class="btn-primary" id="recAddBtn" onclick="addMonthlyRecord()">➕ 추가</button>
+          <div class="rec-action-btns" style="margin:0">
+            <button class="btn-secondary" onclick="fillCurrentValues()">💾 현재값</button>
+            <button class="btn-secondary" onclick="loadHistoricalValues()">📅 이전 가치</button>
+          </div>
+        </div>
+        <div class="records-input-accounts" id="recAccountInputs"></div>
+        <div class="records-input-total">
+          <span>전체 총합</span>
+          <strong id="recTotal">0 원</strong>
+        </div>
+        <div class="records-input-actions">
+          <button class="btn-secondary" onclick="clearRecordInputs()">초기화</button>
+          <button class="btn-secondary" id="recCancelBtn" style="display:none" onclick="cancelRecordEdit()">취소</button>
+          <button class="btn-primary" id="recAddBtn" onclick="addMonthlyRecord()">저장</button>
+        </div>
       </div>
     </div>
 
@@ -1979,7 +2001,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.57';
+const APP_VERSION = 'MyPM v2.58';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3593,10 +3615,10 @@ async function fetchHistoricalClose(code, year, month) {
 }
 
 async function loadHistoricalValues() {
-  const year  = parseInt(document.getElementById('recYear').value, 10);
-  const month = parseInt(document.getElementById('recMonth').value, 10);
-  if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
-  if (!month || month < 1 || month > 12)   { alert('월을 1~12 사이로 입력해 주세요.'); return; }
+  const dateVal = document.getElementById('recDate').value;
+  const [year, month] = dateVal ? dateVal.split('-').map(Number) : [0, 0];
+  if (!year || year < 2000 || year > 2100) { alert('날짜를 먼저 선택해 주세요.'); return; }
+  if (!month || month < 1 || month > 12)   { alert('유효한 날짜를 선택해 주세요.'); return; }
 
   // 계좌별 수량이 있는 종목만
   const targets = holdings.filter(h =>
@@ -3676,16 +3698,59 @@ function saveMonthlyRecords() {
   try { localStorage.setItem(MONTHLY_RECORDS_KEY, JSON.stringify(monthlyRecords)); } catch (_) {}
 }
 
+let _recChart = null;
+
+function renderRecChart() {
+  const canvas = document.getElementById('recChart');
+  const empty  = document.getElementById('recChartEmpty');
+  if (!canvas) return;
+  if (typeof Chart === 'undefined') { setTimeout(renderRecChart, 200); return; }
+  const series = buildChartSeries(null);
+  if (!series.evalData.length) {
+    if (_recChart) { _recChart.destroy(); _recChart = null; }
+    canvas.style.display = 'none';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  canvas.style.display = '';
+  if (empty) empty.style.display = 'none';
+  if (_recChart) { _recChart.destroy(); _recChart = null; }
+  _recChart = createLineChart(canvas.getContext('2d'), series);
+}
+
+function toggleRecForm(forceOpen) {
+  const panel = document.getElementById('recFormPanel');
+  const btn   = document.getElementById('recFormToggleBtn');
+  if (!panel) return;
+  const shouldOpen = forceOpen !== undefined ? forceOpen : panel.style.display === 'none';
+  if (shouldOpen) {
+    panel.style.display = '';
+    if (btn) { btn.textContent = '✖ 닫기'; btn.classList.add('editing'); }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else {
+    panel.style.display = 'none';
+    if (btn) { btn.textContent = '➕ 새 기록 추가'; btn.classList.remove('editing'); }
+  }
+}
+
 function openRecordsModal() {
   const modal = document.getElementById('accountRecordsModal');
   if (!modal) return;
-  // 입력 폼 초기화: 오늘 날짜를 기본값으로
+  editingRecordId = null;
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   document.getElementById('recDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  renderRecordInputs(); // 계좌별 입력칸 생성 (빈값)
+  renderRecordInputs();
+  toggleRecForm(false); // 폼 닫힌 상태로 시작
+  const addBtn    = document.getElementById('recAddBtn');
+  const cancelBtn = document.getElementById('recCancelBtn');
+  if (addBtn)    addBtn.textContent = '저장';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  const toggleBtn = document.getElementById('recFormToggleBtn');
+  if (toggleBtn) { toggleBtn.textContent = '➕ 새 기록 추가'; toggleBtn.classList.remove('editing'); }
   renderRecordsTableHeader();
   renderRecordsList();
+  renderRecChart();
   modal.classList.add('open');
 }
 function closeRecordsModal() {
@@ -3762,6 +3827,8 @@ function addMonthlyRecord() {
   saveMonthlyRecords();
   renderRecordsList();
   renderPortfolioChart();
+  renderRecChart();
+  toggleRecForm(false);
 }
 
 function editMonthlyRecord(id) {
@@ -3776,15 +3843,18 @@ function editMonthlyRecord(id) {
   const cancelBtn = document.getElementById('recCancelBtn');
   if (addBtn)    addBtn.textContent = '✏️ 수정';
   if (cancelBtn) cancelBtn.style.display = '';
-  document.getElementById('recYear').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const toggleBtn = document.getElementById('recFormToggleBtn');
+  if (toggleBtn) { toggleBtn.textContent = '✏️ 수정 중...'; toggleBtn.classList.add('editing'); }
+  toggleRecForm(true);
 }
 
 function cancelRecordEdit() {
   editingRecordId = null;
   const addBtn    = document.getElementById('recAddBtn');
   const cancelBtn = document.getElementById('recCancelBtn');
-  if (addBtn)    addBtn.textContent = '➕ 추가';
+  if (addBtn)    addBtn.textContent = '저장';
   if (cancelBtn) cancelBtn.style.display = 'none';
+  toggleRecForm(false);
 }
 
 function deleteMonthlyRecord(id) {
@@ -3796,6 +3866,7 @@ function deleteMonthlyRecord(id) {
   saveMonthlyRecords();
   renderRecordsList();
   renderPortfolioChart();
+  renderRecChart();
 }
 
 function renderRecordsTableHeader() {
