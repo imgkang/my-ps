@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KDeal · 한국주식 거래</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
   :root {
     --primary: #ea580c;
@@ -561,29 +562,54 @@ function kdRenderTimeline() {
 
   const hasDeposit = kdDeposits.length > 0;
 
+  // 현재 자산 계산 (오늘 날짜 포인트 추가)
+  const today = new Date().toISOString().slice(0, 10);
+  const lastEv = events[events.length - 1];
+  let currentPointIdx = -1;
+
+  const equityData = events.map(e => ({ x: e.date, y: Math.round(e.totalEquity / 1000000) }));
+  const depData    = events.map(e => ({ x: e.date, y: Math.round(e.cumulativeDeposit / 1000000) }));
+
+  if (today > lastEv.date) {
+    const { positions, totalRealizedPnl } = kdFifoAnalysis();
+    let currentEval = 0;
+    for (const p of positions) {
+      const info = kdPrices[p.code];
+      currentEval += info ? info.price * p.qty : p.cost;
+    }
+    const netDep   = kdNetDeposits();
+    const autoCash = kdAutoCash();
+    const curTotal = netDep > 0 ? autoCash + currentEval : currentEval + totalRealizedPnl;
+    currentPointIdx = equityData.length;
+    equityData.push({ x: today, y: Math.round(curTotal / 1000000) });
+    depData.push({ x: today, y: Math.round(netDep / 1000000) });
+  }
+
   // Chart
   const ctx = document.getElementById('kdTimelineChart');
   if (ctx) {
     if (_kdTimelineChart) { _kdTimelineChart.destroy(); _kdTimelineChart = null; }
+    const eqRadius  = equityData.map((_, i) => i === currentPointIdx ? 7 : 4);
+    const depRadius = depData.map((_, i) => i === currentPointIdx ? 7 : 3);
     const datasets = [];
     if (hasDeposit) {
       datasets.push({
         label: '누적원금',
-        data: events.map(e => Math.round(e.cumulativeDeposit / 1000000)),
+        data: depData,
         borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)',
-        fill: true, tension: 0.1, pointRadius: 3, borderWidth: 2,
+        fill: true, tension: 0.1, pointRadius: depRadius, borderWidth: 2,
         borderDash: [4, 3]
       });
     }
     datasets.push({
-      label: '총자산(장부)',
-      data: events.map(e => Math.round(e.totalEquity / 1000000)),
+      label: '총자산',
+      data: equityData,
       borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)',
-      fill: true, tension: 0.1, pointRadius: 4, borderWidth: 2
+      fill: true, tension: 0.1, pointRadius: eqRadius, borderWidth: 2
     });
     _kdTimelineChart = new Chart(ctx, {
       type: 'line',
-      data: { labels: events.map(e => e.date), datasets },
+      data: { datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
@@ -591,17 +617,26 @@ function kdRenderTimeline() {
           tooltip: {
             callbacks: {
               title: items => {
-                const e = events[items[0].dataIndex];
+                const idx = items[0].dataIndex;
+                if (idx === currentPointIdx) return `현재 (${today})`;
+                const e = events[idx];
                 if (e._evKind === 'dep')
                   return `${e.date}  ${e.type === 'withdraw' ? '출금' : '입금'}  ${Math.round(e.amount / 1000000).toLocaleString()}백만원`;
                 return `${e.date}  ${e.type === 'buy' ? '매수' : '매도'}  ${e.name} ${Number(e.qty).toLocaleString()}주`;
               },
-              label: item => ` ${item.dataset.label}: ${item.raw.toLocaleString('ko-KR')} 백만원`
+              label: item => ` ${item.dataset.label}: ${item.parsed.y.toLocaleString('ko-KR')} 백만원`
             }
           }
         },
         scales: {
-          x: { ticks: { font: { size: 10 }, maxTicksLimit: 8 } },
+          x: {
+            type: 'time',
+            time: {
+              tooltipFormat: 'yyyy-MM-dd',
+              displayFormats: { day: 'MM/dd', week: 'MM/dd', month: 'yy/MM', year: 'yyyy' }
+            },
+            ticks: { font: { size: 10 }, maxTicksLimit: 8 }
+          },
           y: { ticks: { font: { size: 10 }, callback: v => v.toLocaleString('ko-KR') + ' 백만' } }
         }
       }
@@ -1241,7 +1276,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.4';
+const APP_VERSION = 'KDeal v1.5';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
