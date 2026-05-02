@@ -1946,48 +1946,60 @@
       <button class="close-btn" onclick="closeDividendModal()" aria-label="닫기">×</button>
     </div>
 
-    <div class="records-input-card">
-      <div class="records-input-top">
-        <label>
-          <span>연도</span>
-          <input type="number" id="divYear" min="2000" max="2100" step="1" placeholder="YYYY">
-        </label>
-        <label>
-          <span>월</span>
-          <input type="number" id="divMonth" min="1" max="12" step="1" placeholder="M">
-        </label>
-        <button class="btn-secondary" onclick="loadDividendData()">📥 배당내역 불러오기</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="div-stock-table">
-          <thead>
-            <tr>
-              <th>종목명</th>
-              <th>주당 배당금 (원)</th>
-              <th>보유 수량</th>
-              <th>총 배당금 (원)</th>
-            </tr>
-          </thead>
-          <tbody id="divStockInputs"></tbody>
-        </table>
-      </div>
-      <div class="div-grand-total">
-        <span>배당금 총합</span>
-        <strong id="divGrandTotal">0 원</strong>
-      </div>
-      <div class="records-input-actions">
-        <button class="btn-secondary" onclick="clearDividendInputs()">입력 초기화</button>
-        <button class="btn-primary" onclick="addDividendRecord()">➕ 추가</button>
+    <!-- 입력 폼 토글 버튼 -->
+    <button id="divFormToggleBtn" class="rec-form-toggle" onclick="toggleDivForm()">➕ 새 기록 추가</button>
+
+    <!-- 접히는 입력 폼 -->
+    <div id="divFormPanel" style="display:none">
+      <div class="records-input-card">
+        <div class="rec-date-row">
+          <label>연도</label>
+          <input type="number" id="divYear" min="2000" max="2100" step="1" placeholder="YYYY"
+            style="width:80px;padding:8px 10px;font-size:14px;border:1px solid var(--border);border-radius:6px">
+          <label>월</label>
+          <input type="number" id="divMonth" min="1" max="12" step="1" placeholder="M"
+            style="width:60px;padding:8px 10px;font-size:14px;border:1px solid var(--border);border-radius:6px">
+          <button class="btn-secondary" onclick="loadDividendData()">📥 배당내역 불러오기</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="div-stock-table">
+            <thead>
+              <tr>
+                <th>종목명</th>
+                <th>주당 배당금 (원)</th>
+                <th>보유 수량</th>
+                <th>총 배당금 (원)</th>
+              </tr>
+            </thead>
+            <tbody id="divStockInputs"></tbody>
+          </table>
+        </div>
+        <div class="div-grand-total">
+          <span>배당금 총합</span>
+          <strong id="divGrandTotal">0 원</strong>
+        </div>
+        <div class="records-input-actions">
+          <button class="btn-secondary" onclick="clearDividendInputs()">입력 초기화</button>
+          <button class="btn-primary" onclick="addDividendRecord()">저장</button>
+        </div>
       </div>
     </div>
 
     <div class="div-sections">
       <div class="div-section-title">종목별 배당 내역</div>
+      <div id="divStockChartWrap" style="margin-bottom:10px">
+        <div style="position:relative;height:180px"><canvas id="divStockChart"></canvas></div>
+        <div id="divStockChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:20px 0">배당 기록을 추가하면 차트가 표시됩니다</div>
+      </div>
       <div class="div-records-wrap">
         <div class="div-table-header" id="divStockTableHeader"></div>
         <div id="divStockRecordsList"></div>
       </div>
       <div class="div-section-title" style="margin-top:16px">계좌별 배당 내역</div>
+      <div id="divAccChartWrap" style="margin-bottom:10px">
+        <div style="position:relative;height:160px"><canvas id="divAccChart"></canvas></div>
+        <div id="divAccChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:20px 0">배당 기록을 추가하면 차트가 표시됩니다</div>
+      </div>
       <div class="div-records-wrap">
         <div class="div-table-header" id="divAccTableHeader"></div>
         <div id="divAccRecordsList"></div>
@@ -2001,7 +2013,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.58';
+const APP_VERSION = 'MyPM v2.59';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5246,6 +5258,118 @@ function saveDividendRecords() {
   try { localStorage.setItem(DIVIDEND_KEY, JSON.stringify(dividendRecords)); } catch (_) {}
 }
 
+function toggleDivForm(forceOpen) {
+  const panel = document.getElementById('divFormPanel');
+  const btn   = document.getElementById('divFormToggleBtn');
+  if (!panel) return;
+  const shouldOpen = forceOpen !== undefined ? forceOpen : panel.style.display === 'none';
+  if (shouldOpen) {
+    panel.style.display = '';
+    if (btn) { btn.textContent = '✖ 닫기'; btn.classList.add('editing'); }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else {
+    panel.style.display = 'none';
+    if (btn) { btn.textContent = '➕ 새 기록 추가'; btn.classList.remove('editing'); }
+  }
+}
+
+let _divStockChart = null, _divAccChart = null;
+const _DIV_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
+
+function renderDivCharts() {
+  if (typeof Chart === 'undefined') { setTimeout(renderDivCharts, 200); return; }
+  const sorted = [...dividendRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2, '0')}`);
+
+  // 종목별 차트
+  const stockCanvas = document.getElementById('divStockChart');
+  const stockEmpty  = document.getElementById('divStockChartEmpty');
+  if (stockCanvas) {
+    if (!sorted.length) {
+      if (_divStockChart) { _divStockChart.destroy(); _divStockChart = null; }
+      stockCanvas.style.display = 'none';
+      if (stockEmpty) stockEmpty.style.display = 'block';
+    } else {
+      stockCanvas.style.display = '';
+      if (stockEmpty) stockEmpty.style.display = 'none';
+      const allCodes = [];
+      const codeNames = {};
+      for (const rec of dividendRecords) {
+        for (const code of Object.keys(rec.stocks)) {
+          if (!allCodes.includes(code)) {
+            allCodes.push(code);
+            const h = holdings.find(x => x.code === code);
+            codeNames[code] = h ? h.name : code;
+          }
+        }
+      }
+      const stockDatasets = allCodes.map((code, i) => ({
+        label: codeNames[code],
+        data: sorted.map(r => Math.round((Number(r.stocks[code]) || 0) / 100) / 10),
+        backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
+        borderWidth: 0,
+      }));
+      if (_divStockChart) { _divStockChart.destroy(); _divStockChart = null; }
+      _divStockChart = new Chart(stockCanvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: stockDatasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)} 만원` } }
+          },
+          scales: {
+            x: { stacked: true, ticks: { font: { size: 10 } } },
+            y: { stacked: true, title: { display: true, text: '배당금 (만원)' },
+              ticks: { callback: v => v.toLocaleString('ko-KR') } }
+          }
+        }
+      });
+    }
+  }
+
+  // 계좌별 차트
+  const accCanvas = document.getElementById('divAccChart');
+  const accEmpty  = document.getElementById('divAccChartEmpty');
+  if (accCanvas) {
+    if (!sorted.length) {
+      if (_divAccChart) { _divAccChart.destroy(); _divAccChart = null; }
+      accCanvas.style.display = 'none';
+      if (accEmpty) accEmpty.style.display = 'block';
+    } else {
+      accCanvas.style.display = '';
+      if (accEmpty) accEmpty.style.display = 'none';
+      const activeAccs = getActiveAccounts();
+      const accDatasets = activeAccs.map((acc, i) => ({
+        label: getAccName(acc.id),
+        data: sorted.map(r => Math.round((Number(r.accounts[acc.id]) || 0) / 100) / 10),
+        backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
+        borderWidth: 0,
+      }));
+      if (_divAccChart) { _divAccChart.destroy(); _divAccChart = null; }
+      _divAccChart = new Chart(accCanvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: accDatasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)} 만원` } }
+          },
+          scales: {
+            x: { stacked: true, ticks: { font: { size: 10 } } },
+            y: { stacked: true, title: { display: true, text: '배당금 (만원)' },
+              ticks: { callback: v => v.toLocaleString('ko-KR') } }
+          }
+        }
+      });
+    }
+  }
+}
+
 function openDividendModal() {
   const modal = document.getElementById('dividendModal');
   if (!modal) return;
@@ -5253,7 +5377,9 @@ function openDividendModal() {
   document.getElementById('divYear').value = now.getFullYear();
   document.getElementById('divMonth').value = now.getMonth() + 1;
   renderDivStockInputs({});
+  toggleDivForm(false);
   renderDividendLists();
+  renderDivCharts();
   modal.classList.add('open');
 }
 
@@ -5409,6 +5535,8 @@ function addDividendRecord() {
   });
   saveDividendRecords();
   renderDividendLists();
+  renderDivCharts();
+  toggleDivForm(false);
 }
 
 function deleteDividendRecord(id) {
@@ -5418,6 +5546,7 @@ function deleteDividendRecord(id) {
   dividendRecords = dividendRecords.filter(r => r.id !== id);
   saveDividendRecords();
   renderDividendLists();
+  renderDivCharts();
 }
 
 function renderDividendLists() {
