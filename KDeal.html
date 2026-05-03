@@ -373,7 +373,7 @@ const KD_DEP_KEY     = 'kdeal_deposits_v1';
 
 // ▼ Cloudflare Worker 배포 후 URL 입력 (worker/README.md 참고)
 // 예: 'https://mypm-proxy.yourname.workers.dev'
-const KD_CF_WORKER = '';
+const KD_CF_WORKER = 'https://my-ps-proxy.imgkang.workers.dev';
 
 const KD_PROXIES = [
   ...(KD_CF_WORKER ? [url => `${KD_CF_WORKER}?url=${encodeURIComponent(url)}`] : []),
@@ -1296,7 +1296,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.7';
+const APP_VERSION = 'KDeal v1.8';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
