@@ -1066,11 +1066,11 @@
 
   <div class="tab-nav">
     <button class="tab-nav-btn active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 포트폴리오</button>
-    <button class="tab-nav-btn" id="tab-records" onclick="switchTab('records')">📒 계좌 기록</button>
-    <button class="tab-nav-btn" id="tab-dividend" onclick="switchTab('dividend')">💸 배당 기록</button>
-    <button class="tab-nav-btn" id="tab-deposit" onclick="switchTab('deposit')">💰 계좌 입출금</button>
-    <button class="tab-nav-btn" id="tab-annual" onclick="switchTab('annual')">📅 연간 계획</button>
-    <button class="tab-nav-btn" id="tab-withdrawal" onclick="switchTab('withdrawal')">💸 인출 계획</button>
+    <button class="tab-nav-btn" id="tab-records" onclick="openRecordsModal()">📒 계좌 기록</button>
+    <button class="tab-nav-btn" id="tab-dividend" onclick="openDividendModal()">💸 배당 기록</button>
+    <button class="tab-nav-btn" id="tab-deposit" onclick="openDepositModal()">💰 계좌 입출금</button>
+    <button class="tab-nav-btn" id="tab-annual" onclick="openAnnualPlanModal()">📅 연간 계획</button>
+    <button class="tab-nav-btn" id="tab-withdrawal" onclick="openWithdrawalModal()">💸 인출 계획</button>
   </div>
 
   <div id="panel-portfolio" class="tab-panel active">
@@ -2123,7 +2123,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.90';
+const APP_VERSION = 'MyPM v2.92';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
