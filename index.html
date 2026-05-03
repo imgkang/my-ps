@@ -2048,7 +2048,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.78';
+const APP_VERSION = 'MyPM v2.80';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3394,8 +3394,10 @@ async function refreshPricesSilent() {
   render();
 }
 
-// ===== 주가 조회 (Yahoo Finance v8) =====
+// ===== 주가 조회 (Naver Finance 우선 → Yahoo Finance 폴백) =====
+const CF_WORKER = 'https://my-ps-proxy.imgkang.workers.dev';
 const PROXIES = [
+  ...(CF_WORKER ? [url => `${CF_WORKER}?url=${encodeURIComponent(url)}`] : []),
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://thingproxy.freeboard.io/fetch/${url}`,
@@ -3425,11 +3427,31 @@ async function fetchViaProxy(targetUrl) {
   throw lastErr || new Error('모든 프록시 실패');
 }
 
-// Yahoo Finance v8 chart API — 한국 주식: {code}.KS(KOSPI) / {code}.KQ(KOSDAQ)
-// suffix를 알고 있으면 직접 사용; 모르면 양쪽 병렬 조회 후 거래량 높은 쪽 선택
-async function fetchStockInfo(code, _ignoredSuffix = null) {
-  const ts = Date.now();
+async function fetchNaverPrice(code) {
+  const url = `https://m.stock.naver.com/api/stock/${code}/basic`;
+  const text = await fetchViaProxy(url);
+  const data = JSON.parse(text);
+  const price = parseFloat((data.closePrice || '').replace(/,/g, ''));
+  if (!price) return null;
+  const change     = parseFloat((data.compareToPreviousClosePrice || '0').replace(/,/g, ''));
+  const changeRate = parseFloat(data.fluctuationsRatio || 0);
+  const name       = data.stockName || code;
+  const volume     = parseInt((data.accumulatedTradingVolume || '0').replace(/,/g, ''), 10);
+  return { code, suffix: '', name, price, change, changeRate, volume, marketTime: Date.now() / 1000 };
+}
 
+// 한국 주식: Naver 우선 → Yahoo Finance(.KS/.KQ) 폴백
+async function fetchStockInfo(code, _ignoredSuffix = null) {
+  // 6자리 숫자 코드 → 네이버 먼저 시도
+  if (/^\d{6}$/.test(code)) {
+    try {
+      const info = await fetchNaverPrice(code);
+      if (info) return info;
+    } catch(_) {}
+  }
+
+  // Yahoo Finance 폴백
+  const ts = Date.now();
   async function tryOneSuffix(suffix) {
     for (const host of YAHOO_HOSTS) {
       const url = `https://${host}/v8/finance/chart/${code}${suffix}?range=1d&interval=1d&_=${ts}`;
@@ -3453,12 +3475,10 @@ async function fetchStockInfo(code, _ignoredSuffix = null) {
     return null;
   }
 
-  // 항상 양쪽 병렬 조회: volume → marketTime 순으로 올바른 쪽 선택
-  // (stored suffix는 stale 데이터 문제로 사용 안 함)
   const [ks, kq] = await Promise.all([tryOneSuffix('.KS'), tryOneSuffix('.KQ')]);
   if (ks && kq) {
     if (ks.volume !== kq.volume) return ks.volume > kq.volume ? ks : kq;
-    return ks.marketTime >= kq.marketTime ? ks : kq; // 최신 데이터 우선
+    return ks.marketTime >= kq.marketTime ? ks : kq;
   }
   if (ks) return ks;
   if (kq) return kq;
