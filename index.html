@@ -41,7 +41,7 @@
     background: var(--bg);
     color: var(--text);
   }
-  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px 80px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px 0; }
   header {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
@@ -66,20 +66,25 @@
   .nav-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
   .tab-nav {
-    display: flex; gap: 4px; flex-wrap: wrap;
-    margin-bottom: 16px; background: var(--card);
-    padding: 6px 8px; border-radius: 12px; box-shadow: var(--shadow);
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+    display: flex;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+    padding: 4px;
   }
   .tab-nav-btn {
-    padding: 7px 14px; border: none; border-radius: 8px;
-    font-size: 13px; font-weight: 600; cursor: pointer;
+    flex: 1; padding: 8px 2px; border: none; border-radius: 8px;
+    font-size: 11px; font-weight: 600; cursor: pointer;
     background: transparent; color: var(--muted);
-    transition: all 0.15s; white-space: nowrap;
+    transition: all 0.15s; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .tab-nav-btn:hover { background: var(--bg); color: var(--text); }
   .tab-nav-btn.active { background: var(--primary); color: #fff; }
-  .tab-panel { display: none; }
+  .tab-panel { display: none; max-width: 1200px; margin: 0 auto; padding: 16px 16px 72px; }
   .tab-panel.active { display: block; }
+  #panel-portfolio { max-width: none; margin: 0; padding: 0 0 72px; }
 
   .summary-card {
     background: linear-gradient(135deg, #03c75a 0%, #02a04a 100%);
@@ -1064,15 +1069,6 @@
     </div>
   </header>
 
-  <div class="tab-nav">
-    <button class="tab-nav-btn active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 포트폴리오</button>
-    <button class="tab-nav-btn" id="tab-records" onclick="openRecordsModal()">📒 계좌 기록</button>
-    <button class="tab-nav-btn" id="tab-dividend" onclick="openDividendModal()">💸 배당 기록</button>
-    <button class="tab-nav-btn" id="tab-deposit" onclick="openDepositModal()">💰 계좌 입출금</button>
-    <button class="tab-nav-btn" id="tab-annual" onclick="openAnnualPlanModal()">📅 연간 계획</button>
-    <button class="tab-nav-btn" id="tab-withdrawal" onclick="openWithdrawalModal()">💸 인출 계획</button>
-  </div>
-
   <div id="panel-portfolio" class="tab-panel active">
   <div class="toolbar">
     <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
@@ -1110,7 +1106,16 @@
     </div>
   </div>
   </div><!-- /panel-portfolio -->
-</div>
+</div><!-- /container -->
+
+<nav class="tab-nav">
+  <button class="tab-nav-btn active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 포트폴리오</button>
+  <button class="tab-nav-btn" id="tab-records" onclick="openRecordsModal()">📒 계좌 기록</button>
+  <button class="tab-nav-btn" id="tab-dividend" onclick="openDividendModal()">💸 배당 기록</button>
+  <button class="tab-nav-btn" id="tab-deposit" onclick="openDepositModal()">💰 계좌 입출금</button>
+  <button class="tab-nav-btn" id="tab-annual" onclick="openAnnualPlanModal()">📅 연간 계획</button>
+  <button class="tab-nav-btn" id="tab-withdrawal" onclick="openWithdrawalModal()">💸 인출 계획</button>
+</nav>
 
 <!-- 종목 추가 모달 -->
 
@@ -2123,7 +2128,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.92';
+const APP_VERSION = 'MyPM v2.93';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
