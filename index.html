@@ -29,8 +29,8 @@
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
   .app-version {
-    position: fixed; top: 16px; right: 10px; z-index: 9999;
-    font-size: 11px; color: rgba(0,0,0,0.4); font-weight: 700;
+    position: fixed; top: 58px; right: 4px; z-index: 9999;
+    font-size: 10px; color: rgba(0,0,0,0.35); font-weight: 700;
     pointer-events: none;
     font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
   }
@@ -2202,7 +2202,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.108';
+const APP_VERSION = 'MyPM v2.110';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3807,7 +3807,9 @@ async function refreshAll() {
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
     const ss = String(now.getSeconds()).padStart(2, '0');
-    statusEl.textContent = `최근 갱신 ${hh}:${mm}:${ss}`;
+    const mo = String(now.getMonth()+1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    statusEl.textContent = `최근 갱신 ${mo}/${dd} ${hh}:${mm}:${ss}`;
   }
 }
 
@@ -4565,7 +4567,6 @@ function render() {
         <div class="stat-value ${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</div>
       </div>
     </div>
-    <div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">${updateText} · 금액 단위: 백만원(소수1)</div>
     <div class="detail-table-wrap">
       <table class="detail-table">
         <thead>
