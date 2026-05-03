@@ -1844,7 +1844,38 @@
         <span id="wdHelpChevron" style="transition:transform 0.2s;display:inline-block">▼</span>
       </button>
       <div id="wdHelpPanel" style="display:none;margin-top:4px;padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;color:#334155;line-height:1.7">
-        <div style="font-weight:700;margin-bottom:10px;color:#1e293b">같은 그룹(나 / 아내) 내에서 매년 아래 순서로 인출합니다.</div>
+
+        <!-- 재원 분류 -->
+        <div style="font-weight:700;margin-bottom:8px;color:#1e293b">📂 계좌 내 재원 분류</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:14px">
+          <thead>
+            <tr style="background:#e2e8f0;font-size:11px;color:#475569">
+              <th style="padding:5px 8px;text-align:left">재원</th>
+              <th style="padding:5px 8px;text-align:left">내용</th>
+              <th style="padding:5px 8px;text-align:left">인출 시 세금</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #e2e8f0">
+              <td style="padding:6px 8px;font-weight:700;color:#15803d;white-space:nowrap">안세공</td>
+              <td style="padding:6px 8px;font-size:11px;color:#64748b">세액공제 없이 납입한 원금</td>
+              <td style="padding:6px 8px;font-weight:700;color:#15803d">비과세 (없음)</td>
+            </tr>
+            <tr style="border-bottom:1px solid #e2e8f0">
+              <td style="padding:6px 8px;font-weight:700;color:#b45309;white-space:nowrap">세공</td>
+              <td style="padding:6px 8px;font-size:11px;color:#64748b">세액공제 받은 납입 원금 + 운용수익</td>
+              <td style="padding:6px 8px">연금소득세 (3.3%~)<br><span style="font-size:11px;color:#64748b">1,200만원 초과 시 16.5%</span></td>
+            </tr>
+            <tr>
+              <td style="padding:6px 8px;font-weight:700;color:#7c3aed;white-space:nowrap">퇴직원금</td>
+              <td style="padding:6px 8px;font-size:11px;color:#64748b">DC형 퇴직연금 적립금 원금</td>
+              <td style="padding:6px 8px">퇴직소득세 (연차별 감면)<br><span style="font-size:11px;color:#64748b">1~10년 혜택 최대</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 인출 순서 -->
+        <div style="font-weight:700;margin-bottom:8px;color:#1e293b">🔢 연간 인출 순서 (나 / 아내 각각 적용)</div>
         <table style="width:100%;border-collapse:collapse;margin-bottom:12px">
           <thead>
             <tr style="background:#e2e8f0;font-size:11px;color:#475569">
@@ -1857,35 +1888,36 @@
           <tbody>
             <tr style="border-bottom:1px solid #e2e8f0">
               <td style="padding:6px 8px;text-align:center;font-weight:700;color:#0369a1">①</td>
-              <td style="padding:6px 8px">일반 원금<br><span style="font-size:11px;color:#64748b">세액공제 없이 납입한 원금·운용수익</span></td>
+              <td style="padding:6px 8px"><b style="color:#b45309">세공</b><br><span style="font-size:11px;color:#64748b">안세공 없는 계좌에서만</span></td>
               <td style="padding:6px 8px">연금소득세</td>
               <td style="padding:6px 8px;color:#64748b;font-size:11px">기본인출액 한도<br>②③ 재원이 남아있는 동안만</td>
             </tr>
             <tr style="border-bottom:1px solid #e2e8f0">
               <td style="padding:6px 8px;text-align:center;font-weight:700;color:#0369a1">②</td>
-              <td style="padding:6px 8px">세액공제 원금 (안세공)<br><span style="font-size:11px;color:#64748b">연금저축·IRP 세액공제 납입 원금</span></td>
-              <td style="padding:6px 8px">연금소득세</td>
+              <td style="padding:6px 8px"><b style="color:#15803d">안세공</b><br><span style="font-size:11px;color:#64748b">안세공 있는 계좌에서</span></td>
+              <td style="padding:6px 8px;font-weight:700;color:#15803d">비과세</td>
               <td style="padding:6px 8px;color:#64748b;font-size:11px">잔액 소진까지</td>
             </tr>
             <tr style="border-bottom:1px solid #e2e8f0">
               <td style="padding:6px 8px;text-align:center;font-weight:700;color:#0369a1">③</td>
-              <td style="padding:6px 8px">DC 퇴직금<br><span style="font-size:11px;color:#64748b">DC형 퇴직연금 적립금</span></td>
-              <td style="padding:6px 8px">퇴직소득세<br><span style="font-size:11px;color:#64748b">연차별 감면 적용</span></td>
+              <td style="padding:6px 8px"><b style="color:#7c3aed">퇴직원금</b><br><span style="font-size:11px;color:#64748b">DC 계좌에서</span></td>
+              <td style="padding:6px 8px">퇴직소득세<br><span style="font-size:11px;color:#64748b">연차별 감면</span></td>
               <td style="padding:6px 8px;color:#64748b;font-size:11px">잔액 소진까지</td>
             </tr>
             <tr>
               <td style="padding:6px 8px;text-align:center;font-weight:700;color:#0369a1">④</td>
-              <td style="padding:6px 8px">나머지 원금<br><span style="font-size:11px;color:#64748b">②③ 소진 후 남은 일반 원금</span></td>
+              <td style="padding:6px 8px"><b style="color:#b45309">세공</b> (나머지)<br><span style="font-size:11px;color:#64748b">②③ 소진 후</span></td>
               <td style="padding:6px 8px">연금소득세<br><span style="font-size:11px;color:#64748b">1,200만원 초과 시 16.5%</span></td>
               <td style="padding:6px 8px;color:#64748b;font-size:11px">목표액 채울 때까지</td>
             </tr>
           </tbody>
         </table>
+
         <div style="padding:8px 10px;background:#eff6ff;border-radius:6px;border-left:3px solid #3b82f6;margin-bottom:8px">
           <b>공적연금</b> (국민·공무원·사학연금)은 수령 시작 연도부터 자동 합산되어 사적 인출 필요액을 줄입니다.
         </div>
         <div style="padding:8px 10px;background:#f0fdf4;border-radius:6px;border-left:3px solid #22c55e">
-          <b>전략 핵심</b>: 세금이 나중에 부과되는 재원(안세공·퇴직금)은 가능한 한 늦게 소진하고, 그동안 세제 혜택이 적은 재원을 먼저 사용해 <b>과세이연 효과</b>를 극대화합니다.
+          <b>전략 핵심</b>: 비과세인 안세공을 최대한 늦게 써서 복리 효과를 극대화하고, 그동안 세공(연금소득세)을 기본인출액 한도로 소진합니다.
         </div>
       </div>
     </div>
@@ -2101,7 +2133,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.86';
+const APP_VERSION = 'MyPM v2.88';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
