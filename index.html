@@ -476,6 +476,15 @@
   }
   .detail-summary .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
   .detail-summary .stat-value { font-size: 17px; font-weight: 700; margin-top: 4px; }
+  .pf-hero { padding: 20px 22px 18px; margin-bottom: 14px; }
+  .pf-hero-value {
+    font-size: 38px; font-weight: 800; color: var(--text);
+    font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; margin-bottom: 10px;
+  }
+  .pf-hero-row {
+    font-size: 17px; font-weight: 600;
+    font-variant-numeric: tabular-nums; line-height: 1.5;
+  }
   .detail-table-wrap { overflow-x: auto; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; }
   .detail-table { width: 100%; border-collapse: collapse; font-size: 11px; }
   .detail-table th, .detail-table td {
@@ -2202,7 +2211,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.112';
+const APP_VERSION = 'MyPM v2.114';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4535,37 +4544,32 @@ function render() {
 
   // 오늘의 손익액 전체 합계 (활성 계좌 기준 수량만 반영)
   const totalDayChange = items.reduce((s, x) => s + x.change * x.qty, 0);
-
   const dayChangeCls  = totalDayChange >= 0 ? 'diff-positive' : 'diff-negative';
   const dayChangeSign = totalDayChange >= 0 ? '+' : '';
+  const totalDayRate  = (totalValue - totalDayChange) > 0 ? (totalDayChange / (totalValue - totalDayChange)) * 100 : 0;
 
-  // 상단 요약 카드 6개 (원금 / 평가금액 / 오늘손익 / 손익 / 누적수익률 / 내부수익률) - 백만원 단위
+  // 지난달 손익 (monthlyRecords 최근 2개 비교)
+  const _recSum = r => Object.values(r.accounts || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+  const _recs = [...monthlyRecords].sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month));
+  const _v0 = _recs.length > 0 ? _recSum(_recs[0]) : 0;
+  const _v1 = _recs.length > 1 ? _recSum(_recs[1]) : 0;
+  const monthChange     = _v0 > 0 && _v1 > 0 ? _v0 - _v1 : null;
+  const monthChangeRate = _v1 > 0 && monthChange != null ? (monthChange / _v1) * 100 : null;
+  const monthCls  = (monthChange || 0) >= 0 ? 'diff-positive' : 'diff-negative';
+  const monthSign = (monthChange || 0) >= 0 ? '+' : '';
+
+  // 천원 단위 포매터
+  const fmtT  = n => Math.round(n / 1000).toLocaleString('ko-KR');
+  const fmtTS = (n, sign) => (sign || (n >= 0 ? '+' : '')) + Math.round(n / 1000).toLocaleString('ko-KR');
+  const fmtPct = (v, s) => v != null ? `(${s || (v >= 0 ? '+' : '')}${v.toFixed(2)}%)` : '';
+
+  // Hero 요약 카드
   let html = `
-    <div class="detail-summary">
-      <div class="stat">
-        <div class="stat-label">원금 합계 (백만원)</div>
-        <div class="stat-value">${totalGrandPricipal > 0 ? formatMil(totalGrandPricipal) : '-'}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">평가금액 합계 (백만원)</div>
-        <div class="stat-value">${formatMil(totalValue)}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">오늘의 손익 (백만원)</div>
-        <div class="stat-value ${dayChangeCls}">${dayChangeSign}${formatMil(totalDayChange)}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">손익 (백만원)</div>
-        <div class="stat-value ${profitCls}">${totalGrandPricipal > 0 ? formatMilSigned(totalProfit) : '-'}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">누적수익률</div>
-        <div class="stat-value ${profitCls}">${totalProfitRate != null ? profitSign + totalProfitRate.toFixed(2) + '%' : '-'}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">내부수익률 (XIRR)</div>
-        <div class="stat-value ${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</div>
-      </div>
+    <div class="card pf-hero">
+      <div class="pf-hero-value">${fmtT(totalValue)}</div>
+      <div class="pf-hero-row ${dayChangeCls}">${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</div>
+      <div class="pf-hero-row ${monthCls}">${monthChange != null ? fmtTS(monthChange, monthSign) + ' ' + fmtPct(monthChangeRate, monthSign) : '-'}</div>
+      <div class="pf-hero-row ${profitCls}">${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</div>
     </div>
     <div class="detail-table-wrap">
       <table class="detail-table">
