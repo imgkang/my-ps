@@ -2048,7 +2048,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.80';
+const APP_VERSION = 'MyPM v2.82';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7580,13 +7580,18 @@ function initGIS(skipSilentAuth = false) {
       _silentPending = false;
       if (resp.error) {
         if (!wasSilent) setDriveStatus('error', '로그인 실패: ' + resp.error);
-        // silent 실패 시에도 UI 갱신 (nav 버튼 상태 정확히 반영)
         updateDriveUI();
         return;
       }
       const expiresAt = Date.now() + ((resp.expires_in || 3600) * 1000) - 60000;
       localStorage.setItem('drive_token_v2', JSON.stringify({ token: resp.access_token, expiresAt }));
       driveAccessToken = resp.access_token;
+      // 이메일 저장 (다음 로그인 시 계정 선택 자동화)
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { 'Authorization': 'Bearer ' + resp.access_token }
+      }).then(r => r.json()).then(u => {
+        if (u.email) localStorage.setItem('drive_user_hint', u.email);
+      }).catch(() => {});
       updateDriveUI();
       if (!wasSilent) setDriveStatus('ok', '✅ Google Drive 연결됨');
     }
@@ -7611,7 +7616,10 @@ function initGIS(skipSilentAuth = false) {
 function driveSignIn() {
   if (!driveClientId) { alert('Client ID를 입력해주세요.'); return; }
   if (!window._gisClient) { initGIS(); setTimeout(driveSignIn, 600); return; }
-  window._gisClient.requestAccessToken({ prompt: 'consent' });
+  const hint = localStorage.getItem('drive_user_hint') || '';
+  // 이전에 동의한 적 있으면 prompt:'' + hint로 계정 선택 생략
+  // 처음이면 prompt:'consent'로 전체 흐름
+  window._gisClient.requestAccessToken(hint ? { prompt: '', hint } : { prompt: 'consent' });
 }
 function driveSignOut() {
   if (driveAccessToken && typeof google !== 'undefined') {
@@ -7632,8 +7640,10 @@ async function driveReq(url, opts = {}) {
     driveAccessToken = null;
     localStorage.removeItem('drive_token_v2');
     // 무음 재인증 시도 — 성공하면 UI가 자동 업데이트됨
-    if (window._gisClient) window._gisClient.requestAccessToken({ prompt: 'none' });
-    else updateDriveUI();
+    if (window._gisClient) {
+      const hint = localStorage.getItem('drive_user_hint') || '';
+      window._gisClient.requestAccessToken(hint ? { prompt: 'none', hint } : { prompt: 'none' });
+    } else updateDriveUI();
     throw new Error('인증이 만료되었습니다. 잠시 후 다시 시도해주세요.');
   }
   return res;
