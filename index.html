@@ -1066,9 +1066,6 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <span id="refreshStatus"></span>
-      <button class="btn-secondary" style="font-size:13px;padding:6px 10px" onclick="exportToFile()">💾 저장</button>
-      <button class="btn-secondary" style="font-size:13px;padding:6px 10px" onclick="document.getElementById('importFile').click()">📂 불러오기</button>
-      <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
       <button class="btn-settings" onclick="openSettingsModal()" title="앱 설정">⚙️ 설정</button>
     </div>
   </header>
@@ -1228,11 +1225,16 @@
 
     <!-- 일반 탭 -->
     <div class="cfg-tab-pane active" id="cfgPaneGeneral">
-      <div class="cfg-section">☁️ Google Drive</div>
-      <div style="margin-bottom:4px">
+      <div class="cfg-section">💾 데이터</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
         <button class="drive-btn" id="driveNavBtn" onclick="closeThenDrive()" style="width:100%;justify-content:center;padding:10px">
           ☁️ <span id="driveNavLabel">Drive 연결 / 동기화</span>
         </button>
+        <div style="display:flex;gap:6px">
+          <button class="btn-secondary" style="flex:1;padding:9px 6px;font-size:13px" onclick="exportToFile()">💾 파일로 저장</button>
+          <button class="btn-secondary" style="flex:1;padding:9px 6px;font-size:13px" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
+          <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
+        </div>
       </div>
       <div class="cfg-section">🔄 자동 새로고침</div>
       <div class="cfg-grid">
@@ -2170,7 +2172,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.98';
+const APP_VERSION = 'MyPM v2.99';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
