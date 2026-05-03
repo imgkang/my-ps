@@ -2048,7 +2048,7 @@
 </div>
 
 <script>
-const APP_VERSION = 'MyPM v2.82';
+const APP_VERSION = 'MyPM v2.84';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4662,6 +4662,18 @@ function openAnnualPlanModal() {
 }
 
 function closeAnnualPlanModal() {
+  // 닫을 때 예상수익률 자동 저장
+  const pr = document.getElementById('projRate');
+  if (pr) {
+    const projRate = Number(pr.value) || 7;
+    if (projRate !== annualPlan.projRate) {
+      annualPlan.projRate = projRate;
+      localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+      renderEvalTable();
+      renderAnnualCharts();
+      renderAccSummary();
+    }
+  }
   const modal = document.getElementById('annualPlanModal');
   if (modal) modal.classList.remove('open');
 }
