@@ -476,15 +476,18 @@
   }
   .detail-summary .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
   .detail-summary .stat-value { font-size: 17px; font-weight: 700; margin-top: 4px; }
-  .pf-hero { padding: 20px 22px 18px; margin-bottom: 14px; }
+  .pf-hero { padding: 24px 28px 20px; margin-bottom: 14px; }
+  .pf-hero-unit { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
   .pf-hero-value {
     font-size: 38px; font-weight: 800; color: var(--text);
     font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; margin-bottom: 10px;
   }
   .pf-hero-row {
     font-size: 17px; font-weight: 600;
-    font-variant-numeric: tabular-nums; line-height: 1.5;
+    font-variant-numeric: tabular-nums; line-height: 1.6;
+    display: flex; align-items: baseline; gap: 6px;
   }
+  .pf-hero-label { font-size: 12px; font-weight: 500; color: var(--text); }
   .detail-table-wrap { overflow-x: auto; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; }
   .detail-table { width: 100%; border-collapse: collapse; font-size: 11px; }
   .detail-table th, .detail-table td {
@@ -1115,9 +1118,6 @@
 
   <div class="card">
     <span id="statusText" style="display:none"></span>
-    <div style="margin-bottom:10px">
-      <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
-    </div>
     <div id="holdingsContainer">
       <div class="empty-state">
         <div class="icon">📈</div>
@@ -2211,7 +2211,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.114';
+const APP_VERSION = 'MyPM v2.116';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4566,10 +4566,11 @@ function render() {
   // Hero 요약 카드
   let html = `
     <div class="card pf-hero">
+      <div class="pf-hero-unit">(천원)</div>
       <div class="pf-hero-value">${fmtT(totalValue)}</div>
-      <div class="pf-hero-row ${dayChangeCls}">${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</div>
-      <div class="pf-hero-row ${monthCls}">${monthChange != null ? fmtTS(monthChange, monthSign) + ' ' + fmtPct(monthChangeRate, monthSign) : '-'}</div>
-      <div class="pf-hero-row ${profitCls}">${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</div>
+      <div class="pf-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</span><span class="pf-hero-label">오늘</span></div>
+      <div class="pf-hero-row ${monthCls}"><span>${monthChange != null ? fmtTS(monthChange, monthSign) + ' ' + fmtPct(monthChangeRate, monthSign) : '-'}</span><span class="pf-hero-label">지난달</span></div>
+      <div class="pf-hero-row ${profitCls}"><span>${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</span><span class="pf-hero-label">누적</span></div>
     </div>
     <div class="detail-table-wrap">
       <table class="detail-table">
@@ -4687,6 +4688,9 @@ function render() {
           </tr>
         </tfoot>
       </table>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     </div>
   `;
 
