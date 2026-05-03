@@ -1108,9 +1108,7 @@
   </div>
 
   <div class="card">
-    <div class="status-bar">
-      <span id="statusText">보유종목 0개</span>
-    </div>
+    <span id="statusText" style="display:none"></span>
     <div id="holdingsContainer">
       <div class="empty-state">
         <div class="icon">📈</div>
@@ -2204,7 +2202,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.106';
+const APP_VERSION = 'MyPM v2.108';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
