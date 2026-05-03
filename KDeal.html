@@ -1280,7 +1280,8 @@ function kdImportFromFile(event) {
       const data = JSON.parse(e.target.result);
       const src = data.kdeal || data;
       if (!Array.isArray(src.trades)) throw new Error('거래 데이터를 찾을 수 없습니다');
-      if (!confirm(`${src.trades.length}개 거래를 불러옵니다. 현재 데이터가 덮어쓰여집니다.`)) return;
+      const depCount = Array.isArray(src.deposits) ? src.deposits.length : 0;
+      if (!confirm(`거래 ${src.trades.length}건, 입출금 ${depCount}건을 불러옵니다.\n현재 데이터가 덮어쓰여집니다.`)) return;
       kdTrades = src.trades;
       kdSaveTrades();
       if (Array.isArray(src.deposits)) { kdDeposits = src.deposits; kdSaveDeposits(); }
@@ -1296,7 +1297,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.8';
+const APP_VERSION = 'KDeal v1.9';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
