@@ -65,6 +65,22 @@
   .nav-btn:hover { background: #f3f4f6; border-color: #9ca3af; color: var(--text); }
   .nav-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
+  .tab-nav {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    margin-bottom: 16px; background: var(--card);
+    padding: 6px 8px; border-radius: 12px; box-shadow: var(--shadow);
+  }
+  .tab-nav-btn {
+    padding: 7px 14px; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    background: transparent; color: var(--muted);
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .tab-nav-btn:hover { background: var(--bg); color: var(--text); }
+  .tab-nav-btn.active { background: var(--primary); color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   .summary-card {
     background: linear-gradient(135deg, #03c75a 0%, #02a04a 100%);
     color: #fff;
@@ -1048,13 +1064,18 @@
     </div>
   </header>
 
+  <div class="tab-nav">
+    <button class="tab-nav-btn active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 포트폴리오</button>
+    <button class="tab-nav-btn" id="tab-records" onclick="switchTab('records')">📒 계좌 기록</button>
+    <button class="tab-nav-btn" id="tab-dividend" onclick="switchTab('dividend')">💸 배당 기록</button>
+    <button class="tab-nav-btn" id="tab-deposit" onclick="switchTab('deposit')">💰 계좌 입출금</button>
+    <button class="tab-nav-btn" id="tab-annual" onclick="switchTab('annual')">📅 연간 계획</button>
+    <button class="tab-nav-btn" id="tab-withdrawal" onclick="switchTab('withdrawal')">💸 인출 계획</button>
+  </div>
+
+  <div id="panel-portfolio" class="tab-panel active">
   <div class="toolbar">
     <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
-    <button class="btn-secondary" onclick="openRecordsModal()">📒 계좌 기록</button>
-    <button class="btn-secondary" onclick="openDividendModal()">💸 배당 기록</button>
-    <button class="btn-secondary" onclick="openDepositModal()">💰 계좌 입출금</button>
-    <button class="btn-secondary" onclick="openAnnualPlanModal()">📅 연간 계획</button>
-    <button class="btn-secondary" onclick="openWithdrawalModal()">💸 인출 계획</button>
     <button class="btn-secondary" onclick="exportToFile()">💾 파일로 저장</button>
     <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
@@ -1078,7 +1099,6 @@
     <div id="accSummaryWrap"></div>
   </div>
 
-
   <div class="card">
     <h2>📈 월별 추세</h2>
     <div class="chart-subtitle">진한 녹색 = 누적 입금액(원금), 연한 녹색 = 평가총액</div>
@@ -1089,6 +1109,7 @@
       계좌 기록이 아직 없습니다. 상단의 '📒 계좌 기록'에서 월별 평가금액을 먼저 추가해 주세요.
     </div>
   </div>
+  </div><!-- /panel-portfolio -->
 </div>
 
 <!-- 종목 추가 모달 -->
@@ -1513,16 +1534,14 @@
   </div>
 </div>
 
-<!-- 계좌 입출금 모달 -->
-<div class="modal-backdrop" id="accountDepositModal" onclick="handleDepositBackdropClick(event)">
-  <div class="modal modal-wide modal-deposit">
-    <div class="modal-header">
-      <div>
-        <h2>💰 계좌 입출금 관리</h2>
-        <div class="modal-subtitle">계좌별 입금·출금 내역 (단위: 원)</div>
-      </div>
-      <button class="close-btn" onclick="closeDepositModal()" aria-label="닫기">×</button>
+<!-- 계좌 입출금 패널 -->
+<div id="panel-deposit" class="tab-panel">
+  <div class="modal-header">
+    <div>
+      <h2>💰 계좌 입출금 관리</h2>
+      <div class="modal-subtitle">계좌별 입금·출금 내역 (단위: 원)</div>
     </div>
+  </div>
     <div class="deposit-grand" id="depositGrand"></div>
     <div class="deposit-totals" id="depositTotals"></div>
     <div class="deposit-chart-wrap" id="depositChartWrap">
@@ -1539,11 +1558,7 @@
     <div class="deposit-list-wrap">
       <div id="depositList"></div>
     </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeDepositModal()">닫기</button>
-    </div>
-  </div>
-</div>
+</div><!-- /panel-deposit -->
 
 <!-- 입출금 편집 서브 모달 -->
 <div class="modal-backdrop" id="txnEditorModal" onclick="handleTxnBackdropClick(event)">
@@ -1637,16 +1652,14 @@
   </div>
 </div>
 
-<!-- 계좌 기록 모달 (월별 평가금액 기록) -->
-<div class="modal-backdrop" id="accountRecordsModal" onclick="handleRecordsBackdropClick(event)">
-  <div class="modal modal-wide modal-records">
-    <div class="modal-header">
-      <div>
-        <h2>📒 계좌 기록 관리</h2>
-        <div class="modal-subtitle">월별 계좌 평가금액 기록 (연도·월 + 계좌별 평가금액)</div>
-      </div>
-      <button class="close-btn" onclick="closeRecordsModal()" aria-label="닫기">×</button>
+<!-- 계좌 기록 패널 -->
+<div id="panel-records" class="tab-panel">
+  <div class="modal-header">
+    <div>
+      <h2>📒 계좌 기록 관리</h2>
+      <div class="modal-subtitle">월별 계좌 평가금액 기록 (연도·월 + 계좌별 평가금액)</div>
     </div>
+  </div>
 
     <!-- 계좌 잔액 추이 차트 -->
     <div class="rec-chart-wrap" id="recChartWrap">
@@ -1686,22 +1699,16 @@
       <div id="recordsList"></div>
     </div>
 
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeRecordsModal()">닫기</button>
+</div><!-- /panel-records -->
+
+<!-- 연간 계획 패널 -->
+<div id="panel-annual" class="tab-panel">
+  <div class="modal-header">
+    <div>
+      <h2>📅 연간 계획</h2>
+      <div class="modal-subtitle">계좌별 원금·평가금액 연도별 기록 및 계획 (단위: 백만원)</div>
     </div>
   </div>
-</div>
-
-<!-- 연간 계획 모달 -->
-<div class="modal-backdrop" id="annualPlanModal" onclick="handleAnnualPlanBackdropClick(event)">
-  <div class="modal modal-wide" style="max-width:1400px">
-    <div class="modal-header">
-      <div>
-        <h2>📅 연간 계획</h2>
-        <div class="modal-subtitle">계좌별 원금·평가금액 연도별 기록 및 계획 (단위: 백만원)</div>
-      </div>
-      <button class="close-btn" onclick="closeAnnualPlanModal()" aria-label="닫기">×</button>
-    </div>
 
     <div class="plan-unit-note" style="margin-bottom:6px">* 원금·평가 표 단위: 백만원 / 적립 입력 단위: 만원 / 회색 = 실적, 초록 = 계획</div>
 
@@ -1759,11 +1766,7 @@
       </div>
     </div>
 
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeAnnualPlanModal()">닫기</button>
-    </div>
-  </div>
-</div>
+</div><!-- /panel-annual -->
 
 <!-- 계좌 통합 모달 -->
 <div class="modal-backdrop" id="consolidateModal" onclick="handleConsBackdropClick(event)"
@@ -1795,20 +1798,17 @@
   </div>
 </div>
 
-<!-- 인출 계획 모달 -->
-<div class="modal-backdrop" id="withdrawalModal" onclick="handleWdBackdropClick(event)"
-     style="align-items:flex-start;overflow-y:auto;padding:16px">
-  <div class="modal modal-wide" style="max-width:1500px;max-height:none;overflow-y:visible;display:flex;flex-direction:column;margin:auto">
-    <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:10;flex-shrink:0">
-      <div>
-        <h2>💸 인출 계획</h2>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openWdSettingsModal()">⚙️ 설정</button>
-        <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합 및 정리</button>
-        <button class="close-btn" onclick="closeWithdrawalModal()">×</button>
-      </div>
+<!-- 인출 계획 패널 -->
+<div id="panel-withdrawal" class="tab-panel">
+  <div class="modal-header">
+    <div>
+      <h2>💸 인출 계획</h2>
     </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openWdSettingsModal()">⚙️ 설정</button>
+      <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합 및 정리</button>
+    </div>
+  </div>
 
     <!-- 빠른 편집 바 -->
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;flex-shrink:0">
@@ -1974,11 +1974,7 @@
       <div id="wdScenarioWrap"></div>
     </div>
 
-    <div class="modal-actions" style="flex-shrink:0">
-      <button class="btn-secondary" onclick="closeWithdrawalModal()">닫기</button>
-    </div>
-  </div>
-</div>
+</div><!-- /panel-withdrawal -->
 
 <!-- 인출계획 설정 모달 -->
 <div class="modal-backdrop" id="wdSettingsModal" onclick="handleWdSettingsBackdropClick(event)">
@@ -2053,16 +2049,14 @@
   </div>
 </div>
 
-<!-- 배당 기록 모달 -->
-<div class="modal-backdrop" id="dividendModal" onclick="handleDividendBackdropClick(event)">
-  <div class="modal modal-wide modal-records">
-    <div class="modal-header">
-      <div>
-        <h2>💸 배당 기록 관리</h2>
-        <div class="modal-subtitle">월별 배당금/분배금 수령 내역</div>
-      </div>
-      <button class="close-btn" onclick="closeDividendModal()" aria-label="닫기">×</button>
+<!-- 배당 기록 패널 -->
+<div id="panel-dividend" class="tab-panel">
+  <div class="modal-header">
+    <div>
+      <h2>💸 배당 기록 관리</h2>
+      <div class="modal-subtitle">월별 배당금/분배금 수령 내역</div>
     </div>
+  </div>
 
     <!-- 입력 폼 토글 버튼 -->
     <button id="divFormToggleBtn" class="rec-form-toggle" onclick="toggleDivForm()">➕ 새 기록 추가</button>
@@ -2126,18 +2120,24 @@
       </div>
     </div>
 
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeDividendModal()">닫기</button>
-    </div>
-  </div>
-</div>
+</div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.88';
+const APP_VERSION = 'MyPM v2.90';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
 });
+
+const _TAB_NAMES = ['portfolio','records','dividend','deposit','annual','withdrawal'];
+function switchTab(name) {
+  _TAB_NAMES.forEach(t => {
+    const panel = document.getElementById('panel-' + t);
+    const btn   = document.getElementById('tab-' + t);
+    if (panel) panel.classList.toggle('active', t === name);
+    if (btn)   btn.classList.toggle('active',   t === name);
+  });
+}
 
 // ===== 계좌 정의 (8개) =====
 const ACCOUNTS = [
@@ -2435,13 +2435,10 @@ function openDepositModal() {
   renderDepositTotals();
   renderDepositList();
   renderDepositChart();
-  document.getElementById('accountDepositModal').classList.add('open');
+  switchTab('deposit');
 }
 function closeDepositModal() {
-  document.getElementById('accountDepositModal').classList.remove('open');
-}
-function handleDepositBackdropClick(e) {
-  if (e.target.id === 'accountDepositModal') closeDepositModal();
+  switchTab('portfolio');
 }
 
 function renderDepositTotals() {
@@ -2860,10 +2857,7 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('accountModal').classList.contains('open')) { closeAccountModal(); return; }
   if (document.getElementById('accountDetailModal').classList.contains('open')) { closeAccountDetail(); return; }
   if (document.getElementById('cashAccountModal').classList.contains('open')) { closeCashAccountModal(); return; }
-  if (document.getElementById('accountDepositModal').classList.contains('open')) { closeDepositModal(); return; }
-  if (document.getElementById('accountRecordsModal').classList.contains('open')) { closeRecordsModal(); return; }
-  if (document.getElementById('dividendModal').classList.contains('open')) { closeDividendModal(); return; }
-  if (document.getElementById('annualPlanModal').classList.contains('open')) { closeAnnualPlanModal(); return; }
+  if (['records','dividend','deposit','annual','withdrawal'].some(t => document.getElementById('panel-'+t)?.classList.contains('active'))) { switchTab('portfolio'); return; }
   if (document.getElementById('settingsModal').classList.contains('open')) { closeSettingsModal(); return; }
 });
 
@@ -3961,8 +3955,6 @@ function toggleRecForm(forceOpen) {
 }
 
 function openRecordsModal() {
-  const modal = document.getElementById('accountRecordsModal');
-  if (!modal) return;
   editingRecordId = null;
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
@@ -3978,14 +3970,10 @@ function openRecordsModal() {
   renderRecordsTableHeader();
   renderRecordsList();
   renderRecChart();
-  modal.classList.add('open');
+  switchTab('records');
 }
 function closeRecordsModal() {
-  const modal = document.getElementById('accountRecordsModal');
-  if (modal) modal.classList.remove('open');
-}
-function handleRecordsBackdropClick(event) {
-  if (event.target.id === 'accountRecordsModal') closeRecordsModal();
+  switchTab('portfolio');
 }
 
 function renderRecordInputs(values) {
@@ -4716,8 +4704,6 @@ function updateMplanCountBadge() {
 }
 
 function openAnnualPlanModal() {
-  const modal = document.getElementById('annualPlanModal');
-  if (!modal) return;
   const pr = document.getElementById('projRate');
   if (pr) pr.value = annualPlan.projRate || 7;
   const sel = document.getElementById('mplanAcc');
@@ -4743,7 +4729,7 @@ function openAnnualPlanModal() {
   renderPrincipalTable();
   renderEvalTable();
   setTimeout(renderAnnualCharts, 50);
-  modal.classList.add('open');
+  switchTab('annual');
 }
 
 function closeAnnualPlanModal() {
@@ -4759,12 +4745,7 @@ function closeAnnualPlanModal() {
       renderAccSummary();
     }
   }
-  const modal = document.getElementById('annualPlanModal');
-  if (modal) modal.classList.remove('open');
-}
-
-function handleAnnualPlanBackdropClick(e) {
-  if (e.target.id === 'annualPlanModal') closeAnnualPlanModal();
+  switchTab('portfolio');
 }
 
 function saveAnnualPlan() {
@@ -5646,8 +5627,6 @@ function renderDivCharts() {
 }
 
 function openDividendModal() {
-  const modal = document.getElementById('dividendModal');
-  if (!modal) return;
   const now = new Date();
   document.getElementById('divYear').value = now.getFullYear();
   document.getElementById('divMonth').value = now.getMonth() + 1;
@@ -5655,16 +5634,11 @@ function openDividendModal() {
   toggleDivForm(false);
   renderDividendLists();
   renderDivCharts();
-  modal.classList.add('open');
+  switchTab('dividend');
 }
 
 function closeDividendModal() {
-  const modal = document.getElementById('dividendModal');
-  if (modal) modal.classList.remove('open');
-}
-
-function handleDividendBackdropClick(event) {
-  if (event.target.id === 'dividendModal') closeDividendModal();
+  switchTab('portfolio');
 }
 
 function renderDivStockInputs(perShareMap) {
@@ -6043,10 +6017,10 @@ function openWithdrawalModal() {
   _wdScrollSyncDone = false;
   loadWdFormValues();
   loadQuickWdValues();
-  document.getElementById('withdrawalModal').classList.add('open');
+  switchTab('withdrawal');
   renderWithdrawalPlan();
 }
-function closeWithdrawalModal() { document.getElementById('withdrawalModal').classList.remove('open'); }
+function closeWithdrawalModal() { switchTab('portfolio'); }
 
 function toggleWdHelp() {
   const panel = document.getElementById('wdHelpPanel');
@@ -6275,7 +6249,7 @@ function saveSettingsModal() {
   render();
   renderPortfolioChart();
 }
-function handleWdBackdropClick(e) { if (e.target.id === 'withdrawalModal') closeWithdrawalModal(); }
+
 function openWdSettingsModal() {
   loadWdFormValues();
   const t = getWifeTitle();
@@ -6758,8 +6732,7 @@ function saveQuickWdPlan() {
   wdPlan.annualTarget = nv('qwd_annualTarget', wdPlan.annualTarget);
   wdPlan.returnRate   = nv('qwd_returnRate',   wdPlan.returnRate);
   saveWdPlan();
-  const modal = document.getElementById('withdrawalModal');
-  if (modal?.classList.contains('open')) renderWithdrawalPlan();
+  if (document.getElementById('panel-withdrawal')?.classList.contains('active')) renderWithdrawalPlan();
 }
 
 function renderWithdrawalPlan() {
