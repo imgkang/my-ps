@@ -569,6 +569,7 @@ function kdRenderTimeline() {
 
   const equityData = events.map(e => ({ x: e.date, y: Math.round(e.totalEquity / 1000000) }));
   const depData    = events.map(e => ({ x: e.date, y: Math.round(e.cumulativeDeposit / 1000000) }));
+  const cashData   = events.map(e => ({ x: e.date, y: Math.round((e.totalEquity - e.openCost) / 1000000) }));
 
   if (today > lastEv.date) {
     const { positions, totalRealizedPnl } = kdFifoAnalysis();
@@ -583,14 +584,16 @@ function kdRenderTimeline() {
     currentPointIdx = equityData.length;
     equityData.push({ x: today, y: Math.round(curTotal / 1000000) });
     depData.push({ x: today, y: Math.round(netDep / 1000000) });
+    cashData.push({ x: today, y: Math.round(autoCash / 1000000) });
   }
 
   // Chart
   const ctx = document.getElementById('kdTimelineChart');
   if (ctx) {
     if (_kdTimelineChart) { _kdTimelineChart.destroy(); _kdTimelineChart = null; }
-    const eqRadius  = equityData.map((_, i) => i === currentPointIdx ? 7 : 4);
-    const depRadius = depData.map((_, i) => i === currentPointIdx ? 7 : 3);
+    const eqRadius   = equityData.map((_, i) => i === currentPointIdx ? 7 : 4);
+    const depRadius  = depData.map((_, i) => i === currentPointIdx ? 7 : 3);
+    const cashRadius = cashData.map((_, i) => i === currentPointIdx ? 7 : 3);
     const datasets = [];
     if (hasDeposit) {
       datasets.push({
@@ -602,7 +605,14 @@ function kdRenderTimeline() {
       });
     }
     datasets.push({
-      label: '총자산',
+      label: '계좌잔액',
+      data: cashData,
+      borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.0)',
+      fill: false, tension: 0.1, pointRadius: cashRadius, borderWidth: 1.5,
+      borderDash: [3, 2]
+    });
+    datasets.push({
+      label: '계좌+평가',
       data: equityData,
       borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)',
       fill: true, tension: 0.1, pointRadius: eqRadius, borderWidth: 2
@@ -647,10 +657,11 @@ function kdRenderTimeline() {
   const container = document.getElementById('kdTimelineContainer');
   if (container) {
     const rows = [...events].reverse().map(e => {
-      const depMon = Math.round(e.cumulativeDeposit / 1000000);
-      const rlzMon = Math.round(e.realizedPnl / 1000000);
-      const totMon = Math.round(e.totalEquity / 1000000);
-      const rlzCls = e.realizedPnl >= 0 ? 'pos' : 'neg';
+      const depMon  = Math.round(e.cumulativeDeposit / 1000000);
+      const rlzMon  = Math.round(e.realizedPnl / 1000000);
+      const cashMon = Math.round((e.totalEquity - e.openCost) / 1000000);
+      const totMon  = Math.round(e.totalEquity / 1000000);
+      const rlzCls  = e.realizedPnl >= 0 ? 'pos' : 'neg';
       if (e._evKind === 'dep') {
         const sign = e.type === 'withdraw' ? '−' : '+';
         const amtMon = Math.round(e.amount / 1000000).toLocaleString('ko-KR');
@@ -660,6 +671,7 @@ function kdRenderTimeline() {
           <td class="muted" colspan="2">${sign}${amtMon}백만 ${e.memo ? `<span style="font-size:11px">(${e.memo})</span>` : ''}</td>
           <td class="ta-r">${depMon.toLocaleString('ko-KR')} 백만</td>
           <td class="ta-r ${rlzCls}">${rlzMon >= 0 ? '+' : ''}${rlzMon.toLocaleString('ko-KR')} 백만</td>
+          <td class="ta-r" style="color:#3b82f6">${cashMon.toLocaleString('ko-KR')} 백만</td>
           <td class="ta-r" style="font-weight:700">${totMon.toLocaleString('ko-KR')} 백만</td>
         </tr>`;
       }
@@ -670,6 +682,7 @@ function kdRenderTimeline() {
         <td class="ta-r muted" style="white-space:nowrap">${Number(e.qty).toLocaleString()} × ${Math.round(e.price).toLocaleString('ko-KR')}</td>
         <td class="ta-r">${depMon.toLocaleString('ko-KR')} 백만</td>
         <td class="ta-r ${rlzCls}">${rlzMon >= 0 ? '+' : ''}${rlzMon.toLocaleString('ko-KR')} 백만</td>
+        <td class="ta-r" style="color:#3b82f6">${cashMon.toLocaleString('ko-KR')} 백만</td>
         <td class="ta-r" style="font-weight:700">${totMon.toLocaleString('ko-KR')} 백만</td>
       </tr>`;
     }).join('');
@@ -678,7 +691,8 @@ function kdRenderTimeline() {
       <thead><tr>
         <th>날짜</th><th>구분</th><th>종목/내용</th><th class="ta-r">거래</th>
         <th class="ta-r">${depCol}</th><th class="ta-r">누적실현손익</th>
-        <th class="ta-r" style="font-weight:700">총자산(장부)</th>
+        <th class="ta-r" style="color:#3b82f6">계좌잔액</th>
+        <th class="ta-r" style="font-weight:700">계좌+평가</th>
       </tr></thead><tbody>${rows}</tbody>
     </table></div>`;
   }
@@ -1276,7 +1290,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.5';
+const APP_VERSION = 'KDeal v1.6';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
