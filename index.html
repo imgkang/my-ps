@@ -71,24 +71,24 @@
     background: #fff;
     border-top: 1px solid #e5e7eb;
     box-shadow: 0 -1px 0 rgba(0,0,0,0.06);
-    padding: 6px 0 env(safe-area-inset-bottom, 8px);
+    padding: 12px 0 env(safe-area-inset-bottom, 16px);
   }
   .tab-nav-btn {
     flex: 1;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px; padding: 4px 2px;
+    gap: 6px; padding: 8px 4px;
     border: none; background: transparent;
     color: #9ca3af; cursor: pointer;
     transition: color 0.15s;
-    font-size: 10px; font-weight: 600;
+    font-size: 20px; font-weight: 600;
     -webkit-tap-highlight-color: transparent;
   }
   .tab-nav-btn:active { opacity: 0.7; }
   .tab-nav-btn.active { color: var(--primary); }
   .tab-nav-btn svg { display: block; }
-  .tab-panel { display: none; max-width: 1200px; margin: 0 auto; padding: 16px 16px 80px; }
+  .tab-panel { display: none; max-width: 1200px; margin: 0 auto; padding: 16px 16px 140px; }
   .tab-panel.active { display: block; }
-  #panel-portfolio { max-width: none; margin: 0; padding: 0 0 80px; }
+  #panel-portfolio { max-width: none; margin: 0; padding: 0 0 140px; }
 
   .summary-card {
     background: linear-gradient(135deg, #03c75a 0%, #02a04a 100%);
@@ -1114,41 +1114,41 @@
 
 <nav class="tab-nav">
   <button class="tab-nav-btn active" id="tab-portfolio" onclick="switchTab('portfolio')">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="7" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="17" rx="1"/>
     </svg>
     포트폴리오
   </button>
   <button class="tab-nav-btn" id="tab-records" onclick="openRecordsModal()">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
       <line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/>
     </svg>
     계좌기록
   </button>
   <button class="tab-nav-btn" id="tab-dividend" onclick="openDividendModal()">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/>
       <path d="M9.5 9.5h3a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3.5"/><line x1="12" y1="7" x2="12" y2="9.5"/><line x1="12" y1="15.5" x2="12" y2="17"/>
     </svg>
     배당기록
   </button>
   <button class="tab-nav-btn" id="tab-deposit" onclick="openDepositModal()">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
       <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
     </svg>
     입출금
   </button>
   <button class="tab-nav-btn" id="tab-annual" onclick="openAnnualPlanModal()">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
       <line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14"/><line x1="12" y1="14" x2="12.01" y2="14"/><line x1="16" y1="14" x2="16.01" y2="14"/>
     </svg>
     연간계획
   </button>
   <button class="tab-nav-btn" id="tab-withdrawal" onclick="openWithdrawalModal()">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
       <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
     </svg>
@@ -2167,7 +2167,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.95';
+const APP_VERSION = 'MyPM v2.96';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
