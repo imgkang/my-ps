@@ -1066,9 +1066,9 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <span id="refreshStatus"></span>
-      <button class="drive-btn" id="driveNavBtn" onclick="openDriveModal()" title="Google Drive 동기화">
-        ☁️ <span id="driveNavLabel">Drive</span>
-      </button>
+      <button class="btn-secondary" style="font-size:13px;padding:6px 10px" onclick="exportToFile()">💾 저장</button>
+      <button class="btn-secondary" style="font-size:13px;padding:6px 10px" onclick="document.getElementById('importFile').click()">📂 불러오기</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
       <button class="btn-settings" onclick="openSettingsModal()" title="앱 설정">⚙️ 설정</button>
     </div>
   </header>
@@ -1076,9 +1076,6 @@
   <div id="panel-portfolio" class="tab-panel active">
   <div class="toolbar">
     <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
-    <button class="btn-secondary" onclick="exportToFile()">💾 파일로 저장</button>
-    <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
-    <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
   </div>
 
   <div class="card">
@@ -1231,6 +1228,12 @@
 
     <!-- 일반 탭 -->
     <div class="cfg-tab-pane active" id="cfgPaneGeneral">
+      <div class="cfg-section">☁️ Google Drive</div>
+      <div style="margin-bottom:4px">
+        <button class="drive-btn" id="driveNavBtn" onclick="closeThenDrive()" style="width:100%;justify-content:center;padding:10px">
+          ☁️ <span id="driveNavLabel">Drive 연결 / 동기화</span>
+        </button>
+      </div>
       <div class="cfg-section">🔄 자동 새로고침</div>
       <div class="cfg-grid">
         <label>새로고침 간격</label>
@@ -2167,7 +2170,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.97';
+const APP_VERSION = 'MyPM v2.98';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6220,6 +6223,7 @@ function openSettingsModal() {
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
+function closeThenDrive() { closeSettingsModal(); openDriveModal(); }
 function handleSettingsBackdropClick(e) { if (e.target.id === 'settingsModal') closeSettingsModal(); }
 function setCfgWife(val) { _updateCfgWifeUI(val); }
 function _updateCfgWifeUI(hasWife) {
