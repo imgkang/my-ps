@@ -102,7 +102,7 @@
   .tab-nav-btn svg { display: block; }
   .tab-panel { display: none; max-width: 1200px; margin: 0 auto; padding: 16px 16px 130px; }
   .tab-panel.active { display: block; }
-  #panel-portfolio { max-width: none; margin: 0; padding: 0 0 130px; }
+  #panel-portfolio { max-width: none; margin: 0; padding: 8px 8px 130px; }
 
   .summary-card {
     background: linear-gradient(135deg, #03c75a 0%, #02a04a 100%);
@@ -476,12 +476,13 @@
   }
   .detail-summary .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
   .detail-summary .stat-value { font-size: 17px; font-weight: 700; margin-top: 4px; }
-  .pf-hero { padding: 24px 28px 20px; margin-bottom: 14px; }
-  .pf-hero-unit { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .pf-hero { padding: 22px 24px 18px; margin-bottom: 10px; }
+  .pf-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
   .pf-hero-value {
     font-size: 38px; font-weight: 800; color: var(--text);
-    font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; margin-bottom: 10px;
+    font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1;
   }
+  .pf-hero-unit { font-size: 13px; font-weight: 500; color: var(--muted); }
   .pf-hero-row {
     font-size: 17px; font-weight: 600;
     font-variant-numeric: tabular-nums; line-height: 1.6;
@@ -1116,13 +1117,11 @@
 
   <div id="panel-portfolio" class="tab-panel active">
 
-  <div class="card">
-    <span id="statusText" style="display:none"></span>
-    <div id="holdingsContainer">
-      <div class="empty-state">
-        <div class="icon">📈</div>
-        <div>'+ 종목 추가' 버튼을 눌러 종목을 추가해 주세요</div>
-      </div>
+  <span id="statusText" style="display:none"></span>
+  <div id="holdingsContainer">
+    <div class="empty-state">
+      <div class="icon">📈</div>
+      <div>'+ 종목 추가' 버튼을 눌러 종목을 추가해 주세요</div>
     </div>
   </div>
 
@@ -2211,7 +2210,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.116';
+const APP_VERSION = 'MyPM v2.118';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4548,15 +4547,19 @@ function render() {
   const dayChangeSign = totalDayChange >= 0 ? '+' : '';
   const totalDayRate  = (totalValue - totalDayChange) > 0 ? (totalDayChange / (totalValue - totalDayChange)) * 100 : 0;
 
-  // 지난달 손익 (monthlyRecords 최근 2개 비교)
+  // 이번달 손익 (직전 달 기록 기준 → 오늘 평가액과의 차이)
   const _recSum = r => Object.values(r.accounts || {}).reduce((s, v) => s + (Number(v) || 0), 0);
-  const _recs = [...monthlyRecords].sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month));
-  const _v0 = _recs.length > 0 ? _recSum(_recs[0]) : 0;
-  const _v1 = _recs.length > 1 ? _recSum(_recs[1]) : 0;
-  const monthChange     = _v0 > 0 && _v1 > 0 ? _v0 - _v1 : null;
-  const monthChangeRate = _v1 > 0 && monthChange != null ? (monthChange / _v1) * 100 : null;
-  const monthCls  = (monthChange || 0) >= 0 ? 'diff-positive' : 'diff-negative';
-  const monthSign = (monthChange || 0) >= 0 ? '+' : '';
+  const _now = new Date();
+  const _curYm = _now.getFullYear() * 12 + _now.getMonth() + 1;
+  const _prevMonRec = [...monthlyRecords]
+    .filter(r => r.year * 12 + r.month < _curYm)
+    .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))[0];
+  const _prevMonVal   = _prevMonRec ? _recSum(_prevMonRec) : 0;
+  const thisMonChange = _prevMonVal > 0 ? totalValue - _prevMonVal : null;
+  const thisMonRate   = _prevMonVal > 0 && thisMonChange != null ? (thisMonChange / _prevMonVal) * 100 : null;
+  const thisMonCls    = (thisMonChange || 0) >= 0 ? 'diff-positive' : 'diff-negative';
+  const thisMonSign   = (thisMonChange || 0) >= 0 ? '+' : '';
+  const thisMonLabel  = `${_now.getFullYear()}년 ${_now.getMonth() + 1}월`;
 
   // 천원 단위 포매터
   const fmtT  = n => Math.round(n / 1000).toLocaleString('ko-KR');
@@ -4566,10 +4569,12 @@ function render() {
   // Hero 요약 카드
   let html = `
     <div class="card pf-hero">
-      <div class="pf-hero-unit">(천원)</div>
-      <div class="pf-hero-value">${fmtT(totalValue)}</div>
+      <div class="pf-hero-value-row">
+        <div class="pf-hero-value">${fmtT(totalValue)}</div>
+        <div class="pf-hero-unit">(천원)</div>
+      </div>
       <div class="pf-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</span><span class="pf-hero-label">오늘</span></div>
-      <div class="pf-hero-row ${monthCls}"><span>${monthChange != null ? fmtTS(monthChange, monthSign) + ' ' + fmtPct(monthChangeRate, monthSign) : '-'}</span><span class="pf-hero-label">지난달</span></div>
+      <div class="pf-hero-row ${thisMonCls}"><span>${thisMonChange != null ? fmtTS(thisMonChange, thisMonSign) + ' ' + fmtPct(thisMonRate, thisMonSign) : '-'}</span><span class="pf-hero-label">${thisMonLabel}</span></div>
       <div class="pf-hero-row ${profitCls}"><span>${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</span><span class="pf-hero-label">누적</span></div>
     </div>
     <div class="detail-table-wrap">
