@@ -370,7 +370,13 @@
 // ===== 상수 =====
 const KD_TRADES_KEY  = 'kdeal_trades_v1';
 const KD_DEP_KEY     = 'kdeal_deposits_v1';
+
+// ▼ Cloudflare Worker 배포 후 URL 입력 (worker/README.md 참고)
+// 예: 'https://mypm-proxy.yourname.workers.dev'
+const KD_CF_WORKER = '';
+
 const KD_PROXIES = [
+  ...(KD_CF_WORKER ? [url => `${KD_CF_WORKER}?url=${encodeURIComponent(url)}`] : []),
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://thingproxy.freeboard.io/fetch/${url}`,
@@ -1290,7 +1296,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.6';
+const APP_VERSION = 'KDeal v1.7';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {

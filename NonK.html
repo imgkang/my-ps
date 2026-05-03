@@ -998,14 +998,19 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.23';
+const APP_VERSION = 'NonK v1.24';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
 });
 
+// ▼ Cloudflare Worker 배포 후 URL 입력 (worker/README.md 참고)
+// 예: 'https://mypm-proxy.yourname.workers.dev'
+const CF_WORKER = '';
+
 const PROXIES = [
+  ...(CF_WORKER ? [url => `${CF_WORKER}?url=${encodeURIComponent(url)}`] : []),
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://thingproxy.freeboard.io/fetch/${url}`,
