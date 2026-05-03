@@ -1,12 +1,14 @@
-// Cloudflare Worker — Yahoo Finance CORS 프록시
+// Cloudflare Worker — Yahoo Finance + Naver Finance CORS 프록시
 // 배포 방법: https://github.com/imgkang/my-ps/blob/main/worker/README.md
 
 const ALLOWED_HOSTS = [
   'query1.finance.yahoo.com',
   'query2.finance.yahoo.com',
+  'm.stock.naver.com',
+  'polling.finance.naver.com',
 ];
 
-// Worker 내부에서 30초간 캐시 (같은 종목 연속 요청 시 Yahoo 서버 부하 감소)
+// Worker 내부에서 30초간 캐시 (같은 종목 연속 요청 시 서버 부하 감소)
 const CACHE_TTL = 30;
 
 export default {
@@ -39,12 +41,15 @@ export default {
       return new Response(`Host not allowed: ${targetUrl.hostname}`, { status: 403 });
     }
 
+    const isNaver = targetUrl.hostname.endsWith('naver.com');
+
     try {
       const res = await fetch(targetUrl.toString(), {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
           'Accept': 'application/json, */*',
           'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+          ...(isNaver ? { 'Referer': 'https://finance.naver.com/' } : {}),
         },
         cf: {
           cacheTtl: CACHE_TTL,

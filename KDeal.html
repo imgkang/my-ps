@@ -1208,7 +1208,27 @@ async function kdFetchViaProxy(url) {
   throw new Error('조회 실패');
 }
 
+async function kdFetchNaverPrice(code) {
+  const url = `https://m.stock.naver.com/api/stock/${code}/basic`;
+  const text = await kdFetchViaProxy(url);
+  const data = JSON.parse(text);
+  const price = parseFloat((data.closePrice || '').replace(/,/g, ''));
+  if (!price) return null;
+  const change     = parseFloat((data.compareToPreviousClosePrice || '0').replace(/,/g, ''));
+  const changeRate = parseFloat(data.fluctuationsRatio || 0);
+  const name       = data.stockName || code;
+  const volume     = parseInt((data.accumulatedTradingVolume || '0').replace(/,/g, ''), 10);
+  return { price, change, changeRate, name, volume, marketTime: Date.now() / 1000 };
+}
+
 async function kdFetchStockInfo(code) {
+  // 1. Naver 먼저 시도 (키 불필요, 한국 종목 코드 직접 사용)
+  try {
+    const info = await kdFetchNaverPrice(code);
+    if (info) return info;
+  } catch(_) {}
+
+  // 2. Yahoo Finance 폴백 (.KS / .KQ 자동 판별)
   const ts = Date.now();
   async function tryOne(suffix) {
     for (const host of KD_YAHOO) {
@@ -1297,7 +1317,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v1.9';
+const APP_VERSION = 'KDeal v2.1';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
