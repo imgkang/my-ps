@@ -2231,7 +2231,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.102';
+const APP_VERSION = 'MyPM v0.103';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3374,8 +3374,9 @@ function exportToFile() {
       dividends: tryParse('nonk_dividends_v1') || []
     },
     kdeal: {
-      trades:   tryParse('kdeal_trades_v1')   || [],
-      deposits: tryParse('kdeal_deposits_v1') || []
+      trades:    tryParse('kdeal_trades_v1')    || [],
+      deposits:  tryParse('kdeal_deposits_v1')  || [],
+      watchlist: tryParse('kdeal_watchlist_v1') || []
     }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -3556,8 +3557,9 @@ function importFromFile(event) {
       }
       if (data.kdeal) {
         const kd = data.kdeal;
-        if (kd.trades    !== undefined) localStorage.setItem('kdeal_trades_v1',   JSON.stringify(kd.trades));
-        if (kd.deposits  !== undefined) localStorage.setItem('kdeal_deposits_v1', JSON.stringify(kd.deposits));
+        if (kd.trades    !== undefined) localStorage.setItem('kdeal_trades_v1',    JSON.stringify(kd.trades));
+        if (kd.deposits  !== undefined) localStorage.setItem('kdeal_deposits_v1',  JSON.stringify(kd.deposits));
+        if (kd.watchlist !== undefined) localStorage.setItem('kdeal_watchlist_v1', JSON.stringify(kd.watchlist));
       }
       alert('불러오기 완료' + (data.nonk ? '\n(My PM + NonK 통합 데이터)' : ''));
     } catch (err) {
@@ -7926,8 +7928,9 @@ function buildDriveBundle() {
       dividends: tryParse('nonk_dividends_v1') || []
     },
     kdeal: {
-      trades:   tryParse('kdeal_trades_v1')   || [],
-      deposits: tryParse('kdeal_deposits_v1') || []
+      trades:    tryParse('kdeal_trades_v1')    || [],
+      deposits:  tryParse('kdeal_deposits_v1')  || [],
+      watchlist: tryParse('kdeal_watchlist_v1') || []
     }
   };
 }
@@ -8022,8 +8025,9 @@ function _applyImportData(data) {
   }
   if (data.kdeal) {
     const kd = data.kdeal;
-    if (kd.trades    !== undefined) localStorage.setItem('kdeal_trades_v1',   JSON.stringify(kd.trades));
-    if (kd.deposits  !== undefined) localStorage.setItem('kdeal_deposits_v1', JSON.stringify(kd.deposits));
+    if (kd.trades    !== undefined) localStorage.setItem('kdeal_trades_v1',    JSON.stringify(kd.trades));
+    if (kd.deposits  !== undefined) localStorage.setItem('kdeal_deposits_v1',  JSON.stringify(kd.deposits));
+    if (kd.watchlist !== undefined) localStorage.setItem('kdeal_watchlist_v1', JSON.stringify(kd.watchlist));
   }
 }
 
