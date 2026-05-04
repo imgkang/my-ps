@@ -353,7 +353,8 @@
     overflow-x: auto; border: 1px solid var(--border);
     border-radius: 8px;
   }
-  .records-body-wrap { overflow-y: auto; overflow-x: hidden; max-height: 368px; }
+  .records-inner { min-width: max-content; }
+  .records-body-wrap { overflow-y: auto; max-height: 368px; }
   .records-table-header,
   .records-row {
     display: grid;
@@ -613,7 +614,8 @@
     overflow-x: auto; border: 1px solid var(--border);
     border-radius: 8px; margin-bottom: 16px;
   }
-  .div-records-body { overflow-y: auto; overflow-x: hidden; max-height: 248px; }
+  .div-records-inner { min-width: max-content; }
+  .div-records-body { overflow-y: auto; max-height: 248px; }
   .div-table-header, .div-record-row {
     display: grid; gap: 6px; padding: 7px 10px;
     font-size: 12px; align-items: center;
@@ -965,8 +967,10 @@
       </div>
     </div>
     <div class="records-list-wrap">
-      <div class="records-table-header" id="nkRecordsTableHeader"></div>
-      <div class="records-body-wrap"><div id="nkRecordsList"></div></div>
+      <div class="records-inner">
+        <div class="records-table-header" id="nkRecordsTableHeader"></div>
+        <div class="records-body-wrap"><div id="nkRecordsList"></div></div>
+      </div>
     </div>
     <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseRecordsModal()">닫기</button></div>
   </div>
@@ -998,20 +1002,24 @@
     <div class="div-sections">
       <div class="div-section-title">종목별 배당 내역</div>
       <div class="div-records-wrap">
-        <div class="div-table-header" id="nkDivStockTableHeader"></div>
-        <div class="div-records-body"><div id="nkDivStockRecordsList"></div></div>
+        <div class="div-records-inner">
+          <div class="div-table-header" id="nkDivStockTableHeader"></div>
+          <div class="div-records-body"><div id="nkDivStockRecordsList"></div></div>
+        </div>
       </div>
       <div class="div-section-title" style="margin-top:16px">계좌별 배당 내역</div>
       <div class="div-records-wrap">
-        <div class="div-table-header" id="nkDivAccTableHeader"></div>
-        <div class="div-records-body"><div id="nkDivAccRecordsList"></div></div>
+        <div class="div-records-inner">
+          <div class="div-table-header" id="nkDivAccTableHeader"></div>
+          <div class="div-records-body"><div id="nkDivAccRecordsList"></div></div>
+        </div>
       </div>
     </div>
     <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseDividendModal()">닫기</button></div>
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.109';
+const APP_VERSION = 'NonK v0.110';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
