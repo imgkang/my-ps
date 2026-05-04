@@ -303,6 +303,16 @@
     </div>
     <div id="kdTradeHistoryContainer"><div class="kd-empty">거래 내역이 없습니다.</div></div>
   </div>
+
+  <!-- 데이터 관리 -->
+  <div class="card">
+    <h2>💾 데이터</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-secondary" style="flex:1;min-width:120px" onclick="kdExportToFile()">💾 파일로 저장</button>
+      <button class="btn-secondary" style="flex:1;min-width:120px" onclick="document.getElementById('kdImportFile').click()">📂 파일 불러오기</button>
+      <input type="file" id="kdImportFile" accept=".json,application/json" style="display:none" onchange="kdImportFromFile(event)">
+    </div>
+  </div>
 </div>
 
 <!-- 관심종목 추가 모달 -->
@@ -1691,7 +1701,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v0.101';
+const APP_VERSION = 'KDeal v0.102';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
