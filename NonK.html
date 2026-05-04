@@ -350,11 +350,11 @@
     display: flex; justify-content: flex-end; gap: 8px;
   }
   .records-list-wrap {
-    overflow-x: auto; border: 1px solid var(--border);
+    overflow: auto; max-height: 400px; border: 1px solid var(--border);
     border-radius: 8px;
   }
   .records-inner { min-width: max-content; }
-  .records-body-wrap { overflow-y: auto; overflow-x: clip; max-height: 368px; }
+  .records-body-wrap {}
   .records-table-header,
   .records-row {
     display: grid;
@@ -362,6 +362,7 @@
     align-items: center;
   }
   .records-table-header {
+    position: sticky; top: 0; z-index: 3;
     background: #f9fafb; font-weight: 600; color: var(--muted);
     border-bottom: 1px solid var(--border);
     font-size: 11px;
@@ -618,16 +619,17 @@
     border-bottom: 2px solid var(--primary);
   }
   .div-records-wrap {
-    overflow-x: auto; border: 1px solid var(--border);
+    overflow: auto; max-height: 280px; border: 1px solid var(--border);
     border-radius: 8px; margin-bottom: 16px;
   }
   .div-records-inner { min-width: max-content; }
-  .div-records-body { overflow-y: auto; overflow-x: clip; max-height: 248px; }
+  .div-records-body {}
   .div-table-header, .div-record-row {
     display: grid; gap: 6px; padding: 7px 10px;
     font-size: 12px; align-items: center;
   }
   .div-table-header {
+    position: sticky; top: 0; z-index: 3;
     background: #f9fafb; font-weight: 600; color: var(--muted);
     border-bottom: 1px solid var(--border); font-size: 11px;
   }
@@ -1032,7 +1034,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.112';
+const APP_VERSION = 'NonK v0.113';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
