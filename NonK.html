@@ -19,7 +19,7 @@
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
   .app-version {
-    position: fixed; top: 8px; left: 10px; z-index: 9999;
+    position: fixed; top: 58px; right: 4px; z-index: 9999;
     font-size: 13px; color: rgba(0,0,0,0.55); font-weight: 700;
     pointer-events: none;
     font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
@@ -31,11 +31,25 @@
     background: var(--bg);
     color: var(--text);
   }
-  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px 80px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 72px 16px 80px; }
   header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+    display: flex; align-items: center;
+    height: 56px; background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+    padding: 0 4px;
   }
+  .hdr-btn {
+    width: 52px; height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent;
+    color: #9ca3af; cursor: pointer;
+    text-decoration: none; transition: color 0.15s; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hdr-btn.active { color: var(--primary); }
+  .hdr-btn:hover { color: var(--text); }
   h1 { font-size: 22px; margin: 0; }
   .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
@@ -734,19 +748,53 @@
     width: 100%; padding: 4px 6px; font-size: 13px;
     border: 1px solid var(--border); border-radius: 4px; text-align: right;
   }
+
+  /* NonK hero card */
+  .nk-hero { padding: 22px 24px 18px; margin-bottom: 10px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff; border-radius: 12px; box-shadow: var(--shadow); }
+  .nk-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .nk-hero-value { font-size: 38px; font-weight: 800; color: #fff;
+    font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; }
+  .nk-hero-row { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
+    line-height: 1.6; display: flex; align-items: baseline; gap: 6px; }
+  .nk-hero-label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); }
+  .nk-hero .diff-positive { color: #86efac; }
+  .nk-hero .diff-negative { color: #fca5a5; }
+  .nk-action-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .nk-action-btns button { font-size: 12px; padding: 6px 12px; }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <div style="display:flex;align-items:center;gap:8px">
-      <a href="index.html" class="nav-btn">📊 My PM</a>
-      <button class="nav-btn active" onclick="return false">🇺🇸 NonK</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span id="nkRefreshStatus" style="font-size:12px;color:var(--muted)"></span>
-      <button class="btn-settings" onclick="nkOpenSettingsModal()" title="앱 설정">⚙️ 설정</button>
-    </div>
+    <a href="./" class="hdr-btn" title="My PM">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </a>
+    <a href="NonK.html" class="hdr-btn active" onclick="return false" title="NonK">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+    </a>
+    <a href="KDeal.html" class="hdr-btn" title="KDeal">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
+        <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
+        <line x1="16" y1="2" x2="16" y2="5"/><line x1="16" y1="14" x2="16" y2="19"/>
+      </svg>
+    </a>
+    <div style="flex:1"></div>
+    <span id="nkRefreshStatus" style="font-size:11px;color:var(--muted);padding:0 8px"></span>
+    <button class="hdr-btn" onclick="nkOpenSettingsModal()" title="설정">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
   </header>
 
 <!-- ⚙️ NonK 설정 모달 -->
@@ -772,15 +820,7 @@
   </div>
 </div>
 
-  <div class="toolbar">
-    <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
-    <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
-    <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
-    <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
-    <button class="btn-secondary" onclick="nkExportToFile()">💾 파일로 저장</button>
-    <button class="btn-secondary" onclick="document.getElementById('nkImportFile').click()">📂 파일 불러오기</button>
-    <input type="file" id="nkImportFile" accept=".json" style="display:none" onchange="nkImportFromFile(event)">
-  </div>
+  <div id="nkHeroContainer"></div>
 
   <div class="card">
     <div class="status-bar">
@@ -997,14 +1037,19 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.22';
+const APP_VERSION = 'NonK v1.31';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
 });
 
+// ▼ Cloudflare Worker 배포 후 URL 입력 (worker/README.md 참고)
+// 예: 'https://mypm-proxy.yourname.workers.dev'
+const CF_WORKER = 'https://my-ps-proxy.imgkang.workers.dev';
+
 const PROXIES = [
+  ...(CF_WORKER ? [url => `${CF_WORKER}?url=${encodeURIComponent(url)}`] : []),
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://thingproxy.freeboard.io/fetch/${url}`,
@@ -1168,14 +1213,14 @@ async function nkRefreshAll() {
   nkRender();
   nkRenderChart();
   if (statusEl) {
-    const mo2 = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
-    const dd2 = String(nkLastRefreshTime.getDate()).padStart(2,'0');
+    const _mo = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
+    const _dd = String(nkLastRefreshTime.getDate()).padStart(2,'0');
     const hh = String(nkLastRefreshTime.getHours()).padStart(2,'0');
     const mm = String(nkLastRefreshTime.getMinutes()).padStart(2,'0');
     const ss = String(nkLastRefreshTime.getSeconds()).padStart(2,'0');
     statusEl.textContent = failCount
-      ? `최근 갱신 ${mo2}/${dd2} ${hh}:${mm}:${ss} (${failCount}개 실패)`
-      : `최근 갱신 ${mo2}/${dd2} ${hh}:${mm}:${ss}`;
+      ? `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss} (${failCount}개 실패)`
+      : `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss}`;
   }
 }
 
@@ -1278,7 +1323,20 @@ function nkRender() {
   if (!container) return;
 
   if (!nkHoldings.length) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">🇺🇸</div><div>\'+ 종목 추가\' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>';
+    const heroEl0 = document.getElementById('nkHeroContainer');
+    if (heroEl0) heroEl0.innerHTML = `<div class="card nk-hero">
+      <div class="nk-hero-value-row"><div class="nk-hero-value">$0</div></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">오늘</span></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">누적</span></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">XIRR</span></div>
+    </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="icon">🇺🇸</div><div>'+ 종목 추가' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>
+    <div class="nk-action-btns">
+      <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+    </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     nkRenderAccountButtons();
     return;
@@ -1304,21 +1362,21 @@ function nkRender() {
   totalValue += totalCash;
   const deposited  = nkTotalDeposited();
   const pnl        = totalValue - deposited;
-
-  // 오늘 수익률
-  const totalValueYesterday = totalValue - todayPnl;
-  const todayRate = totalValueYesterday > 0 ? todayPnl / totalValueYesterday * 100 : 0;
-  const todayRateSign = todayRate >= 0 ? '+' : '';
+  const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
+  const xirrRate   = nkCalcXIRR(totalValue);
+  const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
+  const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
+  const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
 
   // 이번달 손익
   const _now = new Date();
-  const _yr = _now.getFullYear(), _mo = _now.getMonth() + 1;
-  const prevRecs = nkMonthlyRecords.filter(r => r.year < _yr || (r.year === _yr && r.month < _mo));
+  const _yr = _now.getFullYear(), _thisM = _now.getMonth() + 1;
+  const prevRecs = nkMonthlyRecords.filter(r => r.year < _yr || (r.year === _yr && r.month < _thisM));
   let monthPnl = null, monthPnlRate = null;
   if (prevRecs.length) {
     const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month)[0];
     const prevVal = NK_ACCOUNTS.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
-    const cutoff = `${_yr}-${String(_mo).padStart(2,'0')}-01`;
+    const cutoff = `${_yr}-${String(_thisM).padStart(2,'0')}-01`;
     const moDeposits = nkDepositData.transactions
       .filter(t => t.date >= cutoff)
       .reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
@@ -1326,24 +1384,27 @@ function nkRender() {
     const moBase = prevVal + Math.max(0, moDeposits);
     monthPnlRate = moBase > 0 ? monthPnl / moBase * 100 : null;
   }
-  const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
-  const xirrRate   = nkCalcXIRR(totalValue);
-  const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
-  const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
-  const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
 
-  // Summary grid
-  const todayRateTxt = todayPnl ? ` (${todayRateSign}${todayRate.toFixed(2)}%)` : '';
-  const moRateTxt = monthPnlRate != null ? ` (${monthPnlRate >= 0 ? '+' : ''}${monthPnlRate.toFixed(2)}%)` : '';
-  const pnlRateTxt = deposited > 0 ? ` (${pnlRate >= 0 ? '+' : ''}${pnlRate.toFixed(2)}%)` : '';
-  const summaryHtml = `
-    <div class="detail-summary" style="margin-bottom:12px">
-      <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${deposited > 0 ? fmtUSD(deposited) : '-'}</span></div>
-      <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalValue)}</span></div>
-      <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}<span style="font-size:13px;font-weight:400">${todayRateTxt}</span></span></div>
-      <div class="summary-item"><span class="summary-label">이번달 손익</span><span class="summary-value ${monthPnl == null ? '' : monthPnl >= 0 ? 'pos' : 'neg'}">${monthPnl != null ? fmtUSDSigned(monthPnl) + `<span style="font-size:13px;font-weight:400">${moRateTxt}</span>` : '-'}</span></div>
-      <div class="summary-item"><span class="summary-label">누적 손익</span><span class="summary-value ${pnl >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? fmtUSDSigned(pnl) + `<span style="font-size:13px;font-weight:400">${pnlRateTxt}</span>` : '-'}</span><span style="font-size:12px;color:var(--muted);margin-top:4px;display:block">연평균(XIRR) <span class="${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</span></span></div>
-    </div>`;
+  // Hero card
+  const tvYest = totalValue - todayPnl;
+  const todayRate = tvYest > 0 ? todayPnl / tvYest * 100 : 0;
+  const heroDayCls = todayPnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroDaySign = todayPnl >= 0 ? '+' : '';
+  const heroDayRSign = todayRate >= 0 ? '+' : '';
+  const heroPnlCls = pnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroPnlSign = pnl >= 0 ? '+' : '';
+  const heroPnlRSign = pnlRate >= 0 ? '+' : '';
+  const heroMoCls = monthPnl == null ? '' : monthPnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroMoSign = monthPnl != null && monthPnl >= 0 ? '+' : '';
+  const heroMoRSign = monthPnlRate != null && monthPnlRate >= 0 ? '+' : '';
+  const heroXirrCls = (xirrRate == null || xirrRate >= 0) ? 'diff-positive' : 'diff-negative';
+  const heroEl = document.getElementById('nkHeroContainer');
+  if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
+    <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtUSD(totalValue)}</div></div>
+    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">오늘</span></div>
+    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtUSD(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">이번달</span></div>
+    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtUSD(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
+  </div>`;
 
   // Holdings table — My PM style
   const items = nkHoldings.map(h => {
@@ -1366,19 +1427,19 @@ function nkRender() {
 
   let lastUpdate = '-';
   if (nkLastRefreshTime) {
-    const mo2 = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
-    const dd2 = String(nkLastRefreshTime.getDate()).padStart(2,'0');
+    const _mo = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
+    const _dd = String(nkLastRefreshTime.getDate()).padStart(2,'0');
     const hh = String(nkLastRefreshTime.getHours()).padStart(2,'0');
     const mm = String(nkLastRefreshTime.getMinutes()).padStart(2,'0');
     const ss = String(nkLastRefreshTime.getSeconds()).padStart(2,'0');
-    lastUpdate = `${mo2}/${dd2} ${hh}:${mm}:${ss}`;
+    lastUpdate = `${_mo}/${_dd} ${hh}:${mm}:${ss}`;
   } else {
     const updatedAts = nkHoldings.filter(h => h.updatedAt).map(h => h.updatedAt);
     if (updatedAts.length) {
       const d = new Date(Math.max(...updatedAts.map(d => new Date(d))));
-      const mo2 = String(d.getMonth()+1).padStart(2,'0');
-      const dd2 = String(d.getDate()).padStart(2,'0');
-      lastUpdate = `${mo2}/${dd2} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+      const _mo = String(d.getMonth()+1).padStart(2,'0');
+      const _dd = String(d.getDate()).padStart(2,'0');
+      lastUpdate = `${_mo}/${_dd} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
     }
   }
 
@@ -1426,7 +1487,7 @@ function nkRender() {
         <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
         <td>
           <div>${it.price > 0 ? fmtUSD(it.price) : '-'}</div>
-          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : it.price > 0 ? '-' : ''}</div>
+          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
         </td>
         <td><strong>${fmtUSD(it.currentValue)}</strong></td>
         <td class="${pCls}">${it.hasCost ? fmtUSDSigned(it.profit) : '-'}</td>
@@ -1461,6 +1522,7 @@ function nkRender() {
   const dayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
   const totPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
   const totPSign = pnl >= 0 ? '+' : '';
+  const todayRateSign = todayRate >= 0 ? '+' : '';
   tableHtml += `
     </tbody>
     <tfoot><tr>
@@ -1479,9 +1541,15 @@ function nkRender() {
     </tr></tfoot>
   </table></div>`;
 
-  container.innerHTML = summaryHtml
-    + `<div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">마지막 갱신: ${lastUpdate}</div>`
-    + tableHtml;
+  container.innerHTML =
+    `<div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">마지막 갱신: ${lastUpdate}</div>`
+    + tableHtml
+    + `<div class="nk-action-btns">
+      <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+    </div>`;
   if (statusEl) statusEl.textContent = '';
   nkRenderAccountButtons();
 }

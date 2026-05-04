@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Search API Test</title>
+<style>
+  body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+  h1 { font-size: 16px; margin-bottom: 16px; }
+  .row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  input { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 260px; }
+  button { padding: 8px 16px; font-size: 13px; background: #ea580c; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+  .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 13px; margin: 0 0 8px; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; margin-left: 8px; }
+  .ok   { background: #dcfce7; color: #166534; }
+  .err  { background: #fee2e2; color: #991b1b; }
+  .pend { background: #fef9c3; color: #854d0e; }
+  pre { font-size: 11px; background: #f9fafb; padding: 10px; border-radius: 6px; overflow-x: auto; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; }
+  .parsed { margin-top: 6px; }
+  .parsed-item { font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; display: flex; gap: 12px; }
+  .latency { font-size: 11px; color: #6b7280; margin-left: 6px; }
+</style>
+</head>
+<body>
+<h1>🔍 한국주식 검색 API 테스트</h1>
+<div class="row">
+  <input type="text" id="query" value="삼성전자" placeholder="회사명 또는 코드">
+  <button onclick="runAll()">전체 테스트</button>
+</div>
+<div id="results"></div>
+
+<script>
+const CF_WORKER = 'https://my-ps-proxy.imgkang.workers.dev';
+const PROXIES = [
+  url => `${CF_WORKER}?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+];
+
+async function fetchVia(url, proxyIdx = 0) {
+  const proxy = PROXIES[proxyIdx];
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(proxy(url), { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.text();
+  } catch(e) {
+    clearTimeout(tid);
+    if (proxyIdx + 1 < PROXIES.length) return fetchVia(url, proxyIdx + 1);
+    throw e;
+  }
+}
+
+// 로컬 DB (KDeal.html 과 동일)
+const LOCAL_DB = [
+  ["005930","삼성전자"],["000660","SK하이닉스"],["373220","LG에너지솔루션"],
+  ["207940","삼성바이오로직스"],["005380","현대차"],["000270","기아"],
+  ["068270","셀트리온"],["005490","POSCO홀딩스"],["105560","KB금융"],
+  ["055550","신한지주"],["086790","하나금융지주"],["028260","삼성물산"],
+  ["012330","현대모비스"],["051910","LG화학"],["006400","삼성SDI"],
+  ["009150","삼성전기"],["096770","SK이노베이션"],["015760","한국전력"],
+  ["066570","LG전자"],["034020","두산에너빌리티"],["003670","포스코퓨처엠"],
+  ["035420","NAVER"],["035720","카카오"],["017670","SK텔레콤"],
+  ["030200","KT"],["003550","LG"],["010130","고려아연"],
+  ["012450","한화에어로스페이스"],["086280","현대글로비스"],["011170","롯데케미칼"],
+  ["000810","삼성화재"],["033780","KT&G"],["097950","CJ제일제당"],
+  ["010120","LS ELECTRIC"],["036570","엔씨소프트"],["259960","크래프톤"],
+  ["323410","카카오뱅크"],["377300","카카오페이"],["036460","한국가스공사"],
+  ["267250","HD현대"],["009830","한화솔루션"],["011200","HMM"],
+  ["000720","현대건설"],["006360","GS건설"],["047040","대우건설"],
+  ["028050","삼성엔지니어링"],["000100","유한양행"],["004990","롯데지주"],
+  ["028300","HLB"],["267260","HD현대일렉트릭"],["454910","두산로보틱스"],
+  ["042660","한화오션"],["329180","HD현대중공업"],["009540","HD한국조선해양"],
+  ["010950","에쓰오일"],["078930","GS"],["071050","한국금융지주"],
+  ["024110","기업은행"],["138930","BNK금융지주"],["139130","DGB금융지주"],
+  ["316140","우리금융지주"],["175330","JB금융지주"],
+  ["032830","삼성생명"],["088350","한화생명"],["001450","현대해상"],
+  ["005830","DB손해보험"],["030000","제일기획"],["069960","현대백화점"],
+  ["004170","신세계"],["023530","롯데쇼핑"],["139480","이마트"],
+  ["028670","팬오션"],["003490","대한항공"],["020560","아시아나항공"],
+  ["035250","강원랜드"],["021240","코웨이"],["067160","BGF리테일"],
+  ["026960","동서"],["004370","농심"],["003230","삼양식품"],
+  ["271560","오리온"],["007070","GS리테일"],["047810","한국항공우주"],
+  ["051600","한전KPS"],["034730","SK"],["096530","씨젠"],
+  ["066940","풍산"],["018260","삼성에스디에스"],["008770","호텔신라"],
+  ["011780","금호석유"],["272210","한화시스템"],["017800","현대엘리베이터"],
+  ["004020","현대제철"],["161390","한국타이어앤테크놀로지"],["025540","한국단자"],
+  ["007310","오뚜기"],["090430","아모레퍼시픽"],["251270","넷마블"],
+  ["032640","LG유플러스"],["108670","LG이노텍"],
+  ["086520","에코프로"],["247540","에코프로비엠"],["196170","알테오젠"],
+  ["141080","리가켐바이오"],["403870","HPSP"],["214150","클래시스"],
+  ["277810","레인보우로보틱스"],["041510","에스엠"],["035900","JYP Ent."],
+  ["352820","하이브"],["068760","셀트리온제약"],["091990","셀트리온헬스케어"],
+  ["214450","파마리서치"],["293480","카카오게임즈"],["112040","위메이드"],
+  ["042700","한미반도체"],["086900","메디톡스"],["145020","휴젤"],
+  ["326030","SK바이오팜"],["357780","솔브레인"],["036930","주성엔지니어링"],
+  ["041830","인바디"],["053800","안랩"],["078340","컴투스"],
+  ["214390","선진"],["121600","나노신소재"],["039200","오스코텍"],
+  ["095660","네오위즈"],["122870","와이지엔터테인먼트"],["263750","펄어비스"],
+  ["069500","KODEX 200"],["229200","KODEX 코스닥150"],["122630","KODEX 레버리지"],
+  ["114800","KODEX 인버스"],["091160","KODEX 반도체"],["091170","KODEX 은행"],
+  ["102110","TIGER 200"],["232080","TIGER 코스닥150"],["123320","TIGER 레버리지"],
+  ["305720","TIGER 2차전지테마"],["098560","KODEX IT"],
+  ["365780","TIGER 미국S&P500"],["360750","TIGER 미국나스닥100"],
+  ["228820","TIGER 코스피고배당"],["308620","KBSTAR 200"],
+  ["388690","TIGER 미국필라델피아반도체나스닥"],["448280","TIGER 인도"],
+  ["461850","KODEX 미국S&P500TR"],["443560","KODEX 미국나스닥100TR"],
+  ["278530","KODEX 주주환원고배당"],["395160","TIGER 주주환원100"],
+];
+
+const APIS = [
+  {
+    name: '⭐ 로컬 DB 검색 (네트워크 불필요)',
+    url: () => null,
+    localSearch: q => LOCAL_DB.filter(([code, name]) => name.includes(q) || code.startsWith(q)).slice(0, 8).map(([code, name]) => ({ name, code })),
+  },
+  {
+    name: 'Naver Finance AC (ac.finance.naver.com)',
+    url: q => `https://ac.finance.naver.com/ac?q=${encodeURIComponent(q)}&q_enc=UTF-8&t_koreng=1&st=111&r_lt=111&r_format=json`,
+    parse: text => {
+      const d = JSON.parse(text);
+      let items = d.items || [];
+      if (items.length > 0 && Array.isArray(items[0]) && Array.isArray(items[0][0])) items = items[0];
+      return items.filter(it => Array.isArray(it) && it[0] && it[1])
+        .slice(0, 8).map(it => ({ name: it[0], code: String(it[1]).padStart(6,'0') }));
+    }
+  },
+  {
+    name: 'Naver Mobile Stock Search (m.stock.naver.com)',
+    url: q => `https://m.stock.naver.com/api/search/all?keyword=${encodeURIComponent(q)}&page=1&pageSize=10`,
+    parse: text => {
+      const d = JSON.parse(text);
+      const items = d.result?.items || d.items || [];
+      return items.slice(0, 8).map(it => ({
+        name: it.stockName || it.name || it.itemName || '',
+        code: String(it.itemCode || it.code || it.stockCode || '').padStart(6,'0')
+      })).filter(it => it.name && it.code !== '000000');
+    }
+  },
+  {
+    name: 'Yahoo Finance Search (query1.finance.yahoo.com)',
+    url: q => `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`,
+    parse: text => {
+      const d = JSON.parse(text);
+      return (d.finance?.result?.[0]?.quotes || d.quotes || [])
+        .filter(q => q.symbol && (q.symbol.endsWith('.KS') || q.symbol.endsWith('.KQ')))
+        .slice(0, 8)
+        .map(q => ({
+          name: q.shortname || q.longname || q.symbol,
+          code: q.symbol.replace(/\.(KS|KQ)$/, '').padStart(6,'0')
+        }));
+    }
+  },
+  {
+    name: 'Yahoo Finance Search query2 (query2.finance.yahoo.com)',
+    url: q => `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`,
+    parse: text => {
+      const d = JSON.parse(text);
+      return (d.finance?.result?.[0]?.quotes || d.quotes || [])
+        .filter(q => q.symbol && (q.symbol.endsWith('.KS') || q.symbol.endsWith('.KQ')))
+        .slice(0, 8)
+        .map(q => ({
+          name: q.shortname || q.longname || q.symbol,
+          code: q.symbol.replace(/\.(KS|KQ)$/, '').padStart(6,'0')
+        }));
+    }
+  },
+  {
+    name: 'Naver Finance Search Page (finance.naver.com/search)',
+    url: q => `https://finance.naver.com/search/searchList.naver?query=${encodeURIComponent(q)}`,
+    parse: text => {
+      // HTML parsing – extract table rows
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/html');
+      const rows = doc.querySelectorAll('table.tbl_search tbody tr');
+      const results = [];
+      rows.forEach(tr => {
+        const cells = tr.querySelectorAll('td');
+        if (cells.length >= 2) {
+          const nameEl = cells[0].querySelector('a');
+          const code = (nameEl?.href?.match(/code=(\d{6})/) || cells[1]?.textContent?.match(/\d{6}/) || [])[1];
+          const name = nameEl?.textContent?.trim();
+          if (name && code) results.push({ name, code });
+        }
+      });
+      return results.slice(0, 8);
+    }
+  },
+];
+
+function renderCard(api, state, text, parsed, ms) {
+  const statusCls = state === 'ok' ? 'ok' : state === 'err' ? 'err' : 'pend';
+  const statusLabel = state === 'ok' ? '✓ 성공' : state === 'err' ? '✗ 실패' : '⏳ 대기';
+  const latencyHtml = ms != null ? `<span class="latency">${ms}ms</span>` : '';
+
+  let parsedHtml = '';
+  if (parsed && parsed.length) {
+    parsedHtml = `<div class="parsed">${parsed.map(it =>
+      `<div class="parsed-item"><strong>${it.name}</strong><span style="color:#6b7280">${it.code}</span></div>`
+    ).join('')}</div>`;
+  } else if (state === 'ok') {
+    parsedHtml = `<div class="parsed" style="color:#dc2626;font-size:12px">파싱 결과 없음 (parse 함수 수정 필요)</div>`;
+  }
+
+  return `<div class="card" id="card-${api.idx}">
+    <h2>${api.name}<span class="status ${statusCls}">${statusLabel}</span>${latencyHtml}</h2>
+    ${parsedHtml}
+    ${text ? `<pre>${escHtml(text.slice(0, 1500))}${text.length > 1500 ? '\n...(truncated)' : ''}</pre>` : ''}
+  </div>`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function runAll() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+  const container = document.getElementById('results');
+  container.innerHTML = APIS.map((api, i) => {
+    api.idx = i;
+    return renderCard(api, 'pend', '', null, null);
+  }).join('');
+
+  APIS.forEach(async (api, i) => {
+    const t0 = Date.now();
+    // 로컬 DB는 네트워크 불필요
+    if (api.localSearch) {
+      const parsed = api.localSearch(q);
+      const ms = Date.now() - t0;
+      const cardEl = document.getElementById('card-' + i);
+      if (cardEl) cardEl.outerHTML = renderCard(api, 'ok', `(로컬 검색, 네트워크 없음) ${parsed.length}개 결과`, parsed, ms);
+      return;
+    }
+    try {
+      const url = api.url(q);
+      const text = await fetchVia(url);
+      const ms = Date.now() - t0;
+      let parsed = [];
+      let parseErr = null;
+      try { parsed = api.parse(text); } catch(e) { parseErr = e.message; }
+      const cardEl = document.getElementById('card-' + i);
+      if (cardEl) cardEl.outerHTML = renderCard(api, 'ok', text, parsed, ms) +
+        (parseErr ? `<div style="color:red;font-size:11px;margin-top:-8px;margin-bottom:8px">Parse error: ${parseErr}</div>` : '');
+    } catch(e) {
+      const ms = Date.now() - t0;
+      const cardEl = document.getElementById('card-' + i);
+      if (cardEl) cardEl.outerHTML = renderCard(api, 'err', String(e), null, ms);
+    }
+  });
+}
+
+// auto-run on load
+window.addEventListener('load', () => runAll());
+</script>
+</body>
+</html>
