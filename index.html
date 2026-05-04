@@ -2276,7 +2276,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.148';
+const APP_VERSION = 'MyPM v0.149';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6638,6 +6638,7 @@ function applyWdSettings() {
   saveWdPlan();
   loadQuickWdValues();
   closeWdSettingsModal();
+  _wdSelectedScenIdx = null;
   renderWithdrawalPlan();
 }
 
@@ -7046,7 +7047,10 @@ function saveQuickWdPlan() {
   wdPlan.annualTarget = nv('qwd_annualTarget', wdPlan.annualTarget);
   wdPlan.returnRate   = nv('qwd_returnRate',   wdPlan.returnRate);
   saveWdPlan();
-  if (document.getElementById('panel-withdrawal')?.classList.contains('active')) renderWithdrawalPlan();
+  if (document.getElementById('panel-withdrawal')?.classList.contains('active')) {
+    _wdSelectedScenIdx = null;
+    renderWithdrawalPlan();
+  }
 }
 
 function renderWithdrawalPlan() {
@@ -8032,11 +8036,13 @@ function applyConsolidate() {
     totalWifeAnse: adjWA, totalWifeRegular: adjWR,
   };
   closeConsolidateModal();
+  _wdSelectedScenIdx = null;
   renderWithdrawalPlan();
 }
 function clearConsolidate() {
   wdConsolidated = null;
   closeConsolidateModal();
+  _wdSelectedScenIdx = null;
   renderWithdrawalPlan();
 }
 
