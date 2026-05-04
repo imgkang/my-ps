@@ -161,6 +161,8 @@
   .btn-secondary:hover { background: #e5e7eb; }
   .btn-danger { background: transparent; color: #ef4444; padding: 6px 10px; font-size: 13px; }
   .btn-danger:hover { background: #fef2f2; }
+  .tbl-icon-btn { background: transparent; border: none; cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; border-radius: 4px; }
+  .tbl-icon-btn:hover { background: #f1f5f9; }
 
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 12px 8px; text-align: right; font-size: 14px; }
@@ -224,12 +226,6 @@
   .row-cash td { background: #fafaf9; }
   .row-cash .stock-name { color: #6b7280; }
 
-  .btn-accounts {
-    background: #eff6ff; color: #2563eb;
-    padding: 6px 10px; font-size: 12px;
-    border: 1px solid #dbeafe; margin-right: 4px;
-  }
-  .btn-accounts:hover { background: #dbeafe; }
   .account-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563eb; margin-left: 4px; vertical-align: middle; }
 
   /* Modal (별도 페이지처럼 전체화면 덮는 오버레이) */
@@ -462,12 +458,6 @@
   .records-row:last-child { border-bottom: none; }
   .records-row .amount { text-align: right; }
   .records-row .total { text-align: right; font-weight: 700; color: #1e40af; }
-  .records-row .del-btn {
-    background: #fee2e2; color: #991b1b; border: none;
-    padding: 4px 8px; border-radius: 4px; cursor: pointer;
-    font-size: 11px;
-  }
-  .records-row .del-btn:hover { background: #fecaca; }
   .records-empty {
     padding: 30px 20px; text-align: center; color: var(--muted);
     font-size: 13px;
@@ -603,7 +593,7 @@
 
   .deposit-list-header {
     display: grid;
-    grid-template-columns: 140px 1.2fr 1.3fr 90px;
+    grid-template-columns: 140px 1.2fr 1.3fr 60px;
     gap: 8px;
     padding: 8px 12px;
     font-size: 11px; font-weight: 600; color: var(--muted);
@@ -622,7 +612,7 @@
   }
   #depositList .txn-row {
     display: grid;
-    grid-template-columns: 140px 1.2fr 1.3fr 90px;
+    grid-template-columns: 140px 1.2fr 1.3fr 60px;
     gap: 8px;
     padding: 8px 12px;
     align-items: center;
@@ -647,16 +637,6 @@
   }
   #depositList .txn-amount.pos { color: var(--plus); }
   #depositList .txn-amount.neg { color: var(--minus); }
-  #depositList .txn-delete {
-    background: transparent; border: none; color: var(--muted);
-    cursor: pointer; font-size: 16px; padding: 2px 4px; line-height: 1;
-  }
-  #depositList .txn-delete:hover { color: #ef4444; }
-  .edit-btn {
-    background: #e0f2fe; color: #0369a1; border: none;
-    padding: 3px 7px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 3px;
-  }
-  .edit-btn:hover { background: #bae6fd; }
   .deposit-empty {
     padding: 26px 16px; text-align: center; color: var(--muted);
     font-size: 12px;
@@ -780,11 +760,6 @@
   .div-record-row:last-child { border-bottom: none; }
   .div-record-row .amount { text-align: right; }
   .div-record-row .total { text-align: right; font-weight: 700; color: #1e40af; }
-  .div-record-row .del-btn {
-    background: #fee2e2; color: #991b1b; border: none;
-    padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
-  }
-  .div-record-row .del-btn:hover { background: #fecaca; }
   .div-empty { padding: 24px 20px; text-align: center; color: var(--muted); font-size: 13px; }
 
   /* 연간 계획 모달 */
@@ -1094,7 +1069,6 @@
   .mplan-table th:first-child { position: sticky; left: 0; z-index: 2; background: #f3f4f6; }
   .mplan-table td:first-child { position: sticky; left: 0; z-index: 1; background: #fff; }
   .mplan-table tr:hover td { background: #fafafa; }
-  .mplan-del { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 4px; }
   .apt-toggle-btn {
     display: flex; align-items: center; gap: 8px; width: 100%;
     background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
@@ -2267,7 +2241,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.118';
+const APP_VERSION = 'MyPM v0.119';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2643,8 +2617,8 @@ function renderDepositList() {
         <span class="txn-acc">${accName}</span>
         <span class="txn-amount ${amountCls}">${amountStr}${anseBadge}${transferBadge}</span>
         <span style="display:flex;align-items:center;gap:2px">
-          <button class="edit-btn" onclick="openTxnEditor('${t.id}')" title="편집">편집</button>
-          <button class="txn-delete" onclick="deleteTxn('${t.id}')" title="삭제">×</button>
+          <button class="tbl-icon-btn" onclick="openTxnEditor('${t.id}')" title="편집">✏️</button>
+          <button class="tbl-icon-btn" onclick="deleteTxn('${t.id}')" title="삭제">🗑️</button>
         </span>
       </div>`;
   }).join('');
@@ -4243,7 +4217,7 @@ function renderRecordsTableHeader() {
   const header = document.getElementById('recordsTableHeader');
   if (!header) return;
   const activeAccs = getActiveAccounts();
-  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 72px`;
+  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 60px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>기록일</span>
@@ -4270,7 +4244,7 @@ function renderRecordsList() {
   });
 
   const activeAccs = getActiveAccounts();
-  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 72px`;
+  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 60px`;
 
   list.innerHTML = sorted.map(rec => {
     const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
@@ -4287,8 +4261,8 @@ function renderRecordsList() {
         ${accCells}
         <span class="total">${formatMil(total)}</span>
         <span>
-          <button class="edit-btn" onclick="editMonthlyRecord('${rec.id}')">편집</button>
-          <button class="del-btn" onclick="deleteMonthlyRecord('${rec.id}')">삭제</button>
+          <button class="tbl-icon-btn" onclick="editMonthlyRecord('${rec.id}')" title="편집">✏️</button>
+          <button class="tbl-icon-btn" onclick="deleteMonthlyRecord('${rec.id}')" title="삭제">🗑️</button>
         </span>
       </div>
     `;
@@ -4735,8 +4709,8 @@ function render() {
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
         <td>
-          <button class="btn-accounts" onclick="openAccountModal('${it.code}')" title="계좌별 수량 입력">📂</button>
-          <button class="btn-danger" onclick="removeStock('${it.code}')">삭제</button>
+          <button class="tbl-icon-btn" onclick="openAccountModal('${it.code}')" title="계좌별 수량 입력">✏️</button>
+          <button class="tbl-icon-btn" onclick="removeStock('${it.code}')" title="삭제">🗑️</button>
         </td>
       </tr>
     `;
@@ -4763,7 +4737,7 @@ function render() {
         <td>-</td>
         <td>${cashWeight.toFixed(1)}%</td>
         <td>-</td>
-        <td><button class="btn-accounts" onclick="openCashAccountModal()" title="계좌별 현금 입력">📂</button></td>
+        <td><button class="tbl-icon-btn" onclick="openCashAccountModal()" title="계좌별 현금 입력">✏️</button></td>
       </tr>
     `;
   }
@@ -5427,8 +5401,8 @@ function renderMonthlyPlanList() {
       <td>${p.startYear}년 ${p.startMonth}월</td>
       <td>${p.endYear}년 ${p.endMonth}월</td>
       <td style="white-space:nowrap">
-        <button class="mplan-del" onclick="startEditMonthlyPlan('${p.id}')" title="편집">✏️</button>
-        <button class="mplan-del" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑</button>
+        <button class="tbl-icon-btn" onclick="startEditMonthlyPlan('${p.id}')" title="편집">✏️</button>
+        <button class="tbl-icon-btn" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑️</button>
       </td>
     </tr>`;}).join('');
   wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -5497,6 +5471,7 @@ function addMonthlyPlan() {
 
 function deleteMonthlyPlan(id) {
   if (!annualPlan.monthlyPlans) return;
+  if (!confirm('이 적립계획을 삭제하시겠습니까?')) return;
   if (_editingMplanId === id) cancelEditMonthlyPlan();
   annualPlan.monthlyPlans = annualPlan.monthlyPlans.filter(p => p.id !== id);
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
@@ -6039,7 +6014,7 @@ function renderDivStockRecordsList() {
         <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
         ${cells}
         <span class="total">${total.toLocaleString('ko-KR')}</span>
-        <span><button class="del-btn" onclick="deleteDividendRecord('${rec.id}')">삭제</button></span>
+        <span><button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button></span>
       </div>
     `;
   }).join('');
@@ -7086,6 +7061,7 @@ function promptSaveWdScenario() {
 }
 
 function deleteWdScenario(idx) {
+  if (!confirm('이 시나리오를 삭제하시겠습니까?')) return;
   const list = loadWdScenarios();
   list.splice(idx, 1);
   localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(list));
@@ -7143,7 +7119,7 @@ function renderWdScenarioTable() {
         ${best ? '⭐ ' : ''}${fmt(m.score)}</td>
       <td style="white-space:nowrap">
         <button onclick="loadWdScenario(${i})" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:2px 7px;font-size:11px;color:#1d4ed8;cursor:pointer;margin-right:4px">선택</button>
-        <button onclick="deleteWdScenario(${i})" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:12px" title="삭제">🗑️</button>
+        <button class="tbl-icon-btn" onclick="deleteWdScenario(${i})" title="삭제">🗑️</button>
       </td>
     </tr>`;
   });
