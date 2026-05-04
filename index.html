@@ -60,8 +60,8 @@
   }
   .hdr-btn.active { color: var(--primary); width: auto; padding: 0 10px; gap: 6px; }
   .hdr-btn:hover { color: var(--text); }
-  .hdr-title { display: none; font-size: 14px; font-weight: 700; white-space: nowrap; }
-  .hdr-btn.active .hdr-title { display: block; }
+  .hdr-title { font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .hdr-btn-external { display: none; }
   h1 { font-size: 22px; margin: 0; }
   .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .nav-group { display: flex; align-items: center; gap: 8px; }
@@ -1099,13 +1099,13 @@
       </svg>
       <span class="hdr-title">연금 준비</span>
     </a>
-    <a href="NonK.html" class="hdr-btn" title="NonK">
+    <a href="NonK.html" class="hdr-btn hdr-btn-external" title="NonK">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><line x1="2" y1="12" x2="22" y2="12"/>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn" title="KDeal">
+    <a href="KDeal.html" class="hdr-btn hdr-btn-external" title="KDeal">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
         <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
@@ -2254,7 +2254,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.127';
+const APP_VERSION = 'MyPM v0.128';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
