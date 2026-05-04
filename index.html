@@ -2251,7 +2251,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.124';
+const APP_VERSION = 'MyPM v0.125';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8121,7 +8121,7 @@ function _applyImportData(data) {
 // =============================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('./sw.js')
       .then(reg => {
         // 새 버전이 감지되면 사용자에게 알림
         reg.addEventListener('updatefound', () => {
