@@ -888,6 +888,7 @@ Chart.register({
   .wd-table th, .wd-table td {
     padding: 2px 4px; border: 1px solid #e2e8f0;
     text-align: right; white-space: nowrap; overflow: hidden;
+    -webkit-touch-callout: none; user-select: none;
   }
   .wd-table th { background: #f1f5f9; font-size: 9.5px; font-weight: 600; color: #475569; text-align: center; }
   .wd-table th:first-child { text-align: left; position: sticky; left: 0; z-index: 2; background: #f1f5f9; box-shadow: 2px 0 0 0 #e2e8f0; }
@@ -2270,7 +2271,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.146';
+const APP_VERSION = 'MyPM v0.147';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
