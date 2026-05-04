@@ -560,7 +560,10 @@
     background: #fff; border: 1px solid var(--border);
     border-radius: 6px; padding: 6px 10px;
     display: flex; flex-direction: column; gap: 2px;
+    cursor: pointer; transition: border-color 0.15s;
   }
+  .deposit-total-card:hover { border-color: var(--primary); }
+  .deposit-total-card.active { border-color: var(--primary); background: #f0fdf4; }
   .deposit-total-card .acc-name {
     font-size: 11px; color: var(--muted); font-weight: 500;
   }
@@ -2243,7 +2246,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.121';
+const APP_VERSION = 'MyPM v0.122';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2360,6 +2363,7 @@ let cashAccounts = loadCashAccounts();
 let depositData = loadDeposits();
 let editingTxnId    = null;
 let editingRecordId = null;
+let _depositAccFilter = null;
 
 // 기존 데이터 마이그레이션
 // - accounts 필드가 없으면 빈 객체로 초기화
@@ -2574,11 +2578,12 @@ function renderDepositTotals() {
       .filter(t => t.accId === acc.id)
       .reduce((s, t) => s + (Number(t.anse) || 0), 0));
     const cls = total === 0 ? 'is-zero' : (total < 0 ? 'is-negative' : '');
+    const activeCls = _depositAccFilter === acc.id ? ' active' : '';
     const display = total === 0 ? '-' : total.toLocaleString('ko-KR') + ' 원';
     const anseHtml = anseTotal > 0
       ? `<span class="acc-anse">안세공 ${anseTotal.toLocaleString('ko-KR')} 원</span>` : '';
     html += `
-      <div class="deposit-total-card ${cls}">
+      <div class="deposit-total-card ${cls}${activeCls}" onclick="filterDepositByAcc('${acc.id}')">
         <span class="acc-name">${getAccName(acc.id)}</span>
         <span class="acc-amount">${display}</span>
         ${anseHtml}
@@ -2594,13 +2599,21 @@ function renderDepositTotals() {
   renderDepositChart();
 }
 
+function filterDepositByAcc(accId) {
+  _depositAccFilter = (_depositAccFilter === accId) ? null : accId;
+  renderDepositTotals();
+  renderDepositList();
+}
+
 function renderDepositList() {
   const list = document.getElementById('depositList');
-  const txns = depositData.transactions.slice()
+  let txns = depositData.transactions.slice()
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));  // 최신 날짜 먼저
 
+  if (_depositAccFilter) txns = txns.filter(t => t.accId === _depositAccFilter);
+
   if (txns.length === 0) {
-    list.innerHTML = `<div class="deposit-empty">아직 등록된 입출금 내역이 없습니다.<br>위 "➕ 입출금 추가" 버튼을 눌러 시작하세요.</div>`;
+    list.innerHTML = `<div class="deposit-empty">${_depositAccFilter ? '이 계좌의 입출금 내역이 없습니다.' : '아직 등록된 입출금 내역이 없습니다.<br>위 "➕ 입출금 추가" 버튼을 눌러 시작하세요.'}</div>`;
     return;
   }
 
