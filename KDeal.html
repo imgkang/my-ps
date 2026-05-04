@@ -1691,13 +1691,18 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v2.24';
+const APP_VERSION = 'KDeal v2.25';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
   try { const c = localStorage.getItem(KD_PRICES_KEY); if (c) kdPrices = JSON.parse(c); } catch(_) {}
+  try {
+    const s = JSON.parse(localStorage.getItem('pension_app_settings_v1')) || {};
+    if (s.showNonK  === false) document.querySelectorAll('a[href="NonK.html"]').forEach(e => e.style.display = 'none');
+    if (s.showKDeal === false) document.querySelectorAll('a[href="KDeal.html"]').forEach(e => e.style.display = 'none');
+  } catch(_) {}
   kdRender();
   kdRenderTradeHistory();
   kdRenderTimeline();

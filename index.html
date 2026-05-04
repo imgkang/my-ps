@@ -1292,6 +1292,19 @@
           <span style="color:var(--muted);font-size:13px">분&nbsp;(0 = 끄기)</span>
         </div>
       </div>
+      <div class="cfg-section">📱 앱 표시</div>
+      <div class="cfg-grid">
+        <label>미국주식 (NonK)</label>
+        <div class="toggle-row">
+          <button id="cfgShowNonKOn"  class="toggle-btn" onclick="setCfgShowApp('NonK',true)">표시</button>
+          <button id="cfgShowNonKOff" class="toggle-btn" onclick="setCfgShowApp('NonK',false)">숨기기</button>
+        </div>
+        <label>국장 (KDeal)</label>
+        <div class="toggle-row">
+          <button id="cfgShowKDealOn"  class="toggle-btn" onclick="setCfgShowApp('KDeal',true)">표시</button>
+          <button id="cfgShowKDealOff" class="toggle-btn" onclick="setCfgShowApp('KDeal',false)">숨기기</button>
+        </div>
+      </div>
       <div class="cfg-section">👤 기본 정보</div>
       <div class="cfg-grid">
         <label>본인 생년 (년)</label>
@@ -2218,10 +2231,11 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.141';
+const APP_VERSION = 'MyPM v2.142';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
+  applyNavVisibility();
 });
 
 const _TAB_NAMES = ['portfolio','records','dividend','deposit','annual','withdrawal'];
@@ -2303,6 +2317,7 @@ function getDefaultAppSettings() {
     myBirthYear: 0, myBirthMonth: 1,
     hasWife: true,
     wifeBirthYear: 0, wifeBirthMonth: 1,
+    showNonK: true, showKDeal: true,
     my:   getDefaultPersonCfg(false),
     wife: getDefaultPersonCfg(true),
   };
@@ -6234,6 +6249,8 @@ function openSettingsModal() {
   sv('cfg_wifeBirthYear',  s.wifeBirthYear  || '');
   sv('cfg_wifeBirthMonth', s.wifeBirthMonth || '');
   _updateCfgWifeUI(s.hasWife);
+  setCfgShowApp('NonK',  s.showNonK  !== false);
+  setCfgShowApp('KDeal', s.showKDeal !== false);
   sv('cfg_npTaxRate',            wp.npTaxRate            ?? 4);
   sv('cfg_pensionTaxRate',       wp.pensionTaxRate       ?? 3.3);
   sv('cfg_excessPensionTaxRate', wp.excessPensionTaxRate ?? 16.5);
@@ -6304,6 +6321,18 @@ function openSettingsModal() {
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
+
+function setCfgShowApp(app, show) {
+  document.getElementById(`cfgShow${app}On`)?.classList.toggle('active', show);
+  document.getElementById(`cfgShow${app}Off`)?.classList.toggle('active', !show);
+}
+
+function applyNavVisibility() {
+  const showNonK  = appSettings.showNonK  !== false;
+  const showKDeal = appSettings.showKDeal !== false;
+  document.querySelectorAll('a[href="NonK.html"]').forEach(el => el.style.display = showNonK  ? '' : 'none');
+  document.querySelectorAll('a[href="KDeal.html"]').forEach(el => el.style.display = showKDeal ? '' : 'none');
+}
 function closeThenDrive() { closeSettingsModal(); openDriveModal(); }
 function handleSettingsBackdropClick(e) { if (e.target.id === 'settingsModal') closeSettingsModal(); }
 function setCfgWife(val) { _updateCfgWifeUI(val); }
@@ -6360,10 +6389,15 @@ function saveSettingsModal() {
     wifeTitle:      hasWife ? wifeTitle : appSettings.wifeTitle,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
+    showNonK:  document.getElementById('cfgShowNonKOn')?.classList.contains('active') !== false
+               && !document.getElementById('cfgShowNonKOff')?.classList.contains('active'),
+    showKDeal: document.getElementById('cfgShowKDealOn')?.classList.contains('active') !== false
+               && !document.getElementById('cfgShowKDealOff')?.classList.contains('active'),
     my:   buildPersonCfg('my'),
     wife: hasWife ? buildPersonCfg('wife') : appSettings.wife,
   };
   saveAppSettings();
+  applyNavVisibility();
 
   // wdPlan 동기화
   wdPlan.myBirthYear    = appSettings.myBirthYear;

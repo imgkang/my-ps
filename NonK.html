@@ -1011,11 +1011,16 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.39';
+const APP_VERSION = 'NonK v1.40';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
+  try {
+    const s = JSON.parse(localStorage.getItem('pension_app_settings_v1')) || {};
+    if (s.showNonK  === false) document.querySelectorAll('a[href="NonK.html"]').forEach(e => e.style.display = 'none');
+    if (s.showKDeal === false) document.querySelectorAll('a[href="KDeal.html"]').forEach(e => e.style.display = 'none');
+  } catch(_) {}
 });
 
 // ▼ Cloudflare Worker 배포 후 URL 입력 (worker/README.md 참고)
