@@ -2267,7 +2267,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.116';
+const APP_VERSION = 'MyPM v0.117';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3392,6 +3392,7 @@ function exportToFile() {
     version: 10,
     exportedAt: new Date().toISOString(),
     mypm: {
+      appSettings: appSettings,
       cashAccounts: cashAccounts,
       holdings: holdings,
       deposits: depositData,
@@ -3572,6 +3573,10 @@ function importFromFile(event) {
       annualPlan = newAnnualPlan;
       if (newWdPlan) wdPlan = newWdPlan;
       wdConsolidated = newWdConsolidated;
+      if (src.appSettings && typeof src.appSettings === 'object') {
+        appSettings = { ...appSettings, ...src.appSettings };
+        saveAppSettings();
+      }
       saveHoldings();
       persistCashAccounts();
       saveDeposits();
@@ -7963,6 +7968,7 @@ function buildDriveBundle() {
     version: 10,
     exportedAt: new Date().toISOString(),
     mypm: {
+      appSettings: appSettings,
       cashAccounts: cashAccounts,
       holdings: holdings,
       deposits: depositData,
@@ -8069,6 +8075,8 @@ function _applyImportData(data) {
   if (src.wdPlan)         localStorage.setItem(WITHDRAWAL_KEY,      JSON.stringify(src.wdPlan));
   if (src.wdScenarios && Array.isArray(src.wdScenarios))
                           localStorage.setItem(WD_SCENARIO_KEY,    JSON.stringify(src.wdScenarios));
+  if (src.appSettings && typeof src.appSettings === 'object')
+                          localStorage.setItem(APP_SETTINGS_KEY,   JSON.stringify(src.appSettings));
   if (data.nonk) {
     if (data.nonk.holdings)  localStorage.setItem('nonk_holdings_v1',  JSON.stringify(data.nonk.holdings));
     if (data.nonk.cash)      localStorage.setItem('nonk_cash_v1',      JSON.stringify(data.nonk.cash));
