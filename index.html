@@ -834,6 +834,7 @@ Chart.register({
   .apt .r-anse td:first-child { background: #fefce8; }
   .apt .r-proj td { background: #f5f3ff; color: #6d28d9; }
   .apt .r-proj td:first-child { background: #f5f3ff; }
+  .apt .retire-flag { font-size: 9px; font-weight: 600; color: #b45309; line-height: 1.2; display: block; }
   .apt input.plan-inp {
     width: 60px; padding: 2px 4px; font-size: 11px;
     border: 1px solid #86efac; border-radius: 3px;
@@ -2255,7 +2256,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.142';
+const APP_VERSION = 'MyPM v0.143';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5066,6 +5067,15 @@ function fmtRate(pct) {
   const s = Math.abs(pct).toFixed(1) + '%';
   return pct < 0 ? `<span style="color:#dc2626">▼${s}</span>` : `<span style="color:#059669">▲${s}</span>`;
 }
+// 은퇴연도 기준 셀 스타일 — 전해: amber, 이후: gray
+function retireCellStyle(yr, retireYr, baseStyle = '') {
+  if (yr >= retireYr) return 'background:#f3f4f6;color:#9ca3af';
+  if (yr === retireYr - 1) {
+    const cm = baseStyle.match(/color:([^;]+)/);
+    return `border-left:3px solid #f59e0b;background:#fffbeb${cm ? ';color:' + cm[1] : ''}`;
+  }
+  return baseStyle;
+}
 function buildColgroup(years) {
   let s = '<colgroup><col style="width:152px">';
   for (const yr of years) s += '<col style="width:88px">';
@@ -5078,29 +5088,42 @@ function renderPrincipalTable() {
   const years = getPlanYearRange();
   const currentYear = new Date().getFullYear();
 
-  // header
-  let h = '<thead><tr><th>계좌 (단위: 백만원)</th>';
-  for (const yr of years) {
-    const cls = yr > currentYear ? 'yr-future' : yr === currentYear ? 'yr-current' : '';
-    h += `<th class="${cls}">${yr}</th>`;
-  }
-  h += '</tr></thead>';
-
-  // Read-only cell: actual years gray bg, future years green bg
-  const mkCell = (id, yr, showAnse) => {
-    const isPast   = yr < currentYear;
-    const isFuture = yr > currentYear;
-    const cum  = getCellManwon(id, yr);
-    const anse = showAnse ? getCellAnseManwon(id, yr) : null;
-    const style = isPast ? 'style="background:#f3f4f6;color:#6b7280"'
-                : isFuture ? 'style="background:#f0fdf4;color:#166534"' : '';
-    const ansePart = anse != null ? `<div class="anse-sub"><span class="anse-val">${anse || '-'}</span></div>` : '';
-    return `<td ${style}>${fmt(cum)}${ansePart}</td>`;
-  };
-
   const _allAccs = getActiveAccounts();
   const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
   const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
+
+  const myRetireYr   = (wdPlan && wdPlan.startYear)      ? wdPlan.startYear      : 9999;
+  const wifeRetireYr = (wdPlan && wdPlan.wifeRetireYear) ? wdPlan.wifeRetireYear : 9999;
+  const bothRetireYr = _activeWifeIds.length ? Math.max(myRetireYr, wifeRetireYr) : myRetireYr;
+
+  // header — retire flag 표시
+  const retireFlags = (yr) => {
+    let f = '';
+    if (yr === myRetireYr - 1) f += '<span class="retire-flag">🏁나</span>';
+    if (_activeWifeIds.length && yr === wifeRetireYr - 1) f += '<span class="retire-flag">🏁배</span>';
+    return f;
+  };
+  let h = '<thead><tr><th>계좌 (단위: 백만원)</th>';
+  for (const yr of years) {
+    const cls = yr > currentYear ? 'yr-future' : yr === currentYear ? 'yr-current' : '';
+    h += `<th class="${cls}">${yr}${retireFlags(yr)}</th>`;
+  }
+  h += '</tr></thead>';
+
+  // 셀 생성: 은퇴연도 기준 스타일 적용
+  const mkCell = (id, yr, showAnse, retireYr = 9999) => {
+    const base = yr < currentYear ? 'background:#f3f4f6;color:#6b7280'
+               : yr > currentYear ? 'background:#f0fdf4;color:#166534' : '';
+    const st = retireCellStyle(yr, retireYr, base);
+    const cum = getCellManwon(id, yr);
+    const anse = showAnse ? getCellAnseManwon(id, yr) : null;
+    const ansePart = anse != null ? `<div class="anse-sub"><span class="anse-val">${anse || '-'}</span></div>` : '';
+    return `<td${st ? ` style="${st}"` : ''}>${fmt(cum)}${ansePart}</td>`;
+  };
+  const mkTd = (yr, retireYr, content) => {
+    const st = retireCellStyle(yr, retireYr);
+    return `<td${st ? ` style="${st}"` : ''}>${content}</td>`;
+  };
 
   let body = '<tbody>';
 
@@ -5111,7 +5134,7 @@ function renderPrincipalTable() {
       ? `<div class="acc-name">${getAccName(id)}</div><div class="acc-meta">안세공</div>`
       : `<div class="acc-name">${getAccName(id)}</div>`;
     body += `<tr><td>${nameCell}</td>`;
-    for (const yr of years) body += mkCell(id, yr, showAnse);
+    for (const yr of years) body += mkCell(id, yr, showAnse, myRetireYr);
     body += '</tr>';
   }
 
@@ -5119,7 +5142,7 @@ function renderPrincipalTable() {
   body += '<tr class="r-sub"><td>나-연금총합</td>';
   for (const yr of years) {
     const total = _activeMyIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
-    body += `<td>${fmt(total)}</td>`;
+    body += mkTd(yr, myRetireYr, fmt(total));
   }
   body += '</tr>';
 
@@ -5131,7 +5154,7 @@ function renderPrincipalTable() {
         ? `<div class="acc-name">${getAccName(id)}</div><div class="acc-meta">안세공</div>`
         : `<div class="acc-name">${getAccName(id)}</div>`;
       body += `<tr><td style="padding-left:14px;color:var(--muted)">${nameCell}</td>`;
-      for (const yr of years) body += mkCell(id, yr, showAnse);
+      for (const yr of years) body += mkCell(id, yr, showAnse, wifeRetireYr);
       body += '</tr>';
     }
 
@@ -5139,7 +5162,7 @@ function renderPrincipalTable() {
     body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
     for (const yr of years) {
       const total = _activeWifeIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
-      body += `<td>${fmt(total)}</td>`;
+      body += mkTd(yr, wifeRetireYr, fmt(total));
     }
     body += '</tr>';
   }
@@ -5151,16 +5174,17 @@ function renderPrincipalTable() {
   for (const yr of years) {
     const total = _allActiveIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
     grandTotals[yr] = total;
-    body += `<td>${fmt(total)}</td>`;
+    body += mkTd(yr, bothRetireYr, fmt(total));
   }
   body += '</tr>';
 
   // 증가액
   body += '<tr class="r-inc"><td>증가액</td>';
   for (let i = 0; i < years.length; i++) {
-    if (i === 0) { body += '<td>-</td>'; continue; }
-    const diff = (grandTotals[years[i]] || 0) - (grandTotals[years[i - 1]] || 0);
-    body += `<td>${diff ? fmt(diff) : '-'}</td>`;
+    const yr = years[i];
+    if (i === 0) { body += mkTd(yr, bothRetireYr, '-'); continue; }
+    const diff = (grandTotals[yr] || 0) - (grandTotals[years[i - 1]] || 0);
+    body += mkTd(yr, bothRetireYr, diff ? fmt(diff) : '-');
   }
   body += '</tr>';
 
@@ -5187,6 +5211,10 @@ function renderEvalTable() {
   // Find last year with actual monthlyRecords
   const recYears = [...new Set(monthlyRecords.map(r => r.year))].sort((a, b) => b - a);
   const lastRecYear = recYears[0] || (currentYear - 1);
+
+  // 은퇴연도
+  const _eMyRetireYr   = (wdPlan && wdPlan.startYear)      ? wdPlan.startYear      : 9999;
+  const _eWifeRetireYr = (wdPlan && wdPlan.wifeRetireYear) ? wdPlan.wifeRetireYear : 9999;
 
   // Last known eval values for projection base
   const getLastKnown = (accIds) => {
@@ -5229,6 +5257,7 @@ function renderEvalTable() {
   const _evalMyIds      = _evalAllAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
   const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
   const _evalAllIds     = [..._evalMyIds, ..._evalWifeIds];
+  const _eBothRetireYr  = _evalWifeIds.length ? Math.max(_eMyRetireYr, _eWifeRetireYr) : _eMyRetireYr;
 
   const myVals   = computeGroupVals(_evalMyIds);
   const wifeVals = _evalWifeIds.length ? computeGroupVals(_evalWifeIds) : {};
@@ -5237,7 +5266,10 @@ function renderEvalTable() {
   let h = '<thead><tr><th>계좌/그룹 (단위: 백만원)</th>';
   for (const yr of years) {
     const cls = yr > lastRecYear ? 'yr-future' : yr === lastRecYear ? 'yr-current' : '';
-    h += `<th class="${cls}">${yr}${yr > lastRecYear ? '(예상)' : ''}</th>`;
+    let flags = '';
+    if (yr === _eMyRetireYr - 1) flags += '<span class="retire-flag">🏁나</span>';
+    if (_evalWifeIds.length && yr === _eWifeRetireYr - 1) flags += '<span class="retire-flag">🏁배</span>';
+    h += `<th class="${cls}">${yr}${yr > lastRecYear ? '(예상)' : ''}${flags}</th>`;
   }
   h += '</tr></thead>';
 
@@ -5251,7 +5283,8 @@ function renderEvalTable() {
       const v = vals[yr];
       const mw = v != null ? Math.round(v / 1000000) : null;
       const isProj = yr > lastRecYear;
-      body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
+      const st = retireCellStyle(yr, _eMyRetireYr, isProj ? 'color:#6d28d9' : '');
+      body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
     }
     body += '</tr>';
   }
@@ -5261,7 +5294,8 @@ function renderEvalTable() {
   for (const yr of years) {
     const v = myVals[yr];
     const mw = v != null ? Math.round(v / 1000000) : null;
-    body += `<td>${mw ? fmt(mw) : '-'}</td>`;
+    const st = retireCellStyle(yr, _eMyRetireYr);
+    body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
   }
   body += '</tr>';
 
@@ -5274,7 +5308,8 @@ function renderEvalTable() {
         const v = vals[yr];
         const mw = v != null ? Math.round(v / 1000000) : null;
         const isProj = yr > lastRecYear;
-        body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${mw ? fmt(mw) : '-'}</td>`;
+        const st = retireCellStyle(yr, _eWifeRetireYr, isProj ? 'color:#6d28d9' : '');
+        body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
       }
       body += '</tr>';
     }
@@ -5284,7 +5319,8 @@ function renderEvalTable() {
     for (const yr of years) {
       const v = wifeVals[yr];
       const mw = v != null ? Math.round(v / 1000000) : null;
-      body += `<td>${mw ? fmt(mw) : '-'}</td>`;
+      const st = retireCellStyle(yr, _eWifeRetireYr);
+      body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
     }
     body += '</tr>';
   }
@@ -5314,27 +5350,33 @@ function renderEvalTable() {
   const getTotalWonPrev = (i) => i === 0 ? prevTotalWon : totalWon[years[i - 1]];
   const getPrincMilPrev = (i) => i === 0 ? 0 : (princMil[years[i - 1]] || 0);
 
+  const _eTd = (yr, content, extraBase = '') => {
+    const st = retireCellStyle(yr, _eBothRetireYr, extraBase);
+    return `<td${st ? ` style="${st}"` : ''}>${content}</td>`;
+  };
+
   // 연금총합 (평가)
   body += '<tr class="r-total"><td>연금총합</td>';
   for (const yr of years) {
     const tw = totalWon[yr];
-    if (tw == null) { body += '<td>-</td>'; continue; }
+    if (tw == null) { body += _eTd(yr, '-'); continue; }
     const isProj = yr > lastRecYear;
-    body += `<td${isProj ? ' style="color:#6d28d9"' : ''}>${fmt(Math.round(tw / 1_000_000))}</td>`;
+    body += _eTd(yr, fmt(Math.round(tw / 1_000_000)), isProj ? 'color:#6d28d9' : '');
   }
   body += '</tr>';
 
   // 원금
   body += '<tr class="r-princ"><td>원금</td>';
-  for (const yr of years) body += `<td>${fmt(princMil[yr])}</td>`;
+  for (const yr of years) body += _eTd(yr, fmt(princMil[yr]));
   body += '</tr>';
 
   // 원금증가액
   body += '<tr class="r-princ"><td style="padding-left:18px;font-weight:400">원금증가액</td>';
   for (let i = 0; i < years.length; i++) {
-    if (i === 0) { body += '<td>-</td>'; continue; }
-    const inc = princMil[years[i]] - getPrincMilPrev(i);
-    body += `<td>${fmtDiff(inc)}</td>`;
+    const yr = years[i];
+    if (i === 0) { body += _eTd(yr, '-'); continue; }
+    const inc = princMil[yr] - getPrincMilPrev(i);
+    body += _eTd(yr, fmtDiff(inc));
   }
   body += '</tr>';
 
@@ -5343,12 +5385,12 @@ function renderEvalTable() {
   for (let i = 0; i < years.length; i++) {
     const yr = years[i];
     const tw = totalWon[yr];
-    if (tw == null) { body += '<td>-</td>'; continue; }
+    if (tw == null) { body += _eTd(yr, '-'); continue; }
     const prevWon = getTotalWonPrev(i);
-    if (prevWon == null) { body += '<td>-</td>'; continue; }
+    if (prevWon == null) { body += _eTd(yr, '-'); continue; }
     const princIncWon = (princMil[yr] - getPrincMilPrev(i)) * 1_000_000;
     const profit = Math.round((tw - prevWon - princIncWon) / 1_000_000);
-    body += `<td>${fmtDiff(profit)}</td>`;
+    body += _eTd(yr, fmtDiff(profit));
   }
   body += '</tr>';
 
@@ -5357,14 +5399,14 @@ function renderEvalTable() {
   for (let i = 0; i < years.length; i++) {
     const yr = years[i];
     const tw = totalWon[yr];
-    if (tw == null) { body += '<td>-</td>'; continue; }
+    if (tw == null) { body += _eTd(yr, '-'); continue; }
     const prevWon = getTotalWonPrev(i);
-    if (prevWon == null) { body += '<td>-</td>'; continue; }
+    if (prevWon == null) { body += _eTd(yr, '-'); continue; }
     const princIncWon = (princMil[yr] - getPrincMilPrev(i)) * 1_000_000;
     const base = prevWon + princIncWon;
     const profit = tw - prevWon - princIncWon;
     const rate = base > 0 ? profit / base * 100 : 0;
-    body += `<td>${fmtRate(rate)}</td>`;
+    body += _eTd(yr, fmtRate(rate));
   }
   body += '</tr>';
 
@@ -5372,9 +5414,9 @@ function renderEvalTable() {
   body += '<tr class="r-cum-profit"><td>누적이익</td>';
   for (const yr of years) {
     const tw = totalWon[yr];
-    if (tw == null) { body += '<td>-</td>'; continue; }
+    if (tw == null) { body += _eTd(yr, '-'); continue; }
     const cumProfit = Math.round((tw - princMil[yr] * 1_000_000) / 1_000_000);
-    body += `<td>${fmtDiff(cumProfit)}</td>`;
+    body += _eTd(yr, fmtDiff(cumProfit));
   }
   body += '</tr>';
 
@@ -5382,10 +5424,10 @@ function renderEvalTable() {
   body += '<tr class="r-cum-rate"><td style="padding-left:18px;font-weight:400">누적이익률</td>';
   for (const yr of years) {
     const tw = totalWon[yr];
-    if (tw == null) { body += '<td>-</td>'; continue; }
+    if (tw == null) { body += _eTd(yr, '-'); continue; }
     const princWon = princMil[yr] * 1_000_000;
     const rate = princWon > 0 ? (tw - princWon) / princWon * 100 : 0;
-    body += `<td>${fmtRate(rate)}</td>`;
+    body += _eTd(yr, fmtRate(rate));
   }
   body += '</tr>';
 
@@ -5394,11 +5436,11 @@ function renderEvalTable() {
   for (let i = 0; i < years.length; i++) {
     const yr = years[i];
     const tw = totalWon[yr];
-    if (tw == null) { body += '<td>-</td>'; continue; }
+    if (tw == null) { body += _eTd(yr, '-'); continue; }
     const prevWon = getTotalWonPrev(i);
-    if (prevWon == null) { body += '<td>-</td>'; continue; }
+    if (prevWon == null) { body += _eTd(yr, '-'); continue; }
     const inc = Math.round((tw - prevWon) / 1_000_000);
-    body += `<td>${fmtDiff(inc)}</td>`;
+    body += _eTd(yr, fmtDiff(inc));
   }
   body += '</tr>';
 
