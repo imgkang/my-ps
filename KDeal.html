@@ -11,8 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
   :root {
-    --primary: #eab308;
-    --primary-dark: #ca8a04;
+    --primary: #ca8a04;
+    --primary-dark: #a16207;
     --bg: #f5f7fa;
     --card: #ffffff;
     --text: #1f2937;
@@ -59,16 +59,16 @@
 
   /* Summary card */
   .kd-summary-card {
-    background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
-    color:#fff; padding:18px 20px; border-radius:12px;
+    background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
+    color:#78350f; padding:18px 20px; border-radius:12px;
     box-shadow:var(--shadow); margin-bottom:16px;
   }
   .kd-summary-grid {
     display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; }
   .kd-summary-label { font-size:11px; opacity:0.85; margin-bottom:4px; font-weight:500; }
   .kd-summary-value { font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .kd-summary-value.pos { color:#fca5a5; }
-  .kd-summary-value.neg { color:#93c5fd; }
+  .kd-summary-value.pos { color:#b91c1c; }
+  .kd-summary-value.neg { color:#1d4ed8; }
 
   /* Table */
   .kd-table { width:100%; border-collapse:collapse; font-size:11px; }
@@ -168,16 +168,16 @@
 
   /* Hero summary card */
   .kd-hero { padding: 22px 24px 18px; margin-bottom: 10px;
-    background: linear-gradient(135deg, #facc15 0%, #eab308 100%); color: #fff; }
+    background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%); color: #78350f; }
   .kd-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
-  .kd-hero-value { font-size: 38px; font-weight: 800; color: #fff;
+  .kd-hero-value { font-size: 38px; font-weight: 800; color: #78350f;
     font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; }
-  .kd-hero-unit { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.75); }
+  .kd-hero-unit { font-size: 13px; font-weight: 500; color: rgba(120,53,15,0.65); }
   .kd-hero-row { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
     line-height: 1.6; display: flex; align-items: baseline; gap: 6px; }
-  .kd-hero-label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); }
-  .kd-hero .diff-positive { color: #fca5a5; }
-  .kd-hero .diff-negative { color: #93c5fd; }
+  .kd-hero-label { font-size: 12px; font-weight: 500; color: rgba(120,53,15,0.75); }
+  .kd-hero .diff-positive { color: #b91c1c; }
+  .kd-hero .diff-negative { color: #1d4ed8; }
 
   /* Refresh status */
   #kdRefreshStatus { font-size:12px; color:var(--muted); }
@@ -1701,7 +1701,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v0.141';
+const APP_VERSION = 'KDeal v0.142';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
