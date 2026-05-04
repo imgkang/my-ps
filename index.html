@@ -1132,6 +1132,8 @@
     </div>
   </div>
 
+  <div style="height:20px"></div>
+
   <div class="card">
     <h2>계좌별 상태 보기</h2>
     <div class="account-buttons-grid" id="accountButtonsGrid"></div>
@@ -2217,7 +2219,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.128';
+const APP_VERSION = 'MyPM v2.130';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4728,7 +4730,7 @@ function render() {
         </tfoot>
       </table>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:4px">
+    <div style="display:flex;justify-content:flex-end;margin-top:0">
       <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     </div>
   `;
