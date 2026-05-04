@@ -1168,14 +1168,14 @@
   </button>
   <button class="tab-nav-btn" id="tab-dividend" onclick="openDividendModal()">
     <svg width="33" height="33" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="6" r="3.8"/>
-      <text x="11" y="8" font-size="5" text-anchor="middle" font-family="system-ui,sans-serif" fill="currentColor" stroke="none">₩</text>
-      <line x1="11" y1="9.8" x2="11" y2="18.5"/>
-      <path d="M11 15.5 Q8 14 8.5 11 Q10.5 12.5 11 15.5"/>
-      <path d="M11 12 L14.5 10.5"/><circle cx="15.8" cy="10" r="1.3"/>
-      <path d="M11 14 L15 13.8"/><circle cx="16.3" cy="13.8" r="1.3"/>
-      <rect x="7.5" y="18.5" width="7" height="1.5" rx="0.75"/>
-      <path d="M8.5 20 L9 23 H13 L13.5 20"/>
+      <circle cx="11" cy="5.5" r="3.5"/>
+      <text x="11" y="7.5" font-size="4.5" text-anchor="middle" font-family="system-ui,sans-serif" fill="currentColor" stroke="none">₩</text>
+      <line x1="11" y1="9" x2="11" y2="18"/>
+      <path d="M11 15 C8.5 14.5 7 12.5 8.5 10.5 C10 12 11.5 13.5 11 15"/>
+      <path d="M11 11.5 Q13.5 10 14.8 8.9"/><circle cx="16.4" cy="8.4" r="1.7"/>
+      <path d="M11 13 Q13.5 12.8 15.2 13"/><circle cx="16.3" cy="13" r="1.0"/>
+      <rect x="7" y="18" width="8" height="1.5" rx="0.4"/>
+      <path d="M8 19.5 L9 23 H13 L14 19.5"/>
     </svg>
     배당기록
   </button>
@@ -2237,7 +2237,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.105';
+const APP_VERSION = 'MyPM v0.106';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
