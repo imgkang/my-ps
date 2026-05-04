@@ -469,6 +469,7 @@
 // ===== 상수 =====
 const KD_TRADES_KEY  = 'kdeal_trades_v1';
 const KD_DEP_KEY     = 'kdeal_deposits_v1';
+const KD_PRICES_KEY  = 'kdeal_prices_cache_v1';
 
 // ▼ Cloudflare Worker 배포 후 URL 입력 (worker/README.md 참고)
 // 예: 'https://mypm-proxy.yourname.workers.dev'
@@ -1653,12 +1654,13 @@ async function kdRefreshAll() {
   kdRender();
   kdRenderTradeHistory();
   kdRenderWatchlist();
+  try { localStorage.setItem(KD_PRICES_KEY, JSON.stringify(kdPrices)); } catch(_) {}
 }
 
 // ===== 파일 저장/불러오기 =====
 function kdExportToFile() {
   const payload = { version: 1, exportedAt: new Date().toISOString(),
-                    kdeal: { trades: kdTrades, deposits: kdDeposits } };
+                    kdeal: { trades: kdTrades, deposits: kdDeposits, watchlist: kdWatchlist } };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -1682,6 +1684,7 @@ function kdImportFromFile(event) {
       kdTrades = src.trades;
       kdSaveTrades();
       if (Array.isArray(src.deposits)) { kdDeposits = src.deposits; kdSaveDeposits(); }
+      if (Array.isArray(src.watchlist)) { kdWatchlist = src.watchlist; kdSaveWatchlist(); }
       kdRender();
       kdRenderTradeHistory();
       kdRenderTimeline();
@@ -1694,12 +1697,13 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v2.21';
+const APP_VERSION = 'KDeal v2.22';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
+  try { const c = localStorage.getItem(KD_PRICES_KEY); if (c) kdPrices = JSON.parse(c); } catch(_) {}
   kdRender();
   kdRenderTradeHistory();
   kdRenderTimeline();
