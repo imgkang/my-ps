@@ -926,7 +926,8 @@ Chart.register({
     color:#475569; border:1px solid #e2e8f0; white-space:nowrap; }
   .wd-scenario-table th:first-child { text-align:left; position: sticky; left: 0; z-index: 2; background: #f1f5f9; }
   .wd-scenario-table td { padding:4px 8px; text-align:right; border:1px solid #e2e8f0; white-space:nowrap; }
-  .wd-scenario-table td:first-child { text-align:left; font-weight:600; position: sticky; left: 0; z-index: 1; background: #fff; }
+  .wd-scenario-table td:first-child { text-align:left; font-weight:600; position: sticky; left: 0; z-index: 1; background: #fff; cursor: pointer; }
+  .wd-scenario-table td:first-child:hover { background: #eff6ff !important; color: #1d4ed8; }
   .wd-scenario-table tr:nth-child(even) td { background:#f8fafc; }
   .wd-scenario-best { color:#059669 !important; font-weight:700 !important; }
   /* 계좌 통합 모달 */
@@ -2256,7 +2257,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.143';
+const APP_VERSION = 'MyPM v0.144';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7193,7 +7194,7 @@ function renderWdScenarioTable() {
     const best = m.score === maxScore;
     const cfg = sc.wdPlan || sc.settings || {};
     h += `<tr>
-      <td>${sc.name}</td><td>${sc.savedAt}</td>
+      <td onclick="loadWdScenario(${i})" title="클릭하여 선택">${sc.name}</td><td>${sc.savedAt}</td>
       <td>${cfg.startYear}년</td><td>${cfg.retireAge || 60}세</td>
       <td>${cfg.returnRate}%</td>
       <td>${fmt(m.totalWithdraw)}</td><td>${fmt(m.finalBalance)}</td>
