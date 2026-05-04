@@ -2,12 +2,13 @@
 const CACHE_NAME = 'mypm-v0.123';
 
 const ASSETS = [
+  '/index.html',
   '/manifest.json',
   '/icon.svg',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
 ];
 
-// 설치: 핵심 자산 캐시 (HTML 제외)
+// 설치: 핵심 파일을 캐시에 저장
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -27,7 +28,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// 요청 처리
+// 요청 처리: 캐시 우선, 백그라운드 갱신
 self.addEventListener('fetch', event => {
   // Google API / Drive 요청은 항상 네트워크로
   if (event.request.url.includes('googleapis.com') ||
@@ -35,24 +36,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // HTML(네비게이션)은 항상 네트워크 우선 → 오프라인 시 캐시 폴백
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).then(response => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // 나머지 자산은 캐시 우선, 백그라운드 갱신
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) {
+        // 백그라운드에서 최신 버전 업데이트
         fetch(event.request).then(response => {
           if (response && response.status === 200) {
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, response));
