@@ -2255,7 +2255,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.135';
+const APP_VERSION = 'MyPM v0.136';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7840,11 +7840,7 @@ function saveDriveSettings() {
 loadDriveSettings();
 // 앱 로드 즉시 UI 반영 (토큰이 있으면 "동기화됨" 표시)
 updateDriveUI();
-// NonK/KDeal에서 넘어온 경우 silent 재인증 생략 (화면 껌벅임 방지)
-const _driveFromInternalPage = !!document.referrer &&
-  (document.referrer.includes('NonK.html') || document.referrer.includes('KDeal.html'));
-// clientId가 저장되어 있으면 앱 로드 시 GIS 초기화 + 무음 재인증 시도
-if (driveClientId) initGIS(_driveFromInternalPage);
+// Drive 로그인은 사용자가 Drive 버튼을 눌렀을 때만 시도 (자동 초기화 제거)
 
 function openDriveModal() {
   document.getElementById('driveClientIdInput').value = driveClientId;
@@ -8113,16 +8109,6 @@ function _applyImportData(data) {
   }
 }
 
-// GIS 라이브러리 동적 로드 후 초기화
-(function loadGIS() {
-  if (!driveClientId) return;
-  const s = document.createElement('script');
-  s.src = 'https://accounts.google.com/gsi/client';
-  s.async = true;
-  s.defer = true;
-  s.onload = () => initGIS(_driveFromInternalPage);
-  document.head.appendChild(s);
-})();
 
 // =============================================
 // 📱 Service Worker 등록 (PWA)
