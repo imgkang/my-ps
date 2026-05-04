@@ -1285,6 +1285,7 @@
           <button class="drive-btn" id="driveNavBtn" onclick="closeThenDrive()" style="flex:1;justify-content:center;padding:7px 8px">
             ☁️ <span id="driveNavLabel">Drive 연결 / 동기화</span>
           </button>
+          <button onclick="forceUpdate()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #6366f1;color:#6366f1;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500" title="캐시를 모두 지우고 최신 버전으로 강제 업데이트">🔄 강제 업데이트</button>
           <button onclick="resetAllData()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #dc2626;color:#dc2626;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500">🗑️ 데이터 초기화</button>
         </div>
         <div style="display:flex;gap:6px">
@@ -2250,7 +2251,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.123';
+const APP_VERSION = 'MyPM v0.124';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6215,6 +6216,19 @@ function toggleWdHelp() {
 }
 
 // ===== ⚙️ 앱 설정 모달 =====
+
+async function forceUpdate() {
+  if (!confirm('캐시를 모두 삭제하고 최신 버전을 새로 받아옵니다.\n계속하시겠습니까?')) return;
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+  }
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+  }
+  location.reload(true);
+}
 
 function resetAllData() {
   if (!confirm('⚠️ 정말로 모든 데이터를 초기화하시겠습니까?\n\n포트폴리오, 계좌기록, 배당기록, 연간계획, 인출계획 등\n모든 입력 데이터가 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다.')) return;
