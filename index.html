@@ -489,6 +489,13 @@
     display: flex; align-items: baseline; gap: 6px;
   }
   .pf-hero-label { font-size: 12px; font-weight: 500; color: var(--text); }
+  .pf-hero-since {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    line-height: 1.8; word-break: keep-all;
+  }
+  .pf-hero-since-static { font-size: 12px; color: var(--muted); }
+  .pf-hero-since-value { font-size: 17px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
   .detail-table-wrap { overflow-x: auto; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; }
   .detail-table { width: 100%; border-collapse: collapse; font-size: 11px; }
   .detail-table th, .detail-table td {
@@ -2210,7 +2217,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.124';
+const APP_VERSION = 'MyPM v2.126';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4566,6 +4573,33 @@ function render() {
   const fmtTS = (n, sign) => (sign || (n >= 0 ? '+' : '')) + Math.round(n / 1000).toLocaleString('ko-KR');
   const fmtPct = (v, s) => v != null ? `(${s || (v >= 0 ? '+' : '')}${v.toFixed(2)}%)` : '';
 
+  // 첫 입금일 & 연평균수익률
+  const _allTxns = (depositData.transactions || []).filter(t => t.amount > 0 && t.date);
+  const _firstDateStr = _allTxns.length > 0
+    ? _allTxns.reduce((min, t) => t.date < min ? t.date : min, _allTxns[0].date)
+    : null;
+  let sinceHtml = '';
+  if (_firstDateStr) {
+    const _fd = new Date(_firstDateStr);
+    const _today = new Date();
+    let _yrs = _today.getFullYear() - _fd.getFullYear();
+    let _mos = _today.getMonth() - _fd.getMonth();
+    if (_today.getDate() < _fd.getDate()) _mos--;
+    if (_mos < 0) { _yrs--; _mos += 12; }
+    const _totalYrs = _yrs + _mos / 12;
+    const _annRate = xirrRate != null ? xirrRate * 100
+      : (totalGrandPricipal > 0 && _totalYrs > 0
+          ? (Math.pow(totalValue / totalGrandPricipal, 1 / _totalYrs) - 1) * 100
+          : null);
+    const _fdLabel = `${_fd.getFullYear()}년 ${_fd.getMonth()+1}월 ${_fd.getDate()}일`;
+    const _durLabel = (_yrs > 0 ? `${_yrs}년 ` : '') + `${_mos}개월`;
+    const _rateLabel = _annRate != null ? (_annRate >= 0 ? '+' : '') + _annRate.toFixed(1) + '%' : '-';
+    sinceHtml = `
+      <div class="pf-hero-since">
+        <span class="pf-hero-since-static">${_fdLabel} 이후, </span><span class="pf-hero-since-value">${_durLabel}</span><span class="pf-hero-since-static"> 동안 연평균 수익률은 </span><span class="pf-hero-since-value">${_rateLabel}</span><span class="pf-hero-since-static"> 입니다.</span>
+      </div>`;
+  }
+
   // Hero 요약 카드
   let html = `
     <div class="card pf-hero">
@@ -4576,6 +4610,7 @@ function render() {
       <div class="pf-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</span><span class="pf-hero-label">오늘</span></div>
       <div class="pf-hero-row ${thisMonCls}"><span>${thisMonChange != null ? fmtTS(thisMonChange, thisMonSign) + ' ' + fmtPct(thisMonRate, thisMonSign) : '-'}</span><span class="pf-hero-label">${thisMonLabel}</span></div>
       <div class="pf-hero-row ${profitCls}"><span>${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</span><span class="pf-hero-label">누적</span></div>
+      ${sinceHtml}
     </div>
     <div class="detail-table-wrap">
       <table class="detail-table">
