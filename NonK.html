@@ -997,7 +997,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.21';
+const APP_VERSION = 'NonK v1.22';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1168,12 +1168,14 @@ async function nkRefreshAll() {
   nkRender();
   nkRenderChart();
   if (statusEl) {
+    const mo2 = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
+    const dd2 = String(nkLastRefreshTime.getDate()).padStart(2,'0');
     const hh = String(nkLastRefreshTime.getHours()).padStart(2,'0');
     const mm = String(nkLastRefreshTime.getMinutes()).padStart(2,'0');
     const ss = String(nkLastRefreshTime.getSeconds()).padStart(2,'0');
     statusEl.textContent = failCount
-      ? `최근 갱신 ${hh}:${mm}:${ss} (${failCount}개 실패)`
-      : `최근 갱신 ${hh}:${mm}:${ss}`;
+      ? `최근 갱신 ${mo2}/${dd2} ${hh}:${mm}:${ss} (${failCount}개 실패)`
+      : `최근 갱신 ${mo2}/${dd2} ${hh}:${mm}:${ss}`;
   }
 }
 
@@ -1302,6 +1304,28 @@ function nkRender() {
   totalValue += totalCash;
   const deposited  = nkTotalDeposited();
   const pnl        = totalValue - deposited;
+
+  // 오늘 수익률
+  const totalValueYesterday = totalValue - todayPnl;
+  const todayRate = totalValueYesterday > 0 ? todayPnl / totalValueYesterday * 100 : 0;
+  const todayRateSign = todayRate >= 0 ? '+' : '';
+
+  // 이번달 손익
+  const _now = new Date();
+  const _yr = _now.getFullYear(), _mo = _now.getMonth() + 1;
+  const prevRecs = nkMonthlyRecords.filter(r => r.year < _yr || (r.year === _yr && r.month < _mo));
+  let monthPnl = null, monthPnlRate = null;
+  if (prevRecs.length) {
+    const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month)[0];
+    const prevVal = NK_ACCOUNTS.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
+    const cutoff = `${_yr}-${String(_mo).padStart(2,'0')}-01`;
+    const moDeposits = nkDepositData.transactions
+      .filter(t => t.date >= cutoff)
+      .reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+    monthPnl = totalValue - prevVal - moDeposits;
+    const moBase = prevVal + Math.max(0, moDeposits);
+    monthPnlRate = moBase > 0 ? monthPnl / moBase * 100 : null;
+  }
   const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
   const xirrRate   = nkCalcXIRR(totalValue);
   const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
@@ -1309,14 +1333,16 @@ function nkRender() {
   const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
 
   // Summary grid
+  const todayRateTxt = todayPnl ? ` (${todayRateSign}${todayRate.toFixed(2)}%)` : '';
+  const moRateTxt = monthPnlRate != null ? ` (${monthPnlRate >= 0 ? '+' : ''}${monthPnlRate.toFixed(2)}%)` : '';
+  const pnlRateTxt = deposited > 0 ? ` (${pnlRate >= 0 ? '+' : ''}${pnlRate.toFixed(2)}%)` : '';
   const summaryHtml = `
     <div class="detail-summary" style="margin-bottom:12px">
       <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${deposited > 0 ? fmtUSD(deposited) : '-'}</span></div>
       <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalValue)}</span></div>
-      <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}</span></div>
-      <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${pnl >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? fmtUSDSigned(pnl) : '-'}</span></div>
-      <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${pnlRate >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? (pnlRate >= 0 ? '+' : '') + pnlRate.toFixed(2) + '%' : '-'}</span></div>
-      <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</span></div>
+      <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}<span style="font-size:13px;font-weight:400">${todayRateTxt}</span></span></div>
+      <div class="summary-item"><span class="summary-label">이번달 손익</span><span class="summary-value ${monthPnl == null ? '' : monthPnl >= 0 ? 'pos' : 'neg'}">${monthPnl != null ? fmtUSDSigned(monthPnl) + `<span style="font-size:13px;font-weight:400">${moRateTxt}</span>` : '-'}</span></div>
+      <div class="summary-item"><span class="summary-label">누적 손익</span><span class="summary-value ${pnl >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? fmtUSDSigned(pnl) + `<span style="font-size:13px;font-weight:400">${pnlRateTxt}</span>` : '-'}</span><span style="font-size:12px;color:var(--muted);margin-top:4px;display:block">연평균(XIRR) <span class="${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</span></span></div>
     </div>`;
 
   // Holdings table — My PM style
@@ -1340,15 +1366,19 @@ function nkRender() {
 
   let lastUpdate = '-';
   if (nkLastRefreshTime) {
+    const mo2 = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
+    const dd2 = String(nkLastRefreshTime.getDate()).padStart(2,'0');
     const hh = String(nkLastRefreshTime.getHours()).padStart(2,'0');
     const mm = String(nkLastRefreshTime.getMinutes()).padStart(2,'0');
     const ss = String(nkLastRefreshTime.getSeconds()).padStart(2,'0');
-    lastUpdate = `${hh}:${mm}:${ss}`;
+    lastUpdate = `${mo2}/${dd2} ${hh}:${mm}:${ss}`;
   } else {
     const updatedAts = nkHoldings.filter(h => h.updatedAt).map(h => h.updatedAt);
     if (updatedAts.length) {
       const d = new Date(Math.max(...updatedAts.map(d => new Date(d))));
-      lastUpdate = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+      const mo2 = String(d.getMonth()+1).padStart(2,'0');
+      const dd2 = String(d.getDate()).padStart(2,'0');
+      lastUpdate = `${mo2}/${dd2} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
     }
   }
 
@@ -1394,7 +1424,10 @@ function nkRender() {
         <td>${it.hasCost ? fmtUSD(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
         <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
-        <td>${it.price > 0 ? fmtUSD(it.price) : '-'}</td>
+        <td>
+          <div>${it.price > 0 ? fmtUSD(it.price) : '-'}</div>
+          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : it.price > 0 ? '-' : ''}</div>
+        </td>
         <td><strong>${fmtUSD(it.currentValue)}</strong></td>
         <td class="${pCls}">${it.hasCost ? fmtUSDSigned(it.profit) : '-'}</td>
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
@@ -1428,9 +1461,6 @@ function nkRender() {
   const dayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
   const totPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
   const totPSign = pnl >= 0 ? '+' : '';
-  const totalValueYesterday = totalValue - todayPnl;
-  const todayRate = totalValueYesterday > 0 ? todayPnl / totalValueYesterday * 100 : 0;
-  const todayRateSign = todayRate >= 0 ? '+' : '';
   tableHtml += `
     </tbody>
     <tfoot><tr>
@@ -1452,7 +1482,7 @@ function nkRender() {
   container.innerHTML = summaryHtml
     + `<div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">마지막 갱신: ${lastUpdate}</div>`
     + tableHtml;
-  if (statusEl) statusEl.textContent = `보유종목 ${nkHoldings.length}개 · 현금 ${fmtUSD(totalCash)} · 총 평가 ${fmtUSD(totalValue)}`;
+  if (statusEl) statusEl.textContent = '';
   nkRenderAccountButtons();
 }
 
