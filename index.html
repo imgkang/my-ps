@@ -2241,7 +2241,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.119';
+const APP_VERSION = 'MyPM v0.120';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4260,7 +4260,7 @@ function renderRecordsList() {
         <span>${dateStr}</span>
         ${accCells}
         <span class="total">${formatMil(total)}</span>
-        <span>
+        <span style="display:flex;align-items:center;gap:2px">
           <button class="tbl-icon-btn" onclick="editMonthlyRecord('${rec.id}')" title="편집">✏️</button>
           <button class="tbl-icon-btn" onclick="deleteMonthlyRecord('${rec.id}')" title="삭제">🗑️</button>
         </span>
