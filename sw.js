@@ -1,6 +1,6 @@
 // MyPM Service Worker
 // 버전을 올리면 캐시가 자동으로 갱신됩니다
-const CACHE_NAME = 'mypm-v2.21';
+const CACHE_NAME = 'mypm-v0.123';
 
 const ASSETS = [
   '/index.html',
