@@ -77,6 +77,11 @@
     padding-left:10px; white-space:normal; min-width:140px; max-width:220px; }
   .kd-table tr:last-child td { border-bottom:none; }
   .kd-table tr:hover td { background:#fafafa; }
+  .kd-pos-table { font-size:13px; }
+  .kd-pos-table th { font-size:11px; padding:6px 5px; }
+  .kd-pos-table td { padding:7px 5px; }
+  .kd-pos-table th:first-child, .kd-pos-table td:first-child { padding-left:10px; }
+  .kd-pos-table .kd-name { font-size:14px; }
   .ta-r { text-align:right; }
   .ta-c { text-align:center; }
   .pos { color:#16a34a; }
@@ -893,7 +898,7 @@ function kdRender() {
           </td>
         </tr>`;
       }).join('');
-      pc.innerHTML = `<div style="overflow-x:auto"><table class="kd-table">
+      pc.innerHTML = `<div style="overflow-x:auto"><table class="kd-table kd-pos-table">
         <thead><tr>
           <th>종목</th><th class="ta-r">현재가</th><th class="ta-r">오늘손익<br>(원)</th>
           <th class="ta-r">수량</th><th class="ta-r">평균단가</th>
@@ -1382,7 +1387,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v2.9';
+const APP_VERSION = 'KDeal v2.11';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
