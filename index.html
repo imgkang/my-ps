@@ -933,6 +933,16 @@ Chart.register({
   .wd-scenario-best { color:#059669 !important; font-weight:700 !important; }
   .wd-scenario-table tr.wd-sc-active td { background:#dbeafe !important; }
   .wd-scenario-table tr.wd-sc-active td:first-child { border-left:3px solid #2563eb; color:#1d4ed8; }
+  #wd-cell-info {
+    position: fixed; bottom: 80px; left: 0; right: 0; z-index: 200;
+    background: #1e293b; color: #f1f5f9; padding: 9px 14px 11px; font-size: 12px;
+    border-top: 2px solid #3b82f6; display: none;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+  }
+  #wd-cell-info.visible { display: block; }
+  #wd-cell-info .wci-title { font-size: 11px; font-weight: 700; color: #93c5fd; margin-bottom: 4px; }
+  #wd-cell-info .wci-formula { font-size: 12px; color: #e2e8f0; line-height: 1.5; }
+  #wd-cell-info .wci-formula b { color: #fbbf24; }
   /* 계좌 통합 모달 */
   .cons-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
   @media (max-width: 680px) { .cons-wrap { grid-template-columns: 1fr; } }
@@ -2260,11 +2270,17 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.145';
+const APP_VERSION = 'MyPM v0.146';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
   applyNavVisibility();
+  document.addEventListener('touchstart', e => {
+    if (!e.target.closest('#wd-cell-info') && !e.target.closest('[data-cell-type]')) wdDismissPanel();
+  }, { passive: true });
+  document.addEventListener('mousedown', e => {
+    if (!e.target.closest('#wd-cell-info') && !e.target.closest('[data-cell-type]')) wdDismissPanel();
+  });
 });
 
 const _TAB_NAMES = ['portfolio','records','dividend','deposit','annual','withdrawal'];
@@ -6983,10 +6999,11 @@ function computeWithdrawalSim() {
       s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
     const npTax = (myPublicInc + wifePublicInc) * npTR;
     summary[yr] = {
-      myNP, wifeNP, myPublicInc, wifePublicInc, target,
+      myNP, wifeNP, myGP, mySP, wifeGP, wifeSP, myPublicInc, wifePublicInc, target,
       totalPriv, totalInc: totalPriv + myPublicInc + wifePublicInc,
       retireTax: totalRT, pensionTax: totalPT, npTax,
       totalTax: totalRT + totalPT + npTax,
+      retireTaxRateEff: rTR,
       shortfall: yr >= targetStartYear
         ? Math.max(0, target - (totalPriv + myPublicInc + wifePublicInc - totalRT - totalPT - npTax))
         : Math.max(0, target - myPublicInc - wifePublicInc - totalPriv),
@@ -7027,6 +7044,7 @@ function saveQuickWdPlan() {
 function renderWithdrawalPlan() {
   const sim = computeWithdrawalSim();
   if (!sim) return;
+  _lastWdSim = sim;
   const wp = wdPlan;
 
   // 설정 요약 바
@@ -7156,6 +7174,8 @@ function deleteWdScenario(idx) {
 }
 
 let _wdSelectedScenIdx = null;
+let _lastWdSim = null;
+let _wdDismissTimer = null;
 function loadWdScenario(idx) {
   const list = loadWdScenarios();
   const sc = list[idx];
@@ -7424,6 +7444,11 @@ function renderWdWithdrawTable(sim) {
   const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
   const blankTd = `<td style="background:#f3f4f6;padding:0"></td>`;
   const cell = (yr, content) => yr < startYear ? blankTd : `<td>${content}</td>`;
+  const tapCell = (yr, content, type, accId='') => {
+    if (yr < startYear) return blankTd;
+    const acc = accId ? ` data-acc="${accId}"` : '';
+    return `<td data-cell-type="${type}" data-yr="${yr}"${acc} ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${content}</td>`;
+  };
 
   let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💸 연도별 인출 금액 (백만원)</h3>
   <table class="wd-table"><colgroup>
@@ -7442,11 +7467,11 @@ function renderWdWithdrawTable(sim) {
 
   // 나/아내 공적연금 행
   h += `<tr class="wd-np-row"><td>나 공적연금</td><td></td><td></td>`;
-  for (const yr of years) h += cell(yr, (summary[yr].myPublicInc||0) > 0 ? mv(summary[yr].myPublicInc) : '');
+  for (const yr of years) h += tapCell(yr, (summary[yr].myPublicInc||0) > 0 ? mv(summary[yr].myPublicInc) : '', 'pub-my');
   h += '</tr>';
   if (appSettings.hasWife) {
     h += `<tr class="wd-np-row"><td>${getWifeTitle()} 공적연금</td><td></td><td></td>`;
-    for (const yr of years) h += cell(yr, (summary[yr].wifePublicInc||0) > 0 ? mv(summary[yr].wifePublicInc) : '');
+    for (const yr of years) h += tapCell(yr, (summary[yr].wifePublicInc||0) > 0 ? mv(summary[yr].wifePublicInc) : '', 'pub-wife');
     h += '</tr>';
   }
 
@@ -7458,43 +7483,43 @@ function renderWdWithdrawTable(sim) {
     if (DC_ACC_IDS.has(accId)) {
       h += `<tr class="wd-acc-row wd-dc"><td rowspan="2">${nm}</td>
         <td class="wd-sub">퇴직세</td><td class="wd-init">${mv(init.dcPrincipal)}</td>`;
-      for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].dcOut));
+      for (const yr of years) h += tapCell(yr, m(withdrawals[yr][accId].dcOut), 'dc', accId);
       h += '</tr>';
     } else {
       h += `<tr class="wd-acc-row"><td rowspan="2">${nm}</td>
         <td class="wd-sub">안세공</td><td class="wd-init">${mv(init.anse)}</td>`;
-      for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].anseOut));
+      for (const yr of years) h += tapCell(yr, m(withdrawals[yr][accId].anseOut), 'anse', accId);
       h += '</tr>';
     }
     h += `<tr class="wd-acc-row wd-pension-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
-    for (const yr of years) h += cell(yr, m(withdrawals[yr][accId].regularOut));
+    for (const yr of years) h += tapCell(yr, m(withdrawals[yr][accId].regularOut), 'pension', accId);
     h += '</tr>';
   }
 
   // 합계·요약행
   const totalInit = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
   h += `<tr class="wd-total-row"><td colspan="2">사적연금 소계</td><td class="wd-init">${mv(totalInit)}</td>`;
-  for (const yr of years) h += cell(yr, mv(summary[yr].totalPriv));
+  for (const yr of years) h += tapCell(yr, mv(summary[yr].totalPriv), 'total-priv');
   h += '</tr>';
 
   const inf = (wp.inflation || 2.2) / 100;
   const todayYear = new Date().getFullYear();
   const rows = [
-    ['wd-sum-row', '인출 합계 (사적+국민)', yr => mv(summary[yr].totalInc)],
-    ['wd-target-row wd-sum-row', '인출 목표액', yr => mv(summary[yr].target)],
-    ['wd-tax-row', '퇴직소득세', yr => mv(summary[yr].retireTax)],
-    ['wd-tax-row', '연금소득세', yr => mv(summary[yr].pensionTax)],
-    ['wd-tax-row', '국민연금세', yr => mv(summary[yr].npTax)],
-    ['wd-net-row wd-sum-row', '인출 - 세금', yr => mv(summary[yr].totalInc - summary[yr].totalTax)],
+    ['wd-sum-row', '인출 합계 (사적+국민)', yr => mv(summary[yr].totalInc), 'total-inc'],
+    ['wd-target-row wd-sum-row', '인출 목표액', yr => mv(summary[yr].target), 'target'],
+    ['wd-tax-row', '퇴직소득세', yr => mv(summary[yr].retireTax), 'retire-tax'],
+    ['wd-tax-row', '연금소득세', yr => mv(summary[yr].pensionTax), 'pension-tax'],
+    ['wd-tax-row', '국민연금세', yr => mv(summary[yr].npTax), 'np-tax'],
+    ['wd-net-row wd-sum-row', '인출 - 세금', yr => mv(summary[yr].totalInc - summary[yr].totalTax), 'net'],
     ['wd-sum-row', `실수령액 현재가치 (${todayYear}년 기준)`, yr => {
       const net = summary[yr].totalInc - summary[yr].totalTax;
       const pv = net / Math.pow(1 + inf, yr - todayYear);
       return `<span style="color:#7c3aed">${mv(pv)}</span>`;
-    }],
+    }, 'pv'],
   ];
-  for (const [cls, label, fn] of rows) {
+  for (const [cls, label, fn, type] of rows) {
     h += `<tr class="${cls}"><td colspan="3">${label}</td>`;
-    for (const yr of years) h += cell(yr, fn(yr));
+    for (const yr of years) h += tapCell(yr, fn(yr), type);
     h += '</tr>';
   }
 
@@ -7521,6 +7546,11 @@ function renderWdBalanceTable(sim) {
 
   const blankTd = `<td style="background:#f3f4f6;padding:0"></td>`;
   const cell = (yr, content) => balances[yr] === null ? blankTd : `<td>${content}</td>`;
+  const tapBalCell = (yr, type, accId, content, isWife) => {
+    if (balances[yr] === null) return blankTd;
+    if (isWife && yr < wifeStartYear) return `<td style="color:#e5e7eb">—</td>`;
+    return `<td data-cell-type="${type}" data-yr="${yr}" data-acc="${accId}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${content}</td>`;
+  };
 
   let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💰 연도별 잔액 (백만원)</h3>
   <table class="wd-table"><colgroup>
@@ -7537,7 +7567,6 @@ function renderWdBalanceTable(sim) {
   }
   h += '</thead><tbody>';
 
-  const wifeBlankTd = `<td style="color:#e5e7eb">—</td>`;
   for (const accId of dispAccIds) {
     const nm = accName(accId);
     const init = initState[accId];
@@ -7546,16 +7575,16 @@ function renderWdBalanceTable(sim) {
     if (DC_ACC_IDS.has(accId)) {
       h += `<tr class="wd-acc-row wd-dc"><td rowspan="2">${nm}</td>
         <td class="wd-sub">퇴직세</td><td class="wd-init">${mv(init.dcPrincipal)}</td>`;
-      for (const yr of years) h += balances[yr] === null ? blankTd : (isWife && yr < wifeStartYear ? wifeBlankTd : `<td>${mc(balances[yr][accId].dcPrincipal)}</td>`);
+      for (const yr of years) h += tapBalCell(yr, 'bal-dc', accId, mc(balances[yr]?.[accId]?.dcPrincipal ?? 0), isWife);
       h += '</tr>';
     } else {
       h += `<tr class="wd-acc-row"><td rowspan="2">${nm}</td>
         <td class="wd-sub">안세공</td><td class="wd-init">${mv(init.anse)}</td>`;
-      for (const yr of years) h += balances[yr] === null ? blankTd : (isWife && yr < wifeStartYear ? wifeBlankTd : `<td>${mc(balances[yr][accId].anse)}</td>`);
+      for (const yr of years) h += tapBalCell(yr, 'bal-anse', accId, mc(balances[yr]?.[accId]?.anse ?? 0), isWife);
       h += '</tr>';
     }
     h += `<tr class="wd-acc-row wd-pension-row"><td class="wd-sub">연금세</td><td class="wd-init">${mv(init.regular)}</td>`;
-    for (const yr of years) h += balances[yr] === null ? blankTd : (isWife && yr < wifeStartYear ? wifeBlankTd : `<td>${mc(balances[yr][accId].regular)}</td>`);
+    for (const yr of years) h += tapBalCell(yr, 'bal-regular', accId, mc(balances[yr]?.[accId]?.regular ?? 0), isWife);
     h += '</tr>';
   }
 
@@ -7567,10 +7596,162 @@ function renderWdBalanceTable(sim) {
     const myTotal   = myAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
     const wifeTotal = yr >= wifeStartYear
       ? dispAccIds.filter(id => WIFE_ACC_IDS.includes(id)).reduce((s, id) => s + balances[yr][id].total, 0) : 0;
-    h += `<td>${mc(myTotal + wifeTotal)}</td>`;
+    h += `<td data-cell-type="bal-total" data-yr="${yr}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${mc(myTotal + wifeTotal)}</td>`;
   }
   h += '</tr></tbody></table>';
   document.getElementById('wdBalanceWrap').innerHTML = h;
+}
+
+// ===== 셀 정보 패널 =====
+function wdShowCellInfo(event, td) {
+  event.stopPropagation();
+  clearTimeout(_wdDismissTimer);
+  const yr = +td.dataset.yr;
+  const accId = td.dataset.acc || '';
+  const type = td.dataset.cellType;
+  const panel = document.getElementById('wd-cell-info');
+  if (!panel) return;
+  panel.innerHTML = buildCellInfoLines(type, yr, accId);
+  panel.classList.add('visible');
+}
+
+function wdStartDismiss() {
+  clearTimeout(_wdDismissTimer);
+  _wdDismissTimer = setTimeout(wdDismissPanel, 3000);
+}
+
+function wdDismissPanel() {
+  document.getElementById('wd-cell-info')?.classList.remove('visible');
+}
+
+function buildCellInfoLines(type, yr, accId) {
+  if (!_lastWdSim) return '';
+  const { summary, withdrawals, balances, allAccIds, startYear, wifeStartYear } = _lastWdSim;
+  const s = summary[yr];
+  if (!s) return '';
+  const wp = wdPlan;
+  const inf = (wp.inflation || 2.2) / 100;
+  const todayYear = new Date().getFullYear();
+  const wr = v => Math.round(v).toLocaleString('ko-KR') + '원';
+  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
+  const accNm = accId ? (accMap[accId] || accId) : '';
+  const tag = `${yr}년${accNm ? ' · ' + accNm : ''}`;
+  const row = (title, formula) =>
+    `<div class="wci-title">${title} <span style="color:#94a3b8;font-size:10px">${tag}</span></div>`
+    + `<div class="wci-formula">${formula}</div>`;
+
+  switch (type) {
+    case 'pub-my': {
+      const total = s.myPublicInc || 0;
+      const parts = [];
+      if ((s.myNP||0) > 0) parts.push(`국민연금 ${wr(s.myNP)}`);
+      if ((s.myGP||0) > 0) parts.push(`공무원연금 ${wr(s.myGP)}`);
+      if ((s.mySP||0) > 0) parts.push(`사학연금 ${wr(s.mySP)}`);
+      return row('나 공적연금', (parts.length ? parts.join(' + ') : '0원 (수령 전)') + ` = <b>${wr(total)}</b>`);
+    }
+    case 'pub-wife': {
+      const total = s.wifePublicInc || 0;
+      const parts = [];
+      if ((s.wifeNP||0) > 0) parts.push(`국민연금 ${wr(s.wifeNP)}`);
+      if ((s.wifeGP||0) > 0) parts.push(`공무원연금 ${wr(s.wifeGP)}`);
+      if ((s.wifeSP||0) > 0) parts.push(`사학연금 ${wr(s.wifeSP)}`);
+      return row('배우자 공적연금', (parts.length ? parts.join(' + ') : '0원 (수령 전)') + ` = <b>${wr(total)}</b>`);
+    }
+    case 'dc': {
+      const dcOut = withdrawals[yr]?.[accId]?.dcOut || 0;
+      const totalDcOut = allAccIds.filter(id => DC_ACC_IDS.has(id)).reduce((a, id) => a + (withdrawals[yr]?.[id]?.dcOut||0), 0);
+      const effRate = totalDcOut > 0 ? s.retireTax / totalDcOut : (s.retireTaxRateEff || 0);
+      const tax = Math.round(dcOut * effRate);
+      return row('퇴직소득세 인출 (DC계좌)',
+        `인출 ${wr(dcOut)} × 퇴직세율 ${(effRate*100).toFixed(1)}% = 세금 ${wr(tax)} → 순수령 <b>${wr(dcOut - tax)}</b>`);
+    }
+    case 'anse': {
+      const anseOut = withdrawals[yr]?.[accId]?.anseOut || 0;
+      return row('안전마진(비과세) 인출',
+        `인출 <b>${wr(anseOut)}</b> — 안전마진 범위 내 비과세, 세금 없음 → 전액 수령`);
+    }
+    case 'pension': {
+      const regularOut = withdrawals[yr]?.[accId]?.regularOut || 0;
+      const totalRegOut = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
+      const effRate = totalRegOut > 0 ? s.pensionTax / totalRegOut : ((wp.pensionTaxRate||3.3)/100);
+      const tax = Math.round(regularOut * effRate);
+      return row('연금소득세 인출',
+        `인출 ${wr(regularOut)} × 연금세율 ${(effRate*100).toFixed(1)}% = 세금 ${wr(tax)} → 순수령 <b>${wr(regularOut - tax)}</b>`);
+    }
+    case 'total-priv': {
+      const anseT = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.anseOut||0), 0);
+      const dcT   = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.dcOut||0), 0);
+      const regT  = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
+      return row('사적연금 소계',
+        `안세공 ${wr(anseT)} + 퇴직 ${wr(dcT)} + 연금세 ${wr(regT)} = <b>${wr(s.totalPriv)}</b>`);
+    }
+    case 'total-inc': {
+      return row('인출 합계',
+        `사적 ${wr(s.totalPriv)} + 나 공적 ${wr(s.myPublicInc||0)} + 배우자 공적 ${wr(s.wifePublicInc||0)} = <b>${wr(s.totalInc)}</b>`);
+    }
+    case 'target': {
+      const base = (wp.annualTarget || 0) * 1_000_000;
+      const inflYrs = yr - startYear;
+      return row('인출 목표액',
+        `목표 ${wr(base)} × (1+${wp.inflation}%)^${inflYrs}년 = <b>${wr(s.target)}</b> (인플레이션 반영)`);
+    }
+    case 'retire-tax': {
+      const totalDcOut = allAccIds.filter(id => DC_ACC_IDS.has(id)).reduce((a, id) => a + (withdrawals[yr]?.[id]?.dcOut||0), 0);
+      const effRate = totalDcOut > 0 ? s.retireTax / totalDcOut : (s.retireTaxRateEff || 0);
+      return row('퇴직소득세',
+        `DC인출 ${wr(totalDcOut)} × 실효세율 ${(effRate*100).toFixed(1)}% = <b>${wr(s.retireTax)}</b>`);
+    }
+    case 'pension-tax': {
+      const totalRegOut = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
+      const effRate = totalRegOut > 0 ? s.pensionTax / totalRegOut : ((wp.pensionTaxRate||3.3)/100);
+      return row('연금소득세',
+        `연금세인출 ${wr(totalRegOut)} × 세율 ${(effRate*100).toFixed(1)}% = <b>${wr(s.pensionTax)}</b>`);
+    }
+    case 'np-tax': {
+      const pubTotal = (s.myPublicInc||0) + (s.wifePublicInc||0);
+      return row('국민연금세',
+        `공적연금 합계 ${wr(pubTotal)} × ${wp.npTaxRate||4}% = <b>${wr(s.npTax)}</b>`);
+    }
+    case 'net': {
+      const net = s.totalInc - s.totalTax;
+      return row('세후 수령액',
+        `인출합계 ${wr(s.totalInc)} − 총세금 ${wr(s.totalTax)} (퇴직 ${wr(s.retireTax)} + 연금 ${wr(s.pensionTax)} + 국민 ${wr(s.npTax)}) = <b>${wr(net)}</b>`);
+    }
+    case 'pv': {
+      const net = s.totalInc - s.totalTax;
+      const pv = net / Math.pow(1 + inf, yr - todayYear);
+      return row('현재가치 환산',
+        `세후 ${wr(net)} ÷ (1+${wp.inflation}%)^${yr - todayYear}년 = <b>${wr(pv)}</b>`);
+    }
+    case 'bal-dc': {
+      const bal = balances[yr]?.[accId]?.dcPrincipal || 0;
+      const out = withdrawals[yr]?.[accId]?.dcOut || 0;
+      return row('잔액 — 퇴직소득세분',
+        `${yr}년말 잔액 <b>${wr(bal)}</b>${out > 0 ? ` (해당연도 인출 ${wr(out)})` : ''}`);
+    }
+    case 'bal-anse': {
+      const bal = balances[yr]?.[accId]?.anse || 0;
+      const out = withdrawals[yr]?.[accId]?.anseOut || 0;
+      return row('잔액 — 안전마진(비과세)분',
+        `${yr}년말 잔액 <b>${wr(bal)}</b>${out > 0 ? ` (해당연도 인출 ${wr(out)})` : ''}`);
+    }
+    case 'bal-regular': {
+      const bal = balances[yr]?.[accId]?.regular || 0;
+      const out = withdrawals[yr]?.[accId]?.regularOut || 0;
+      return row('잔액 — 연금소득세분',
+        `${yr}년말 잔액 <b>${wr(bal)}</b>${out > 0 ? ` (해당연도 인출 ${wr(out)})` : ''}`);
+    }
+    case 'bal-total': {
+      const myAcc = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
+      const myTotal = myAcc.reduce((a, id) => a + (balances[yr]?.[id]?.total||0), 0);
+      const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id));
+      const wifeTotal = yr >= wifeStartYear ? wifeIds.reduce((a, id) => a + (balances[yr]?.[id]?.total||0), 0) : 0;
+      return row('전체 잔액',
+        `나 ${wr(myTotal)}${wifeTotal > 0 ? ` + 배우자 ${wr(wifeTotal)}` : ''} = <b>${wr(myTotal + wifeTotal)}</b>`);
+    }
+    default:
+      return `<div class="wci-title">${type} (${yr}년)</div><div class="wci-formula">정보 없음</div>`;
+  }
 }
 
 // ===== 📊 계좌 통합 및 정리 =====
@@ -8197,6 +8378,7 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 <div class="app-version" id="appVersion"></div>
+<div id="wd-cell-info"></div>
 </body>
 </html>
                                              
