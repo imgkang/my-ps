@@ -60,7 +60,7 @@
   }
   .hdr-btn.active { color: var(--primary); width: auto; padding: 0 10px; gap: 6px; }
   .hdr-btn:hover { color: var(--text); }
-  .hdr-title { font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .hdr-title { display: none; font-size: 14px; font-weight: 700; white-space: nowrap; }
   .hdr-btn-external { display: none; }
   h1 { font-size: 22px; margin: 0; }
   .subtitle { font-size: 13px; color: var(--muted); margin-top: 4px; }
@@ -2254,7 +2254,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.128';
+const APP_VERSION = 'MyPM v0.129';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6407,6 +6407,8 @@ function applyNavVisibility() {
   const showKDeal = appSettings.showKDeal !== false;
   document.querySelectorAll('a[href="NonK.html"]').forEach(el => el.style.display = showNonK  ? '' : 'none');
   document.querySelectorAll('a[href="KDeal.html"]').forEach(el => el.style.display = showKDeal ? '' : 'none');
+  const titleEl = document.querySelector('.hdr-title');
+  if (titleEl) titleEl.style.display = (!showNonK && !showKDeal) ? '' : 'none';
 }
 function closeThenDrive() { closeSettingsModal(); openDriveModal(); }
 function handleSettingsBackdropClick(e) { if (e.target.id === 'settingsModal') closeSettingsModal(); }
