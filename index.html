@@ -2253,7 +2253,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.130';
+const APP_VERSION = 'MyPM v0.131';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6407,7 +6407,7 @@ function applyNavVisibility() {
   document.querySelectorAll('a[href="NonK.html"]').forEach(el => el.style.display = showNonK  ? '' : 'none');
   document.querySelectorAll('a[href="KDeal.html"]').forEach(el => el.style.display = showKDeal ? '' : 'none');
   const titleEl = document.querySelector('.hdr-title');
-  if (titleEl) titleEl.style.display = (!showNonK && !showKDeal) ? '' : 'none';
+  if (titleEl) titleEl.style.display = (!showNonK && !showKDeal) ? 'block' : 'none';
 }
 function closeThenDrive() { closeSettingsModal(); openDriveModal(); }
 function handleSettingsBackdropClick(e) { if (e.target.id === 'settingsModal') closeSettingsModal(); }
