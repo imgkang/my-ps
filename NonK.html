@@ -354,7 +354,7 @@
     border-radius: 8px;
   }
   .records-inner { min-width: max-content; }
-  .records-body-wrap { overflow-y: auto; max-height: 368px; }
+  .records-body-wrap { overflow-y: auto; overflow-x: clip; max-height: 368px; }
   .records-table-header,
   .records-row {
     display: grid;
@@ -366,11 +366,13 @@
     border-bottom: 1px solid var(--border);
     font-size: 11px;
   }
-  .records-row {
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
+  .records-table-header > :first-child {
+    position: sticky; left: 0; z-index: 2; background: #f9fafb;
   }
-  .records-row:hover { background: #f0f9ff; }
+  .records-row { border-bottom: 1px solid var(--border); }
+  .records-row > :first-child {
+    position: sticky; left: 0; z-index: 1; background: #fff;
+  }
   .records-row:last-child { border-bottom: none; }
   .records-row .amount { text-align: right; }
   .records-row .total { text-align: right; font-weight: 700; color: #1e40af; }
@@ -411,7 +413,10 @@
   .detail-table th:first-child, .detail-table td:first-child {
     text-align: left; padding-left: 10px;
     white-space: normal; min-width: 140px; max-width: 220px;
+    position: sticky; left: 0; z-index: 1;
   }
+  .detail-table th:first-child { background: #f9fafb; z-index: 2; }
+  .detail-table td:first-child { background: #fff; }
   .detail-table tfoot td {
     font-weight: 700; border-top: 2px solid var(--border);
     border-bottom: none; background: #f0fdf4;
@@ -617,7 +622,7 @@
     border-radius: 8px; margin-bottom: 16px;
   }
   .div-records-inner { min-width: max-content; }
-  .div-records-body { overflow-y: auto; max-height: 248px; }
+  .div-records-body { overflow-y: auto; overflow-x: clip; max-height: 248px; }
   .div-table-header, .div-record-row {
     display: grid; gap: 6px; padding: 7px 10px;
     font-size: 12px; align-items: center;
@@ -626,7 +631,13 @@
     background: #f9fafb; font-weight: 600; color: var(--muted);
     border-bottom: 1px solid var(--border); font-size: 11px;
   }
+  .div-table-header > :first-child {
+    position: sticky; left: 0; z-index: 2; background: #f9fafb;
+  }
   .div-record-row { border-bottom: 1px solid var(--border); }
+  .div-record-row > :first-child {
+    position: sticky; left: 0; z-index: 1; background: #fff;
+  }
   .div-record-row:last-child { border-bottom: none; }
   .div-record-row .amount { text-align: right; }
   .div-record-row .total { text-align: right; font-weight: 700; color: #1e40af; }
@@ -1021,7 +1032,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.111';
+const APP_VERSION = 'NonK v0.112';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2164,19 +2175,20 @@ function nkRenderRecordsList() {
     list.innerHTML = '<div class="records-empty">아직 기록이 없습니다.</div>';
     return;
   }
-  const cols = `80px ${NK_ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 48px`;
+  const cols = `80px ${NK_ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 90px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `<span>연/월</span>${NK_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
   const sorted = [...nkMonthlyRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
   list.innerHTML = sorted.map(rec => {
     const total = NK_ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
     const cells = NK_ACCOUNTS.map(a => `<span class="amount">${fmtUSD(Number(rec.accounts[a.id])||0)}</span>`).join('');
-    return `<div class="records-row" style="grid-template-columns:${cols}" onclick="nkEditMonthlyRecord('${rec.id}')">
+    return `<div class="records-row" style="grid-template-columns:${cols}">
       <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>
       ${cells}
       <span class="total">${fmtUSD(total)}</span>
       <span>
-        <button class="del-btn" onclick="event.stopPropagation();nkDeleteMonthlyRecord('${rec.id}')">삭제</button>
+        <button class="edit-btn" onclick="nkEditMonthlyRecord('${rec.id}')">편집</button>
+        <button class="del-btn" onclick="nkDeleteMonthlyRecord('${rec.id}')">삭제</button>
       </span>
     </div>`;
   }).join('');

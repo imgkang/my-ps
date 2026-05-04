@@ -76,8 +76,8 @@
     font-size:10px; font-weight:600; color:var(--muted);
     border-bottom:1px solid var(--border); white-space:nowrap; }
   .kd-table td { padding:5px 4px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
-  .kd-table th:first-child, .kd-table td:first-child {
-    padding-left:10px; white-space:normal; min-width:140px; max-width:220px; }
+  .kd-table th:first-child { padding-left:10px; white-space:normal; min-width:140px; max-width:220px; position:sticky; left:0; z-index:2; background:#f9fafb; }
+  .kd-table td:first-child { padding-left:10px; white-space:normal; min-width:140px; max-width:220px; position:sticky; left:0; z-index:1; background:#fff; }
   .kd-table tr:last-child td { border-bottom:none; }
   .kd-table tr:hover td { background:#fafafa; }
   .kd-pos-table { font-size:15px; }
@@ -1701,7 +1701,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v0.111';
+const APP_VERSION = 'KDeal v0.112';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
