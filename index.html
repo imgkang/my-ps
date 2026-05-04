@@ -2267,7 +2267,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.117';
+const APP_VERSION = 'MyPM v0.118';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4583,7 +4583,11 @@ function render() {
   statusText.textContent = `보유종목 ${holdings.length}개 · 현금 ${formatKRW(totalCash)} · 총 평가 ${formatKRW(totalValue)}`;
 
   if (!holdings.length && !totalCash) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">📈</div><div>위에서 종목을 추가하거나 현금을 입력해 주세요</div></div>`;
+    container.innerHTML = `
+      <div class="empty-state"><div class="icon">📈</div><div>위에서 종목을 추가하거나 현금을 입력해 주세요</div></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
+      </div>`;
     return;
   }
 
