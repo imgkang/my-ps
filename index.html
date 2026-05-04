@@ -436,8 +436,9 @@
   }
   .records-list-wrap {
     overflow-x: auto; border: 1px solid var(--border);
-    border-radius: 8px; max-height: 400px;
+    border-radius: 8px;
   }
+  .records-body-wrap { overflow-y: auto; overflow-x: hidden; max-height: 368px; }
   .records-table-header,
   .records-row {
     display: grid;
@@ -446,7 +447,6 @@
   }
   .records-table-header {
     background: #f9fafb; font-weight: 600; color: var(--muted);
-    position: sticky; top: 0; z-index: 1;
     border-bottom: 1px solid var(--border);
     font-size: 11px;
   }
@@ -748,15 +748,15 @@
   }
   .div-records-wrap {
     overflow-x: auto; border: 1px solid var(--border);
-    border-radius: 8px; max-height: 280px; margin-bottom: 16px;
+    border-radius: 8px; margin-bottom: 16px;
   }
+  .div-records-body { overflow-y: auto; overflow-x: hidden; max-height: 248px; }
   .div-table-header, .div-record-row {
     display: grid; gap: 6px; padding: 7px 10px;
     font-size: 12px; align-items: center;
   }
   .div-table-header {
     background: #f9fafb; font-weight: 600; color: var(--muted);
-    position: sticky; top: 0; z-index: 1;
     border-bottom: 1px solid var(--border); font-size: 11px;
   }
   .div-record-row { border-bottom: 1px solid var(--border); }
@@ -1810,7 +1810,7 @@
 
     <div class="records-list-wrap">
       <div class="records-table-header" id="recordsTableHeader"></div>
-      <div id="recordsList"></div>
+      <div class="records-body-wrap"><div id="recordsList"></div></div>
     </div>
 
 </div><!-- /panel-records -->
@@ -2225,19 +2225,19 @@
       <div class="div-section-title">종목별 배당 내역</div>
       <div class="div-records-wrap">
         <div class="div-table-header" id="divStockTableHeader"></div>
-        <div id="divStockRecordsList"></div>
+        <div class="div-records-body"><div id="divStockRecordsList"></div></div>
       </div>
       <div class="div-section-title" style="margin-top:16px">계좌별 배당 내역</div>
       <div class="div-records-wrap">
         <div class="div-table-header" id="divAccTableHeader"></div>
-        <div id="divAccRecordsList"></div>
+        <div class="div-records-body"><div id="divAccRecordsList"></div></div>
       </div>
     </div>
 
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.108';
+const APP_VERSION = 'MyPM v0.109';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
