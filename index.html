@@ -902,8 +902,8 @@
   }
   .wd-table th { background: #f1f5f9; font-size: 9.5px; font-weight: 600; color: #475569; text-align: center; }
   .wd-table th:first-child { text-align: left; position: sticky; left: 0; z-index: 2; background: #f1f5f9; box-shadow: 2px 0 0 0 #e2e8f0; }
-  .wd-table td:first-child { text-align: left; }
-  .wd-table td:first-child:not([colspan]):not(.wd-sub) { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 2px 0 0 0 #e2e8f0; }
+  .wd-table td:first-child { text-align: left; background: #fff; }
+  .wd-table td:first-child:not(.wd-sub) { position: sticky; left: 0; z-index: 1; box-shadow: 2px 0 0 0 #e2e8f0; }
   .wd-table .wd-sub  { background: #fafafa; color: #64748b; font-size: 9.5px; text-align: center; }
   .wd-table .wd-init { background: #fffbeb; font-weight: 600; color: #92400e; }
   .wd-table .wd-np-row td  { background: #f0fdf4; color: #166534; font-weight: 500; }
@@ -2267,7 +2267,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.115';
+const APP_VERSION = 'MyPM v0.116';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
