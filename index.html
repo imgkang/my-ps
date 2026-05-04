@@ -476,7 +476,7 @@
   }
   .detail-summary .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
   .detail-summary .stat-value { font-size: 17px; font-weight: 700; margin-top: 4px; }
-  .pf-hero { padding: 22px 24px 18px; margin-bottom: 10px; }
+  .pf-hero { padding: 22px 24px 18px; margin-bottom: 10px; background: #e8f8ef; }
   .pf-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
   .pf-hero-value {
     font-size: 38px; font-weight: 800; color: var(--text);
@@ -491,7 +491,7 @@
   .pf-hero-label { font-size: 12px; font-weight: 500; color: var(--text); }
   .pf-hero-since {
     margin-top: 10px; padding-top: 10px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #b2dfc5;
     line-height: 1.8; word-break: keep-all;
   }
   .pf-hero-since-static { font-size: 12px; color: var(--muted); }
@@ -2217,7 +2217,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.126';
+const APP_VERSION = 'MyPM v2.128';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4728,7 +4728,7 @@ function render() {
         </tfoot>
       </table>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+    <div style="display:flex;justify-content:flex-end;margin-top:4px">
       <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     </div>
   `;
