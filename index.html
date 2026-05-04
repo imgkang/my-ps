@@ -2255,7 +2255,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.137';
+const APP_VERSION = 'MyPM v0.138';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7933,10 +7933,17 @@ function initGIS(skipSilentAuth = false) {
 
 function driveSignIn() {
   if (!driveClientId) { alert('Client ID를 입력해주세요.'); return; }
-  if (!window._gisClient) { initGIS(); setTimeout(driveSignIn, 600); return; }
+  // GIS 스크립트가 아직 로드되지 않은 경우 지연 로드 후 재시도
+  if (!document.querySelector('script[src*="gsi/client"]')) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = driveSignIn;
+    document.head.appendChild(s);
+    return;
+  }
+  if (!window._gisClient) { initGIS(true); setTimeout(driveSignIn, 600); return; }
   const hint = localStorage.getItem('drive_user_hint') || '';
-  // 이전에 동의한 적 있으면 prompt:'' + hint로 계정 선택 생략
-  // 처음이면 prompt:'consent'로 전체 흐름
   window._gisClient.requestAccessToken(hint ? { prompt: '', hint } : { prompt: 'consent' });
 }
 function driveSignOut() {
