@@ -11,8 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
   :root {
-    --primary: #ea580c;
-    --primary-dark: #c2410c;
+    --primary: #166534;
+    --primary-dark: #14532d;
     --bg: #f5f7fa;
     --card: #ffffff;
     --text: #1f2937;
@@ -59,7 +59,7 @@
 
   /* Summary card */
   .kd-summary-card {
-    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    background: linear-gradient(135deg, #166534 0%, #14532d 100%);
     color:#fff; padding:18px 20px; border-radius:12px;
     box-shadow:var(--shadow); margin-bottom:16px;
   }
@@ -67,8 +67,8 @@
     display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; }
   .kd-summary-label { font-size:11px; opacity:0.85; margin-bottom:4px; font-weight:500; }
   .kd-summary-value { font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .kd-summary-value.pos { color:#86efac; }
-  .kd-summary-value.neg { color:#fca5a5; }
+  .kd-summary-value.pos { color:#fca5a5; }
+  .kd-summary-value.neg { color:#93c5fd; }
 
   /* Table */
   .kd-table { width:100%; border-collapse:collapse; font-size:11px; }
@@ -99,8 +99,8 @@
 
   .ta-r { text-align:right; }
   .ta-c { text-align:center; }
-  .pos { color:#16a34a; }
-  .neg { color:#dc2626; }
+  .pos { color:#e53935; }
+  .neg { color:#1e88e5; }
   .muted { color:var(--muted); }
   .kd-name { font-weight:600; font-size:12px; }
   .kd-code { font-size:11px; color:var(--muted); margin-top:1px; }
@@ -168,7 +168,7 @@
 
   /* Hero summary card */
   .kd-hero { padding: 22px 24px 18px; margin-bottom: 10px;
-    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: #fff; }
+    background: linear-gradient(135deg, #166534 0%, #14532d 100%); color: #fff; }
   .kd-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
   .kd-hero-value { font-size: 38px; font-weight: 800; color: #fff;
     font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; }
@@ -176,8 +176,8 @@
   .kd-hero-row { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
     line-height: 1.6; display: flex; align-items: baseline; gap: 6px; }
   .kd-hero-label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); }
-  .kd-hero .diff-positive { color: #86efac; }
-  .kd-hero .diff-negative { color: #fca5a5; }
+  .kd-hero .diff-positive { color: #fca5a5; }
+  .kd-hero .diff-negative { color: #93c5fd; }
 
   /* Refresh status */
   #kdRefreshStatus { font-size:12px; color:var(--muted); }
@@ -1701,7 +1701,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v0.138';
+const APP_VERSION = 'KDeal v0.139';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
