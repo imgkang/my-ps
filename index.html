@@ -642,15 +642,7 @@ Chart.register({
   #depositList .txn-row:last-child { border-bottom: none; }
   #depositList .txn-row:hover { background: #fafafa; }
   #depositList .txn-acc { font-weight: 500; color: var(--text); }
-  #depositList .txn-date {
-    border: 1px solid transparent; background: transparent;
-    color: var(--text); font-size: 12px;
-    padding: 3px 6px; border-radius: 4px;
-    font-family: inherit; box-sizing: border-box;
-    width: 100%;
-  }
-  #depositList .txn-date:hover { background: #f3f4f6; border-color: var(--border); }
-  #depositList .txn-date:focus { background: #fff; border-color: var(--primary); outline: none; }
+  #depositList .txn-date { color: var(--text); font-size: 12px; }
   #depositList .txn-amount {
     text-align: right; font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -1063,7 +1055,7 @@ Chart.register({
       grid-template-columns: 88px 1fr 1fr 60px;
       gap: 4px; padding: 6px 8px; font-size: 12px;
     }
-    #depositList .txn-date { font-size: 11px; padding: 2px 4px; }
+    #depositList .txn-date { font-size: 11px; }
     #depositList .txn-acc { font-size: 12px; }
     .txn-anse-badge { font-size: 10px; padding: 1px 5px; }
     /* 이전 모달 정보 그리드 */
@@ -2263,7 +2255,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.134';
+const APP_VERSION = 'MyPM v0.135';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2647,7 +2639,7 @@ function renderDepositList() {
       ? `<span class="txn-anse-badge" style="background:#eef2ff;color:#3730a3">계좌이전</span>` : '';
     return `
       <div class="txn-row">
-        <input type="date" class="txn-date" value="${t.date}" data-txnid="${t.id}" onchange="updateTxnDate('${t.id}', this.value)" title="입출금일 수정">
+        <span class="txn-date">${t.date}</span>
         <span class="txn-acc">${accName}</span>
         <span class="txn-amount ${amountCls}">${amountStr}${anseBadge}${transferBadge}</span>
         <span style="display:flex;align-items:center;gap:2px">
