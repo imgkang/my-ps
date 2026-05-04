@@ -1092,7 +1092,7 @@
 <body>
 <div class="container">
   <header>
-    <a href="./" class="hdr-btn active" onclick="return false" title="My PM">
+    <a href="./" class="hdr-btn active" onclick="refreshAll(); return false;" title="가격 갱신">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
         <polyline points="9 22 9 12 15 12 15 22"/>
@@ -2218,7 +2218,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.140';
+const APP_VERSION = 'MyPM v2.141';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
