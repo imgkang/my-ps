@@ -68,11 +68,13 @@
   .kd-summary-value.neg { color:#fca5a5; }
 
   /* Table */
-  .kd-table { width:100%; border-collapse:collapse; font-size:12px; }
-  .kd-table th { background:#f9fafb; padding:7px 10px; text-align:left;
-    font-size:11px; font-weight:600; color:var(--muted);
+  .kd-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .kd-table th { background:#f9fafb; padding:5px 4px; text-align:left;
+    font-size:10px; font-weight:600; color:var(--muted);
     border-bottom:1px solid var(--border); white-space:nowrap; }
-  .kd-table td { padding:8px 10px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+  .kd-table td { padding:5px 4px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+  .kd-table th:first-child, .kd-table td:first-child {
+    padding-left:10px; white-space:normal; min-width:140px; max-width:220px; }
   .kd-table tr:last-child td { border-bottom:none; }
   .kd-table tr:hover td { background:#fafafa; }
   .ta-r { text-align:right; }
@@ -80,7 +82,7 @@
   .pos { color:#16a34a; }
   .neg { color:#dc2626; }
   .muted { color:var(--muted); }
-  .kd-name { font-weight:600; font-size:13px; }
+  .kd-name { font-weight:600; font-size:12px; }
   .kd-code { font-size:11px; color:var(--muted); margin-top:1px; }
   .kd-empty { padding:32px 20px; text-align:center; color:var(--muted); font-size:13px; }
 
@@ -145,14 +147,17 @@
   }
 
   /* Hero summary card */
-  .kd-hero { padding: 22px 24px 18px; margin-bottom: 10px; background: #e8f8ef; }
+  .kd-hero { padding: 22px 24px 18px; margin-bottom: 10px;
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: #fff; }
   .kd-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
-  .kd-hero-value { font-size: 38px; font-weight: 800; color: var(--text);
+  .kd-hero-value { font-size: 38px; font-weight: 800; color: #fff;
     font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; }
-  .kd-hero-unit { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .kd-hero-unit { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.75); }
   .kd-hero-row { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
     line-height: 1.6; display: flex; align-items: baseline; gap: 6px; }
-  .kd-hero-label { font-size: 12px; font-weight: 500; color: var(--text); }
+  .kd-hero-label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); }
+  .kd-hero .diff-positive { color: #86efac; }
+  .kd-hero .diff-negative { color: #fca5a5; }
 
   /* Refresh status */
   #kdRefreshStatus { font-size:12px; color:var(--muted); }
@@ -236,7 +241,13 @@
 
   <!-- Open positions (요약 바로 아래) -->
   <div class="card">
-    <h2>📈 오픈 포지션</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">📈 오픈 포지션</h2>
+      <div style="display:flex;gap:6px">
+        <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="kdOpenTradeModal()">+ 거래 추가</button>
+        <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="kdOpenDepositModal()">💳 입출금</button>
+      </div>
+    </div>
     <div id="kdPositionsContainer"><div class="kd-empty">오픈 포지션이 없습니다.</div></div>
   </div>
 
@@ -244,10 +255,6 @@
   <div class="card" id="kdTimelineWrap" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <h2 style="margin:0">📊 자산 변화 추이</h2>
-      <div style="display:flex;gap:6px">
-        <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="kdOpenTradeModal()">+ 거래 추가</button>
-        <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="kdOpenDepositModal()">💳 입출금</button>
-      </div>
     </div>
     <div style="position:relative;height:200px;margin-bottom:8px">
       <canvas id="kdTimelineChart"></canvas>
@@ -826,18 +833,24 @@ function kdRender() {
     const fmtTS = (n) => (n >= 0 ? '+' : '') + Math.round(n / 1000).toLocaleString('ko-KR');
     const fmtPctRow = v => v != null ? `(${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%)` : '';
     const uCls = unrealPnl >= 0 ? 'diff-positive' : 'diff-negative';
-    const rCls = totalRealizedPnl >= 0 ? 'diff-positive' : 'diff-negative';
     const tCls = totalReturn >= 0 ? 'diff-positive' : 'diff-negative';
     const unrealRate = totalCost > 0 ? unrealPnl / totalCost : null;
     const totPnl = unrealPnl + totalRealizedPnl;
-    const totCls = totPnl >= 0 ? 'diff-positive' : 'diff-negative';
+    let totalDayChange = 0;
+    for (const p of positions) {
+      const info = kdPrices[p.code];
+      totalDayChange += (info ? (info.change || 0) : 0) * p.qty;
+    }
+    const dayChangeCls = totalDayChange >= 0 ? 'diff-positive' : 'diff-negative';
+    const dayEvalBase = totalEval - totalDayChange;
+    const dayRate = dayEvalBase > 0 ? totalDayChange / dayEvalBase : 0;
     hero.innerHTML = `<div class="card kd-hero">
       <div class="kd-hero-value-row">
         <div class="kd-hero-value">${fmtT(totalAssets)}</div>
         <div class="kd-hero-unit">(천원)</div>
       </div>
+      <div class="kd-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPctRow(dayRate)}</span><span class="kd-hero-label">오늘</span></div>
       <div class="kd-hero-row ${uCls}"><span>${fmtTS(unrealPnl)} ${fmtPctRow(unrealRate)}</span><span class="kd-hero-label">미실현</span></div>
-      <div class="kd-hero-row ${rCls}"><span>${fmtTS(totalRealizedPnl)}</span><span class="kd-hero-label">실현</span></div>
       <div class="kd-hero-row ${tCls}"><span>${fmtTS(totPnl)} ${fmtPctRow(totalReturn)}</span><span class="kd-hero-label">누적</span></div>
     </div>`;
   }
@@ -1369,7 +1382,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v2.7';
+const APP_VERSION = 'KDeal v2.9';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
