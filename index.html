@@ -1300,9 +1300,12 @@
     <div class="cfg-tab-pane active" id="cfgPaneGeneral">
       <div class="cfg-section">💾 데이터</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
-        <button class="drive-btn" id="driveNavBtn" onclick="closeThenDrive()" style="width:100%;justify-content:center;padding:10px">
-          ☁️ <span id="driveNavLabel">Drive 연결 / 동기화</span>
-        </button>
+        <div style="display:flex;gap:6px">
+          <button class="drive-btn" id="driveNavBtn" onclick="closeThenDrive()" style="flex:1;justify-content:center;padding:7px 8px">
+            ☁️ <span id="driveNavLabel">Drive 연결 / 동기화</span>
+          </button>
+          <button onclick="resetAllData()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #dc2626;color:#dc2626;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500">🗑️ 데이터 초기화</button>
+        </div>
         <div style="display:flex;gap:6px">
           <button class="btn-secondary" style="flex:1;padding:9px 6px;font-size:13px" onclick="exportToFile()">💾 파일로 저장</button>
           <button class="btn-secondary" style="flex:1;padding:9px 6px;font-size:13px" onclick="document.getElementById('importFile').click()">📂 파일 불러오기</button>
@@ -2264,7 +2267,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.114';
+const APP_VERSION = 'MyPM v0.115';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6209,6 +6212,23 @@ function toggleWdHelp() {
 }
 
 // ===== ⚙️ 앱 설정 모달 =====
+
+function resetAllData() {
+  if (!confirm('⚠️ 정말로 모든 데이터를 초기화하시겠습니까?\n\n포트폴리오, 계좌기록, 배당기록, 연간계획, 인출계획 등\n모든 입력 데이터가 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다.')) return;
+  [
+    APP_SETTINGS_KEY, STORAGE_KEY, CASH_KEY, CASH_ACCOUNTS_KEY,
+    DEPOSITS_KEY, AUTO_REFRESH_KEY, MONTHLY_RECORDS_KEY,
+    ANNUAL_PLAN_KEY, DIVIDEND_KEY, WITHDRAWAL_KEY,
+    WD_SCENARIO_KEY, DRIVE_SETTINGS_KEY,
+    'pension_trans_logs', 'drive_token_v2', 'drive_user_hint',
+    'nonk_holdings_v1', 'nonk_cash_v1', 'nonk_deposits_v1',
+    'nonk_monthly_v1', 'nonk_dividends_v1',
+    'kdeal_trades_v1', 'kdeal_deposits_v1', 'kdeal_watchlist_v1',
+  ].forEach(k => localStorage.removeItem(k));
+  alert('초기화 완료. 앱을 새로 시작합니다.');
+  location.reload();
+}
+
 let _cfgActiveAccIds  = { my: [], wife: [] };
 let _cfgExtraAccounts = { my: [], wife: [] };
 let _cfgToggles = { myNP: true, myGP: false, mySP: false, wifeNP: true, wifeGP: false, wifeSP: false };
