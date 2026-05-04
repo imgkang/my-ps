@@ -19,7 +19,7 @@
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
   .app-version {
-    position: fixed; top: 16px; right: 10px; z-index: 9999;
+    position: fixed; top: 58px; right: 4px; z-index: 9999;
     font-size: 13px; color: rgba(0,0,0,0.55); font-weight: 700;
     pointer-events: none;
     font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
@@ -748,6 +748,21 @@
     width: 100%; padding: 4px 6px; font-size: 13px;
     border: 1px solid var(--border); border-radius: 4px; text-align: right;
   }
+
+  /* NonK hero card */
+  .nk-hero { padding: 22px 24px 18px; margin-bottom: 10px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff; border-radius: 12px; box-shadow: var(--shadow); }
+  .nk-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .nk-hero-value { font-size: 38px; font-weight: 800; color: #fff;
+    font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; }
+  .nk-hero-row { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
+    line-height: 1.6; display: flex; align-items: baseline; gap: 6px; }
+  .nk-hero-label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); }
+  .nk-hero .diff-positive { color: #86efac; }
+  .nk-hero .diff-negative { color: #fca5a5; }
+  .nk-action-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .nk-action-btns button { font-size: 12px; padding: 6px 12px; }
 </style>
 </head>
 <body>
@@ -805,15 +820,7 @@
   </div>
 </div>
 
-  <div class="toolbar">
-    <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
-    <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
-    <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
-    <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
-    <button class="btn-secondary" onclick="nkExportToFile()">💾 파일로 저장</button>
-    <button class="btn-secondary" onclick="document.getElementById('nkImportFile').click()">📂 파일 불러오기</button>
-    <input type="file" id="nkImportFile" accept=".json" style="display:none" onchange="nkImportFromFile(event)">
-  </div>
+  <div id="nkHeroContainer"></div>
 
   <div class="card">
     <div class="status-bar">
@@ -1030,7 +1037,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.29';
+const APP_VERSION = 'NonK v1.30';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1314,7 +1321,20 @@ function nkRender() {
   if (!container) return;
 
   if (!nkHoldings.length) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">🇺🇸</div><div>\'+ 종목 추가\' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>';
+    const heroEl0 = document.getElementById('nkHeroContainer');
+    if (heroEl0) heroEl0.innerHTML = `<div class="card nk-hero">
+      <div class="nk-hero-value-row"><div class="nk-hero-value">$0</div></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">오늘</span></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">누적</span></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">XIRR</span></div>
+    </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="icon">🇺🇸</div><div>'+ 종목 추가' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>
+    <div class="nk-action-btns">
+      <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+    </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     nkRenderAccountButtons();
     return;
@@ -1346,16 +1366,23 @@ function nkRender() {
   const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
   const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
 
-  // Summary grid
-  const summaryHtml = `
-    <div class="detail-summary" style="margin-bottom:12px">
-      <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${deposited > 0 ? fmtUSD(deposited) : '-'}</span></div>
-      <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalValue)}</span></div>
-      <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}</span></div>
-      <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${pnl >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? fmtUSDSigned(pnl) : '-'}</span></div>
-      <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${pnlRate >= 0 ? 'pos' : 'neg'}">${deposited > 0 ? (pnlRate >= 0 ? '+' : '') + pnlRate.toFixed(2) + '%' : '-'}</span></div>
-      <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${xirrCls}" title="입출금 내역 기준 연환산 내부수익률">${xirrText}</span></div>
-    </div>`;
+  // Hero card
+  const tvYest = totalValue - todayPnl;
+  const todayRate = tvYest > 0 ? todayPnl / tvYest * 100 : 0;
+  const heroDayCls = todayPnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroDaySign = todayPnl >= 0 ? '+' : '';
+  const heroDayRSign = todayRate >= 0 ? '+' : '';
+  const heroPnlCls = pnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroPnlSign = pnl >= 0 ? '+' : '';
+  const heroPnlRSign = pnlRate >= 0 ? '+' : '';
+  const heroXirrCls = (xirrRate == null || xirrRate >= 0) ? 'diff-positive' : 'diff-negative';
+  const heroEl = document.getElementById('nkHeroContainer');
+  if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
+    <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtUSD(totalValue)}</div></div>
+    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} ${heroDayRSign}${todayRate.toFixed(2)}%</span><span class="nk-hero-label">오늘</span></div>
+    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtUSD(pnl) + ' ' + heroPnlRSign + pnlRate.toFixed(2) + '%' : '-'}</span><span class="nk-hero-label">누적</span></div>
+    <div class="nk-hero-row ${heroXirrCls}"><span>${xirrText}</span><span class="nk-hero-label">XIRR</span></div>
+  </div>`;
 
   // Holdings table — My PM style
   const items = nkHoldings.map(h => {
@@ -1466,8 +1493,6 @@ function nkRender() {
   const dayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
   const totPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
   const totPSign = pnl >= 0 ? '+' : '';
-  const totalValueYesterday = totalValue - todayPnl;
-  const todayRate = totalValueYesterday > 0 ? todayPnl / totalValueYesterday * 100 : 0;
   const todayRateSign = todayRate >= 0 ? '+' : '';
   tableHtml += `
     </tbody>
@@ -1487,9 +1512,15 @@ function nkRender() {
     </tr></tfoot>
   </table></div>`;
 
-  container.innerHTML = summaryHtml
-    + `<div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">마지막 갱신: ${lastUpdate}</div>`
-    + tableHtml;
+  container.innerHTML =
+    `<div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">마지막 갱신: ${lastUpdate}</div>`
+    + tableHtml
+    + `<div class="nk-action-btns">
+      <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+    </div>`;
   if (statusEl) statusEl.textContent = `보유종목 ${nkHoldings.length}개 · 현금 ${fmtUSD(totalCash)} · 총 평가 ${fmtUSD(totalValue)}`;
   nkRenderAccountButtons();
 }
