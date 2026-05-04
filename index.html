@@ -935,7 +935,7 @@ Chart.register({
   .wd-scenario-table tr.wd-sc-active td { background:#dbeafe !important; }
   .wd-scenario-table tr.wd-sc-active td:first-child { border-left:3px solid #2563eb; color:#1d4ed8; }
   #wd-cell-info {
-    position: fixed; bottom: 80px; left: 0; right: 0; z-index: 200;
+    position: fixed; bottom: 80px; left: 0; right: 0; z-index: 600;
     background: #1e293b; color: #f1f5f9; padding: 9px 14px 11px; font-size: 12px;
     border-top: 2px solid #3b82f6; display: none;
     box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
@@ -1336,6 +1336,11 @@ Chart.register({
           <button id="cfgShowKDealOn"  class="toggle-btn" onclick="setCfgShowApp('KDeal',true)">표시</button>
           <button id="cfgShowKDealOff" class="toggle-btn" onclick="setCfgShowApp('KDeal',false)">숨기기</button>
         </div>
+      </div>
+      <div class="cfg-section">💬 셀 정보 패널</div>
+      <div class="cfg-grid">
+        <label>표시 유지 시간 (초)</label>
+        <input id="cfg_cellInfoDuration" type="number" min="1" max="30" step="1">
       </div>
       <div class="cfg-section">👤 기본 정보</div>
       <div class="cfg-grid">
@@ -2271,7 +2276,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.147';
+const APP_VERSION = 'MyPM v0.148';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6392,6 +6397,7 @@ function openSettingsModal() {
   _updateCfgWifeUI(s.hasWife);
   setCfgShowApp('NonK',  s.showNonK  !== false);
   setCfgShowApp('KDeal', s.showKDeal !== false);
+  sv('cfg_cellInfoDuration', s.cellInfoDuration ?? 5);
   sv('cfg_npTaxRate',            wp.npTaxRate            ?? 4);
   sv('cfg_pensionTaxRate',       wp.pensionTaxRate       ?? 3.3);
   sv('cfg_excessPensionTaxRate', wp.excessPensionTaxRate ?? 16.5);
@@ -6536,6 +6542,7 @@ function saveSettingsModal() {
                && !document.getElementById('cfgShowNonKOff')?.classList.contains('active'),
     showKDeal: document.getElementById('cfgShowKDealOn')?.classList.contains('active') !== false
                && !document.getElementById('cfgShowKDealOff')?.classList.contains('active'),
+    cellInfoDuration: nv('cfg_cellInfoDuration', 5),
     my:   buildPersonCfg('my'),
     wife: hasWife ? buildPersonCfg('wife') : appSettings.wife,
   };
@@ -7613,12 +7620,15 @@ function wdShowCellInfo(event, td) {
   const panel = document.getElementById('wd-cell-info');
   if (!panel) return;
   panel.innerHTML = buildCellInfoLines(type, yr, accId);
+  const navH = document.querySelector('.tab-nav')?.offsetHeight || 80;
+  panel.style.bottom = navH + 'px';
   panel.classList.add('visible');
 }
 
 function wdStartDismiss() {
   clearTimeout(_wdDismissTimer);
-  _wdDismissTimer = setTimeout(wdDismissPanel, 3000);
+  const dur = (appSettings.cellInfoDuration ?? 5) * 1000;
+  _wdDismissTimer = setTimeout(wdDismissPanel, dur);
 }
 
 function wdDismissPanel() {
