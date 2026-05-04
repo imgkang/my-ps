@@ -82,6 +82,18 @@
   .kd-pos-table td { padding:8px 5px; }
   .kd-pos-table th:first-child, .kd-pos-table td:first-child { padding-left:10px; }
   .kd-pos-table .kd-name { font-size:15px; }
+
+  /* Autocomplete dropdown */
+  .kd-ac-wrap { position:relative; }
+  .kd-ac-list { display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:300;
+    background:#fff; border:1px solid var(--border); border-radius:8px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.12); max-height:240px; overflow-y:auto; }
+  .kd-ac-list.open { display:block; }
+  .kd-ac-item { padding:9px 12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  .kd-ac-item:hover, .kd-ac-item.kd-ac-focused { background:#f3f4f6; }
+  .kd-ac-name { font-size:13px; font-weight:500; }
+  .kd-ac-code { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
   .ta-r { text-align:right; }
   .ta-c { text-align:center; }
   .pos { color:#16a34a; }
@@ -256,6 +268,15 @@
     <div id="kdPositionsContainer"><div class="kd-empty">오픈 포지션이 없습니다.</div></div>
   </div>
 
+  <!-- Watchlist -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">👁 관심종목</h2>
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="kdOpenWatchModal()">+ 추가</button>
+    </div>
+    <div id="kdWatchContainer"><div class="kd-empty">관심종목이 없습니다.</div></div>
+  </div>
+
   <!-- Portfolio timeline -->
   <div class="card" id="kdTimelineWrap" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -284,6 +305,34 @@
       </div>
     </div>
     <div id="kdTradeHistoryContainer"><div class="kd-empty">거래 내역이 없습니다.</div></div>
+  </div>
+</div>
+
+<!-- 관심종목 추가 모달 -->
+<div class="modal-backdrop" id="kdWatchModal" onclick="if(event.target.id==='kdWatchModal')kdCloseWatchModal()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h2>👁 관심종목 추가</h2>
+      <button class="close-btn" onclick="kdCloseWatchModal()">×</button>
+    </div>
+    <div class="kd-form">
+      <div class="kd-field">
+        <label>종목 검색 (이름 또는 코드)</label>
+        <div class="kd-ac-wrap">
+          <input type="text" id="kdWatchSearch" placeholder="예: 삼성전자 또는 005930"
+            oninput="kdOnWatchSearchInput(this.value)" autocomplete="off">
+          <div class="kd-ac-list" id="kdWatchAcList"></div>
+        </div>
+      </div>
+      <div id="kdWatchPreview" style="display:none" class="kd-total-preview">
+        <span id="kdWatchPreviewName">-</span>
+        <span id="kdWatchPreviewCode" style="font-variant-numeric:tabular-nums">-</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="kdCloseWatchModal()">취소</button>
+      <button class="btn-primary" onclick="kdSaveWatch()">추가</button>
+    </div>
   </div>
 </div>
 
@@ -325,8 +374,12 @@
             oninput="kdOnCodeInput(this.value)" onblur="kdAutoFetchName()">
         </div>
         <div class="kd-field">
-          <label>종목명</label>
-          <input type="text" id="kdTradeName" placeholder="예: 삼성전자">
+          <label>종목명 (이름 입력 시 자동검색)</label>
+          <div class="kd-ac-wrap">
+            <input type="text" id="kdTradeName" placeholder="예: 삼성전자"
+              oninput="kdOnNameInput(this.value)" autocomplete="off">
+            <div class="kd-ac-list" id="kdNameAcList"></div>
+          </div>
         </div>
       </div>
       <!-- 5. 단가 + 수량 -->
@@ -1253,6 +1306,165 @@ function kdCancelDepEdit() {
   document.getElementById('kdDepType').value = 'deposit';
 }
 
+// ===== 자동완성 =====
+async function kdFetchAutocomplete(query) {
+  if (!query || query.trim().length < 1) return [];
+  const url = `https://ac.finance.naver.com/ac?q=${encodeURIComponent(query.trim())}&q_enc=UTF-8&t_koreng=1&st=111&r_lt=111&r_format=json`;
+  try {
+    const text = await kdFetchViaProxy(url);
+    const data = JSON.parse(text);
+    let items = data.items || [];
+    if (items.length > 0 && Array.isArray(items[0]) && Array.isArray(items[0][0])) items = items[0];
+    return items
+      .filter(it => Array.isArray(it) && it[0] && it[1])
+      .slice(0, 8)
+      .map(it => ({ name: String(it[0]), code: String(it[1]).padStart(6, '0') }));
+  } catch(_) { return []; }
+}
+
+function kdShowAcList(listEl, items, onSelect) {
+  listEl.innerHTML = '';
+  if (!items.length) { listEl.classList.remove('open'); return; }
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'kd-ac-item';
+    div.innerHTML = `<span class="kd-ac-name">${item.name}</span><span class="kd-ac-code">${item.code}</span>`;
+    div.addEventListener('mousedown', e => { e.preventDefault(); onSelect(item); });
+    listEl.appendChild(div);
+  });
+  listEl.classList.add('open');
+}
+
+let _kdNameAcTimer = null;
+function kdOnNameInput(val) {
+  clearTimeout(_kdNameAcTimer);
+  const listEl = document.getElementById('kdNameAcList');
+  if (!val) { if (listEl) listEl.classList.remove('open'); return; }
+  _kdNameAcTimer = setTimeout(async () => {
+    const items = await kdFetchAutocomplete(val);
+    if (listEl) kdShowAcList(listEl, items, item => {
+      document.getElementById('kdTradeName').value = item.name;
+      document.getElementById('kdTradeCode').value = item.code;
+      listEl.classList.remove('open');
+    });
+  }, 300);
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.kd-ac-wrap')) {
+    document.querySelectorAll('.kd-ac-list').forEach(el => el.classList.remove('open'));
+  }
+});
+
+// ===== 관심종목 =====
+const KD_WATCH_KEY = 'kdeal_watchlist_v1';
+let kdWatchlist = kdLoadWatchlist();
+let kdWatchPending = null;
+
+function kdLoadWatchlist() {
+  try { return JSON.parse(localStorage.getItem(KD_WATCH_KEY)) || []; } catch(_) { return []; }
+}
+function kdSaveWatchlist() { localStorage.setItem(KD_WATCH_KEY, JSON.stringify(kdWatchlist)); }
+
+let _kdWatchAcTimer = null;
+function kdOnWatchSearchInput(val) {
+  clearTimeout(_kdWatchAcTimer);
+  kdWatchPending = null;
+  document.getElementById('kdWatchPreview').style.display = 'none';
+  const listEl = document.getElementById('kdWatchAcList');
+  if (!val) { if (listEl) listEl.classList.remove('open'); return; }
+  _kdWatchAcTimer = setTimeout(async () => {
+    const items = await kdFetchAutocomplete(val);
+    if (listEl) kdShowAcList(listEl, items, item => {
+      kdWatchPending = item;
+      document.getElementById('kdWatchSearch').value = item.name;
+      listEl.classList.remove('open');
+      const prev = document.getElementById('kdWatchPreview');
+      if (prev) {
+        prev.style.display = '';
+        document.getElementById('kdWatchPreviewName').textContent = item.name;
+        document.getElementById('kdWatchPreviewCode').textContent = item.code;
+      }
+    });
+  }, 300);
+}
+
+function kdOpenWatchModal() {
+  kdWatchPending = null;
+  document.getElementById('kdWatchSearch').value = '';
+  document.getElementById('kdWatchPreview').style.display = 'none';
+  const listEl = document.getElementById('kdWatchAcList');
+  if (listEl) listEl.classList.remove('open');
+  document.getElementById('kdWatchModal').classList.add('open');
+}
+function kdCloseWatchModal() {
+  document.getElementById('kdWatchModal').classList.remove('open');
+  kdWatchPending = null;
+}
+
+function kdSaveWatch() {
+  if (!kdWatchPending) {
+    const val = document.getElementById('kdWatchSearch').value.trim();
+    if (!val) { alert('종목을 선택해 주세요.'); return; }
+    kdWatchPending = { code: val.replace(/\D/g,'').padStart(6,'0'), name: val };
+  }
+  const { code, name } = kdWatchPending;
+  if (kdWatchlist.find(w => w.code === code)) { alert('이미 추가된 종목입니다.'); return; }
+  kdWatchlist.push({ code, name });
+  kdSaveWatchlist();
+  kdCloseWatchModal();
+  kdRenderWatchlist();
+  kdFetchStockInfo(code).then(info => {
+    if (info) {
+      kdPrices[code] = info;
+      if (info.name && info.name !== code) {
+        const w = kdWatchlist.find(x => x.code === code);
+        if (w) { w.name = info.name; kdSaveWatchlist(); }
+      }
+      kdRenderWatchlist();
+    }
+  }).catch(() => {});
+}
+
+function kdDeleteWatch(code) {
+  kdWatchlist = kdWatchlist.filter(w => w.code !== code);
+  kdSaveWatchlist();
+  kdRenderWatchlist();
+}
+
+function kdRenderWatchlist() {
+  const c = document.getElementById('kdWatchContainer');
+  if (!c) return;
+  if (!kdWatchlist.length) {
+    c.innerHTML = '<div class="kd-empty">관심종목이 없습니다.</div>';
+    return;
+  }
+  const rows = kdWatchlist.map(w => {
+    const info = kdPrices[w.code];
+    const cur = info ? Math.round(info.price).toLocaleString('ko-KR') : '-';
+    const chg = info ? (info.change || 0) : null;
+    const chgPct = info ? (info.changeRate || 0) : null;
+    const cls = chg != null ? (chg >= 0 ? 'pos' : 'neg') : '';
+    const chgStr = chg != null ? `${chg >= 0 ? '+' : ''}${Math.round(chg).toLocaleString('ko-KR')}` : '-';
+    const pctStr = chgPct != null ? `${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%` : '-';
+    return `<tr>
+      <td><div class="kd-name" style="font-size:15px">${w.name}</div><div class="kd-code">${w.code}</div></td>
+      <td class="ta-r" style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums">${cur}</td>
+      <td class="ta-r ${cls}" style="font-size:14px;font-variant-numeric:tabular-nums">${chgStr}</td>
+      <td class="ta-r ${cls}" style="font-size:14px">${pctStr}</td>
+      <td class="ta-c" style="white-space:nowrap">
+        <button class="kd-btn-sm" onclick="kdQuickTrade('${w.code}','${w.name.replace(/'/g,"\\'")}','buy')">매수</button>
+        <button class="kd-btn-sm del" onclick="kdDeleteWatch('${w.code}')">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+  c.innerHTML = `<div style="overflow-x:auto"><table class="kd-table kd-pos-table">
+    <thead><tr>
+      <th>종목</th><th class="ta-r">현재가</th><th class="ta-r">변동(원)</th><th class="ta-r">변동률</th><th></th>
+    </tr></thead><tbody>${rows}</tbody>
+  </table></div>`;
+}
+
 // ===== 가격 조회 =====
 async function kdFetchWithTimeout(url, ms = 8000) {
   const ctrl = new AbortController();
@@ -1322,18 +1534,25 @@ async function kdRefreshAll() {
   const el = document.getElementById('kdRefreshStatus');
   if (el) el.textContent = '조회 중...';
   const { positions } = kdFifoAnalysis();
-  if (!positions.length) { if (el) el.textContent = ''; return; }
-  await Promise.all(positions.map(async p => {
+  const watchOnlyCodes = kdWatchlist.map(w => w.code).filter(c => !positions.find(p => p.code === c));
+  const allItems = [
+    ...positions.map(p => ({ code: p.code, isPos: true })),
+    ...watchOnlyCodes.map(c => ({ code: c, isPos: false }))
+  ];
+  if (!allItems.length) { if (el) el.textContent = ''; return; }
+  await Promise.all(allItems.map(async ({ code, isPos }) => {
     try {
-      const info = await kdFetchStockInfo(p.code);
+      const info = await kdFetchStockInfo(code);
       if (info) {
-        kdPrices[p.code] = info;
-        if (info.name && info.name !== p.code) {
-          kdTrades.filter(x => x.code === p.code).forEach(x => {
+        kdPrices[code] = info;
+        if (isPos && info.name && info.name !== code) {
+          kdTrades.filter(x => x.code === code).forEach(x => {
             if (!x.name || x.name === x.code) x.name = info.name;
           });
           kdSaveTrades();
         }
+        const w = kdWatchlist.find(x => x.code === code);
+        if (w && info.name && info.name !== code) { w.name = info.name; kdSaveWatchlist(); }
       }
     } catch(_) {}
   }));
@@ -1346,6 +1565,7 @@ async function kdRefreshAll() {
   if (el) el.textContent = `최근 갱신 ${_mo}/${_dd} ${_hh}:${_mm}:${_ss}`;
   kdRender();
   kdRenderTradeHistory();
+  kdRenderWatchlist();
 }
 
 // ===== 파일 저장/불러오기 =====
@@ -1387,7 +1607,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v2.13';
+const APP_VERSION = 'KDeal v2.15';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -1396,6 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
   kdRender();
   kdRenderTradeHistory();
   kdRenderTimeline();
+  kdRenderWatchlist();
   setTimeout(kdRefreshAll, 300);
 });
 </script>
