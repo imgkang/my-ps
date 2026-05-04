@@ -792,36 +792,7 @@
     </a>
     <div style="flex:1"></div>
     <span id="nkRefreshStatus" style="font-size:11px;color:var(--muted);padding:0 8px"></span>
-    <button class="hdr-btn" onclick="nkOpenSettingsModal()" title="설정">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
   </header>
-
-<!-- ⚙️ NonK 설정 모달 -->
-<div class="modal-backdrop" id="nkSettingsModal" onclick="if(event.target===this)nkCloseSettingsModal()">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-header">
-      <div><h2>⚙️ 설정</h2></div>
-      <button class="close-btn" onclick="nkCloseSettingsModal()" aria-label="닫기">×</button>
-    </div>
-    <div class="cfg-section">🔄 자동 새로고침</div>
-    <div class="cfg-grid">
-      <label>새로고침 간격</label>
-      <div style="display:flex;align-items:center;gap:6px">
-        <input id="nkAutoRefreshMinutes" type="number" min="0" step="1"
-               onchange="nkUpdateAutoRefresh()" onkeyup="if(event.key==='Enter')nkUpdateAutoRefresh()"
-               style="width:70px;text-align:right;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
-        <span style="color:var(--muted);font-size:13px">분&nbsp;(0 = 끄기)</span>
-      </div>
-    </div>
-    <div class="modal-actions" style="margin-top:16px">
-      <button class="btn-secondary" onclick="nkCloseSettingsModal()">닫기</button>
-    </div>
-  </div>
-</div>
 
   <div id="nkHeroContainer"></div>
 
@@ -1040,7 +1011,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.37';
+const APP_VERSION = 'NonK v1.38';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1227,39 +1198,17 @@ async function nkRefreshAll() {
   }
 }
 
-// ===== 자동 새로고침 제어 =====
-const NK_AUTO_REFRESH_KEY = 'nk_autoRefreshMinutes';
+// ===== 자동 새로고침 (MyPM 공유 설정 사용) =====
 let nkAutoRefreshTimer = null;
 
-function nkUpdateAutoRefresh() {
-  const input = document.getElementById('nkAutoRefreshMinutes');
-  if (!input) return;
-  let minutes = parseInt(input.value, 10);
-  if (isNaN(minutes) || minutes < 0) minutes = 0;
-  input.value = minutes;
-  try { localStorage.setItem(NK_AUTO_REFRESH_KEY, String(minutes)); } catch (_) {}
+function nkInitAutoRefresh() {
   if (nkAutoRefreshTimer) { clearInterval(nkAutoRefreshTimer); nkAutoRefreshTimer = null; }
+  const minutes = parseInt(localStorage.getItem('autoRefreshMinutes'), 10) || 0;
   if (minutes > 0) {
     nkAutoRefreshTimer = setInterval(() => {
       if (nkHoldings.length) nkRefreshAll();
     }, minutes * 60 * 1000);
   }
-}
-
-function nkInitAutoRefresh() {
-  const input = document.getElementById('nkAutoRefreshMinutes');
-  if (!input) return;
-  let saved = 30;
-  try { const v = localStorage.getItem(NK_AUTO_REFRESH_KEY); if (v != null) saved = parseInt(v, 10) || 0; } catch (_) {}
-  input.value = saved;
-  nkUpdateAutoRefresh();
-}
-
-function nkOpenSettingsModal() {
-  document.getElementById('nkSettingsModal').classList.add('open');
-}
-function nkCloseSettingsModal() {
-  document.getElementById('nkSettingsModal').classList.remove('open');
 }
 
 function nkComputeAccountValue(accId) {

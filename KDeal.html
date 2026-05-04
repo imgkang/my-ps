@@ -1697,7 +1697,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v2.22';
+const APP_VERSION = 'KDeal v2.23';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -1709,6 +1709,10 @@ document.addEventListener('DOMContentLoaded', () => {
   kdRenderTimeline();
   kdRenderWatchlist();
   setTimeout(kdRefreshAll, 300);
+  const _arMin = parseInt(localStorage.getItem('autoRefreshMinutes'), 10) || 0;
+  if (_arMin > 0) {
+    setInterval(() => { if (kdTrades.length) kdRefreshAll(); }, _arMin * 60 * 1000);
+  }
 });
 </script>
 </body>
