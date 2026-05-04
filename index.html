@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="MyPM">
 <meta name="theme-color" content="#03c75a">
+<meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
 <title>My PM</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -930,6 +931,8 @@ Chart.register({
   .wd-scenario-table td:first-child:hover { background: #eff6ff !important; color: #1d4ed8; }
   .wd-scenario-table tr:nth-child(even) td { background:#f8fafc; }
   .wd-scenario-best { color:#059669 !important; font-weight:700 !important; }
+  .wd-scenario-table tr.wd-sc-active td { background:#dbeafe !important; }
+  .wd-scenario-table tr.wd-sc-active td:first-child { border-left:3px solid #2563eb; color:#1d4ed8; }
   /* 계좌 통합 모달 */
   .cons-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
   @media (max-width: 680px) { .cons-wrap { grid-template-columns: 1fr; } }
@@ -2257,7 +2260,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.144';
+const APP_VERSION = 'MyPM v0.145';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7152,6 +7155,7 @@ function deleteWdScenario(idx) {
   renderWdScenarioTable();
 }
 
+let _wdSelectedScenIdx = null;
 function loadWdScenario(idx) {
   const list = loadWdScenarios();
   const sc = list[idx];
@@ -7170,6 +7174,8 @@ function loadWdScenario(idx) {
     appSettings.wife = _deepMergePersonCfg(def.wife,  sc.appSettings.wife);
     saveAppSettings();
   }
+  _wdSelectedScenIdx = idx;
+  renderWdScenarioTable();
   loadWdFormValues();
   loadQuickWdValues();
   renderWithdrawalPlan();
@@ -7178,6 +7184,7 @@ function loadWdScenario(idx) {
 function renderWdScenarioTable() {
   const wrap = document.getElementById('wdScenarioWrap');
   if (!wrap) return;
+  const prevScroll = wrap.querySelector('div') ? wrap.querySelector('div').scrollLeft : 0;
   const list = loadWdScenarios();
   if (!list.length) {
     wrap.innerHTML = `<div style="font-size:11.5px;color:#9ca3af;padding:4px 0">저장된 시나리오가 없습니다. 설정 변경 후 "현재 저장"으로 비교 목록을 만드세요.</div>`;
@@ -7193,8 +7200,9 @@ function renderWdScenarioTable() {
     const m = sc.metrics;
     const best = m.score === maxScore;
     const cfg = sc.wdPlan || sc.settings || {};
-    h += `<tr>
-      <td onclick="loadWdScenario(${i})" title="클릭하여 선택">${sc.name}</td><td>${sc.savedAt}</td>
+    const isActive = i === _wdSelectedScenIdx;
+    h += `<tr${isActive ? ' class="wd-sc-active"' : ''}>
+      <td onclick="loadWdScenario(${i})" title="클릭하여 선택">${isActive ? '▶ ' : ''}${sc.name}</td><td>${sc.savedAt}</td>
       <td>${cfg.startYear}년</td><td>${cfg.retireAge || 60}세</td>
       <td>${cfg.returnRate}%</td>
       <td>${fmt(m.totalWithdraw)}</td><td>${fmt(m.finalBalance)}</td>
@@ -7209,6 +7217,10 @@ function renderWdScenarioTable() {
   });
   h += '</tbody></table></div>';
   wrap.innerHTML = h;
+  if (prevScroll) {
+    const div = wrap.querySelector('div');
+    if (div) div.scrollLeft = prevScroll;
+  }
 }
 
 let _wdChart1 = null, _wdChart2 = null, _wdChart3 = null, _wdChart4 = null, _wdChart5 = null;
