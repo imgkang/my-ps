@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.133';
+const CACHE_NAME = 'mypm-v0.134';
 
 const ASSETS = [
   '/index.html',

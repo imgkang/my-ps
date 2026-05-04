@@ -15,6 +15,22 @@
 <meta name="theme-color" content="#03c75a">
 <title>My PM</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// 모바일 툴팁 자동 닫기: touchend 후 2초 뒤 사라짐
+Chart.register({
+  id: 'mobileTooltipDismiss',
+  afterInit(chart) {
+    let _timer = null;
+    chart.canvas.addEventListener('touchend', () => {
+      clearTimeout(_timer);
+      _timer = setTimeout(() => {
+        chart.tooltip.setActiveElements([], {x: 0, y: 0});
+        chart.update('none');
+      }, 2000);
+    });
+  }
+});
+</script>
 <style>
   :root {
     --primary: #03c75a;
@@ -2247,7 +2263,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.133';
+const APP_VERSION = 'MyPM v0.134';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
