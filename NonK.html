@@ -1037,7 +1037,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v1.31';
+const APP_VERSION = 'NonK v1.32';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1402,7 +1402,7 @@ function nkRender() {
   if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
     <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtUSD(totalValue)}</div></div>
     <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">오늘</span></div>
-    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtUSD(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">이번달</span></div>
+    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtUSD(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
     <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtUSD(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
   </div>`;
 
@@ -1446,13 +1446,12 @@ function nkRender() {
   let tableHtml = `<div class="detail-table-wrap"><table class="detail-table">
     <thead><tr>
       <th>종목</th>
-      <th>오늘<br>손익률</th>
+      <th>현재가</th>
       <th>오늘<br>손익</th>
       <th>매입<br>비중</th>
       <th>매입액</th>
       <th>보유수</th>
       <th>매입단가</th>
-      <th>현재가</th>
       <th>평가금액</th>
       <th>총손익</th>
       <th>손익률</th>
@@ -1479,16 +1478,15 @@ function nkRender() {
           <div class="stock-name">${nkEscape(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div>
           <div class="stock-code">${it.ticker}</div>
         </td>
-        <td class="${crCls}">${it.changeRate ? (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%' : '-'}</td>
+        <td>
+          <div>${it.price > 0 ? fmtUSD(it.price) : '-'}</div>
+          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
+        </td>
         <td class="${chCls}">${dayAmt ? fmtUSDSigned(dayAmt) : '-'}</td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
         <td>${it.hasCost ? fmtUSD(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
         <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
-        <td>
-          <div>${it.price > 0 ? fmtUSD(it.price) : '-'}</div>
-          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
-        </td>
         <td><strong>${fmtUSD(it.currentValue)}</strong></td>
         <td class="${pCls}">${it.hasCost ? fmtUSDSigned(it.profit) : '-'}</td>
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
@@ -1510,7 +1508,7 @@ function nkRender() {
         <div class="stock-name">💵 현금 (예수금)${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
         <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
       </td>
-      <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+      <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
       <td><strong>${fmtUSD(totalCash)}</strong></td>
       <td>-</td><td>-</td>
       <td>${cashWeight.toFixed(1)}%</td>
@@ -1527,11 +1525,11 @@ function nkRender() {
     </tbody>
     <tfoot><tr>
       <td>합계</td>
-      <td class="${dayCls}">${todayRate ? todayRateSign + todayRate.toFixed(2) + '%' : '-'}</td>
+      <td>-</td>
       <td class="${dayCls}">${todayPnl ? fmtUSDSigned(todayPnl) : '-'}</td>
       <td>${totalCost > 0 ? '100.0%' : '-'}</td>
       <td>${totalCost > 0 ? fmtUSD(totalCost) : '-'}</td>
-      <td>-</td><td>-</td><td>-</td>
+      <td>-</td><td>-</td>
       <td>${fmtUSD(totalValue)}</td>
       <td class="${totPCls}">${deposited > 0 ? fmtUSDSigned(pnl) : '-'}</td>
       <td class="${totPCls}">${deposited > 0 ? totPSign + pnlRate.toFixed(2) + '%' : '-'}</td>
@@ -1541,9 +1539,7 @@ function nkRender() {
     </tr></tfoot>
   </table></div>`;
 
-  container.innerHTML =
-    `<div style="font-size:12px;color:var(--muted);margin:0 4px 10px;">마지막 갱신: ${lastUpdate}</div>`
-    + tableHtml
+  container.innerHTML = tableHtml
     + `<div class="nk-action-btns">
       <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
       <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
