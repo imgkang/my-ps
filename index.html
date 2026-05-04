@@ -2237,7 +2237,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.106';
+const APP_VERSION = 'MyPM v0.107';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2295,12 +2295,12 @@ function npStartAge(birthYear) {
 function getDefaultPersonCfg(isWife) {
   const cy = new Date().getFullYear();
   return {
-    activeAccIds:   isWife ? ['wife_dc', 'wife_pension1', 'wife_pension2', 'wife_irp', 'wife_isa'] : ['dc', 'pension1', 'pension2', 'irp', 'isa'],
+    activeAccIds:   isWife ? ['wife_pension1'] : ['pension1'],
     extraAccounts:  [],
-    np:  { use: true,  startYear: cy+7, startMonth: 1, monthlyManwon: isWife ? 50 : 100, delayYears: 0, earlyYears: 0 },
+    np:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: isWife ? 50 : 100, delayYears: 0, earlyYears: 0 },
     gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
     sp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, delayYears: 0, earlyYears: 0 },
-    retireTaxRate:    12,
+    retireTaxRate:    16.5,
     pensionBenefit10y: 70,
     pensionBenefit20y: 60,
     pensionBenefit30y: 50,
@@ -2321,9 +2321,9 @@ function _deepMergePersonCfg(def, saved) {
 function getDefaultAppSettings() {
   return {
     myBirthYear: 0, myBirthMonth: 1,
-    hasWife: true,
+    hasWife: false,
     wifeBirthYear: 0, wifeBirthMonth: 1,
-    showNonK: true, showKDeal: true,
+    showNonK: false, showKDeal: false,
     my:   getDefaultPersonCfg(false),
     wife: getDefaultPersonCfg(true),
   };
@@ -3880,7 +3880,7 @@ function updateAutoRefresh() {
 function initAutoRefresh() {
   const input = document.getElementById('autoRefreshMinutes');
   if (!input) return;
-  let saved = 0;
+  let saved = 1;
   try {
     const v = localStorage.getItem(AUTO_REFRESH_KEY);
     if (v != null) saved = parseInt(v, 10) || 0;
