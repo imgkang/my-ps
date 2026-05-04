@@ -239,7 +239,7 @@
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn active" onclick="return false" title="KDeal">
+    <a href="KDeal.html" class="hdr-btn active" onclick="kdRefreshAll(); return false;" title="가격 갱신">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
         <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
@@ -248,12 +248,6 @@
     </a>
     <div style="flex:1"></div>
     <span id="kdRefreshStatus" style="font-size:11px;color:var(--muted);padding:0 8px"></span>
-    <button class="hdr-btn" onclick="kdRefreshAll()" title="가격 갱신">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-      </svg>
-    </button>
   </header>
 
   <!-- Summary hero -->
@@ -1697,7 +1691,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v2.23';
+const APP_VERSION = 'KDeal v2.24';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
