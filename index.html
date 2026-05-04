@@ -441,7 +441,7 @@
   .records-table-header,
   .records-row {
     display: grid;
-    gap: 8px; padding: 8px 10px; font-size: 12px;
+    gap: 6px; padding: 7px 10px; font-size: 12px;
     align-items: center;
   }
   .records-table-header {
@@ -2237,7 +2237,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.107';
+const APP_VERSION = 'MyPM v0.108';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4208,12 +4208,12 @@ function renderRecordsTableHeader() {
   const header = document.getElementById('recordsTableHeader');
   if (!header) return;
   const activeAccs = getActiveAccounts();
-  const cols = `100px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
+  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 72px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>기록일</span>
-    ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}<br><small>(백만원)</small></span>`).join('')}
-    <span style="text-align:right">총합<br><small>(백만원)</small></span>
+    ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}</span>`).join('')}
+    <span style="text-align:right">총합 (백만원)</span>
     <span></span>
   `;
 }
@@ -4235,7 +4235,7 @@ function renderRecordsList() {
   });
 
   const activeAccs = getActiveAccounts();
-  const cols = `100px ${activeAccs.map(() => 'minmax(100px, 1fr)').join(' ')} minmax(110px, 1fr) 90px`;
+  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 72px`;
 
   list.innerHTML = sorted.map(rec => {
     const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
