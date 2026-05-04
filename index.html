@@ -2210,7 +2210,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v2.120';
+const APP_VERSION = 'MyPM v2.122';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4582,8 +4582,6 @@ function render() {
         <thead>
           <tr>
             <th>종목</th>
-            <th>오늘<br>손익률</th>
-            <th>오늘 손익<br>(원)</th>
             <th>현재가</th>
             <th>매입비중</th>
             <th>매입액<br>(백만)</th>
@@ -4623,9 +4621,10 @@ function render() {
           <div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? `<span class="account-dot" title="${it.accountCount}개 계좌에 분산"></span>` : ''}</div>
           <div class="stock-code">${it.code}</div>
         </td>
-        <td class="${dRateCls}">${dayRate ? (dayRate > 0 ? '+' : '') + dayRate.toFixed(2) + '%' : '-'}</td>
-        <td class="${dCls2}">${dayChangeAmount ? (dayChangeAmount > 0 ? '+' : '') + Math.round(dayChangeAmount).toLocaleString('ko-KR') + ' 원' : '-'}</td>
-        <td>${it.price > 0 ? Math.round(it.price).toLocaleString('ko-KR') : '-'}</td>
+        <td>
+          <div style="font-weight:700;white-space:nowrap">${it.price > 0 ? Math.round(it.price).toLocaleString('ko-KR') : '-'}</div>
+          ${dayChangePerShare ? `<div class="${dRateCls}" style="font-size:10px;white-space:nowrap">${dayChangePerShare > 0 ? '+' : ''}${Math.round(dayChangePerShare).toLocaleString('ko-KR')}(${dayRate > 0 ? '+' : ''}${dayRate.toFixed(2)}%)</div>` : ''}
+        </td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
         <td>${it.hasCost ? formatMil(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();editQuantity('${it.code}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc;">${it.qty.toLocaleString('ko-KR')}</a></td>
@@ -4658,8 +4657,6 @@ function render() {
         <td>-</td>
         <td>-</td>
         <td>-</td>
-        <td>-</td>
-        <td>-</td>
         <td><strong>${formatMil(totalCash)}</strong></td>
         <td>-</td>
         <td>-</td>
@@ -4678,10 +4675,8 @@ function render() {
           <tr>
             <td>합계</td>
             <td>-</td>
-            <td class="${dayCls}">${totalDayChange ? formatMilSigned(totalDayChange) : '-'}</td>
             <td>${totalCost > 0 ? '100.0%' : '-'}</td>
             <td>${totalCost > 0 ? formatMil(totalCost) : '-'}</td>
-            <td>-</td>
             <td>-</td>
             <td>-</td>
             <td>${formatMil(totalValue)}</td>
