@@ -765,11 +765,11 @@
   /* 연간 계획 모달 */
   .annual-plan-wrap { }
   .annual-plan-combined {
-    overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: 8px;
     margin-bottom: 12px;
   }
+  .annual-tables-scroll { overflow-x: auto; }
   .apt-section-hdr {
     position: sticky; left: 0; z-index: 10;
     display: flex; align-items: center; gap: 10px;
@@ -1863,20 +1863,22 @@
       <div style="position:relative;height:280px;margin-bottom:4px"><canvas id="annualCombinedChart"></canvas></div>
       <div style="position:relative;height:160px;margin-bottom:8px"><canvas id="annualRateChart"></canvas></div>
 
-      <!-- 원금 표 (접기/펼치기) -->
-      <div class="apt-section-hdr apt-collapsible" id="principalHdr" onclick="toggleAptSection('principalBody', this)">
-        <i class="apt-chevron">▶</i> 📋 원금 기록 및 계획
-      </div>
-      <div id="principalBody" style="display:none">
-        <div class="annual-plan-wrap" id="principalTableWrap"></div>
-      </div>
+      <div class="annual-tables-scroll">
+        <!-- 원금 표 (접기/펼치기) -->
+        <div class="apt-section-hdr apt-collapsible" id="principalHdr" onclick="toggleAptSection('principalBody', this)">
+          <i class="apt-chevron">▶</i> 📋 원금 기록 및 계획
+        </div>
+        <div id="principalBody" style="display:none">
+          <div class="annual-plan-wrap" id="principalTableWrap"></div>
+        </div>
 
-      <!-- 평가 표 (접기/펼치기) -->
-      <div class="apt-section-hdr apt-collapsible" id="evalHdr" onclick="toggleAptSection('evalBody', this)">
-        <i class="apt-chevron">▶</i> 📈 평가 기록 및 예상
-      </div>
-      <div id="evalBody" style="display:none">
-        <div class="annual-plan-wrap" id="evalTableWrap"></div>
+        <!-- 평가 표 (접기/펼치기) -->
+        <div class="apt-section-hdr apt-collapsible" id="evalHdr" onclick="toggleAptSection('evalBody', this)">
+          <i class="apt-chevron">▶</i> 📈 평가 기록 및 예상
+        </div>
+        <div id="evalBody" style="display:none">
+          <div class="annual-plan-wrap" id="evalTableWrap"></div>
+        </div>
       </div>
     </div>
 
@@ -2241,7 +2243,7 @@
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.120';
+const APP_VERSION = 'MyPM v0.121';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
