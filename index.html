@@ -2024,32 +2024,75 @@ Chart.register({
     </div>
   </div>
 
-    <!-- 빠른 편집 바 -->
-    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:10px;flex-shrink:0">
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
-        <span style="white-space:nowrap;color:var(--muted)">본인 은퇴연도</span>
-        <input id="qwd_startYear" type="number" min="2020" max="2080" step="1"
-               style="width:72px;font-size:12px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px"
-               oninput="saveQuickWdPlan()">
-      </label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
-        <span style="white-space:nowrap;color:var(--muted)">연간목표</span>
-        <input id="qwd_annualTarget" type="number" min="0" step="1"
-               style="width:62px;font-size:12px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px"
-               oninput="saveQuickWdPlan()">
-        <span style="color:var(--muted);font-size:11px">백만원</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px">
-        <span style="white-space:nowrap;color:var(--muted)">수익률</span>
-        <input id="qwd_returnRate" type="number" min="0" max="20" step="0.1"
-               style="width:54px;font-size:12px;padding:3px 6px;border:1px solid #cbd5e1;border-radius:4px"
-               oninput="saveQuickWdPlan()">
-        <span style="color:var(--muted);font-size:11px">%</span>
-      </label>
+    <!-- 인터랙티브 시나리오 카드 -->
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px">
+      <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;color:var(--muted)">
+        <label style="display:flex;align-items:center;gap:4px">수익률
+          <input id="qwd_returnRate" type="number" min="0" max="20" step="0.1"
+                 style="width:50px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
+                 oninput="saveQuickWdPlan()">%
+        </label>
+        <label style="display:flex;align-items:center;gap:4px">물가
+          <input id="qwd_inflation" type="number" min="0" max="20" step="0.1"
+                 style="width:50px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
+                 oninput="saveQuickWdPlan()">%
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+        <span style="color:#1d4ed8;font-weight:700;width:44px;flex-shrink:0">👤 본인</span>
+        <label style="display:flex;align-items:center;gap:3px;color:var(--muted)">은퇴
+          <input id="qwd_startYear" type="number" min="2020" max="2080" step="1"
+                 style="width:60px;padding:2px 5px;border:1px solid #bfdbfe;border-radius:4px;font-size:12px;background:#eff6ff"
+                 oninput="saveQuickWdPlan()">년
+        </label>
+        <span style="color:#94a3b8">▶</span>
+        <label style="display:flex;align-items:center;gap:3px;color:var(--muted)">목표인출
+          <input id="qwd_targetStartYear" type="number" min="2020" max="2080" step="1"
+                 style="width:60px;padding:2px 5px;border:1px solid #bbf7d0;border-radius:4px;font-size:12px;background:#f0fdf4"
+                 oninput="saveQuickWdPlan()">년
+        </label>
+      </div>
+      <div style="display:flex;gap:14px;padding-left:50px;margin-bottom:8px;flex-wrap:wrap;color:var(--muted)">
+        <label style="display:flex;align-items:center;gap:3px">기본
+          <input id="qwd_basicWithdraw" type="number" min="0" step="1"
+                 style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
+                 oninput="saveQuickWdPlan()">백만/년
+        </label>
+        <label style="display:flex;align-items:center;gap:3px">연간목표
+          <input id="qwd_annualTarget" type="number" min="0" step="1"
+                 style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
+                 oninput="saveQuickWdPlan()">백만/년
+        </label>
+      </div>
+      <div id="qwd_wifeSection">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+          <span id="qwd_wifeTitle" style="color:#be185d;font-weight:700;width:44px;flex-shrink:0">👩 아내</span>
+          <label style="display:flex;align-items:center;gap:3px;color:var(--muted)">은퇴
+            <input id="qwd_wifeRetireYear" type="number" min="2020" max="2080" step="1"
+                   style="width:60px;padding:2px 5px;border:1px solid #fbcfe8;border-radius:4px;font-size:12px;background:#fdf2f8"
+                   oninput="saveQuickWdPlan()">년
+          </label>
+          <span style="color:#94a3b8">▶</span>
+          <label style="display:flex;align-items:center;gap:3px;color:var(--muted)">최대인출
+            <input id="qwd_wifeFixStartYear" type="number" min="2020" max="2080" step="1"
+                   style="width:60px;padding:2px 5px;border:1px solid #e9d5ff;border-radius:4px;font-size:12px;background:#faf5ff"
+                   oninput="saveQuickWdPlan()">년
+          </label>
+        </div>
+        <div style="display:flex;gap:14px;padding-left:50px;flex-wrap:wrap;color:var(--muted)">
+          <label style="display:flex;align-items:center;gap:3px">기본
+            <input id="qwd_wifeBasicWithdraw" type="number" min="0" step="1"
+                   style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
+                   oninput="saveQuickWdPlan()">백만/년
+          </label>
+          <label style="display:flex;align-items:center;gap:3px">최대
+            <input id="qwd_wifeFixWithdraw" type="number" min="0" step="1"
+                   style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
+                   oninput="saveQuickWdPlan()">백만/년
+          </label>
+        </div>
+      </div>
     </div>
-
-    <!-- 설정 요약 바 -->
-    <div class="wd-info-bar" id="wdInfoBar"></div>
 
     <!-- 인출 우선순위 도움말 -->
     <div style="margin-bottom:8px">
@@ -2372,7 +2415,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.166';
+const APP_VERSION = 'MyPM v0.167';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7231,25 +7274,44 @@ function computeWithdrawalSim() {
 function loadQuickWdValues() {
   const wp = wdPlan;
   const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
-  s('qwd_startYear',    wp.startYear);
-  s('qwd_annualTarget', wp.annualTarget);
-  s('qwd_returnRate',   wp.returnRate);
+  s('qwd_startYear',         wp.startYear);
+  s('qwd_targetStartYear',   wp.targetStartYear);
+  s('qwd_basicWithdraw',     wp.basicWithdraw);
+  s('qwd_annualTarget',      wp.annualTarget);
+  s('qwd_returnRate',        wp.returnRate);
+  s('qwd_inflation',         wp.inflation);
+  s('qwd_wifeRetireYear',    wp.wifeRetireYear || wp.startYear);
+  s('qwd_wifeBasicWithdraw', wp.wifeBasicWithdraw);
+  s('qwd_wifeFixStartYear',  wp.wifeFixStartYear || wp.startYear);
+  s('qwd_wifeFixWithdraw',   wp.wifeFixWithdraw);
+  const wifeSection = document.getElementById('qwd_wifeSection');
+  if (wifeSection) wifeSection.style.display = appSettings.hasWife ? '' : 'none';
+  const wifeTitle = document.getElementById('qwd_wifeTitle');
+  if (wifeTitle) wifeTitle.textContent = '👩 ' + getWifeTitle();
 }
 function saveQuickWdPlan() {
-  const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) || v === 0 ? def : v; };
-  const currentYear = new Date().getFullYear();
-  const rawStartYear = document.getElementById('qwd_startYear')?.value ?? '';
-  if (rawStartYear.length >= 4) {
-    const newStartYear = Number(rawStartYear);
-    if (newStartYear < currentYear) {
-      alert(`본인 은퇴연도는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+  const nv  = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) || v === 0 ? def : v; };
+  const nva = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
+  const cy = new Date().getFullYear();
+  const rawSY = document.getElementById('qwd_startYear')?.value ?? '';
+  if (rawSY.length >= 4) {
+    const newSY = Number(rawSY);
+    if (newSY < cy) {
+      alert(`본인 은퇴연도는 현재 연도(${cy}) 이상이어야 합니다.`);
       document.getElementById('qwd_startYear').value = wdPlan.startYear;
       return;
     }
-    wdPlan.startYear = newStartYear;
+    wdPlan.startYear = newSY;
   }
-  wdPlan.annualTarget = nv('qwd_annualTarget', wdPlan.annualTarget);
-  wdPlan.returnRate   = nv('qwd_returnRate',   wdPlan.returnRate);
+  wdPlan.targetStartYear   = nv('qwd_targetStartYear',   wdPlan.targetStartYear);
+  wdPlan.basicWithdraw     = nv('qwd_basicWithdraw',     wdPlan.basicWithdraw);
+  wdPlan.annualTarget      = nv('qwd_annualTarget',      wdPlan.annualTarget);
+  wdPlan.returnRate        = nv('qwd_returnRate',        wdPlan.returnRate);
+  wdPlan.inflation         = nv('qwd_inflation',         wdPlan.inflation);
+  wdPlan.wifeRetireYear    = nv('qwd_wifeRetireYear',    wdPlan.wifeRetireYear);
+  wdPlan.wifeBasicWithdraw = nv('qwd_wifeBasicWithdraw', wdPlan.wifeBasicWithdraw);
+  wdPlan.wifeFixStartYear  = nv('qwd_wifeFixStartYear',  wdPlan.wifeFixStartYear);
+  wdPlan.wifeFixWithdraw   = nva('qwd_wifeFixWithdraw',  wdPlan.wifeFixWithdraw);
   saveWdPlan();
   if (document.getElementById('panel-withdrawal')?.classList.contains('active')) {
     _wdSelectedScenIdx = null;
@@ -7262,50 +7324,6 @@ function renderWithdrawalPlan() {
   if (!sim) return;
   _lastWdSim = sim;
   const wp = wdPlan;
-
-  // 설정 요약 바
-  const _myNPCfg = appSettings.my?.np || {};
-  const _wifeNPCfg = appSettings.wife?.np || {};
-  const _myGPCfg = appSettings.my?.gp || {};
-  const _wifeGPCfg = appSettings.wife?.gp || {};
-  const _mySPCfg = appSettings.my?.sp || {};
-  const _wifeSPCfg = appSettings.wife?.sp || {};
-  const _myNPYear = (_myNPCfg.startYear||0) + (_myNPCfg.delayYears||0);
-  const _wifeNPYear = (_wifeNPCfg.startYear||0) + (_wifeNPCfg.delayYears||0);
-  const sp = (label, val) => `<span>${label} <b>${val}</b></span>`;
-  const ifsp = (cond, label, val) => cond ? sp(label, val) : '';
-  const pubRow = (cfg, gpCfg, spCfg, npYear) => {
-    const parts = [];
-    if (npYear > 0 && cfg.use !== false) parts.push(sp('국민연금', `${npYear}년${cfg.delayYears ? ` (연기${cfg.delayYears}년)` : ''}`));
-    if (gpCfg?.use && gpCfg.startYear) parts.push(sp('공무원연금', `${gpCfg.startYear}년`));
-    if (spCfg?.use && spCfg.startYear) parts.push(sp('사학연금', `${spCfg.startYear}년`));
-    return parts.join('');
-  };
-  const makeRow = (icon, color, ...items) =>
-    `<div class="wd-info-row"><span style="font-weight:700;color:${color};min-width:28px;font-size:11px">${icon}</span>${items.filter(Boolean).join('')}</div>`;
-  document.getElementById('wdInfoBar').innerHTML = [
-    makeRow('공통', '#6d28d9',
-      sp('목표', `${wp.annualTarget}백만원`),
-      sp('목표시작', `${wp.targetStartYear}년`),
-      sp('물가', `${wp.inflation}%`),
-      sp('수익률', `${wp.returnRate}%`),
-      sp('그래프시작', `${wp.retireAge||60}세`),
-      sp('연금세', `${wp.pensionTaxRateU70??5.5}/${wp.pensionTaxRate7080??4.4}/${wp.pensionTaxRateO80??3.3}%`),
-      sp('국민연금세', `${wp.npTaxRate}%`),
-    ),
-    makeRow('👤 본인', '#1d4ed8',
-      sp('은퇴', `${wp.startYear}년`),
-      sp('기본인출', `${wp.basicWithdraw}백만/계좌`),
-      sp('퇴직세', `${appSettings.my?.retireTaxRate ?? 12}%`),
-      pubRow(_myNPCfg, _myGPCfg, _mySPCfg, _myNPYear),
-    ),
-    appSettings.hasWife ? makeRow(`👩 ${getWifeTitle()}`, '#be185d',
-      sp('은퇴', `${wp.wifeRetireYear || wp.startYear}년`),
-      sp('기본인출', `${wp.wifeBasicWithdraw}백만/계좌`),
-      wp.wifeFixWithdraw ? sp('최대인출', `${wp.wifeFixWithdraw}백만/년`) : '',
-      pubRow(_wifeNPCfg, _wifeGPCfg, _wifeSPCfg, _wifeNPYear),
-    ) : '',
-  ].join('');
 
   renderWdWithdrawTable(sim);
   renderWdBalanceTable(sim);
@@ -8289,7 +8307,7 @@ loadQuickWdValues();
 // 인출 시작연도 입력 필드의 min을 현재 연도로 설정
 (function() {
   const cy = new Date().getFullYear();
-  ['qwd_startYear', 'wd_startYear', 'wd_wifeFixStartYear'].forEach(id => {
+  ['qwd_startYear', 'qwd_wifeRetireYear', 'qwd_wifeFixStartYear', 'qwd_targetStartYear', 'wd_startYear', 'wd_wifeFixStartYear'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.min = cy;
   });
