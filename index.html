@@ -2078,7 +2078,7 @@ Chart.register({
             <tr style="border-bottom:1px solid #e2e8f0">
               <td style="padding:6px 8px;font-weight:700;color:#b45309;white-space:nowrap">세공</td>
               <td style="padding:6px 8px;font-size:11px;color:#64748b">세액공제 받은 납입 원금 + 운용수익</td>
-              <td style="padding:6px 8px">연금소득세 (3.3%~)<br><span style="font-size:11px;color:#64748b">1,200만원 초과 시 16.5%</span></td>
+              <td style="padding:6px 8px">연금소득세 (3.3%~)<br><span style="font-size:11px;color:#64748b">1,500만원 초과 시 전액 16.5%</span></td>
             </tr>
             <tr>
               <td style="padding:6px 8px;font-weight:700;color:#7c3aed;white-space:nowrap">퇴직원금</td>
@@ -2102,7 +2102,7 @@ Chart.register({
           <tbody>
             <tr style="border-bottom:1px solid #e2e8f0">
               <td style="padding:6px 8px;text-align:center;font-weight:700;color:#0369a1">①</td>
-              <td style="padding:6px 8px"><b style="color:#b45309">세공</b><br><span style="font-size:11px;color:#64748b">안세공 없는 계좌에서만</span></td>
+              <td style="padding:6px 8px"><b style="color:#b45309">연금세(과세분)</b><br><span style="font-size:11px;color:#64748b">안세공 없는 계좌에서만</span></td>
               <td style="padding:6px 8px">연금소득세</td>
               <td style="padding:6px 8px;color:#64748b;font-size:11px">기본인출액 한도<br>②③ 재원이 남아있는 동안만</td>
             </tr>
@@ -2120,8 +2120,8 @@ Chart.register({
             </tr>
             <tr>
               <td style="padding:6px 8px;text-align:center;font-weight:700;color:#0369a1">④</td>
-              <td style="padding:6px 8px"><b style="color:#b45309">세공</b> (나머지)<br><span style="font-size:11px;color:#64748b">②③ 소진 후</span></td>
-              <td style="padding:6px 8px">연금소득세<br><span style="font-size:11px;color:#64748b">1,200만원 초과 시 16.5%</span></td>
+              <td style="padding:6px 8px"><b style="color:#b45309">연금세(과세분)</b> (나머지)<br><span style="font-size:11px;color:#64748b">②③ 소진 후</span></td>
+              <td style="padding:6px 8px">연금소득세<br><span style="font-size:11px;color:#64748b">1,500만원 초과 시 전액 16.5%</span></td>
               <td style="padding:6px 8px;color:#64748b;font-size:11px">목표액 채울 때까지</td>
             </tr>
           </tbody>
@@ -2131,7 +2131,7 @@ Chart.register({
           <b>공적연금</b> (국민·공무원·사학연금)은 수령 시작 연도부터 자동 합산되어 사적 인출 필요액을 줄입니다.
         </div>
         <div style="padding:8px 10px;background:#f0fdf4;border-radius:6px;border-left:3px solid #22c55e">
-          <b>전략 핵심</b>: 비과세인 안세공을 최대한 늦게 써서 복리 효과를 극대화하고, 그동안 세공(연금소득세)을 기본인출액 한도로 소진합니다.
+          <b>전략 핵심</b>: 세액공제분(연금소득세 대상)을 먼저 소진하고, 비과세인 안세공은 최대한 늦게 수령해 복리 효과를 극대화합니다. 연간 연금소득이 1,500만원 초과 시 전체 금액에 16.5% 적용.
         </div>
       </div>
     </div>
@@ -2346,7 +2346,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.157';
+const APP_VERSION = 'MyPM v0.158';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7821,8 +7821,8 @@ function buildCellInfoLines(type, yr, accId) {
     }
     case 'anse': {
       const anseOut = withdrawals[yr]?.[accId]?.anseOut || 0;
-      return row('안전마진(비과세) 인출',
-        `인출 <b>${wr(anseOut)}</b> — 안전마진 범위 내 비과세, 세금 없음 → 전액 수령`);
+      return row('안세공(비과세) 인출',
+        `인출 <b>${wr(anseOut)}</b> — 세액공제 미수령분(비과세), 세금 없음 → 전액 수령`);
     }
     case 'pension': {
       const regularOut = withdrawals[yr]?.[accId]?.regularOut || 0;
@@ -7917,7 +7917,7 @@ function buildCellInfoLines(type, yr, accId) {
     case 'bal-anse': {
       const bal = balances[yr]?.[accId]?.anse || 0;
       const out = withdrawals[yr]?.[accId]?.anseOut || 0;
-      return row('잔액 — 안전마진(비과세)분',
+      return row('잔액 — 안세공(비과세)분',
         `${yr}년말 잔액 <b>${wr(bal)}</b>${out > 0 ? ` (해당연도 인출 ${wr(out)})` : ''}`);
     }
     case 'bal-regular': {
