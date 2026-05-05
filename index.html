@@ -2346,7 +2346,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.156';
+const APP_VERSION = 'MyPM v0.157';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6824,6 +6824,7 @@ function computeWithdrawalSim() {
   const r    = (wp.returnRate || 4) / 100;
   const inf  = (wp.inflation || 2.2) / 100;
   const epTR = (wp.excessPensionTaxRate ?? 16.5) / 100;
+  const PENSION_THRESHOLD = 15_000_000;
   const myBY   = wp.myBirthYear   || 0;
   const wifeBY = wp.wifeBirthYear || 0;
   const getPTR = (birthYear, yr) => {
@@ -7080,16 +7081,29 @@ function computeWithdrawalSim() {
         withdrawals[yr][dcId].dcOut += take; state[dcId].dcPrincipal -= take; state[dcId].total -= take;
         totalRT += take * rTR; rem -= take;
       }
-      // ④ 안세공·퇴직금 모두 소진 시 → 연금세에서 필요한만큼 (기본인출액 초과 → epTR 적용)
+      // ④ 안세공·퇴직금 모두 소진 시 → 연금세에서 필요한만큼 (세율은 임계치 체크 후 결정)
       if (accIds.every(id => state[id].anse === 0) &&
           (!dcId || state[dcId].dcPrincipal === 0) && rem > 0) {
         for (const id of accIds) {
           if (rem <= 0) break;
           const take = Math.min(state[id].regular, rem);
           if (take > 0) {
-            withdrawals[yr][id].regularOut += take; withdrawals[yr][id].pensionTax += take * epTR;
-            state[id].regular -= take; state[id].total -= take; totalPT += take * epTR; rem -= take;
+            const pt = take * getPTR(id.startsWith('wife_') ? wifeBY : myBY, yr);
+            withdrawals[yr][id].regularOut += take; withdrawals[yr][id].pensionTax += pt;
+            state[id].regular -= take; state[id].total -= take; totalPT += pt; rem -= take;
           }
+        }
+      }
+    };
+
+    // 1500만원 개인별 임계치 체크: 초과 시 해당 사람의 전체 regularOut을 epTR로 재계산
+    const applyPensionTaxThreshold = (accIds) => {
+      const totalReg = accIds.reduce((a, id) => a + withdrawals[yr][id].regularOut, 0);
+      if (totalReg > PENSION_THRESHOLD) {
+        for (const id of accIds) {
+          const newPT = withdrawals[yr][id].regularOut * epTR;
+          totalPT += newPT - withdrawals[yr][id].pensionTax;
+          withdrawals[yr][id].pensionTax = newPT;
         }
       }
     };
@@ -7099,7 +7113,9 @@ function computeWithdrawalSim() {
     for (const id of allAccIds) _snap[id] = { ...state[id] };
 
     doWithdraw(activeMyIds, myRemaining, basic);
+    applyPensionTaxThreshold(activeMyIds);
     doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
+    applyPensionTaxThreshold(getActiveWifeAccIds());
 
     // 목표액 구간: 세후 실수령액 = target이 되도록 2차 보정
     if (yr >= targetStartYear) {
@@ -7109,17 +7125,21 @@ function computeWithdrawalSim() {
         - totalRT - totalPT - (myPublicInc + wifePublicInc) * npTR;
       const _deficit = target - _actualNet1;
       if (Math.abs(_deficit) > 10000) {
-        // 패스1 직후 잔여 잔액으로 한계세율 결정
+        // 패스1 직후 나의 regularOut으로 한계세율 결정 (1500만원 초과 여부 반영)
+        const myRegOut1 = activeMyIds.reduce((a, id) => a + withdrawals[yr][id].regularOut, 0);
         const _margRate = allAccIds.some(id => state[id].anse > 0) ? 0
-          : (allAccIds.some(id => DC_ACC_IDS.has(id) && state[id].dcPrincipal > 0) ? rTR : epTR);
+          : allAccIds.some(id => DC_ACC_IDS.has(id) && state[id].dcPrincipal > 0) ? rTR
+          : myRegOut1 >= PENSION_THRESHOLD ? epTR : getPTR(myBY, yr);
         const _corrGross = _deficit / (1 - _margRate);
         // 상태 복원 후 보정된 금액으로 재인출
         for (const id of allAccIds) state[id] = { ..._snap[id] };
-        for (const id of allAccIds) withdrawals[yr][id] = { anseOut: 0, dcOut: 0, regularOut: 0 };
+        for (const id of allAccIds) withdrawals[yr][id] = { anseOut: 0, dcOut: 0, regularOut: 0, pensionTax: 0 };
         totalRT = 0; totalPT = 0;
         myRemaining = Math.max(0, myRemaining + _corrGross);
         doWithdraw(activeMyIds, myRemaining, basic);
+        applyPensionTaxThreshold(activeMyIds);
         doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
+        applyPensionTaxThreshold(getActiveWifeAccIds());
       }
     }
 
@@ -7809,7 +7829,10 @@ function buildCellInfoLines(type, yr, accId) {
       const accPT = withdrawals[yr]?.[accId]?.pensionTax || 0;
       const effRate = regularOut > 0 ? accPT / regularOut : 0;
       const tax = Math.round(accPT);
-      const birthYear = accId.startsWith('wife_') ? (wp.wifeBirthYear||0) : (wp.myBirthYear||0);
+      const isWife = accId.startsWith('wife_');
+      const personIds = allAccIds.filter(id => isWife === WIFE_ACC_IDS.includes(id));
+      const personTotalReg = personIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
+      const birthYear = isWife ? (wp.wifeBirthYear||0) : (wp.myBirthYear||0);
       const age = birthYear ? yr - birthYear : 0;
       const epPct = wp.excessPensionTaxRate ?? 16.5;
       const basePTR = !birthYear ? (wp.pensionTaxRateO80??3.3)
@@ -7817,13 +7840,11 @@ function buildCellInfoLines(type, yr, accId) {
         : age < 80 ? (wp.pensionTaxRate7080??4.4) : (wp.pensionTaxRateO80??3.3);
       let ruleDesc = '';
       if (regularOut > 0) {
-        const eff100 = effRate * 100;
-        if (Math.abs(eff100 - epPct) < 0.6)
-          ruleDesc = `안세공·퇴직금 소진 후 잔여인출 → 초과세율 ${epPct}% 적용`;
-        else if (Math.abs(eff100 - basePTR) < 0.6)
-          ruleDesc = `기본인출액 이내 → 나이 기준 ${age ? age+'세 ' : ''}${basePTR}% 적용`;
+        const totalRegMan = Math.round(personTotalReg / 10000);
+        if (personTotalReg > 15_000_000)
+          ruleDesc = `연간 연금소득 합계 ${totalRegMan}만원 > 1500만원 → 전액 ${epPct}% 적용`;
         else
-          ruleDesc = `혼합 (기본분 ${basePTR}% + 초과분 ${epPct}%) → 실효 ${eff100.toFixed(1)}%`;
+          ruleDesc = `연간 연금소득 합계 ${totalRegMan}만원 ≤ 1500만원 → 나이기준 ${age ? age+'세 ' : ''}${basePTR}% 적용`;
       }
       return row('연금소득세 인출',
         `인출 ${wr(regularOut)} × 세율 ${(effRate*100).toFixed(1)}% = 세금 ${wr(tax)} → 순수령 <b>${wr(regularOut - tax)}</b>`
