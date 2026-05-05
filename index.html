@@ -2168,7 +2168,7 @@ Chart.register({
       <button class="wd-toggle-btn" onclick="toggleWdTable('Withdraw')">
         <span id="wdWithdrawIcon">▶</span> 💸 연도별 인출 금액 상세 테이블
       </button>
-      <div id="wdWithdrawWrap" style="overflow-x:auto;display:none;margin-top:4px"></div>
+      <div id="wdWithdrawWrap" style="display:none;margin-top:4px"></div>
     </div>
 
     <!-- 잔액 테이블 -->
@@ -2176,7 +2176,7 @@ Chart.register({
       <button class="wd-toggle-btn" onclick="toggleWdTable('Balance')">
         <span id="wdBalanceIcon">▶</span> 💰 연도별 잔액 상세 테이블
       </button>
-      <div id="wdBalanceWrap" style="overflow-x:auto;display:none;margin-top:4px"></div>
+      <div id="wdBalanceWrap" style="display:none;margin-top:4px"></div>
     </div>
 
     <!-- 시나리오 비교 -->
@@ -2346,7 +2346,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.159';
+const APP_VERSION = 'MyPM v0.160';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7601,8 +7601,7 @@ function renderWdWithdrawTable(sim) {
     return `<td data-cell-type="${type}" data-yr="${yr}"${acc} ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${content}</td>`;
   };
 
-  let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💸 연도별 인출 금액 (백만원)</h3>
-  <table class="wd-table"><colgroup>
+  let h = `<table class="wd-table"><colgroup>
     <col style="width:110px"><col style="width:46px"><col style="width:58px">`;
   for (const yr of years) h += `<col style="width:${yr < startYear ? '22px' : '50px'}">`;
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
@@ -7610,7 +7609,7 @@ function renderWdWithdrawTable(sim) {
   h += '</tr>';
   const _myBY1 = appSettings.myBirthYear || wp.myBirthYear || 0;
   if (_myBY1) {
-    h += `<tr class="wd-age-row"><td colspan="3" style="font-size:11px;color:#6b7280;text-align:center">나이</td>`;
+    h += `<tr class="wd-age-row"><td style="font-size:11px;color:#6b7280">나이</td><td></td><td></td>`;
     for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - _myBY1}</td>`;
     h += '</tr>';
   }
@@ -7649,7 +7648,7 @@ function renderWdWithdrawTable(sim) {
 
   // 합계·요약행
   const totalInit = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
-  h += `<tr class="wd-total-row"><td colspan="2">사적연금 소계</td><td class="wd-init">${mv(totalInit)}</td>`;
+  h += `<tr class="wd-total-row"><td>사적연금 소계</td><td></td><td class="wd-init">${mv(totalInit)}</td>`;
   for (const yr of years) h += tapCell(yr, mv(summary[yr].totalPriv), 'total-priv');
   h += '</tr>';
 
@@ -7669,13 +7668,15 @@ function renderWdWithdrawTable(sim) {
     }, 'pv'],
   ];
   for (const [cls, label, fn, type] of rows) {
-    h += `<tr class="${cls}"><td colspan="3">${label}</td>`;
+    h += `<tr class="${cls}"><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</td><td colspan="2"></td>`;
     for (const yr of years) h += tapCell(yr, fn(yr), type);
     h += '</tr>';
   }
 
   h += '</tbody></table>';
-  document.getElementById('wdWithdrawWrap').innerHTML = h;
+  document.getElementById('wdWithdrawWrap').innerHTML =
+    `<h3 style="margin:0 0 6px;font-size:13px;color:#374151;flex-shrink:0">💸 연도별 인출 금액 (백만원)</h3>`
+    + `<div style="overflow-x:auto">${h}</div>`;
 }
 
 function renderWdBalanceTable(sim) {
@@ -7703,8 +7704,7 @@ function renderWdBalanceTable(sim) {
     return `<td data-cell-type="${type}" data-yr="${yr}" data-acc="${accId}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${content}</td>`;
   };
 
-  let h = `<h3 style="margin:0 0 6px;font-size:13px;color:#374151">💰 연도별 잔액 (백만원)</h3>
-  <table class="wd-table"><colgroup>
+  let h = `<table class="wd-table"><colgroup>
     <col style="width:110px"><col style="width:46px"><col style="width:58px">`;
   for (const yr of years) h += `<col style="width:${balances[yr] === null ? '22px' : '50px'}">`;
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
@@ -7712,7 +7712,7 @@ function renderWdBalanceTable(sim) {
   h += '</tr>';
   const _myBY2 = appSettings.myBirthYear || wp.myBirthYear || 0;
   if (_myBY2) {
-    h += `<tr class="wd-age-row"><td colspan="3" style="font-size:11px;color:#6b7280;text-align:center">나이</td>`;
+    h += `<tr class="wd-age-row"><td style="font-size:11px;color:#6b7280">나이</td><td></td><td></td>`;
     for (const yr of years) h += `<td style="font-size:11px;color:#6b7280">${yr - _myBY2}</td>`;
     h += '</tr>';
   }
@@ -7741,7 +7741,7 @@ function renderWdBalanceTable(sim) {
 
   const myAccIds   = dispAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
   const totalInit  = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
-  h += `<tr class="wd-total-row"><td colspan="2">총 잔액</td><td class="wd-init">${mv(totalInit)}</td>`;
+  h += `<tr class="wd-total-row"><td>총 잔액</td><td></td><td class="wd-init">${mv(totalInit)}</td>`;
   for (const yr of years) {
     if (balances[yr] === null) { h += blankTd; continue; }
     const myTotal   = myAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
@@ -7750,7 +7750,9 @@ function renderWdBalanceTable(sim) {
     h += `<td data-cell-type="bal-total" data-yr="${yr}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${mc(myTotal + wifeTotal)}</td>`;
   }
   h += '</tr></tbody></table>';
-  document.getElementById('wdBalanceWrap').innerHTML = h;
+  document.getElementById('wdBalanceWrap').innerHTML =
+    `<h3 style="margin:0 0 6px;font-size:13px;color:#374151;flex-shrink:0">💰 연도별 잔액 (백만원)</h3>`
+    + `<div style="overflow-x:auto">${h}</div>`;
 }
 
 // ===== 셀 정보 패널 =====
