@@ -2172,21 +2172,26 @@ Chart.register({
             <button id="wd_myAutoConsolidate_no"  class="toggle-btn" onclick="setWdAutoConsolidate('my',false)">사용 안함</button>
           </div>
         </div>
-        <div class="cfg-sub" id="wdCfgWifeSubLabel">👩 아내</div>
-        <div class="cfg-grid">
-          <label>은퇴연도</label>
-          <input id="wd_wifeRetireYear" type="number" min="2020" max="2080" step="1">
-          <label>사적연금 기본인출액 (백만원/계좌/년)</label>
-          <input id="wd_wifeBasicWithdraw" type="number" min="0" step="1">
-          <label>계좌 최대인출금액 (백만원/년)</label>
-          <input id="wd_wifeFixWithdraw" type="number" min="0" step="1">
-          <label>계좌 인출 시작연도</label>
-          <input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1">
-          <label>연금계좌 통합설정 사용여부</label>
-          <div class="toggle-row">
-            <button id="wd_wifeAutoConsolidate_yes" class="toggle-btn" onclick="setWdAutoConsolidate('wife',true)">사용</button>
-            <button id="wd_wifeAutoConsolidate_no"  class="toggle-btn" onclick="setWdAutoConsolidate('wife',false)">사용 안함</button>
+        <div id="wdWifeSection">
+          <div class="cfg-sub" id="wdCfgWifeSubLabel">👩 아내</div>
+          <div class="cfg-grid">
+            <label>은퇴연도</label>
+            <input id="wd_wifeRetireYear" type="number" min="2020" max="2080" step="1">
+            <label>사적연금 기본인출액 (백만원/계좌/년)</label>
+            <input id="wd_wifeBasicWithdraw" type="number" min="0" step="1">
+            <label>계좌 최대인출금액 (백만원/년)</label>
+            <input id="wd_wifeFixWithdraw" type="number" min="0" step="1">
+            <label>계좌 인출 시작연도</label>
+            <input id="wd_wifeFixStartYear" type="number" min="2020" max="2080" step="1">
+            <label>연금계좌 통합설정 사용여부</label>
+            <div class="toggle-row">
+              <button id="wd_wifeAutoConsolidate_yes" class="toggle-btn" onclick="setWdAutoConsolidate('wife',true)">사용</button>
+              <button id="wd_wifeAutoConsolidate_no"  class="toggle-btn" onclick="setWdAutoConsolidate('wife',false)">사용 안함</button>
+            </div>
           </div>
+        </div>
+        <div id="wdWifeNoSection" style="display:none;padding:10px 0;color:var(--muted);font-size:12px;text-align:center">
+          메인 설정에서 배우자를 활성화하면 표시됩니다
         </div>
       </div>
 
@@ -2276,7 +2281,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.150';
+const APP_VERSION = 'MyPM v0.151';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6571,9 +6576,12 @@ function saveSettingsModal() {
 
 function openWdSettingsModal() {
   loadWdFormValues();
+  const hasWife = !!appSettings.hasWife;
   const t = getWifeTitle();
   const lbl = document.getElementById('wdCfgWifeSubLabel');
   if (lbl) lbl.textContent = `👩 ${t}`;
+  document.getElementById('wdWifeSection').style.display    = hasWife ? '' : 'none';
+  document.getElementById('wdWifeNoSection').style.display  = hasWife ? 'none' : '';
   document.getElementById('wdSettingsModal').classList.add('open');
 }
 function closeWdSettingsModal() { document.getElementById('wdSettingsModal').classList.remove('open'); }
@@ -7968,19 +7976,21 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp1_reg">${pp1Reg}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">나 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_reg">${pp2Reg}</td></tr>`;
-  h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
   const _cWt = getWifeTitle();
-  if (t._consWifeIds && t._consWifeIds.includes('wife_dc')) {
-    h += `<tr class="cons-dc"><td rowspan="2">${_cWt} 퇴직연금</td><td>퇴직금</td><td>${mv(t.wifeDCPrincipal)}</td></tr>`;
-    h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.wifeDCRegular)}</td></tr>`;
+  if (t._consWifeIds && t._consWifeIds.length > 0) {
+    h += `<tr><td colspan="3" style="border:none;padding:4px"></td></tr>`;
+    if (t._consWifeIds.includes('wife_dc')) {
+      h += `<tr class="cons-dc"><td rowspan="2">${_cWt} 퇴직연금</td><td>퇴직금</td><td>${mv(t.wifeDCPrincipal)}</td></tr>`;
+      h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.wifeDCRegular)}</td></tr>`;
+    }
+    h += `<tr class="cons-anse"><td rowspan="3">${_cWt} 개인연금1</td><td>총잔액</td>
+      <td><input type="number" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="updateConsWP2()"></td></tr>`;
+    h += `<tr class="cons-anse"><td>안세공</td>
+      <td><input type="number" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
+    h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp1_reg">${wp1Reg}</td></tr>`;
+    h += `<tr class="cons-anse"><td rowspan="2">${_cWt} 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
+    h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_reg">${wp2Reg}</td></tr>`;
   }
-  h += `<tr class="cons-anse"><td rowspan="3">${_cWt} 개인연금1</td><td>총잔액</td>
-    <td><input type="number" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="updateConsWP2()"></td></tr>`;
-  h += `<tr class="cons-anse"><td>안세공</td>
-    <td><input type="number" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
-  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp1_reg">${wp1Reg}</td></tr>`;
-  h += `<tr class="cons-anse"><td rowspan="2">${_cWt} 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
-  h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_reg">${wp2Reg}</td></tr>`;
   h += `</tbody></table>`;
   document.getElementById('consRightWrap').innerHTML = h;
 }
