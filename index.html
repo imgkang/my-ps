@@ -962,11 +962,11 @@ Chart.register({
     border: 1px solid #93c5fd; border-radius: 3px; font-size: 10px; }
   /* 설정 모달 */
   .cfg-section { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
-    letter-spacing: 0.06em; padding: 10px 0 5px; border-top: 1px solid var(--border); margin-top: 6px; }
+    letter-spacing: 0.06em; padding: 7px 0 4px; border-top: 1px solid var(--border); margin-top: 4px; }
   .cfg-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
-  .cfg-grid { display: grid; grid-template-columns: auto 1fr; gap: 9px 18px; align-items: center; margin-bottom: 8px; }
-  .cfg-grid label { font-size: 14px; color: var(--text); white-space: nowrap; }
-  .cfg-grid input { padding: 8px 12px; text-align: right; width: 100%; }
+  .cfg-grid { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; align-items: center; margin-bottom: 6px; }
+  .cfg-grid label { font-size: 13px; color: var(--text); white-space: nowrap; }
+  .cfg-grid input { padding: 6px 10px; text-align: right; width: 100%; }
   .toggle-row { display: flex; gap: 6px; }
   .toggle-btn { flex: 1; padding: 7px 0; border: 1.5px solid var(--border); border-radius: 6px;
     background: #f3f4f6; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 500;
@@ -983,8 +983,8 @@ Chart.register({
   .cfg-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
   .cfg-tab-pane { display: none; }
   .cfg-tab-pane.active { display: block; }
-  .cfg-sub { font-size: 12px; font-weight: 700; color: #7c3aed; margin: 12px 0 6px;
-    padding-bottom: 4px; border-bottom: 1px solid #e9d5ff; }
+  .cfg-sub { font-size: 12px; font-weight: 700; color: #7c3aed; margin: 8px 0 4px;
+    padding-bottom: 3px; border-bottom: 1px solid #e9d5ff; }
   .cfg-sub:first-child { margin-top: 4px; }
   .cfg-acc-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .cfg-acc-btn { padding: 5px 10px; font-size: 12px; border: 1.5px solid var(--border);
@@ -1285,7 +1285,7 @@ Chart.register({
 
 <!-- ⚙️ 앱 설정 모달 -->
 <div class="modal-backdrop" id="settingsModal" onclick="handleSettingsBackdropClick(event)">
-  <div class="modal" style="max-width:460px;max-height:90vh;display:flex;flex-direction:column">
+  <div class="modal" style="max-width:460px;height:min(620px,88vh);display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0">
       <div><h2>⚙️ 설정</h2></div>
       <button class="close-btn" onclick="closeSettingsModal()" aria-label="닫기">×</button>
@@ -1349,11 +1349,15 @@ Chart.register({
     <div class="cfg-tab-pane" id="cfgPaneBasic">
       <div class="cfg-section">👤 기본 정보</div>
       <div class="cfg-grid">
-        <label>본인 생년 (년)</label>
-        <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1985"
-               oninput="onCfgBirthYearChange('my')">
-        <label>본인 생월 (월)</label>
-        <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
+        <label>본인 생년월</label>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1985"
+                 style="width:66px" oninput="onCfgBirthYearChange('my')">
+          <span style="font-size:12px;color:var(--muted)">년</span>
+          <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
+                 style="width:44px">
+          <span style="font-size:12px;color:var(--muted)">월</span>
+        </div>
       </div>
       <div class="cfg-section">👫 배우자</div>
       <div class="cfg-grid">
@@ -1367,12 +1371,16 @@ Chart.register({
         <div class="cfg-grid">
           <label>호칭 (예: 아내, 남편)</label>
           <input id="cfg_wifeTitle" type="text" placeholder="아내" maxlength="10"
-                 style="text-align:left;padding:8px 12px">
-          <label>배우자 생년 (년)</label>
-          <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="예: 1987"
-                 oninput="onCfgBirthYearChange('wife')">
-          <label>배우자 생월 (월)</label>
-          <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="1~12">
+                 style="text-align:left;padding:6px 10px">
+          <label>배우자 생년월</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1987"
+                   style="width:66px" oninput="onCfgBirthYearChange('wife')">
+            <span style="font-size:12px;color:var(--muted)">년</span>
+            <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
+                   style="width:44px">
+            <span style="font-size:12px;color:var(--muted)">월</span>
+          </div>
         </div>
       </div>
       <div class="cfg-section">🏦 세율 설정</div>
@@ -1384,6 +1392,8 @@ Chart.register({
         <label>연금소득초과세율 (%)</label>
         <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1">
       </div>
+      <div class="cfg-note">연금소득세율은 수령액 1,500만원 이하 기준 (지방소득세 포함)<br>
+        · 70세 미만 5.5% · 70~80세 4.4% · 80세 이상 3.3% · 종신계약 4.4%</div>
     </div><!-- /cfgPaneBasic -->
 
     <!-- 본인 탭 -->
@@ -1393,23 +1403,24 @@ Chart.register({
       <div id="cfgMyExtraAccs"></div>
       <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('my')">+ 계좌 추가</button>
 
-      <div class="cfg-sub">🧓 국민연금 설정</div>
-      <div class="cfg-grid cfg-toggle-row">
-        <label>사용여부</label>
-        <div class="toggle-row">
-          <button id="cfgMyNPYes" class="toggle-btn" onclick="setCfgPersonToggle('myNP',true)">사용</button>
-          <button id="cfgMyNPNo"  class="toggle-btn" onclick="setCfgPersonToggle('myNP',false)">미사용</button>
+      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
+        <span>🧓 국민연금</span>
+        <div class="toggle-row" style="gap:4px">
+          <button id="cfgMyNPYes" class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('myNP',true)">사용</button>
+          <button id="cfgMyNPNo"  class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('myNP',false)">미사용</button>
         </div>
       </div>
       <div id="cfgMyNPFields">
         <div class="cfg-grid">
-          <label>수급 시작 연도</label>
-          <div>
-            <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
-            <div id="cfgMyNPAutoHint" class="cfg-note"></div>
+          <label>수급 시작</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
+            <span style="font-size:12px;color:var(--muted)">년</span>
+            <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
+            <span style="font-size:12px;color:var(--muted)">월</span>
           </div>
-          <label>수급 시작 월</label>
-          <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1">
+          <label></label>
+          <div id="cfgMyNPAutoHint" class="cfg-note" style="margin:0"></div>
           <label>월 수령액 (만원)</label>
           <input id="cfg_myNPMonthly" type="number" min="0" step="1">
           <label>연기연금 (년, 0~5)</label>
@@ -1420,20 +1431,22 @@ Chart.register({
         <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
       </div>
 
-      <div class="cfg-sub">🏛️ 공무원연금 설정</div>
-      <div class="cfg-grid cfg-toggle-row">
-        <label>사용여부</label>
-        <div class="toggle-row">
-          <button id="cfgMyGPYes" class="toggle-btn" onclick="setCfgPersonToggle('myGP',true)">사용</button>
-          <button id="cfgMyGPNo"  class="toggle-btn" onclick="setCfgPersonToggle('myGP',false)">미사용</button>
+      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
+        <span>🏛️ 공무원연금</span>
+        <div class="toggle-row" style="gap:4px">
+          <button id="cfgMyGPYes" class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('myGP',true)">사용</button>
+          <button id="cfgMyGPNo"  class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('myGP',false)">미사용</button>
         </div>
       </div>
       <div id="cfgMyGPFields">
         <div class="cfg-grid">
-          <label>수령 시작 연도</label>
-          <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1">
-          <label>수령 시작 월</label>
-          <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1">
+          <label>수령 시작</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
+            <span style="font-size:12px;color:var(--muted)">년</span>
+            <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
+            <span style="font-size:12px;color:var(--muted)">월</span>
+          </div>
           <label>월 수령액 (만원)</label>
           <input id="cfg_myGPMonthly" type="number" min="0" step="1">
           <label>조기연금 (년, 0~5)</label>
@@ -1441,20 +1454,22 @@ Chart.register({
         </div>
       </div>
 
-      <div class="cfg-sub">🎓 사학연금 설정</div>
-      <div class="cfg-grid cfg-toggle-row">
-        <label>사용여부</label>
-        <div class="toggle-row">
-          <button id="cfgMySPYes" class="toggle-btn" onclick="setCfgPersonToggle('mySP',true)">사용</button>
-          <button id="cfgMySPNo"  class="toggle-btn" onclick="setCfgPersonToggle('mySP',false)">미사용</button>
+      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
+        <span>🎓 사학연금</span>
+        <div class="toggle-row" style="gap:4px">
+          <button id="cfgMySPYes" class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('mySP',true)">사용</button>
+          <button id="cfgMySPNo"  class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('mySP',false)">미사용</button>
         </div>
       </div>
       <div id="cfgMySPFields">
         <div class="cfg-grid">
-          <label>수령 시작 연도</label>
-          <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1">
-          <label>수령 시작 월</label>
-          <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1">
+          <label>수령 시작</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
+            <span style="font-size:12px;color:var(--muted)">년</span>
+            <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
+            <span style="font-size:12px;color:var(--muted)">월</span>
+          </div>
           <label>월 수령액 (만원)</label>
           <input id="cfg_mySPMonthly" type="number" min="0" step="1">
           <label>연기연금 (년, 0~5)</label>
@@ -1479,23 +1494,24 @@ Chart.register({
       <div id="cfgWifeExtraAccs"></div>
       <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('wife')">+ 계좌 추가</button>
 
-      <div class="cfg-sub">🧓 국민연금 설정</div>
-      <div class="cfg-grid cfg-toggle-row">
-        <label>사용여부</label>
-        <div class="toggle-row">
-          <button id="cfgWifeNPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeNP',true)">사용</button>
-          <button id="cfgWifeNPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeNP',false)">미사용</button>
+      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
+        <span>🧓 국민연금</span>
+        <div class="toggle-row" style="gap:4px">
+          <button id="cfgWifeNPYes" class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeNP',true)">사용</button>
+          <button id="cfgWifeNPNo"  class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeNP',false)">미사용</button>
         </div>
       </div>
       <div id="cfgWifeNPFields">
         <div class="cfg-grid">
-          <label>수급 시작 연도</label>
-          <div>
-            <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:100%">
-            <div id="cfgWifeNPAutoHint" class="cfg-note"></div>
+          <label>수급 시작</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
+            <span style="font-size:12px;color:var(--muted)">년</span>
+            <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
+            <span style="font-size:12px;color:var(--muted)">월</span>
           </div>
-          <label>수급 시작 월</label>
-          <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1">
+          <label></label>
+          <div id="cfgWifeNPAutoHint" class="cfg-note" style="margin:0"></div>
           <label>월 수령액 (만원)</label>
           <input id="cfg_wifeNPMonthly" type="number" min="0" step="1">
           <label>연기연금 (년, 0~5)</label>
@@ -1506,20 +1522,22 @@ Chart.register({
         <div class="cfg-note">연기: +7.2%/년, 조기: -6%/년</div>
       </div>
 
-      <div class="cfg-sub">🏛️ 공무원연금 설정</div>
-      <div class="cfg-grid cfg-toggle-row">
-        <label>사용여부</label>
-        <div class="toggle-row">
-          <button id="cfgWifeGPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeGP',true)">사용</button>
-          <button id="cfgWifeGPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeGP',false)">미사용</button>
+      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
+        <span>🏛️ 공무원연금</span>
+        <div class="toggle-row" style="gap:4px">
+          <button id="cfgWifeGPYes" class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeGP',true)">사용</button>
+          <button id="cfgWifeGPNo"  class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeGP',false)">미사용</button>
         </div>
       </div>
       <div id="cfgWifeGPFields">
         <div class="cfg-grid">
-          <label>수령 시작 연도</label>
-          <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1">
-          <label>수령 시작 월</label>
-          <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1">
+          <label>수령 시작</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
+            <span style="font-size:12px;color:var(--muted)">년</span>
+            <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
+            <span style="font-size:12px;color:var(--muted)">월</span>
+          </div>
           <label>월 수령액 (만원)</label>
           <input id="cfg_wifeGPMonthly" type="number" min="0" step="1">
           <label>조기연금 (년, 0~5)</label>
@@ -1527,20 +1545,22 @@ Chart.register({
         </div>
       </div>
 
-      <div class="cfg-sub">🎓 사학연금 설정</div>
-      <div class="cfg-grid cfg-toggle-row">
-        <label>사용여부</label>
-        <div class="toggle-row">
-          <button id="cfgWifeSPYes" class="toggle-btn" onclick="setCfgPersonToggle('wifeSP',true)">사용</button>
-          <button id="cfgWifeSPNo"  class="toggle-btn" onclick="setCfgPersonToggle('wifeSP',false)">미사용</button>
+      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
+        <span>🎓 사학연금</span>
+        <div class="toggle-row" style="gap:4px">
+          <button id="cfgWifeSPYes" class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeSP',true)">사용</button>
+          <button id="cfgWifeSPNo"  class="toggle-btn" style="padding:3px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeSP',false)">미사용</button>
         </div>
       </div>
       <div id="cfgWifeSPFields">
         <div class="cfg-grid">
-          <label>수령 시작 연도</label>
-          <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1">
-          <label>수령 시작 월</label>
-          <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1">
+          <label>수령 시작</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
+            <span style="font-size:12px;color:var(--muted)">년</span>
+            <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
+            <span style="font-size:12px;color:var(--muted)">월</span>
+          </div>
           <label>월 수령액 (만원)</label>
           <input id="cfg_wifeSPMonthly" type="number" min="0" step="1">
           <label>연기연금 (년, 0~5)</label>
@@ -2286,7 +2306,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.152';
+const APP_VERSION = 'MyPM v0.153';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
