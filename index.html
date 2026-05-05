@@ -2346,7 +2346,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.160';
+const APP_VERSION = 'MyPM v0.161';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6726,6 +6726,7 @@ function applyWdSettings() {
     annualTarget: n('wd_annualTarget'), inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
     retireTaxRate: wdPlan.retireTaxRate, pensionTaxRate: wdPlan.pensionTaxRate,
     npTaxRate: wdPlan.npTaxRate, excessPensionTaxRate: wdPlan.excessPensionTaxRate,
+    pensionTaxRateU70: wdPlan.pensionTaxRateU70, pensionTaxRate7080: wdPlan.pensionTaxRate7080, pensionTaxRateO80: wdPlan.pensionTaxRateO80,
     pensionBenefit10y: wdPlan.pensionBenefit10y, pensionBenefit20y: wdPlan.pensionBenefit20y, pensionBenefit30y: wdPlan.pensionBenefit30y,
     basicWithdraw: n('wd_basicWithdraw'),
     wifeRetireYear: n('wd_wifeRetireYear') || currentYear + 4,
@@ -7561,10 +7562,8 @@ function renderWdCharts(sim) {
 
 let _wdScrollSyncDone = false;
 function setupWdScrollSync() {
-  if (_wdScrollSyncDone) return;
-  _wdScrollSyncDone = true;  // reset on next modal open via resetWdScrollSync()
-  const a = document.getElementById('wdWithdrawWrap');
-  const b = document.getElementById('wdBalanceWrap');
+  const a = document.getElementById('wdWithdrawScroll');
+  const b = document.getElementById('wdBalanceScroll');
   if (!a || !b) return;
   let busy = false;
   a.addEventListener('scroll', () => { if (busy) return; busy = true; b.scrollLeft = a.scrollLeft; busy = false; });
@@ -7676,7 +7675,7 @@ function renderWdWithdrawTable(sim) {
   h += '</tbody></table>';
   document.getElementById('wdWithdrawWrap').innerHTML =
     `<h3 style="margin:0 0 6px;font-size:13px;color:#374151;flex-shrink:0">💸 연도별 인출 금액 (백만원)</h3>`
-    + `<div style="overflow-x:auto">${h}</div>`;
+    + `<div id="wdWithdrawScroll" style="overflow-x:auto">${h}</div>`;
 }
 
 function renderWdBalanceTable(sim) {
@@ -7752,7 +7751,7 @@ function renderWdBalanceTable(sim) {
   h += '</tr></tbody></table>';
   document.getElementById('wdBalanceWrap').innerHTML =
     `<h3 style="margin:0 0 6px;font-size:13px;color:#374151;flex-shrink:0">💰 연도별 잔액 (백만원)</h3>`
-    + `<div style="overflow-x:auto">${h}</div>`;
+    + `<div id="wdBalanceScroll" style="overflow-x:auto">${h}</div>`;
 }
 
 // ===== 셀 정보 패널 =====
