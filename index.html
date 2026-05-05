@@ -1291,14 +1291,15 @@ Chart.register({
       <button class="close-btn" onclick="closeSettingsModal()" aria-label="닫기">×</button>
     </div>
     <div class="cfg-tabs">
-      <button class="cfg-tab active" id="cfgTabGeneral" onclick="switchCfgTab('general')">일반</button>
-      <button class="cfg-tab" id="cfgTabMy"   onclick="switchCfgTab('my')">👤 본인</button>
-      <button class="cfg-tab" id="cfgTabWife" onclick="switchCfgTab('wife')">👩 배우자</button>
+      <button class="cfg-tab active" id="cfgTabApp"   onclick="switchCfgTab('app')">⚙️ 앱</button>
+      <button class="cfg-tab"        id="cfgTabBasic" onclick="switchCfgTab('basic')">📋 기본</button>
+      <button class="cfg-tab"        id="cfgTabMy"    onclick="switchCfgTab('my')">👤 본인</button>
+      <button class="cfg-tab"        id="cfgTabWife"  onclick="switchCfgTab('wife')">👩 배우자</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding:0 4px 4px">
 
-    <!-- 일반 탭 -->
-    <div class="cfg-tab-pane active" id="cfgPaneGeneral">
+    <!-- 앱 탭 -->
+    <div class="cfg-tab-pane active" id="cfgPaneApp">
       <div class="cfg-section">💾 데이터</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
         <div style="display:flex;gap:6px">
@@ -1342,6 +1343,10 @@ Chart.register({
         <label>표시 유지 시간 (초)</label>
         <input id="cfg_cellInfoDuration" type="number" min="1" max="30" step="1">
       </div>
+    </div><!-- /cfgPaneApp -->
+
+    <!-- 기본 탭 -->
+    <div class="cfg-tab-pane" id="cfgPaneBasic">
       <div class="cfg-section">👤 기본 정보</div>
       <div class="cfg-grid">
         <label>본인 생년 (년)</label>
@@ -1379,7 +1384,7 @@ Chart.register({
         <label>연금소득초과세율 (%)</label>
         <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1">
       </div>
-    </div><!-- /cfgPaneGeneral -->
+    </div><!-- /cfgPaneBasic -->
 
     <!-- 본인 탭 -->
     <div class="cfg-tab-pane" id="cfgPaneMy">
@@ -2281,7 +2286,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.151';
+const APP_VERSION = 'MyPM v0.152';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6330,7 +6335,7 @@ let _cfgExtraAccounts = { my: [], wife: [] };
 let _cfgToggles = { myNP: true, myGP: false, mySP: false, wifeNP: true, wifeGP: false, wifeSP: false };
 
 function switchCfgTab(tab) {
-  ['general','my','wife'].forEach(t => {
+  ['app','basic','my','wife'].forEach(t => {
     const cap = t.charAt(0).toUpperCase() + t.slice(1);
     document.getElementById(`cfgTab${cap}`)?.classList.toggle('active', t === tab);
     document.getElementById(`cfgPane${cap}`)?.classList.toggle('active', t === tab);
@@ -6469,7 +6474,7 @@ function openSettingsModal() {
   sv('cfg_wifeRetireTaxRate', wife.retireTaxRate    ?? 12);
   onCfgBirthYearChange('wife');
 
-  switchCfgTab('general');
+  switchCfgTab('basic');
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
@@ -6496,7 +6501,7 @@ function _updateCfgWifeUI(hasWife) {
   document.getElementById('cfgWifeRows').style.display = hasWife ? '' : 'none';
   const wTab = document.getElementById('cfgTabWife');
   wTab.style.display = hasWife ? '' : 'none';
-  if (!hasWife && wTab.classList.contains('active')) switchCfgTab('general');
+  if (!hasWife && wTab.classList.contains('active')) switchCfgTab('basic');
 }
 function saveSettingsModal() {
   const n  = id => Number(document.getElementById(id)?.value) || 0;
