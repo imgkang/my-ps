@@ -2346,7 +2346,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.155';
+const APP_VERSION = 'MyPM v0.156';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7048,8 +7048,8 @@ function computeWithdrawalSim() {
     const rTR = myRTR_base * benefit;
 
     // 4. 우선순위 인출: ①안세공=0 계좌 연금세(기본액) → ②안세공>0 계좌 안세공 → ③퇴직금 → ④연금세(전체소진)
-    const doWithdraw = (accIds, budget) => {
-      for (const id of accIds) withdrawals[yr][id] = { anseOut: 0, dcOut: 0, regularOut: 0 };
+    const doWithdraw = (accIds, budget, basisCap) => {
+      for (const id of accIds) withdrawals[yr][id] = { anseOut: 0, dcOut: 0, regularOut: 0, pensionTax: 0 };
       let rem = budget;
       const snapAnse = Object.fromEntries(accIds.map(id => [id, state[id].anse]));
       const dcId = accIds.find(id => DC_ACC_IDS.has(id)) || null;
@@ -7057,11 +7057,15 @@ function computeWithdrawalSim() {
       // ① 안세공=0 계좌(DC 제외): 안세공·퇴직금이 남아 있는 동안 그룹 전체에서 기본인출액 1회만
       const hasHighPri = accIds.some(id => snapAnse[id] > 0 || (state[id].dcPrincipal || 0) > 0);
       if (hasHighPri) {
-        let basicRem = basic;
+        let basicRem = basisCap;
         for (const id of accIds) {
           if (basicRem <= 0 || rem <= 0 || snapAnse[id] > 0 || DC_ACC_IDS.has(id)) continue;
           const take = Math.min(state[id].regular, basicRem, rem);
-          if (take > 0) { withdrawals[yr][id].regularOut += take; state[id].regular -= take; state[id].total -= take; totalPT += take * getPTR(id.startsWith('wife_') ? wifeBY : myBY, yr); rem -= take; basicRem -= take; }
+          if (take > 0) {
+            const pt = take * getPTR(id.startsWith('wife_') ? wifeBY : myBY, yr);
+            withdrawals[yr][id].regularOut += take; withdrawals[yr][id].pensionTax += pt;
+            state[id].regular -= take; state[id].total -= take; totalPT += pt; rem -= take; basicRem -= take;
+          }
         }
       }
       // ② 안세공>0 계좌: 안세공 소진
@@ -7082,7 +7086,10 @@ function computeWithdrawalSim() {
         for (const id of accIds) {
           if (rem <= 0) break;
           const take = Math.min(state[id].regular, rem);
-          if (take > 0) { withdrawals[yr][id].regularOut += take; state[id].regular -= take; state[id].total -= take; totalPT += take * epTR; rem -= take; }
+          if (take > 0) {
+            withdrawals[yr][id].regularOut += take; withdrawals[yr][id].pensionTax += take * epTR;
+            state[id].regular -= take; state[id].total -= take; totalPT += take * epTR; rem -= take;
+          }
         }
       }
     };
@@ -7091,8 +7098,8 @@ function computeWithdrawalSim() {
     const _snap = {};
     for (const id of allAccIds) _snap[id] = { ...state[id] };
 
-    doWithdraw(activeMyIds, myRemaining);
-    doWithdraw(getActiveWifeAccIds(), wifeRemaining);
+    doWithdraw(activeMyIds, myRemaining, basic);
+    doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
 
     // 목표액 구간: 세후 실수령액 = target이 되도록 2차 보정
     if (yr >= targetStartYear) {
@@ -7111,8 +7118,8 @@ function computeWithdrawalSim() {
         for (const id of allAccIds) withdrawals[yr][id] = { anseOut: 0, dcOut: 0, regularOut: 0 };
         totalRT = 0; totalPT = 0;
         myRemaining = Math.max(0, myRemaining + _corrGross);
-        doWithdraw(activeMyIds, myRemaining);
-        doWithdraw(getActiveWifeAccIds(), wifeRemaining);
+        doWithdraw(activeMyIds, myRemaining, basic);
+        doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
       }
     }
 
@@ -7799,11 +7806,28 @@ function buildCellInfoLines(type, yr, accId) {
     }
     case 'pension': {
       const regularOut = withdrawals[yr]?.[accId]?.regularOut || 0;
-      const totalRegOut = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
-      const effRate = totalRegOut > 0 ? s.pensionTax / totalRegOut : ((wp.pensionTaxRate||3.3)/100);
-      const tax = Math.round(regularOut * effRate);
+      const accPT = withdrawals[yr]?.[accId]?.pensionTax || 0;
+      const effRate = regularOut > 0 ? accPT / regularOut : 0;
+      const tax = Math.round(accPT);
+      const birthYear = accId.startsWith('wife_') ? (wp.wifeBirthYear||0) : (wp.myBirthYear||0);
+      const age = birthYear ? yr - birthYear : 0;
+      const epPct = wp.excessPensionTaxRate ?? 16.5;
+      const basePTR = !birthYear ? (wp.pensionTaxRateO80??3.3)
+        : age < 70 ? (wp.pensionTaxRateU70??5.5)
+        : age < 80 ? (wp.pensionTaxRate7080??4.4) : (wp.pensionTaxRateO80??3.3);
+      let ruleDesc = '';
+      if (regularOut > 0) {
+        const eff100 = effRate * 100;
+        if (Math.abs(eff100 - epPct) < 0.6)
+          ruleDesc = `안세공·퇴직금 소진 후 잔여인출 → 초과세율 ${epPct}% 적용`;
+        else if (Math.abs(eff100 - basePTR) < 0.6)
+          ruleDesc = `기본인출액 이내 → 나이 기준 ${age ? age+'세 ' : ''}${basePTR}% 적용`;
+        else
+          ruleDesc = `혼합 (기본분 ${basePTR}% + 초과분 ${epPct}%) → 실효 ${eff100.toFixed(1)}%`;
+      }
       return row('연금소득세 인출',
-        `인출 ${wr(regularOut)} × 연금세율 ${(effRate*100).toFixed(1)}% = 세금 ${wr(tax)} → 순수령 <b>${wr(regularOut - tax)}</b>`);
+        `인출 ${wr(regularOut)} × 세율 ${(effRate*100).toFixed(1)}% = 세금 ${wr(tax)} → 순수령 <b>${wr(regularOut - tax)}</b>`
+        + (ruleDesc ? `<br><span style="font-size:11px;color:#64748b">${ruleDesc}</span>` : ''));
     }
     case 'total-priv': {
       const anseT = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.anseOut||0), 0);
@@ -7830,9 +7854,22 @@ function buildCellInfoLines(type, yr, accId) {
     }
     case 'pension-tax': {
       const totalRegOut = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
-      const effRate = totalRegOut > 0 ? s.pensionTax / totalRegOut : ((wp.pensionTaxRate||3.3)/100);
+      const effRate = totalRegOut > 0 ? s.pensionTax / totalRegOut : 0;
+      const myIds   = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
+      const wifeIds = allAccIds.filter(id =>  WIFE_ACC_IDS.includes(id));
+      const myReg   = myIds.reduce((a, id)   => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
+      const wifeReg = wifeIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
+      const myPT    = myIds.reduce((a, id)   => a + (withdrawals[yr]?.[id]?.pensionTax||0), 0);
+      const wifePT  = wifeIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.pensionTax||0), 0);
+      let detail = '';
+      if (myReg > 0 && wifeReg > 0)
+        detail = `<br><span style="font-size:11px;color:#64748b">나 ${wr(myReg)}×${(myPT/myReg*100).toFixed(1)}% + 배우자 ${wr(wifeReg)}×${(wifePT/wifeReg*100).toFixed(1)}%</span>`;
+      else if (myReg > 0)
+        detail = `<br><span style="font-size:11px;color:#64748b">나 ${wr(myReg)}×${(myPT/myReg*100).toFixed(1)}% 적용</span>`;
+      else if (wifeReg > 0)
+        detail = `<br><span style="font-size:11px;color:#64748b">배우자 ${wr(wifeReg)}×${(wifePT/wifeReg*100).toFixed(1)}% 적용</span>`;
       return row('연금소득세',
-        `연금세인출 ${wr(totalRegOut)} × 세율 ${(effRate*100).toFixed(1)}% = <b>${wr(s.pensionTax)}</b>`);
+        `연금세인출 ${wr(totalRegOut)} × 실효 ${(effRate*100).toFixed(1)}% = <b>${wr(s.pensionTax)}</b>` + detail);
     }
     case 'np-tax': {
       const pubTotal = (s.myPublicInc||0) + (s.wifePublicInc||0);
