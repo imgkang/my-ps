@@ -2276,7 +2276,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.149';
+const APP_VERSION = 'MyPM v0.150';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6560,7 +6560,13 @@ function saveSettingsModal() {
   saveWdPlan();
   closeSettingsModal();
   render();
-  renderPortfolioChart();
+  const _activePanelNow = _TAB_NAMES.find(t => document.getElementById('panel-' + t)?.classList.contains('active'));
+  if (_activePanelNow === 'withdrawal') renderWithdrawalPlan();
+  else if (_activePanelNow === 'annual') { renderEvalTable(); setTimeout(renderAnnualCharts, 50); renderAccSummary(); }
+  else if (_activePanelNow === 'records') { renderRecordsTableHeader(); renderRecordsList(); renderRecChart(); }
+  else if (_activePanelNow === 'deposit') { renderDepositTotals(); renderDepositList(); renderDepositChart(); }
+  else if (_activePanelNow === 'dividend') { renderDividendLists(); renderDivCharts(); }
+  else renderPortfolioChart();
 }
 
 function openWdSettingsModal() {
