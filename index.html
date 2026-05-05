@@ -2000,14 +2000,14 @@ Chart.register({
         <div id="consLeftWrap"></div>
       </div>
       <div>
-        <div class="cons-section-title">통합 후 배분</div>
+        <div class="cons-section-title">수동 통합 설정</div>
         <div id="consRightWrap"></div>
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn-primary" onclick="applyConsolidate()">✔ 적용하고 닫기</button>
+      <button class="btn-primary"   style="flex:2;white-space:nowrap" onclick="applyConsolidate()">✔ 적용하고 닫기</button>
       <button class="btn-secondary" onclick="clearConsolidate()">↩ 통합 취소</button>
-      <button class="btn-secondary" onclick="closeConsolidateModal()">닫기</button>
+      <button class="btn-secondary" style="flex:0;font-size:12px;padding:8px 10px;white-space:nowrap" onclick="closeConsolidateModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -2346,7 +2346,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.158';
+const APP_VERSION = 'MyPM v0.159';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8043,8 +8043,8 @@ function renderConsAutoLog() {
     const r = log.my;
     h += `<div style="font-size:12px;color:#15803d;margin-bottom:4px"><b>본인</b></div>
     <div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:6px">
-      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)<br>
-      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}
+      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}<br>
+      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)
     </div>`;
   }
   if (log.wife) {
@@ -8052,8 +8052,8 @@ function renderConsAutoLog() {
     const wt = getWifeTitle();
     h += `<div style="font-size:12px;color:#15803d;margin-bottom:4px"><b>${wt}</b></div>
     <div style="font-size:12px;color:#374151;line-height:1.8">
-      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)<br>
-      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}
+      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}<br>
+      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)
     </div>`;
   }
   h += `</div>`;
