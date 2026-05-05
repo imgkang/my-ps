@@ -2192,23 +2192,23 @@ Chart.register({
 
 <!-- 인출계획 설정 모달 -->
 <div class="modal-backdrop" id="wdSettingsModal" onclick="handleWdSettingsBackdropClick(event)">
-  <div class="modal" style="max-width:420px;max-height:90vh;display:flex;flex-direction:column">
+  <div class="modal" style="max-width:420px;height:90vh;display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0">
       <div><h2>⚙️ 인출계획 설정</h2></div>
       <button class="close-btn" onclick="closeWdSettingsModal()" aria-label="닫기">×</button>
     </div>
-    <div id="wdYearTimeline" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;margin:0 0 10px;display:flex;flex-direction:column;gap:6px;font-size:13px;flex-shrink:0">
-      <div id="wdYearRow_my" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span style="color:#1d4ed8;font-weight:600;min-width:44px">👤 본인</span>
-        <span id="wdYL_myRetire" style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:6px;font-weight:500"></span>
-        <span style="color:#94a3b8">──▶</span>
-        <span id="wdYL_target" style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:6px;font-weight:500"></span>
+    <div id="wdYearTimeline" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:8px 12px;margin:0 0 10px;display:flex;flex-direction:column;gap:5px;font-size:11px;flex-shrink:0">
+      <div id="wdYearRow_my" style="display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden">
+        <span style="color:#1d4ed8;font-weight:700;width:40px;flex-shrink:0">👤 본인</span>
+        <span id="wdYL_myRetire" style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:5px;font-weight:600;flex-shrink:0"></span>
+        <span style="color:#94a3b8;flex-shrink:0">▶</span>
+        <span id="wdYL_target" style="background:#dcfce7;color:#166534;padding:1px 6px;border-radius:5px;font-weight:600;flex-shrink:0"></span>
       </div>
-      <div id="wdYearRow_wife" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span id="wdYL_wifeLabel" style="color:#be185d;font-weight:600;min-width:44px">👩 아내</span>
-        <span id="wdYL_wifeRetire" style="background:#fce7f3;color:#9d174d;padding:2px 8px;border-radius:6px;font-weight:500"></span>
-        <span style="color:#94a3b8">──▶</span>
-        <span id="wdYL_wifeFix" style="background:#fdf4ff;color:#7e22ce;padding:2px 8px;border-radius:6px;font-weight:500"></span>
+      <div id="wdYearRow_wife" style="display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden">
+        <span id="wdYL_wifeLabel" style="color:#be185d;font-weight:700;width:40px;flex-shrink:0">👩 아내</span>
+        <span id="wdYL_wifeRetire" style="background:#fce7f3;color:#9d174d;padding:1px 6px;border-radius:5px;font-weight:600;flex-shrink:0"></span>
+        <span style="color:#94a3b8;flex-shrink:0">▶</span>
+        <span id="wdYL_wifeFix" style="background:#fdf4ff;color:#7e22ce;padding:1px 6px;border-radius:5px;font-weight:600;flex-shrink:0"></span>
       </div>
     </div>
     <div class="cfg-tabs">
@@ -2360,7 +2360,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.164';
+const APP_VERSION = 'MyPM v0.165';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
