@@ -1308,7 +1308,6 @@ Chart.register({
           </button>
           <button onclick="forceUpdate()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #6366f1;color:#6366f1;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500" title="캐시를 모두 지우고 최신 버전으로 강제 업데이트">🔄 강제 업데이트</button>
           <button onclick="resetAllData()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #dc2626;color:#dc2626;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500">🗑️ 데이터 초기화</button>
-          <button onclick="resetBiometric()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #7c3aed;color:#7c3aed;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500" title="Face ID / Touch ID 재등록">🔒 Face ID 재등록</button>
         </div>
         <div style="display:flex;gap:6px">
           <button class="btn-secondary" style="flex:1;padding:9px 6px;font-size:13px" onclick="exportToFile()">💾 파일로 저장</button>
@@ -2347,7 +2346,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.162';
+const APP_VERSION = 'MyPM v0.161';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8264,99 +8263,9 @@ function saveDriveSettings() {
     clientId: driveClientId, fileId: driveFileId, lastSync: driveLastSync
   }));
 }
-// ===== Face ID / Touch ID 잠금 =====
-const WEBAUTHN_CRED_KEY = 'mypm_webauthn_cred_v1';
-
-function _b64ToUint8(b64) { return Uint8Array.from(atob(b64), c => c.charCodeAt(0)); }
-function _uint8ToB64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
-function isWebAuthnAvailable() {
-  return !!(window.PublicKeyCredential && navigator.credentials?.create && navigator.credentials?.get);
-}
-
-async function initLockScreen() {
-  const lock = document.getElementById('lockScreen');
-  if (!lock) return;
-  if (!driveClientId || !isWebAuthnAvailable()) { lock.style.display = 'none'; return; }
-  const stored = localStorage.getItem(WEBAUTHN_CRED_KEY);
-  const msgEl = document.getElementById('lockMsg');
-  const btnEl = document.getElementById('lockBtn');
-  if (!stored) {
-    msgEl.textContent = 'Face ID를 등록하면 다음부터 자동으로 잠금 해제됩니다.';
-    btnEl.textContent = 'Face ID 등록하기';
-    btnEl.onclick = registerBiometric;
-  } else {
-    msgEl.textContent = 'Face ID로 잠금 해제';
-    setTimeout(tryBiometricUnlock, 300);
-  }
-}
-
-async function registerBiometric() {
-  const msgEl = document.getElementById('lockMsg');
-  try {
-    const cred = await navigator.credentials.create({ publicKey: {
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: 'MyPM', id: location.hostname },
-      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'owner', displayName: 'MyPM 사용자' },
-      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
-      timeout: 60000
-    }});
-    localStorage.setItem(WEBAUTHN_CRED_KEY, _uint8ToB64(cred.rawId));
-    onLockPassed();
-  } catch(e) {
-    msgEl.textContent = '등록 실패: ' + (e.message || e.name) + '\n잠금 없이 열기를 사용하세요.';
-  }
-}
-
-async function tryBiometricUnlock() {
-  const stored = localStorage.getItem(WEBAUTHN_CRED_KEY);
-  if (!stored) { registerBiometric(); return; }
-  const msgEl = document.getElementById('lockMsg');
-  try {
-    await navigator.credentials.get({ publicKey: {
-      challenge: crypto.getRandomValues(new Uint8Array(32)),
-      allowCredentials: [{ id: _b64ToUint8(stored), type: 'public-key' }],
-      userVerification: 'required',
-      timeout: 60000
-    }});
-    onLockPassed();
-  } catch(e) {
-    msgEl.textContent = e.name === 'NotAllowedError'
-      ? '인증이 취소되었습니다. 다시 시도하세요.'
-      : '인증 실패. 잠금 없이 열기를 사용하세요.';
-  }
-}
-
-function onLockPassed() {
-  const lock = document.getElementById('lockScreen');
-  if (lock) lock.style.display = 'none';
-  if (driveClientId) {
-    if (!document.querySelector('script[src*="gsi/client"]')) {
-      const s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client';
-      s.async = true;
-      s.onload = () => initGIS();
-      document.head.appendChild(s);
-    } else {
-      initGIS();
-    }
-  }
-}
-
-function skipLockScreen() {
-  const lock = document.getElementById('lockScreen');
-  if (lock) lock.style.display = 'none';
-}
-
-function resetBiometric() {
-  localStorage.removeItem(WEBAUTHN_CRED_KEY);
-  alert('Face ID 등록이 삭제되었습니다. 다음 실행 시 재등록됩니다.');
-}
-
 loadDriveSettings();
 // 앱 로드 즉시 UI 반영 (토큰이 있으면 "동기화됨" 표시)
 updateDriveUI();
-initLockScreen();
 // Drive 로그인은 사용자가 Drive 버튼을 눌렀을 때만 시도 (자동 초기화 제거)
 
 function openDriveModal() {
@@ -8660,15 +8569,6 @@ if ('serviceWorker' in navigator) {
 </script>
 <div class="app-version" id="appVersion"></div>
 <div id="wd-cell-info"></div>
-
-<!-- Face ID 잠금 화면 -->
-<div id="lockScreen" style="position:fixed;inset:0;background:linear-gradient(160deg,#0f172a,#1e293b);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px">
-  <div style="font-size:56px">🔒</div>
-  <div style="color:#f1f5f9;font-size:20px;font-weight:700;letter-spacing:-0.3px">MyPM</div>
-  <div id="lockMsg" style="color:#94a3b8;font-size:14px;text-align:center;line-height:1.6;max-width:280px"></div>
-  <button id="lockBtn" onclick="tryBiometricUnlock()" style="margin-top:8px;padding:14px 32px;background:#3b82f6;color:white;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;min-width:200px">Face ID / Touch ID로 열기</button>
-  <button onclick="skipLockScreen()" style="background:none;border:none;color:#475569;font-size:13px;cursor:pointer;padding:8px">잠금 없이 열기</button>
-</div>
 </body>
 </html>
                                              
