@@ -806,9 +806,9 @@ Chart.register({
     color: var(--muted); position: sticky; top: 0; z-index: 2;
   }
   .apt th.yr-future { background: #fffbeb; color: #92400e; }
-  .apt th.yr-current { background: #f0fdf4; color: #166534; }
+  .apt th.yr-current { background: #d1fae5; color: #065f46; border-top: 3px solid #10b981; }
   .apt th:first-child, .apt td:first-child {
-    text-align: left; min-width: 130px;
+    text-align: left; min-width: 100px;
     position: sticky; left: 0; z-index: 1;
     border-right: 2px solid var(--border); padding-left: 10px;
   }
@@ -2426,7 +2426,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.169';
+const APP_VERSION = 'MyPM v0.170';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5281,7 +5281,7 @@ function fmtRate(pct) {
 }
 // 은퇴연도 기준 셀 스타일 — 전해: amber, 이후: gray
 function retireCellStyle(yr, retireYr, baseStyle = '') {
-  if (yr >= retireYr) return 'background:#f3f4f6;color:#9ca3af';
+  if (yr >= retireYr) return 'background:#f7fff4;color:#9ca3af';
   if (yr === retireYr - 1) {
     const cm = baseStyle.match(/color:([^;]+)/);
     return `border-left:3px solid #f59e0b;background:#fffbeb${cm ? ';color:' + cm[1] : ''}`;
@@ -5289,7 +5289,7 @@ function retireCellStyle(yr, retireYr, baseStyle = '') {
   return baseStyle;
 }
 function buildColgroup(years) {
-  let s = '<colgroup><col style="width:152px">';
+  let s = '<colgroup><col style="width:108px">';
   for (const yr of years) s += '<col style="width:88px">';
   return s + '</colgroup>';
 }
@@ -5404,7 +5404,7 @@ function renderPrincipalTable() {
 
   body += '</tbody>';
   const cg = buildColgroup(years);
-  wrap.innerHTML = `<table class="apt" style="width:${152 + years.length * 88}px">${cg}${h}${body}</table>`;
+  wrap.innerHTML = `<table class="apt" style="width:${108 + years.length * 88}px">${cg}${h}${body}</table>`;
 }
 
 // Year-end evaluation (원) for an account group from monthlyRecords
@@ -5662,7 +5662,7 @@ function renderEvalTable() {
 
   body += '</tbody>';
   const cg = buildColgroup(years);
-  wrap.innerHTML = `<table class="apt" style="width:${152 + years.length * 88}px">${cg}${h}${body}</table>`;
+  wrap.innerHTML = `<table class="apt" style="width:${108 + years.length * 88}px">${cg}${h}${body}</table>`;
 }
 
 // ===== 계좌적립 계획 =====
@@ -5828,6 +5828,40 @@ function renderAnnualCharts() {
 
   const labels = years.map(String);
 
+  const vertLinePlugin = {
+    id: 'vertLines',
+    afterDraw(chart) {
+      const { ctx: c, chartArea, scales } = chart;
+      if (!chartArea || !scales.x) return;
+      const markers = [
+        { yr: currentYear,               color: '#6366f1', lbl: '📅' },
+        { yr: wdPlan?.startYear,         color: '#f59e0b', lbl: '🏁' },
+        ...(appSettings.hasWife && wdPlan?.wifeRetireYear
+            ? [{ yr: wdPlan.wifeRetireYear, color: '#ec4899', lbl: '👩' }] : [])
+      ];
+      c.save();
+      for (const m of markers) {
+        if (!m.yr) continue;
+        const idx = chart.data.labels.indexOf(String(m.yr));
+        if (idx < 0) continue;
+        const x = scales.x.getPixelForValue(idx);
+        c.beginPath();
+        c.setLineDash([4, 3]);
+        c.strokeStyle = m.color;
+        c.lineWidth = 1.5;
+        c.moveTo(x, chartArea.top);
+        c.lineTo(x, chartArea.bottom);
+        c.stroke();
+        c.setLineDash([]);
+        c.fillStyle = m.color;
+        c.font = '11px sans-serif';
+        c.textAlign = 'center';
+        c.fillText(m.lbl, x, chartArea.top + 10);
+      }
+      c.restore();
+    }
+  };
+
   if (_annualCombinedChart) { _annualCombinedChart.destroy(); _annualCombinedChart = null; }
 
   _annualCombinedChart = new Chart(ctx, {
@@ -5876,7 +5910,8 @@ function renderAnnualCharts() {
           ticks: { font: { size: 10 }, callback: v => v.toLocaleString('ko-KR') }
         }
       }
-    }
+    },
+    plugins: [vertLinePlugin]
   });
 
   // 이익률 막대 차트
@@ -5923,7 +5958,8 @@ function renderAnnualCharts() {
           ticks: { font: { size: 10 }, callback: v => v.toFixed(0)+'%' }
         }
       }
-    }
+    },
+    plugins: [vertLinePlugin]
   });
 }
 
