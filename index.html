@@ -2454,7 +2454,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.175';
+const APP_VERSION = 'MyPM v0.176';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6657,11 +6657,11 @@ function openOnboardingModal() {
   };
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   renderOnboardingStep();
-  document.getElementById('onboardingModal').style.display = '';
+  document.getElementById('onboardingModal').classList.add('open');
 }
 
 function closeOnboardingModal() {
-  document.getElementById('onboardingModal').style.display = 'none';
+  document.getElementById('onboardingModal').classList.remove('open');
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
 }
 
@@ -7013,10 +7013,10 @@ async function forceUpdate() {
 
 function resetAllData() {
   closeSettingsModal();
-  document.getElementById('resetConfirmModal').style.display = '';
+  document.getElementById('resetConfirmModal').classList.add('open');
 }
 function closeResetConfirmModal() {
-  document.getElementById('resetConfirmModal').style.display = 'none';
+  document.getElementById('resetConfirmModal').classList.remove('open');
 }
 function doReset(andOnboard) {
   [
@@ -9226,7 +9226,7 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 <!-- ===== 시작하기 마법사 모달 ===== -->
-<div class="modal-backdrop" id="onboardingModal" style="display:none;z-index:1100">
+<div class="modal-backdrop" id="onboardingModal" style="z-index:1100">
   <div class="modal" style="max-width:480px;width:92vw;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:92vh">
     <div style="padding:18px 20px 0;flex-shrink:0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -9244,7 +9244,7 @@ if ('serviceWorker' in navigator) {
 </div>
 
 <!-- ===== 데이터 초기화 확인 모달 ===== -->
-<div class="modal-backdrop" id="resetConfirmModal" style="display:none;z-index:1200">
+<div class="modal-backdrop" id="resetConfirmModal" style="z-index:1200">
   <div class="modal" style="max-width:360px;text-align:center">
     <h3 style="margin-bottom:10px">⚠️ 데이터 초기화</h3>
     <p style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.6">
