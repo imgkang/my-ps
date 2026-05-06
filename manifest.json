@@ -2,7 +2,7 @@
   "name": "My PM - 포트폴리오 매니저",
   "short_name": "MyPM",
   "description": "개인 연금·포트폴리오 통합 관리",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f5f7fa",
   "theme_color": "#03c75a",
