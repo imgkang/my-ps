@@ -2391,7 +2391,8 @@ Chart.register({
         </div>
         <div class="records-input-actions">
           <button class="btn-secondary" onclick="clearDividendInputs()">입력 초기화</button>
-          <button class="btn-primary" onclick="addDividendRecord()">저장</button>
+          <button id="divCancelBtn" class="btn-secondary" style="display:none" onclick="cancelDivEdit()">취소</button>
+          <button id="divSaveBtn" class="btn-primary" onclick="addDividendRecord()">저장</button>
         </div>
       </div>
     </div>
@@ -2426,7 +2427,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.171';
+const APP_VERSION = 'MyPM v0.172';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5313,8 +5314,9 @@ function renderPrincipalTable() {
   // header — retire flag 표시
   const retireFlags = (yr) => {
     let f = '';
-    if (yr === myRetireYr - 1) f += '<span class="retire-flag">🏁나</span>';
-    if (_activeWifeIds.length && yr === wifeRetireYr - 1) f += '<span class="retire-flag">🏁배</span>';
+    if (yr === currentYear)             f += '<span class="retire-flag">📅</span>';
+    if (yr === myRetireYr - 1)          f += '<span class="retire-flag">🏁</span>';
+    if (_activeWifeIds.length && yr === wifeRetireYr - 1) f += '<span class="retire-flag">👩</span>';
     return f;
   };
   let h = '<thead><tr><th>계좌</th>';
@@ -5326,8 +5328,9 @@ function renderPrincipalTable() {
 
   // 셀 생성: 은퇴연도 기준 스타일 적용
   const mkCell = (id, yr, showAnse, retireYr = 9999) => {
-    const base = yr < currentYear ? 'background:#f3f4f6;color:#6b7280'
-               : yr > currentYear ? 'background:#f0fdf4;color:#166534' : '';
+    const base = yr < currentYear  ? 'background:#f3f4f6;color:#6b7280'
+               : yr === currentYear ? 'background:#d1fae5'
+               : 'background:#f0fdf4;color:#166534';
     const st = retireCellStyle(yr, retireYr, base);
     const cum = getCellManwon(id, yr);
     const anse = showAnse ? getCellAnseManwon(id, yr) : null;
@@ -5335,7 +5338,8 @@ function renderPrincipalTable() {
     return `<td${st ? ` style="${st}"` : ''}>${fmt(cum)}${ansePart}</td>`;
   };
   const mkTd = (yr, retireYr, content) => {
-    const st = retireCellStyle(yr, retireYr);
+    const base = yr === currentYear ? 'background:#d1fae5' : '';
+    const st = retireCellStyle(yr, retireYr, base);
     return `<td${st ? ` style="${st}"` : ''}>${content}</td>`;
   };
 
@@ -5481,10 +5485,11 @@ function renderEvalTable() {
   // header
   let h = '<thead><tr><th>계좌</th>';
   for (const yr of years) {
-    const cls = yr > lastRecYear ? 'yr-future' : yr === lastRecYear ? 'yr-current' : '';
+    const cls = yr > currentYear ? 'yr-future' : yr === currentYear ? 'yr-current' : '';
     let flags = '';
-    if (yr === _eMyRetireYr - 1) flags += '<span class="retire-flag">🏁나</span>';
-    if (_evalWifeIds.length && yr === _eWifeRetireYr - 1) flags += '<span class="retire-flag">🏁배</span>';
+    if (yr === currentYear)                flags += '<span class="retire-flag">📅</span>';
+    if (yr === _eMyRetireYr - 1)           flags += '<span class="retire-flag">🏁</span>';
+    if (_evalWifeIds.length && yr === _eWifeRetireYr - 1) flags += '<span class="retire-flag">👩</span>';
     h += `<th class="${cls}">${yr}${yr > lastRecYear ? '(예상)' : ''}${flags}</th>`;
   }
   h += '</tr></thead>';
@@ -5498,8 +5503,10 @@ function renderEvalTable() {
     for (const yr of years) {
       const v = vals[yr];
       const mw = v != null ? Math.round(v / 1000000) : null;
-      const isProj = yr > lastRecYear;
-      const st = retireCellStyle(yr, _eMyRetireYr, isProj ? 'color:#6d28d9' : '');
+      const base = yr < currentYear  ? 'background:#f3f4f6;color:#6b7280'
+                 : yr === currentYear ? 'background:#d1fae5'
+                 : 'background:#f0fdf4;color:#6d28d9';
+      const st = retireCellStyle(yr, _eMyRetireYr, base);
       body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
     }
     body += '</tr>';
@@ -5510,7 +5517,8 @@ function renderEvalTable() {
   for (const yr of years) {
     const v = myVals[yr];
     const mw = v != null ? Math.round(v / 1000000) : null;
-    const st = retireCellStyle(yr, _eMyRetireYr);
+    const base = yr === currentYear ? 'background:#d1fae5' : '';
+    const st = retireCellStyle(yr, _eMyRetireYr, base);
     body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
   }
   body += '</tr>';
@@ -5523,8 +5531,10 @@ function renderEvalTable() {
       for (const yr of years) {
         const v = vals[yr];
         const mw = v != null ? Math.round(v / 1000000) : null;
-        const isProj = yr > lastRecYear;
-        const st = retireCellStyle(yr, _eWifeRetireYr, isProj ? 'color:#6d28d9' : '');
+        const base = yr < currentYear  ? 'background:#f3f4f6;color:#6b7280'
+                   : yr === currentYear ? 'background:#d1fae5'
+                   : 'background:#f0fdf4;color:#6d28d9';
+        const st = retireCellStyle(yr, _eWifeRetireYr, base);
         body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
       }
       body += '</tr>';
@@ -5535,7 +5545,8 @@ function renderEvalTable() {
     for (const yr of years) {
       const v = wifeVals[yr];
       const mw = v != null ? Math.round(v / 1000000) : null;
-      const st = retireCellStyle(yr, _eWifeRetireYr);
+      const base = yr === currentYear ? 'background:#d1fae5' : '';
+      const st = retireCellStyle(yr, _eWifeRetireYr, base);
       body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
     }
     body += '</tr>';
@@ -5567,7 +5578,9 @@ function renderEvalTable() {
   const getPrincMilPrev = (i) => i === 0 ? 0 : (princMil[years[i - 1]] || 0);
 
   const _eTd = (yr, content, extraBase = '') => {
-    const st = retireCellStyle(yr, _eBothRetireYr, extraBase);
+    const cyBg = yr === currentYear ? 'background:#d1fae5' : '';
+    const base = [cyBg, extraBase].filter(Boolean).join(';');
+    const st = retireCellStyle(yr, _eBothRetireYr, base);
     return `<td${st ? ` style="${st}"` : ''}>${content}</td>`;
   };
 
@@ -6000,10 +6013,16 @@ function toggleDivForm(forceOpen) {
   } else {
     panel.style.display = 'none';
     if (btn) { btn.textContent = '➕ 새 기록 추가'; btn.classList.remove('editing'); }
+    _divEditingId = null;
+    const saveBtn = document.getElementById('divSaveBtn');
+    if (saveBtn) saveBtn.textContent = '저장';
+    const cancelBtn = document.getElementById('divCancelBtn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
   }
 }
 
 let _divStockChart = null, _divAccChart = null;
+let _divEditingId = null;
 const _DIV_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
 
 function divShortName(name, max = 8) {
@@ -6248,6 +6267,7 @@ function addDividendRecord() {
   if (!month || month < 1 || month > 12) { alert('월을 1~12 사이로 입력해 주세요.'); return; }
 
   const stocks = {};
+  const stocksPerShare = {};
   const stockPerShareData = {};
   document.querySelectorAll('#divStockInputs input[data-code]').forEach(inp => {
     const code = inp.getAttribute('data-code');
@@ -6255,6 +6275,7 @@ function addDividendRecord() {
     const ps = Number(inp.value) || 0;
     if (ps > 0) {
       stocks[code] = Math.round(ps * qty);
+      stocksPerShare[code] = ps;
       stockPerShareData[code] = ps;
     }
   });
@@ -6263,10 +6284,21 @@ function addDividendRecord() {
   if (totalDiv === 0 && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
 
   const accounts = calcDivAccounts(stockPerShareData);
-  dividendRecords.push({
-    id: String(Date.now()) + Math.floor(Math.random() * 1000),
-    year, month, stocks, accounts
-  });
+
+  if (_divEditingId) {
+    const idx = dividendRecords.findIndex(r => r.id === _divEditingId);
+    if (idx >= 0) dividendRecords[idx] = { id: _divEditingId, year, month, stocks, stocksPerShare, accounts };
+    _divEditingId = null;
+    const saveBtn = document.getElementById('divSaveBtn');
+    if (saveBtn) saveBtn.textContent = '저장';
+    const cancelBtn = document.getElementById('divCancelBtn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+  } else {
+    dividendRecords.push({
+      id: String(Date.now()) + Math.floor(Math.random() * 1000),
+      year, month, stocks, stocksPerShare, accounts
+    });
+  }
   saveDividendRecords();
   renderDividendLists();
   renderDivCharts();
@@ -6281,6 +6313,51 @@ function deleteDividendRecord(id) {
   saveDividendRecords();
   renderDividendLists();
   renderDivCharts();
+}
+
+function editDividendRecord(id) {
+  const rec = dividendRecords.find(r => r.id === id);
+  if (!rec) return;
+  _divEditingId = id;
+  document.getElementById('divYear').value = rec.year;
+  document.getElementById('divMonth').value = rec.month;
+
+  const perShareMap = {};
+  if (rec.stocksPerShare) {
+    Object.assign(perShareMap, rec.stocksPerShare);
+  } else {
+    // 기존 레코드: 총배당금 ÷ 현재수량으로 추정
+    const activeAccIds = new Set(getActiveAccounts().map(a => a.id));
+    for (const [code, total] of Object.entries(rec.stocks)) {
+      const h = holdings.find(x => x.code === code);
+      if (!h) continue;
+      let qty = 0;
+      if (h.accounts && Object.keys(h.accounts).length > 0) {
+        for (const [aid, a] of Object.entries(h.accounts)) {
+          if (activeAccIds.has(aid)) qty += Number(a.qty) || 0;
+        }
+      } else {
+        qty = Number(h.quantity) || 0;
+      }
+      if (qty > 0) perShareMap[code] = Math.round(total / qty);
+    }
+  }
+
+  renderDivStockInputs(perShareMap);
+  const saveBtn = document.getElementById('divSaveBtn');
+  if (saveBtn) saveBtn.textContent = '수정 저장';
+  const cancelBtn = document.getElementById('divCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = '';
+  toggleDivForm(true);
+}
+
+function cancelDivEdit() {
+  _divEditingId = null;
+  const saveBtn = document.getElementById('divSaveBtn');
+  if (saveBtn) saveBtn.textContent = '저장';
+  const cancelBtn = document.getElementById('divCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  toggleDivForm(false);
 }
 
 function renderDividendLists() {
@@ -6313,7 +6390,7 @@ function renderDivStockRecordsList() {
     }
   }
 
-  const cols = `80px ${allCodes.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
+  const cols = `80px ${allCodes.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 72px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>연/월</span>
@@ -6334,7 +6411,10 @@ function renderDivStockRecordsList() {
         <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
         ${cells}
         <span class="total">${total.toLocaleString('ko-KR')}</span>
-        <span><button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button></span>
+        <span>
+          <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+          <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+        </span>
       </div>
     `;
   }).join('');
