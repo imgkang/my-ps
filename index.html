@@ -2426,7 +2426,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.170';
+const APP_VERSION = 'MyPM v0.171';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5308,7 +5308,7 @@ function renderPrincipalTable() {
   const wifeRetireYr = (wdPlan && wdPlan.wifeRetireYear) ? wdPlan.wifeRetireYear : 9999;
   const bothRetireYr = _activeWifeIds.length ? Math.max(myRetireYr, wifeRetireYr) : myRetireYr;
   // 은퇴연도까지만 표시 (미설정이면 전체)
-  const years = bothRetireYr < 9999 ? allYears.filter(yr => yr <= bothRetireYr) : allYears;
+  const years = bothRetireYr < 9999 ? allYears.filter(yr => yr < bothRetireYr) : allYears;
 
   // header — retire flag 표시
   const retireFlags = (yr) => {
