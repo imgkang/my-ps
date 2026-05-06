@@ -1918,15 +1918,15 @@ Chart.register({
   <div class="modal-header">
     <div>
       <h2>📅 연간 계획</h2>
-      <div class="modal-subtitle">계좌별 원금·평가금액 연도별 기록 및 계획 (단위: 백만원)</div>
+      <div class="modal-subtitle">계좌별 원금·평가금액 연도별 기록 및 계획</div>
     </div>
   </div>
 
-    <div class="plan-unit-note" style="margin-bottom:6px">* 원금·평가 표 단위: 백만원 / 적립 입력 단위: 만원 / 회색 = 실적, 초록 = 계획</div>
+    <div class="plan-unit-note" style="margin-bottom:6px">* 회색 = 실적, 초록 = 계획</div>
 
     <!-- 계좌적립 계획 (접기/펼치기) -->
     <button class="apt-toggle-btn" id="mplanToggleBtn" onclick="toggleAptSection('mplanBody', this)">
-      <i class="apt-chevron">▶</i> 📆 계좌 적립 계획 <span id="mplanCountBadge" style="font-size:11px;font-weight:400;color:#4ade80;margin-left:4px"></span>
+      <i class="apt-chevron">▶</i> 📆 계좌 적립 계획 <span style="font-size:11px;font-weight:400;color:var(--muted)">(단위: 만원)</span><span id="mplanCountBadge" style="font-size:11px;font-weight:400;color:#4ade80;margin-left:4px"></span>
     </button>
     <div id="mplanBody" style="display:none">
       <div class="mplan-add-form">
@@ -1948,33 +1948,45 @@ Chart.register({
       <div id="monthlyPlanList" style="margin-bottom:10px"></div>
     </div>
 
+    <!-- 은퇴연도 / 수익률 입력 바 -->
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px;font-size:12px;color:var(--muted)">
+      <label style="display:flex;align-items:center;gap:3px"><span style="color:#1d4ed8;font-weight:600">👤 본인 은퇴</span>
+        <input type="number" id="ayr_myRetire" min="2020" max="2080" step="1"
+               style="width:62px;padding:2px 5px;border:1px solid #bfdbfe;border-radius:4px;font-size:12px;background:#eff6ff;margin:0 2px"
+               oninput="saveAnnualRetireYears()">년
+      </label>
+      <span id="ayr_wifeWrap" style="display:flex;align-items:center;gap:3px"><span id="ayr_wifeLabel" style="color:#be185d;font-weight:600">👩 배우자 은퇴</span>
+        <input type="number" id="ayr_wifeRetire" min="2020" max="2080" step="1"
+               style="width:62px;padding:2px 5px;border:1px solid #fbcfe8;border-radius:4px;font-size:12px;background:#fdf2f8;margin:0 2px"
+               oninput="saveAnnualRetireYears()">년
+      </span>
+      <label style="display:flex;align-items:center;gap:3px">예상수익률
+        <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
+               style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;margin:0 2px"
+               oninput="annualPlan.projRate=Number(this.value)||7; saveAnnualPlan(); renderEvalTable(); renderAnnualCharts(); renderAccSummary()">%/년
+      </label>
+    </div>
+
     <div class="annual-plan-combined">
       <!-- 통합 차트 -->
-      <div class="apt-section-hdr eval-hdr">
-        📊 원금·평가금액·이익률 추이
-        <span style="font-size:12px;font-weight:400;color:var(--muted)">예상수익률</span>
-        <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
-               style="width:56px;padding:2px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;text-align:right"
-               oninput="annualPlan.projRate=Number(this.value)||7; saveAnnualPlan(); renderEvalTable(); renderAnnualCharts(); renderAccSummary()">
-        <span style="font-size:12px;font-weight:400;color:var(--muted)">%/년</span>
-      </div>
+      <div class="apt-section-hdr eval-hdr">📊 원금·평가금액·이익률 추이</div>
       <div style="position:relative;height:280px;margin-bottom:4px"><canvas id="annualCombinedChart"></canvas></div>
       <div style="position:relative;height:160px;margin-bottom:8px"><canvas id="annualRateChart"></canvas></div>
 
       <div class="annual-tables-scroll">
         <!-- 원금 표 (접기/펼치기) -->
-        <div class="apt-section-hdr apt-collapsible" id="principalHdr" onclick="toggleAptSection('principalBody', this)">
-          <i class="apt-chevron">▶</i> 📋 원금 기록 및 계획
+        <div class="apt-section-hdr apt-collapsible open" id="principalHdr" onclick="toggleAptSection('principalBody', this)">
+          <i class="apt-chevron" style="transform:rotate(90deg)">▶</i> 📋 원금 기록 및 계획 <span style="font-size:11px;font-weight:400;color:var(--muted)">(단위: 백만원)</span>
         </div>
-        <div id="principalBody" style="display:none">
+        <div id="principalBody">
           <div class="annual-plan-wrap" id="principalTableWrap"></div>
         </div>
 
         <!-- 평가 표 (접기/펼치기) -->
-        <div class="apt-section-hdr apt-collapsible" id="evalHdr" onclick="toggleAptSection('evalBody', this)">
-          <i class="apt-chevron">▶</i> 📈 평가 기록 및 예상
+        <div class="apt-section-hdr apt-collapsible open" id="evalHdr" onclick="toggleAptSection('evalBody', this)">
+          <i class="apt-chevron" style="transform:rotate(90deg)">▶</i> 📈 평가 기록 및 예상 <span style="font-size:11px;font-weight:400;color:var(--muted)">(단위: 백만원)</span>
         </div>
-        <div id="evalBody" style="display:none">
+        <div id="evalBody">
           <div class="annual-plan-wrap" id="evalTableWrap"></div>
         </div>
       </div>
@@ -2415,7 +2427,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.167';
+const APP_VERSION = 'MyPM v0.168';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5067,19 +5079,20 @@ function openAnnualPlanModal() {
     const accs = getActiveAccounts();
     sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
   }
-  // 섹션 초기 상태: 모두 접힘
-  ['mplanBody','principalBody','evalBody'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  ['mplanToggleBtn','principalHdr','evalHdr'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.classList.remove('open');
-      const ch = el.querySelector('.apt-chevron');
-      if (ch) ch.style.transform = '';
-    }
-  });
+  // 계좌적립 계획만 접힘, 원금·평가 표는 펼침 유지
+  const mplanEl = document.getElementById('mplanBody');
+  if (mplanEl) mplanEl.style.display = 'none';
+  const mplanBtn = document.getElementById('mplanToggleBtn');
+  if (mplanBtn) { mplanBtn.classList.remove('open'); const ch = mplanBtn.querySelector('.apt-chevron'); if (ch) ch.style.transform = ''; }
+  // 은퇴연도 입력 동기화
+  const ayrMy = document.getElementById('ayr_myRetire');
+  if (ayrMy) ayrMy.value = wdPlan?.startYear || '';
+  const ayrWife = document.getElementById('ayr_wifeRetire');
+  if (ayrWife) ayrWife.value = wdPlan?.wifeRetireYear || wdPlan?.startYear || '';
+  const ayrWifeWrap = document.getElementById('ayr_wifeWrap');
+  if (ayrWifeWrap) ayrWifeWrap.style.display = appSettings.hasWife ? 'flex' : 'none';
+  const ayrWifeLabel = document.getElementById('ayr_wifeLabel');
+  if (ayrWifeLabel) ayrWifeLabel.textContent = '👩 ' + getWifeTitle() + ' 은퇴';
   renderMonthlyPlanList();
   updateMplanCountBadge();
   renderPrincipalTable();
@@ -5102,6 +5115,24 @@ function closeAnnualPlanModal() {
     }
   }
   switchTab('portfolio');
+}
+
+function saveAnnualRetireYears() {
+  const ni = id => parseInt(document.getElementById(id)?.value) || 0;
+  const sy = ni('ayr_myRetire');
+  const wy = ni('ayr_wifeRetire');
+  if (sy >= 2020) wdPlan.startYear = sy;
+  if (wy >= 2020) wdPlan.wifeRetireYear = wy;
+  saveWdPlan();
+  loadQuickWdValues();
+  if (document.getElementById('wdSettingsModal')?.classList.contains('open')) loadWdFormValues();
+  if (document.getElementById('panel-withdrawal')?.classList.contains('active')) {
+    _wdSelectedScenIdx = null;
+    renderWithdrawalPlan();
+  }
+  renderPrincipalTable();
+  renderEvalTable();
+  renderAnnualCharts();
 }
 
 function saveAnnualPlan() {
@@ -5250,7 +5281,7 @@ function buildColgroup(years) {
 function renderPrincipalTable() {
   const wrap = document.getElementById('principalTableWrap');
   if (!wrap) return;
-  const years = getPlanYearRange();
+  const allYears = getPlanYearRange();
   const currentYear = new Date().getFullYear();
 
   const _allAccs = getActiveAccounts();
@@ -5260,6 +5291,8 @@ function renderPrincipalTable() {
   const myRetireYr   = (wdPlan && wdPlan.startYear)      ? wdPlan.startYear      : 9999;
   const wifeRetireYr = (wdPlan && wdPlan.wifeRetireYear) ? wdPlan.wifeRetireYear : 9999;
   const bothRetireYr = _activeWifeIds.length ? Math.max(myRetireYr, wifeRetireYr) : myRetireYr;
+  // 은퇴연도까지만 표시 (미설정이면 전체)
+  const years = bothRetireYr < 9999 ? allYears.filter(yr => yr <= bothRetireYr) : allYears;
 
   // header — retire flag 표시
   const retireFlags = (yr) => {
@@ -5369,7 +5402,7 @@ function getGroupYearEndWon(accIds, year) {
 function renderEvalTable() {
   const wrap = document.getElementById('evalTableWrap');
   if (!wrap) return;
-  const years = getPlanYearRange();
+  const allYears = getPlanYearRange();
   const currentYear = new Date().getFullYear();
   const projRate = (Number((document.getElementById('projRate') || {}).value) || annualPlan.projRate || 7) / 100;
 
@@ -5400,7 +5433,7 @@ function renderEvalTable() {
   const computeGroupVals = (accIds) => {
     const vals = {};
     let base = getLastKnown(accIds); // in 원
-    for (const yr of years) {
+    for (const yr of allYears) {
       if (yr <= lastRecYear) {
         const actual = getGroupYearEndWon(accIds, yr);
         vals[yr] = actual;
@@ -5423,12 +5456,14 @@ function renderEvalTable() {
   const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
   const _evalAllIds     = [..._evalMyIds, ..._evalWifeIds];
   const _eBothRetireYr  = _evalWifeIds.length ? Math.max(_eMyRetireYr, _eWifeRetireYr) : _eMyRetireYr;
+  // 더 나중 은퇴연도 전년도까지만 표시
+  const years = _eBothRetireYr < 9999 ? allYears.filter(yr => yr < _eBothRetireYr) : allYears;
 
   const myVals   = computeGroupVals(_evalMyIds);
   const wifeVals = _evalWifeIds.length ? computeGroupVals(_evalWifeIds) : {};
 
   // header
-  let h = '<thead><tr><th>계좌/그룹 (단위: 백만원)</th>';
+  let h = '<thead><tr><th>계좌/그룹</th>';
   for (const yr of years) {
     const cls = yr > lastRecYear ? 'yr-future' : yr === lastRecYear ? 'yr-current' : '';
     let flags = '';
