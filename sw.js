@@ -1,10 +1,13 @@
 // MyPM Service Worker
 const CACHE_NAME = 'mypm-v0.167';
 
+const BASE = '/my-ps/';
+
 const ASSETS = [
-  '/index.html',
-  '/manifest.json',
-  '/icon.svg',
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.json',
+  BASE + 'icon.svg',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
 ];
 
