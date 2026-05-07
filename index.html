@@ -2458,7 +2458,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.179';
+const APP_VERSION = 'MyPM v0.180';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2959,20 +2959,29 @@ function saveTxn() {
   if (editingTxnId) {
     const t = depositData.transactions.find(x => x.id === editingTxnId);
     if (t) {
+      const oldAccId = t.accId;
+      const oldAmount = t.amount;
       t.accId = accId; t.date = date; t.amount = signedAmount;
       // 계좌이전 거래의 anse(차감 음수 포함)는 보존
       if (!t.transfer) t.anse = anse || undefined;
+      // 현금 역방향 반영 (구 계좌 원래 금액 차감, 신 계좌 새 금액 가산)
+      cashAccounts[oldAccId] = (cashAccounts[oldAccId] || 0) - oldAmount;
+      cashAccounts[accId]    = (cashAccounts[accId]    || 0) + signedAmount;
     }
   } else {
     const entry = { id: generateTxnId(), accId, date, amount: signedAmount };
     if (anse) entry.anse = anse;
     depositData.transactions.push(entry);
+    // 입금/출금 금액을 해당 계좌 현금에 즉시 반영
+    cashAccounts[accId] = (cashAccounts[accId] || 0) + signedAmount;
   }
   saveDeposits();
+  persistCashAccounts();
   closeTxnEditor();
   renderDepositTotals();
   renderDepositList();
   renderPortfolioChart();
+  render();
 }
 
 function openTransferEditor() {
