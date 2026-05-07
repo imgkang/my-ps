@@ -2458,7 +2458,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.181';
+const APP_VERSION = 'MyPM v0.182';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7513,6 +7513,7 @@ function finishOnboarding() {
   saveAnnualPlan();
 
   closeOnboardingModal();
+  render();
   if (typeof renderPortfolio === 'function') renderPortfolio();
   if (typeof renderPrincipalTable === 'function') renderPrincipalTable();
   if (typeof renderEvalTable === 'function') renderEvalTable();
