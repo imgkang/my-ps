@@ -2466,7 +2466,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.200';
+const APP_VERSION = 'MyPM v0.201';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7479,7 +7479,7 @@ function updateObSim() {
   const pct = portfolioNeedTotal > 0 ? Math.round(realFVMil / portfolioNeedTotal * 100) : 100;
 
   const baseTargetMil    = Math.round(annualTarget * 25);
-  const nominalTargetMil = Math.round(portfolioNeedAnnual * Math.pow(1 + inf, n) * 25);
+  const nominalTargetMil = Math.round(portfolioNeedTotal * Math.pow(1 + inf, n));
   const sloganPct        = nominalTargetMil > 0 ? Math.round(nomFVMil / nominalTargetMil * 100) : 100;
 
   const sloganYrEl   = document.getElementById('obSimSloganYear');
