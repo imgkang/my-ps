@@ -1129,7 +1129,8 @@ Chart.register({
   .ob-acc-item { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; cursor:pointer; transition:all .15s; }
   .ob-acc-item.selected { border-color:#10b981; background:#f0fdf4; color:#166534; font-weight:600; }
   .ob-acc-bal-wrap { display:flex; align-items:center; gap:4px; font-size:12px; font-weight:400; color:var(--muted); }
-  .ob-acc-bal-input { width:102px; font-size:12px; padding:3px 5px; border:1px solid var(--border); border-radius:5px; background:var(--bg); color:var(--text); }
+  input.ob-acc-bal-input { width:102px; font-size:13px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); }
+  input.ob-p4-input { font-size:13px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); }
   .ob-sim-card { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px; margin-top:12px; font-size:13px; }
   .ob-sim-row  { display:flex; justify-content:space-between; align-items:center; padding:2px 0; }
   .ob-sim-val  { font-weight:700; color:#166634; }
@@ -2458,7 +2459,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.187';
+const APP_VERSION = 'MyPM v0.188';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6794,7 +6795,7 @@ function renderOnboardingStep() {
       return `<div class="ob-acc-item ${sel?'selected':''}" id="ob_acc_${a.id}" onclick="obToggleAcc2('${a.id}','${a.id.startsWith('wife_')?'wife':'my'}')">
         <div style="display:flex;align-items:center;gap:5px"><span id="ob_chk_${a.id}">${sel?'✅':'⬜'}</span><span>${a.label}</span></div>
         <div class="ob-acc-bal-wrap" id="ob_balwrap_${a.id}" style="${sel?'':'display:none'}">
-          <input type="number" id="ob_bal_${a.id}" class="ob-acc-bal-input" value="${sel?bal:0}" min="0" step="1" placeholder="0" onclick="event.stopPropagation()" oninput="obAccBalChanged()">천원
+          <input type="text" inputmode="numeric" id="ob_bal_${a.id}" class="ob-acc-bal-input" value="${(sel?bal:0).toLocaleString('ko-KR')}" placeholder="0" onclick="event.stopPropagation()" oninput="obFmtAmt(this);obAccBalChanged()">천원
         </div>
       </div>`;
     };
@@ -6837,7 +6838,7 @@ function renderOnboardingStep() {
       ${wifeRetireRow}
       <div class="ob-field-row">
         <label onmouseenter="obShowTip('은퇴 후 매년 인출하고 싶은 금액(현재가치 기준)입니다. 일반적으로 은퇴 직전 연봉의 70~80%를 권장합니다.')" ontouchstart="obShowTip('은퇴 후 매년 인출하고 싶은 금액(현재가치 기준)입니다. 일반적으로 은퇴 직전 연봉의 70~80%를 권장합니다.')">목표 연간 인출액 ⓘ</label>
-        <input type="number" id="ob_annualTarget" value="${(_obData.annualTarget||60)*1000}" placeholder="60000" min="0" step="100" style="width:80px" oninput="obUpdateMonthly()">천원/년
+        <input type="text" inputmode="numeric" id="ob_annualTarget" value="${((_obData.annualTarget||60)*1000).toLocaleString('ko-KR')}" placeholder="60,000" style="width:80px" oninput="obFmtAmt(this);obUpdateMonthly()">천원/년
         <span style="color:var(--muted);font-size:12px" id="ob_monthlyLabel">≈ ${initMonthly}만원/월</span>
       </div>`;
 
@@ -6870,9 +6871,9 @@ function renderOnboardingStep() {
           <input type="checkbox" id="ob_${key}_use" ${p.use?'checked':''} onchange="obPensionToggle('${key}')"> ${label}
         </label>
         <div id="ob_${key}_det" style="${p.use?'':'display:none'};display:${p.use?'flex':'none'};align-items:center;gap:5px;flex-wrap:wrap;flex:1">
-          <input type="number" id="ob_${key}_mo" value="${p.monthly}" min="0" step="1" style="flex:6;min-width:45px;font-size:13px" placeholder="0">만원/월
-          <input type="number" id="ob_${key}_yr" value="${p.startYear}" min="2020" max="2070" style="flex:7;min-width:55px;font-size:13px">년
-          <input type="number" id="ob_${key}_mon" value="${p.startMonth}" min="1" max="12" style="flex:4;min-width:35px;font-size:13px">월~
+          <input type="text" inputmode="numeric" id="ob_${key}_mo" value="${(p.monthly||0).toLocaleString('ko-KR')}" min="0" step="1" class="ob-p4-input" style="flex:6;min-width:45px" placeholder="0" oninput="obFmtAmt(this)">만원/월
+          <input type="number" id="ob_${key}_yr" value="${p.startYear}" min="2020" max="2070" class="ob-p4-input" style="flex:7;min-width:55px">년
+          <input type="number" id="ob_${key}_mon" value="${p.startMonth}" min="1" max="12" class="ob-p4-input" style="flex:4;min-width:35px">월~
         </div>
       </div>`;
     };
@@ -6913,11 +6914,11 @@ function renderOnboardingStep() {
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 6px">${_obData.wifeTitle||'배우자'}</div>
       <div class="ob-field-row">
         <label>현재 잔액</label>
-        <input type="number" value="${wifeBal}" readonly style="width:80px;background:#f1f5f9">천원
+        <input type="text" value="${wifeBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:#f1f5f9">천원
       </div>
       <div class="ob-field-row">
         <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showWifeAllocBtn?' ⓘ':''}</label>
-        <input type="number" id="ob_wifeMonthly" value="${_obData.wifeMonthly||0}" min="0" step="1" style="width:70px" oninput="updateObSim()">만원/월
+        <input type="text" inputmode="numeric" id="ob_wifeMonthly" value="${(_obData.wifeMonthly||0).toLocaleString('ko-KR')}" style="width:70px" oninput="obFmtAmt(this);updateObSim()">만원/월
         ${showWifeAllocBtn?`<button class="btn-secondary" style="padding:4px 8px;font-size:12px" onclick="obOpenAllocModal('wife')">계좌별 배분</button>`:''}
       </div>
       <div class="ob-field-row" style="gap:4px">
@@ -6949,11 +6950,11 @@ function renderOnboardingStep() {
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 6px">본인</div>
       <div class="ob-field-row">
         <label>현재 잔액</label>
-        <input type="number" value="${myBal}" readonly style="width:80px;background:#f1f5f9">천원
+        <input type="text" value="${myBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:#f1f5f9">천원
       </div>
       <div class="ob-field-row">
         <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showMyAllocBtn?' ⓘ':''}</label>
-        <input type="number" id="ob_myMonthly" value="${_obData.myMonthly||0}" min="0" step="1" style="width:70px" oninput="updateObSim()">만원/월
+        <input type="text" inputmode="numeric" id="ob_myMonthly" value="${(_obData.myMonthly||0).toLocaleString('ko-KR')}" style="width:70px" oninput="obFmtAmt(this);updateObSim()">만원/월
         ${showMyAllocBtn?`<button class="btn-secondary" style="padding:4px 8px;font-size:12px" onclick="obOpenAllocModal('my')">계좌별 배분</button>`:''}
       </div>
       <div class="ob-field-row" style="gap:4px">
@@ -7089,18 +7090,25 @@ function obToggleAcc2(accId, who) {
   obAccBalChanged();
 }
 
+function obFmtAmt(el) {
+  const v = el.value.replace(/[^0-9]/g, '');
+  el.value = v ? parseInt(v, 10).toLocaleString('ko-KR') : '';
+}
+function obReadAmt(el) {
+  return parseInt((el?.value || '0').replace(/,/g, ''), 10) || 0;
+}
+
 function obAccBalChanged() {
   const allIds = [..._obData.myAccIds, ...(_obData.hasWife ? _obData.wifeAccIds : [])];
   allIds.forEach(id => {
-    const v = Number(document.getElementById(`ob_bal_${id}`)?.value) || 0;
-    _obData.accBal[id] = v;
+    _obData.accBal[id] = obReadAmt(document.getElementById(`ob_bal_${id}`));
   });
   const myTotal = _obData.myAccIds.reduce((s, id) => s + (_obData.accBal[id]||0), 0);
   const wifeTotal = _obData.hasWife ? _obData.wifeAccIds.reduce((s, id) => s + (_obData.accBal[id]||0), 0) : 0;
   const totEl = document.getElementById('ob_balTotal');
   if (totEl) {
-    const parts = [`본인: ${myTotal}천원`];
-    if (_obData.hasWife) parts.push(`${_obData.wifeTitle||'배우자'}: ${wifeTotal}천원`);
+    const parts = [`본인: ${myTotal.toLocaleString('ko-KR')}천원`];
+    if (_obData.hasWife) parts.push(`${_obData.wifeTitle||'배우자'}: ${wifeTotal.toLocaleString('ko-KR')}천원`);
     totEl.textContent = '합계 ' + parts.join(' / ');
   }
 }
@@ -7358,14 +7366,14 @@ function obUpdateWifeRetireYear() {
 }
 
 function obUpdateMonthly() {
-  const v = Number(document.getElementById('ob_annualTarget')?.value) || 0;
+  const v = obReadAmt(document.getElementById('ob_annualTarget'));
   const lbl = document.getElementById('ob_monthlyLabel');
   if (lbl) lbl.textContent = `≈ ${Math.round(v / 12 / 10)}만원/월`;
 }
 
 function updateObSim() {
-  const myMo  = Number(document.getElementById('ob_myMonthly')?.value) || 0;
-  const wifeMo = _obData.hasWife ? (Number(document.getElementById('ob_wifeMonthly')?.value)||0) : 0;
+  const myMo  = obReadAmt(document.getElementById('ob_myMonthly'));
+  const wifeMo = _obData.hasWife ? obReadAmt(document.getElementById('ob_wifeMonthly')) : 0;
   const rPct  = Number(document.getElementById('ob_returnRate')?.value) || 7;
   const infPct = Number(document.getElementById('ob_inflationRate')?.value) || 2.2;
   _obData.myMonthly = myMo;
@@ -7492,11 +7500,11 @@ function collectObStep(step) {
     }
   } else if (step === 2) {
     _obData.myAccIds.forEach(id => {
-      _obData.accBal[id] = Number(g(`ob_bal_${id}`)?.value) || 0;
+      _obData.accBal[id] = obReadAmt(g(`ob_bal_${id}`));
     });
     if (_obData.hasWife) {
       _obData.wifeAccIds.forEach(id => {
-        _obData.accBal[id] = Number(g(`ob_bal_${id}`)?.value) || 0;
+        _obData.accBal[id] = obReadAmt(g(`ob_bal_${id}`));
       });
     }
   } else if (step === 3) {
@@ -7504,7 +7512,7 @@ function collectObStep(step) {
     if (!age || age < 40 || age > 80) { alert('은퇴 희망 나이를 입력해 주세요. (40~80세)'); return false; }
     _obData.retireAge  = age;
     _obData.startYear  = (_obData.myBirthYear || new Date().getFullYear() - 40) + age;
-    _obData.annualTarget = (Number(g('ob_annualTarget')?.value) || 60000) / 1000;  // 천원→백만원
+    _obData.annualTarget = (obReadAmt(g('ob_annualTarget')) || 60000) / 1000;  // 천원→백만원
     if (_obData.hasWife) {
       const wAge = parseInt(g('ob_wifeRetireAge')?.value) || 60;
       _obData.wifeRetireAge = wAge;
@@ -7514,14 +7522,14 @@ function collectObStep(step) {
     ['myNP','myGP','mySP','wifeNP','wifeGP','wifeSP'].forEach(key => {
       if (!_obData[key]) return;
       _obData[key].use        = g(`ob_${key}_use`)?.checked || false;
-      _obData[key].monthly    = Number(g(`ob_${key}_mo`)?.value) || 0;
+      _obData[key].monthly    = obReadAmt(g(`ob_${key}_mo`));
       _obData[key].startYear  = Number(g(`ob_${key}_yr`)?.value) || (_obData.startYear || new Date().getFullYear() + 7);
       _obData[key].startMonth = Number(g(`ob_${key}_mon`)?.value) || 1;
     });
   } else if (step === 5) {
     const cy = new Date().getFullYear();
     const cm = new Date().getMonth() + 1;
-    _obData.myMonthly     = Number(g('ob_myMonthly')?.value) || 0;
+    _obData.myMonthly     = obReadAmt(g('ob_myMonthly'));
     _obData.returnRate    = Number(g('ob_returnRate')?.value) || 7;
     _obData.inflationRate = Number(g('ob_inflationRate')?.value) || 2.2;
     _obData.contribStartYear  = Number(g('ob_myContribStartY')?.value) || cy;
@@ -7529,7 +7537,7 @@ function collectObStep(step) {
     _obData.contribEndYear    = Number(g('ob_myContribEndY')?.value) || (_obData.startYear||cy+10);
     _obData.contribEndMonth   = Number(g('ob_myContribEndM')?.value) || 12;
     if (_obData.hasWife) {
-      _obData.wifeMonthly       = Number(g('ob_wifeMonthly')?.value) || 0;
+      _obData.wifeMonthly       = obReadAmt(g('ob_wifeMonthly'));
       _obData.wifeContribEndYear  = Number(g('ob_wifeContribEndY')?.value) || (_obData.wifeStartYear||cy+10);
       _obData.wifeContribEndMonth = Number(g('ob_wifeContribEndM')?.value) || 12;
     }
