@@ -2458,7 +2458,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.186';
+const APP_VERSION = 'MyPM v0.187';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6698,6 +6698,7 @@ function openOnboardingModal() {
     savedDepositIds: {},
     savedMonthlyRecordId: null,
     _step4Visited: false,
+    _step5Visited: false,
   };
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   renderOnboardingStep();
@@ -6897,8 +6898,11 @@ function renderOnboardingStep() {
     const wifeBal = _obData.hasWife ? _obData.wifeAccIds.reduce((s, id) => s + (_obData.accBal[id]||0), 0) : 0;
     _obData.myBalMil = myBal;
     _obData.wifeBalMil = wifeBal;
-    if (!_obData.contribEndYear || _obData.contribEndYear < cy) _obData.contribEndYear = _obData.startYear || (cy+10);
-    if (!_obData.wifeContribEndYear || _obData.wifeContribEndYear < cy) _obData.wifeContribEndYear = _obData.wifeStartYear || (cy+10);
+    if (!_obData._step5Visited) {
+      _obData.contribEndYear     = _obData.startYear     || (cy + 10);
+      _obData.wifeContribEndYear = _obData.wifeStartYear || (cy + 10);
+      _obData._step5Visited = true;
+    }
     const showMyAllocBtn = _obData.myAccIds.length > 1;
     const showWifeAllocBtn = _obData.hasWife && _obData.wifeAccIds.length > 1;
     const rTip = '지금부터 은퇴 전까지 매해 예상하는 복리 수익률입니다. 일반적인 분산투자 6~8%를 기준으로 보수적이라면 4~5%, 공격적이라면 8~10%를 참고하세요.';
@@ -6923,7 +6927,7 @@ function renderOnboardingStep() {
           <span style="white-space:nowrap;font-size:12px">년</span>
           <input type="number" id="ob_wifeContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
           <span style="white-space:nowrap;font-size:12px">월 ~</span>
-          <input type="number" id="ob_wifeContribEndY" value="${_obData.wifeContribEndYear}" min="2020" max="2080" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
+          <input type="number" id="ob_wifeContribEndY" value="${_obData.wifeContribEndYear}" min="2020" max="${_obData.wifeStartYear||2080}" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
           <span style="white-space:nowrap;font-size:12px">년</span>
           <input type="number" id="ob_wifeContribEndM" value="${_obData.wifeContribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
           <span style="white-space:nowrap;font-size:12px">월</span>
@@ -6959,7 +6963,7 @@ function renderOnboardingStep() {
           <span style="white-space:nowrap;font-size:12px">년</span>
           <input type="number" id="ob_myContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
           <span style="white-space:nowrap;font-size:12px">월 ~</span>
-          <input type="number" id="ob_myContribEndY" value="${_obData.contribEndYear}" min="2020" max="2080" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
+          <input type="number" id="ob_myContribEndY" value="${_obData.contribEndYear}" min="2020" max="${_obData.startYear||2080}" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
           <span style="white-space:nowrap;font-size:12px">년</span>
           <input type="number" id="ob_myContribEndM" value="${_obData.contribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
           <span style="white-space:nowrap;font-size:12px">월</span>
@@ -7262,27 +7266,32 @@ function obRenderFinalChart() {
   const retireYr = (_obData.myBirthYear||cy-40) + (_obData.retireAge||60);
   const n = Math.max(1, retireYr - cy);
   const totalPV = ((_obData.myBalMil||0) + (_obData.wifeBalMil||0)) * 1_000;
-  const totalPMT = ((_obData.myMonthly||0) + (_obData.wifeMonthly||0)) * 10_000 * 12;
   const pvInitMil = (((_obData.myBalMil||0) + (_obData.wifeBalMil||0)) / 1000);
-  const moTotal = (_obData.myMonthly||0) + (_obData.wifeMonthly||0);
-  const contribEnd = _obData.contribEndYear || retireYr;
+  const myContribEnd   = Math.min(_obData.contribEndYear     || retireYr, retireYr);
+  const wifeContribEnd = Math.min(_obData.wifeContribEndYear || retireYr, retireYr);
+  const myPmt2   = ((_obData.myMonthly||0))   * 10_000 * 12;
+  const wifePmt2 = ((_obData.wifeMonthly||0)) * 10_000 * 12;
   const years = Array.from({length: n + 1}, (_, i) => cy + i);
   const nomBalances = years.map(yr => {
     const ni = yr - cy;
-    const mc = Math.min(ni, Math.max(0, contribEnd - cy));
-    const mg = ni - mc;
-    const fvMc = totalPV * Math.pow(1+r, mc) + (r > 0 ? totalPMT * (Math.pow(1+r, mc)-1)/r : totalPMT*mc);
-    return Math.round(fvMc * Math.pow(1+r, mg) / 1_000_000);
+    const pvFv = totalPV * Math.pow(1+r, ni);
+    const mc1 = Math.min(ni, Math.max(0, myContribEnd - cy));
+    const myFv2 = (r>0 ? myPmt2*(Math.pow(1+r,mc1)-1)/r : myPmt2*mc1) * Math.pow(1+r, ni-mc1);
+    const mc2 = Math.min(ni, Math.max(0, wifeContribEnd - cy));
+    const wifeFv2 = (r>0 ? wifePmt2*(Math.pow(1+r,mc2)-1)/r : wifePmt2*mc2) * Math.pow(1+r, ni-mc2);
+    return Math.round((pvFv + myFv2 + wifeFv2) / 1_000_000);
   });
   const cumPrincipals = years.map((yr, idx) => {
-    const yearsContrib = Math.min(idx, Math.max(0, contribEnd - cy));
-    return Math.round(pvInitMil + moTotal * 12 * yearsContrib * 10000 / 1_000_000);
+    const ni = yr - cy;
+    const yc1 = Math.min(ni, Math.max(0, myContribEnd - cy));
+    const yc2 = Math.min(ni, Math.max(0, wifeContribEnd - cy));
+    return Math.round(pvInitMil + ((_obData.myMonthly||0)*yc1 + (_obData.wifeMonthly||0)*yc2)*12*10000/1_000_000);
   });
   const wifeRetireYr = _obData.hasWife ? ((_obData.wifeBirthYear||cy-40) + (_obData.wifeRetireAge||60)) : null;
   const markers = [
     { year: retireYr, label: '본인 은퇴', color: '#dc2626' },
     ...(wifeRetireYr ? [{ year: wifeRetireYr, label: `${_obData.wifeTitle||'배우자'} 은퇴`, color: '#db2777' }] : []),
-    ...(contribEnd < retireYr ? [{ year: contribEnd, label: '적립 종료', color: '#f59e0b' }] : []),
+    ...(myContribEnd < retireYr ? [{ year: myContribEnd, label: '적립 종료', color: '#f59e0b' }] : []),
   ];
   const markerPlugin = {
     id: 'obMarkers',
@@ -7376,26 +7385,36 @@ function updateObSim() {
   const r   = rPct / 100;
   const inf = infPct / 100;
   const pv  = (_obData.myBalMil + _obData.wifeBalMil) * 1_000;
-  const pmt = (myMo + wifeMo) * 10_000 * 12;
   const retireYr = (_obData.myBirthYear||cy-40) + (_obData.retireAge||60);
   const n = retireYr - cy;
   if (n <= 0) return;
 
-  // 적립 종료 연도 반영: 두 단계 복리 계산
-  const contribEndYr = _obData.contribEndYear || retireYr;
+  // 본인·배우자 적립 종료 연도 분리 계산
+  const myContribEndYr   = Math.min(_obData.contribEndYear     || retireYr, retireYr);
+  const wifeContribEndYr = Math.min(_obData.wifeContribEndYear || retireYr, retireYr);
+  const myPmt   = myMo   * 10_000 * 12;
+  const wifePmt = wifeMo * 10_000 * 12;
+  // 은퇴연도 초과 입력 자동 보정
+  const myEndEl = document.getElementById('ob_myContribEndY');
+  if (myEndEl && Number(myEndEl.value) > retireYr) myEndEl.value = retireYr;
+  const wifeEndEl = document.getElementById('ob_wifeContribEndY');
+  if (wifeEndEl && Number(wifeEndEl.value) > retireYr) wifeEndEl.value = retireYr;
   const pvInitMil = ((_obData.myBalMil||0) + (_obData.wifeBalMil||0)) / 1000;
   const years = Array.from({length: n + 1}, (_, i) => cy + i);
   const nomBalances = years.map(yr => {
     const ni = yr - cy;
-    const mc = Math.min(ni, Math.max(0, contribEndYr - cy));
-    const mg = ni - mc;
-    const fvMc = pv * Math.pow(1+r, mc) + (r > 0 ? pmt * (Math.pow(1+r, mc)-1)/r : pmt*mc);
-    return Math.round(fvMc * Math.pow(1+r, mg) / 1_000_000);
+    const pvFv = pv * Math.pow(1+r, ni);
+    const mc1 = Math.min(ni, Math.max(0, myContribEndYr - cy));
+    const myFv = (r>0 ? myPmt*(Math.pow(1+r,mc1)-1)/r : myPmt*mc1) * Math.pow(1+r, ni-mc1);
+    const mc2 = Math.min(ni, Math.max(0, wifeContribEndYr - cy));
+    const wifeFv = (r>0 ? wifePmt*(Math.pow(1+r,mc2)-1)/r : wifePmt*mc2) * Math.pow(1+r, ni-mc2);
+    return Math.round((pvFv + myFv + wifeFv) / 1_000_000);
   });
   const cumPrincipals = years.map(yr => {
     const ni = yr - cy;
-    const yearsContrib = Math.min(ni, Math.max(0, contribEndYr - cy));
-    return Math.round(pvInitMil + (myMo + wifeMo) * 12 * yearsContrib * 10_000 / 1_000_000);
+    const yc1 = Math.min(ni, Math.max(0, myContribEndYr - cy));
+    const yc2 = Math.min(ni, Math.max(0, wifeContribEndYr - cy));
+    return Math.round(pvInitMil + (myMo*yc1 + wifeMo*yc2)*12*10_000/1_000_000);
   });
   const nomFVMil = nomBalances[nomBalances.length - 1];
   const realFVMil = Math.round(nomFVMil / Math.pow(1+inf, n));
