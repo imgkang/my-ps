@@ -2458,7 +2458,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.183';
+const APP_VERSION = 'MyPM v0.184';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7027,7 +7027,7 @@ function obNpStartAge(birthYear) {
   if (birthYear <= 1960) return 62;
   if (birthYear <= 1964) return 63;
   if (birthYear <= 1968) return 64;
-  return 66; // 1969년 이후
+  return 65; // 1969년 이후
 }
 function obGpStartAge(birthYear) {
   // 공무원연금 수급개시 연령: 2016 개혁, 퇴직연도 기준 (정년 60세 가정)
