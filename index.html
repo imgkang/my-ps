@@ -2459,7 +2459,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.197';
+const APP_VERSION = 'MyPM v0.198';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6915,7 +6915,7 @@ function renderOnboardingStep() {
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 6px">${_obData.wifeTitle||'배우자'}</div>
       <div class="ob-field-row">
         <label>현재 잔액</label>
-        <input type="text" value="${wifeBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:var(--card);border-color:transparent">천원
+        <span style="font-size:13px;color:var(--text)">${wifeBal.toLocaleString('ko-KR')}천원</span>
       </div>
       <div class="ob-field-row">
         <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showWifeAllocBtn?' ⓘ':''}</label>
@@ -6951,7 +6951,7 @@ function renderOnboardingStep() {
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 6px">본인</div>
       <div class="ob-field-row">
         <label>현재 잔액</label>
-        <input type="text" value="${myBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:var(--card);border-color:transparent">천원
+        <span style="font-size:13px;color:var(--text)">${myBal.toLocaleString('ko-KR')}천원</span>
       </div>
       <div class="ob-field-row">
         <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showMyAllocBtn?' ⓘ':''}</label>
