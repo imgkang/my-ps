@@ -2459,7 +2459,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.194';
+const APP_VERSION = 'MyPM v0.195';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6669,8 +6669,8 @@ function openOnboardingModal() {
     wifeBirthYear: appSettings.wifeBirthYear || 2000,
     wifeBirthMonth: appSettings.wifeBirthMonth || 1,
     wifeTitle: appSettings.wifeTitle || '아내',
-    myAccIds: [...(appSettings.my?.activeAccIds?.length ? appSettings.my.activeAccIds : ['pension1','irp'])],
-    wifeAccIds: [...(appSettings.wife?.activeAccIds?.length ? appSettings.wife.activeAccIds : ['wife_pension1','wife_irp'])],
+    myAccIds: [...new Set([...(appSettings.my?.activeAccIds || []), 'pension1', 'irp'])],
+    wifeAccIds: [...new Set([...(appSettings.wife?.activeAccIds || []), 'wife_pension1', 'wife_irp'])],
     retireAge: 60,
     wifeRetireAge: 60,
     startYear: wdPlan.startYear || (cy + 10),
