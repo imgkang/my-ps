@@ -2459,7 +2459,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.198';
+const APP_VERSION = 'MyPM v0.199';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6901,8 +6901,12 @@ function renderOnboardingStep() {
     _obData.myBalMil = myBal;
     _obData.wifeBalMil = wifeBal;
     if (!_obData._step5Visited) {
-      _obData.contribEndYear     = cy + 30;
-      _obData.wifeContribEndYear = cy + 30;
+      const _endMonth = cm > 1 ? cm - 1 : 12;
+      const _endYear  = cm > 1 ? cy + 30 : cy + 29;
+      _obData.contribEndYear      = _endYear;
+      _obData.contribEndMonth     = _endMonth;
+      _obData.wifeContribEndYear  = _endYear;
+      _obData.wifeContribEndMonth = _endMonth;
       _obData._step5Visited = true;
     }
     const showMyAllocBtn = _obData.myAccIds.length > 1;
