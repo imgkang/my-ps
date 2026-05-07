@@ -2466,7 +2466,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.201';
+const APP_VERSION = 'MyPM v0.202';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7666,7 +7666,7 @@ function finishOnboarding() {
     const endYr = isWife ? (_obData.wifeContribEndYear || _obData.wifeStartYear || cy+10) : (_obData.contribEndYear || _obData.startYear || cy+10);
     const endMo = isWife ? (_obData.wifeContribEndMonth||12) : (_obData.contribEndMonth||12);
     annualPlan.monthlyPlans.push({
-      id: Date.now() + planIdx++, accId, frequency: 'monthly', monthlyAmt: monthly,
+      id: String(Date.now() + planIdx++), accId, frequency: 'monthly', monthlyAmt: monthly,
       startYear: _obData.contribStartYear||cy, startMonth: _obData.contribStartMonth||cm,
       endYear: endYr, endMonth: endMo
     });
