@@ -2458,7 +2458,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.180';
+const APP_VERSION = 'MyPM v0.181';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7071,6 +7071,11 @@ function obSaveStep2Deposits() {
     Object.values(_obData.savedDepositIds).forEach(txId => {
       depositData.transactions = depositData.transactions.filter(t => t.id !== txId);
     });
+    // 이전에 저장된 현금도 원상복구
+    Object.entries(_obData.savedDepositIds).forEach(([accId]) => {
+      const prevBal = (_obData._prevAccBal || {})[accId] || 0;
+      cashAccounts[accId] = Math.max(0, (cashAccounts[accId] || 0) - prevBal * 1_000_000);
+    });
     _obData.savedDepositIds = {};
   }
   if (_obData.savedMonthlyRecordId) {
@@ -7088,8 +7093,14 @@ function obSaveStep2Deposits() {
     depositData.transactions.push({ id: txId, accId, date: dateStr, amount: balMil * 1_000_000 });
     _obData.savedDepositIds[accId] = txId;
     recAccs[accId] = balMil;
+    // 포트폴리오 현금에 반영
+    cashAccounts[accId] = (cashAccounts[accId] || 0) + balMil * 1_000_000;
   });
-  if (Object.keys(_obData.savedDepositIds).length > 0) saveDeposits();
+  _obData._prevAccBal = { ..._obData.accBal };
+  if (Object.keys(_obData.savedDepositIds).length > 0) {
+    saveDeposits();
+    persistCashAccounts();
+  }
   if (Object.keys(recAccs).length > 0) {
     const recId = Date.now();
     monthlyRecords.push({ id: recId, year: today.getFullYear(), month: today.getMonth()+1, day: today.getDate(), accounts: recAccs });
