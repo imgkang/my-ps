@@ -2459,7 +2459,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.188';
+const APP_VERSION = 'MyPM v0.189';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6872,8 +6872,8 @@ function renderOnboardingStep() {
         </label>
         <div id="ob_${key}_det" style="${p.use?'':'display:none'};display:${p.use?'flex':'none'};align-items:center;gap:5px;flex-wrap:wrap;flex:1">
           <input type="text" inputmode="numeric" id="ob_${key}_mo" value="${(p.monthly||0).toLocaleString('ko-KR')}" min="0" step="1" class="ob-p4-input" style="flex:6;min-width:45px" placeholder="0" oninput="obFmtAmt(this)">만원/월
-          <input type="number" id="ob_${key}_yr" value="${p.startYear}" min="2020" max="2070" class="ob-p4-input" style="flex:7;min-width:55px">년
-          <input type="number" id="ob_${key}_mon" value="${p.startMonth}" min="1" max="12" class="ob-p4-input" style="flex:4;min-width:35px">월~
+          <input type="number" id="ob_${key}_yr" value="${p.startYear}" min="2020" max="2070" class="ob-p4-input" style="flex:7;min-width:55px;font-size:12px;padding:4px 7px">년
+          <input type="number" id="ob_${key}_mon" value="${p.startMonth}" min="1" max="12" class="ob-p4-input" style="flex:4;min-width:35px;font-size:12px;padding:4px 7px">월~
         </div>
       </div>`;
     };
@@ -6914,7 +6914,7 @@ function renderOnboardingStep() {
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 6px">${_obData.wifeTitle||'배우자'}</div>
       <div class="ob-field-row">
         <label>현재 잔액</label>
-        <input type="text" value="${wifeBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:#f1f5f9">천원
+        <input type="text" value="${wifeBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:var(--bg);border-color:transparent">천원
       </div>
       <div class="ob-field-row">
         <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showWifeAllocBtn?' ⓘ':''}</label>
@@ -6924,14 +6924,14 @@ function renderOnboardingStep() {
       <div class="ob-field-row" style="gap:4px">
         <label onmouseenter="obShowTip('${contribTip}')" ontouchstart="obShowTip('${contribTip}')" style="cursor:help">적립 기간 ⓘ</label>
         <div style="flex:1;display:flex;align-items:center;gap:3px;min-width:0">
-          <input type="number" id="ob_wifeContribStartY" value="${_obData.contribStartYear||cy}" min="2020" max="2080" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
-          <span style="white-space:nowrap;font-size:12px">년</span>
-          <input type="number" id="ob_wifeContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
-          <span style="white-space:nowrap;font-size:12px">월 ~</span>
-          <input type="number" id="ob_wifeContribEndY" value="${_obData.wifeContribEndYear}" min="2020" max="${_obData.wifeStartYear||2080}" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
-          <span style="white-space:nowrap;font-size:12px">년</span>
-          <input type="number" id="ob_wifeContribEndM" value="${_obData.wifeContribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
-          <span style="white-space:nowrap;font-size:12px">월</span>
+          <input type="number" id="ob_wifeContribStartY" value="${_obData.contribStartYear||cy}" min="2020" max="2080" style="flex:3;min-width:0;font-size:11px" oninput="updateObSim()">
+          <span style="white-space:nowrap;font-size:11px">년</span>
+          <input type="number" id="ob_wifeContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:11px">
+          <span style="white-space:nowrap;font-size:11px">월 ~</span>
+          <input type="number" id="ob_wifeContribEndY" value="${_obData.wifeContribEndYear}" min="2020" max="${_obData.wifeStartYear||2080}" style="flex:3;min-width:0;font-size:11px" oninput="updateObSim()">
+          <span style="white-space:nowrap;font-size:11px">년</span>
+          <input type="number" id="ob_wifeContribEndM" value="${_obData.wifeContribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:11px">
+          <span style="white-space:nowrap;font-size:11px">월</span>
         </div>
       </div>` : '';
     body.innerHTML = `
@@ -6950,7 +6950,7 @@ function renderOnboardingStep() {
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 6px">본인</div>
       <div class="ob-field-row">
         <label>현재 잔액</label>
-        <input type="text" value="${myBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:#f1f5f9">천원
+        <input type="text" value="${myBal.toLocaleString('ko-KR')}" readonly style="width:80px;background:var(--bg);border-color:transparent">천원
       </div>
       <div class="ob-field-row">
         <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showMyAllocBtn?' ⓘ':''}</label>
@@ -6960,14 +6960,14 @@ function renderOnboardingStep() {
       <div class="ob-field-row" style="gap:4px">
         <label onmouseenter="obShowTip('${contribTip}')" ontouchstart="obShowTip('${contribTip}')" style="cursor:help">적립 기간 ⓘ</label>
         <div style="flex:1;display:flex;align-items:center;gap:3px;min-width:0">
-          <input type="number" id="ob_myContribStartY" value="${_obData.contribStartYear||cy}" min="2020" max="2080" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
-          <span style="white-space:nowrap;font-size:12px">년</span>
-          <input type="number" id="ob_myContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
-          <span style="white-space:nowrap;font-size:12px">월 ~</span>
-          <input type="number" id="ob_myContribEndY" value="${_obData.contribEndYear}" min="2020" max="${_obData.startYear||2080}" style="flex:3;min-width:0;font-size:12px" oninput="updateObSim()">
-          <span style="white-space:nowrap;font-size:12px">년</span>
-          <input type="number" id="ob_myContribEndM" value="${_obData.contribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:12px">
-          <span style="white-space:nowrap;font-size:12px">월</span>
+          <input type="number" id="ob_myContribStartY" value="${_obData.contribStartYear||cy}" min="2020" max="2080" style="flex:3;min-width:0;font-size:11px" oninput="updateObSim()">
+          <span style="white-space:nowrap;font-size:11px">년</span>
+          <input type="number" id="ob_myContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:11px">
+          <span style="white-space:nowrap;font-size:11px">월 ~</span>
+          <input type="number" id="ob_myContribEndY" value="${_obData.contribEndYear}" min="2020" max="${_obData.startYear||2080}" style="flex:3;min-width:0;font-size:11px" oninput="updateObSim()">
+          <span style="white-space:nowrap;font-size:11px">년</span>
+          <input type="number" id="ob_myContribEndM" value="${_obData.contribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:11px">
+          <span style="white-space:nowrap;font-size:11px">월</span>
         </div>
       </div>
       ${wifeSection}
