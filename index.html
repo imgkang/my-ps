@@ -2339,9 +2339,10 @@ Chart.register({
         </div>
       </div>
     </div>
-    <div style="display:flex;gap:6px;padding:2px 0 6px;flex-shrink:0">
+    <div style="display:flex;gap:6px;padding:2px 0 6px;flex-shrink:0;align-items:center">
       <button id="wd_method0_btn" class="toggle-btn active" onclick="setWdMethod(0)" style="flex:1;font-size:12px">방식0: 목표인출</button>
       <button id="wd_method1_btn" class="toggle-btn" onclick="setWdMethod(1)" style="flex:1;font-size:12px">방식1: 비율인출</button>
+      <button onclick="openWdMethodHelp()" style="width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0">?</button>
     </div>
     <div class="cfg-tabs">
       <button class="cfg-tab active" id="wdCfgTabCommon"   onclick="switchWdCfgTab('common')">공통</button>
@@ -2438,6 +2439,42 @@ Chart.register({
   </div>
 </div>
 
+<!-- 인출방식 도움말 팝업 -->
+<div class="modal-backdrop" id="wdMethodHelpModal" onclick="if(event.target.id==='wdMethodHelpModal')closeWdMethodHelp()">
+  <div class="modal" style="max-width:380px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div><h2>💡 인출방식 안내</h2></div>
+      <button class="close-btn" onclick="closeWdMethodHelp()">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:4px 2px 8px;font-size:12px;color:#334155;line-height:1.7">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-bottom:12px">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px">방식0: 목표인출 (정밀 제어)</div>
+        <p style="margin:0 0 6px">목표 인출 시작연도부터 세후 연간 인출액을 현재가치 기준으로 일정하게 유지합니다.</p>
+        <ul style="margin:0;padding-left:16px">
+          <li>본인·배우자의 은퇴연도를 각각 설정</li>
+          <li>배우자 계좌의 최대인출금액을 제한해 재원 소진 속도 조절</li>
+          <li>부족분은 본인 계좌에서 자동 충당</li>
+          <li>배우자 적립금이 적거나 재원 배분을 세밀히 조정할 때 적합</li>
+        </ul>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px">
+        <div style="font-weight:700;color:#15803d;margin-bottom:6px">방식1: 비율인출 (단순 설계)</div>
+        <p style="margin:0 0 6px">본인·배우자가 동일 연도에 은퇴한다고 가정하고, 사적재원 인출을 지정 비율로 나눕니다.</p>
+        <ul style="margin:0;padding-left:16px">
+          <li>공통 은퇴연도 하나만 설정</li>
+          <li>공적연금(국민연금 등)은 각자 수령 시기에 자동 반영</li>
+          <li>나머지 부족분을 나:배우자 = X%:Y% 비율로 사적계좌에서 인출</li>
+          <li>예) 나 40% / 배우자 60% → 배우자 재원을 더 많이 활용</li>
+          <li>설정이 단순하고 직관적, 계획 초기 단계에 적합</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-actions" style="flex-shrink:0">
+      <button class="btn-primary" onclick="closeWdMethodHelp()">확인</button>
+    </div>
+  </div>
+</div>
+
 <!-- 배당 기록 패널 -->
 <div id="panel-dividend" class="tab-panel">
   <div class="modal-header">
@@ -2517,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.209';
+const APP_VERSION = 'MyPM v0.210';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8132,6 +8169,8 @@ function openWdSettingsModal() {
 }
 function closeWdSettingsModal() { document.getElementById('wdSettingsModal').classList.remove('open'); }
 function handleWdSettingsBackdropClick(e) { if (e.target.id === 'wdSettingsModal') closeWdSettingsModal(); }
+function openWdMethodHelp()  { document.getElementById('wdMethodHelpModal').classList.add('open'); }
+function closeWdMethodHelp() { document.getElementById('wdMethodHelpModal').classList.remove('open'); }
 function switchWdCfgTab(name) {
   ['common','personal'].forEach(t => {
     const cap = t.charAt(0).toUpperCase() + t.slice(1);
