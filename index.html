@@ -2466,7 +2466,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.202';
+const APP_VERSION = 'MyPM v0.203';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5865,27 +5865,31 @@ function renderAnnualCharts() {
     };
     const sorted = [...monthlyRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
     let base = sorted.length ? accIds.reduce((s, id) => s + (Number(sorted[0].accounts[id]) || 0), 0) : 0;
-    return years.map(yr => {
+    const mil = [], won = [];
+    for (const yr of years) {
       if (yr <= lastRecYear) {
         const v = getGroupYearEnd(yr);
-        if (v != null) { base = v; return Math.round(v / 1_000_000); }
-        return null;
+        if (v != null) { base = v; mil.push(Math.round(v / 1_000_000)); won.push(v); }
+        else { mil.push(null); won.push(null); }
+      } else {
+        const prevMil = accIds.reduce((s, id) => s + getCellManwon(id, yr - 1), 0);
+        const currMil = accIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
+        base = (base + Math.max(0, currMil - prevMil) * 1_000_000) * (1 + projRate);
+        mil.push(Math.round(base / 1_000_000));
+        won.push(base);
       }
-      const prevMil = accIds.reduce((s, id) => s + getCellManwon(id, yr - 1), 0);
-      const currMil = accIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
-      base = (base + Math.max(0, currMil - prevMil) * 1_000_000) * (1 + projRate);
-      return Math.round(base / 1_000_000);
-    });
+    }
+    return { mil, won };
   }
 
-  const evalAll = computeEvalMil(allIds);
+  const { mil: evalAll, won: evalAllWon } = computeEvalMil(allIds);
 
-  // 연간 이익률 (%) — 표의 당해년도이익률과 동일: (평가 - 전년평가 - 원금증가) / (전년평가 + 원금증가) × 100
+  // 연간 이익률 (%) — 반올림 오차 방지를 위해 원(원화) 단위 미반올림 값으로 계산
   const profitRate = years.map((yr, i) => {
     if (i === 0) return null;
-    const prev = evalAll[i - 1], curr = evalAll[i];
+    const prev = evalAllWon[i - 1], curr = evalAllWon[i];
     if (prev == null || curr == null) return null;
-    const princInc = (prinAll[i] || 0) - (prinAll[i - 1] || 0); // 백만원
+    const princInc = ((prinAll[i] || 0) - (prinAll[i - 1] || 0)) * 1_000_000; // 백만원 → 원
     const base = prev + princInc;
     if (base <= 0) return null;
     return Math.round((curr - prev - princInc) / base * 1000) / 10;
