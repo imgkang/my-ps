@@ -1259,7 +1259,7 @@ Chart.register({
       <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
       <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
     </svg>
-    지출계획
+    인출계획
   </button>
 </nav>
 
@@ -2466,7 +2466,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.204';
+const APP_VERSION = 'MyPM v0.205';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7702,7 +7702,8 @@ function finishOnboarding() {
 
   wdPlan.myBirthYear   = _obData.myBirthYear;
   wdPlan.myBirthMonth  = _obData.myBirthMonth;
-  wdPlan.startYear     = _obData.startYear;
+  wdPlan.startYear       = _obData.startYear;
+  wdPlan.targetStartYear = _obData.startYear;
   wdPlan.annualTarget  = _obData.annualTarget;
   wdPlan.returnRate    = _obData.returnRate;
   wdPlan.inflation     = _obData.inflationRate;
@@ -9390,10 +9391,8 @@ function openConsolidateModal() {
       ? `내 계좌: ${baseYear}년말 기준 / ${getWifeTitle()} 계좌: ${wifeBaseYear}년말 기준`
       : `${baseYear}년말 예상 잔액 기준 → ${wp.startYear}년 인출 시작`;
 
-  const _consMyIds   = MY_ACC_IDS.filter(id => (appSettings.my?.activeAccIds || MY_ACC_IDS).includes(id));
-  const _consWifeIds = appSettings.hasWife
-    ? WIFE_ACC_IDS.filter(id => (appSettings.wife?.activeAccIds || WIFE_ACC_IDS).includes(id))
-    : [];
+  const _consMyIds   = [...MY_ACC_IDS];
+  const _consWifeIds = appSettings.hasWife ? [...WIFE_ACC_IDS] : [];
   const _zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
 
   const comps = {};
