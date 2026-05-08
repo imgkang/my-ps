@@ -2466,7 +2466,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.205';
+const APP_VERSION = 'MyPM v0.206';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7708,9 +7708,10 @@ function finishOnboarding() {
   wdPlan.returnRate    = _obData.returnRate;
   wdPlan.inflation     = _obData.inflationRate;
   if (_obData.hasWife) {
-    wdPlan.wifeBirthYear  = _obData.wifeBirthYear;
-    wdPlan.wifeBirthMonth = _obData.wifeBirthMonth;
-    wdPlan.wifeRetireYear = _obData.wifeStartYear || (_obData.wifeBirthYear + (_obData.wifeRetireAge||60));
+    wdPlan.wifeBirthYear    = _obData.wifeBirthYear;
+    wdPlan.wifeBirthMonth   = _obData.wifeBirthMonth;
+    wdPlan.wifeRetireYear   = _obData.wifeStartYear || (_obData.wifeBirthYear + (_obData.wifeRetireAge||60));
+    wdPlan.wifeFixStartYear = wdPlan.wifeRetireYear;
   }
   saveWdPlan();
 
