@@ -2466,7 +2466,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.206';
+const APP_VERSION = 'MyPM v0.207';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8287,7 +8287,12 @@ function computeWithdrawalSim() {
   const myB20 = ((myPersonCfg.pensionBenefit20y  ?? wp.pensionBenefit20y ?? 60)) / 100;
   const myB30 = ((myPersonCfg.pensionBenefit30y  ?? wp.pensionBenefit30y ?? 50)) / 100;
   const activeMyIds = MY_ACC_IDS.filter(id => (appSettings.my?.activeAccIds || MY_ACC_IDS).includes(id));
-  const allAccIds = [...activeMyIds, ...getActiveWifeAccIds()];
+  const activeWifeIds = getActiveWifeAccIds();
+  // Always include pension1/pension2 (and wife equivalents) so consolidation targets are in scope
+  const allAccIds = [...new Set([
+    ...activeMyIds, 'pension1', 'pension2',
+    ...activeWifeIds, ...(appSettings.hasWife ? ['wife_pension1', 'wife_pension2'] : [])
+  ])];
   const endDate = `${startYear - 1}-12-31`;
   const wifeStartYear = wp.wifeRetireYear || wp.wifeFixStartYear || startYear;
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
@@ -8350,7 +8355,6 @@ function computeWithdrawalSim() {
       autoConsolidateLog.my = autoConsolidateForSim(myNonDcIds, state, 'pension1', 'pension2');
     }
     if (wp.wifeAutoConsolidate) {
-      const activeWifeIds = getActiveWifeAccIds();
       const wifeNonDcIds  = activeWifeIds.filter(id => !DC_ACC_IDS.has(id));
       autoConsolidateLog.wife = autoConsolidateForSim(wifeNonDcIds, state, 'wife_pension1', 'wife_pension2');
     }
@@ -9006,7 +9010,7 @@ function renderWdWithdrawTable(sim) {
     wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인연금1(${_wt})`, wife_pension2:`개인연금2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
-  const dispAccIds = (isConsolidated || isAutoConsolidated) ? allAccIds.filter(id => initState[id].total > 0) : allAccIds;
+  const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
   const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
@@ -9105,7 +9109,7 @@ function renderWdBalanceTable(sim) {
     wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인연금1(${_wt})`, wife_pension2:`개인연금2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
-  const dispAccIds = (isConsolidated || isAutoConsolidated) ? allAccIds.filter(id => initState[id].total > 0) : allAccIds;
+  const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
   const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const mc = (won) => {
