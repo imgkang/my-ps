@@ -2554,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.210';
+const APP_VERSION = 'MyPM v0.211';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7791,8 +7791,9 @@ function finishOnboarding() {
 
   wdPlan.myBirthYear   = _obData.myBirthYear;
   wdPlan.myBirthMonth  = _obData.myBirthMonth;
-  wdPlan.startYear       = _obData.startYear;
-  wdPlan.targetStartYear = _obData.startYear;
+  wdPlan.startYear         = _obData.startYear;
+  wdPlan.method1StartYear  = _obData.startYear;
+  wdPlan.targetStartYear   = _obData.startYear;
   wdPlan.annualTarget  = _obData.annualTarget;
   wdPlan.returnRate    = _obData.returnRate;
   wdPlan.inflation     = _obData.inflationRate;
@@ -8510,6 +8511,7 @@ function computeWithdrawalSim() {
 
   for (const yr of years) {
     withdrawals[yr] = {};
+    for (const accId of allAccIds) withdrawals[yr][accId] = { anseOut: 0, dcOut: 0, regularOut: 0, pensionTax: 0 };
 
     // 인출 시작 전 구간: 수익률 미적용, 빈 잔액 기록 후 skip
     if (yr < startYear) {
