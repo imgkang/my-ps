@@ -2554,11 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-<<<<<<< HEAD
-const APP_VERSION = 'MyPM v0.217';
-=======
 const APP_VERSION = 'MyPM v0.218';
->>>>>>> main
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8878,11 +8874,7 @@ function renderWithdrawalPlan() {
 }
 
 // ===== 브리핑 =====
-<<<<<<< HEAD
-function findMaxSustainableWithdrawal(sim) {
-=======
 function findMaxSustainableWithdrawal(sim, effectiveTaxRate) {
->>>>>>> main
   const { years, balances, summary, allAccIds, initState } = sim;
   const wp  = wdPlan;
   const inf = (wp.inflation || 2.2) / 100;
@@ -8892,11 +8884,8 @@ function findMaxSustainableWithdrawal(sim, effectiveTaxRate) {
   if (!activeYears.length) return 0;
 
   const initBal = allAccIds.reduce((s, id) => s + (initState?.[id]?.total || 0), 0);
-<<<<<<< HEAD
-=======
   // 실제 사적 인출은 세금만큼 더 필요 (net 목표 달성을 위한 gross 배율)
   const taxFactor = effectiveTaxRate > 0 ? 1 / (1 - Math.min(effectiveTaxRate, 0.6)) : 1;
->>>>>>> main
 
   function testTarget(annualTargetM) {
     let bal = initBal;
@@ -8904,12 +8893,8 @@ function findMaxSustainableWithdrawal(sim, effectiveTaxRate) {
       bal *= (1 + r);
       const publicInc = (summary[yr].myPublicInc || 0) + (summary[yr].wifePublicInc || 0);
       const targetNominal = annualTargetM * 1_000_000 * Math.pow(1 + inf, yr - todayYear);
-<<<<<<< HEAD
-      bal -= Math.min(bal, Math.max(0, targetNominal - publicInc));
-=======
       const privateNeededGross = Math.max(0, targetNominal - publicInc) * taxFactor;
       bal -= Math.min(bal, privateNeededGross);
->>>>>>> main
     }
     return bal > 0;
   }
@@ -8967,13 +8952,9 @@ function computeWdMetrics(sim) {
   }
 
   // 지속가능 한도: 95세까지 고갈 없이 인출 가능한 최대 연간 금액 (이진탐색, 오늘 화폐가치 M단위)
-<<<<<<< HEAD
-  const swl = findMaxSustainableWithdrawal(sim);
-=======
   // 세금 보정을 위해 먼저 실효세율을 계산해서 전달
   const taxRateForSim = totalWithdraw > 0 ? totalTax / totalWithdraw : 0;
   const swl = findMaxSustainableWithdrawal(sim, taxRateForSim);
->>>>>>> main
 
   // SWL level vs current target
   const tgt = wp.annualTarget || 0;
