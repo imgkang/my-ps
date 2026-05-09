@@ -2554,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.215';
+const APP_VERSION = 'MyPM v0.216';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8887,11 +8887,13 @@ function computeWdMetrics(sim) {
   const totalTax      = Math.round(activeYears.reduce((s, yr) => s + summary[yr].totalTax, 0) / M);
   const totalTarget   = Math.round(activeYears.reduce((s, yr) => s + summary[yr].target, 0) / M);
 
-  const inflFactorLast = summary[lastYr]?.inflFactor || 1;
+  const inf = (wp.inflation || 2.2) / 100;
+  const todayYear = new Date().getFullYear();
+  const inflFromTodayLast = Math.pow(1 + inf, (lastYr || todayYear) - todayYear);
   const finalBalanceKRW = lastYr
     ? allAccIds.reduce((s, id) => s + (balances[lastYr]?.[id]?.total || 0), 0) : 0;
   const finalBalance = Math.round(finalBalanceKRW / M);
-  const pvBalance    = Math.round(finalBalanceKRW / inflFactorLast / M);
+  const pvBalance    = Math.round(finalBalanceKRW / inflFromTodayLast / M);
 
   // Depletion: first active year where total balance hits 0
   const EPS = M;
@@ -8915,13 +8917,14 @@ function computeWdMetrics(sim) {
   }
 
   // SWL: total PV net receipts + PV final balance divided by simulation years
+  // PV base = todayYear so that SWL is in the same money units as annualTarget
   let swl = 0;
   if (nYears > 0) {
     const totalNetPV = activeYears.reduce((s, yr) => {
       const net = summary[yr].totalInc - summary[yr].totalTax;
-      return s + net / (summary[yr].inflFactor || 1);
+      return s + net / Math.pow(1 + inf, yr - todayYear);
     }, 0);
-    swl = Math.round((totalNetPV + finalBalanceKRW / inflFactorLast) / nYears / M);
+    swl = Math.round((totalNetPV + finalBalanceKRW / inflFromTodayLast) / nYears / M);
   }
 
   // SWL level vs current target
