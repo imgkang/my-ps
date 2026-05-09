@@ -2554,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.214';
+const APP_VERSION = 'MyPM v0.215';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8933,6 +8933,10 @@ function computeWdMetrics(sim) {
     else if (r > 0.85) { swlLevel = '적정';   swlColor = '#d97706'; }
     else if (r > 0.65) { swlLevel = '여유';   swlColor = '#16a34a'; }
     else               { swlLevel = '풍족';   swlColor = '#2563eb'; }
+  }
+  // 고갈 발생 시 레벨 강제 오버라이드 (SWL 수치와 무관하게 고갈 상태 표시)
+  if (depletedYear !== null && depletedYear < endYear) {
+    swlLevel = '고갈'; swlColor = '#dc2626';
   }
 
   // Effective tax rate
