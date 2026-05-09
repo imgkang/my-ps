@@ -2342,7 +2342,7 @@ Chart.register({
     <div style="display:flex;gap:6px;padding:2px 0 6px;flex-shrink:0;align-items:center">
       <button id="wd_method0_btn" class="toggle-btn active" onclick="setWdMethod(0)" style="flex:1;font-size:12px">방식0: 목표인출</button>
       <button id="wd_method1_btn" class="toggle-btn" onclick="setWdMethod(1)" style="flex:1;font-size:12px">방식1: 비율인출</button>
-      <button onclick="openWdMethodHelp()" style="width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0">?</button>
+      <button onclick="openWdMethodHelp()" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0">?</button>
     </div>
     <div class="cfg-tabs">
       <button class="cfg-tab active" id="wdCfgTabCommon"   onclick="switchWdCfgTab('common')">공통</button>
@@ -2591,7 +2591,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.220';
+const APP_VERSION = 'MyPM v0.221';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8983,7 +8983,7 @@ function renderWdBriefing(sim) {
                : m.survivabilityScore >= 0   ? '#d97706' : '#dc2626';
   bar.style.display = 'flex';
   bar.innerHTML =
-    `<span>⭐ 생존점수 <b style="color:${sColor};font-size:13.5px">${fmt(m.survivabilityScore)}</b> <button onclick="openScoreHelp()" style="width:16px;height:16px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;padding:0;line-height:1;vertical-align:middle;margin-left:2px">?</button></span>` +
+    `<span>⭐ 생존점수 <b style="color:${sColor};font-size:13.5px">${fmt(m.survivabilityScore)}</b> <button onclick="openScoreHelp()" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle;margin-left:2px">?</button></span>` +
     `<span>💴 세후 실수령액 <b>${fmt(m.monthlyNetManwon)}만원/월</b></span>` +
     `<span>🧾 실효세율 <b style="color:#dc2626">${m.effectiveTaxRate}%</b></span>` +
     `<span>🏦 95세 잔액(현재가치) <b>${fmt(m.pvBalance)}M</b></span>`;
