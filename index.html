@@ -2554,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.213';
+const APP_VERSION = 'MyPM v0.214';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8877,14 +8877,74 @@ function renderWithdrawalPlan() {
 function computeWdMetrics(sim) {
   const { years, balances, summary, allAccIds } = sim;
   const M = 1_000_000;
-  const totalWithdraw = Math.round(years.reduce((s, yr) => s + summary[yr].totalInc, 0) / M);
-  const totalTax      = Math.round(years.reduce((s, yr) => s + summary[yr].totalTax, 0) / M);
-  const totalTarget   = Math.round(years.reduce((s, yr) => s + summary[yr].target, 0) / M);
-  const lastYr        = years[years.length - 1];
-  const finalBalance  = Math.round((balances[lastYr] === null ? 0 :
-    allAccIds.reduce((s, id) => s + balances[lastYr][id].total, 0)) / M);
-  return { totalWithdraw, totalTax, totalTarget, finalBalance,
-    score: totalWithdraw + finalBalance - totalTax };
+  const wp = wdPlan;
+
+  const activeYears = years.filter(yr => balances[yr] !== null);
+  const nYears = activeYears.length;
+  const lastYr = activeYears[activeYears.length - 1];
+
+  const totalWithdraw = Math.round(activeYears.reduce((s, yr) => s + summary[yr].totalInc, 0) / M);
+  const totalTax      = Math.round(activeYears.reduce((s, yr) => s + summary[yr].totalTax, 0) / M);
+  const totalTarget   = Math.round(activeYears.reduce((s, yr) => s + summary[yr].target, 0) / M);
+
+  const inflFactorLast = summary[lastYr]?.inflFactor || 1;
+  const finalBalanceKRW = lastYr
+    ? allAccIds.reduce((s, id) => s + (balances[lastYr]?.[id]?.total || 0), 0) : 0;
+  const finalBalance = Math.round(finalBalanceKRW / M);
+  const pvBalance    = Math.round(finalBalanceKRW / inflFactorLast / M);
+
+  // Depletion: first active year where total balance hits 0
+  const EPS = M;
+  let depletedYear = null;
+  for (const yr of activeYears) {
+    const tot = allAccIds.reduce((s, id) => s + (balances[yr]?.[id]?.total || 0), 0);
+    if (tot <= EPS) { depletedYear = yr; break; }
+  }
+
+  // Survivability score (no cap)
+  const myBY = appSettings.myBirthYear || wp.myBirthYear || 0;
+  const endYear = lastYr || 0;
+  let survivabilityScore;
+  if (depletedYear !== null && depletedYear < endYear) {
+    const depAge = myBY > 0 ? depletedYear - myBY : (95 - (endYear - depletedYear));
+    survivabilityScore = -(95 - depAge) * 3;
+  } else {
+    const annualTargetPV = wp.annualTarget || 0;
+    survivabilityScore = annualTargetPV > 0
+      ? Math.round(pvBalance / (annualTargetPV * 25) * 100) : 0;
+  }
+
+  // SWL: total PV net receipts + PV final balance divided by simulation years
+  let swl = 0;
+  if (nYears > 0) {
+    const totalNetPV = activeYears.reduce((s, yr) => {
+      const net = summary[yr].totalInc - summary[yr].totalTax;
+      return s + net / (summary[yr].inflFactor || 1);
+    }, 0);
+    swl = Math.round((totalNetPV + finalBalanceKRW / inflFactorLast) / nYears / M);
+  }
+
+  // SWL level vs current target
+  const tgt = wp.annualTarget || 0;
+  let swlLevel = '?', swlColor = '#6b7280';
+  if (tgt > 0 && swl > 0) {
+    const r = tgt / swl;
+    if      (r > 1)    { swlLevel = '과부하'; swlColor = '#dc2626'; }
+    else if (r > 0.85) { swlLevel = '적정';   swlColor = '#d97706'; }
+    else if (r > 0.65) { swlLevel = '여유';   swlColor = '#16a34a'; }
+    else               { swlLevel = '풍족';   swlColor = '#2563eb'; }
+  }
+
+  // Effective tax rate
+  const effectiveTaxRate = totalWithdraw > 0
+    ? Math.round(totalTax / totalWithdraw * 1000) / 10 : 0;
+
+  return {
+    totalWithdraw, totalTax, totalTarget, finalBalance, pvBalance,
+    score: totalWithdraw + finalBalance - totalTax,
+    survivabilityScore, swl, swlLevel, swlColor,
+    effectiveTaxRate, depletedYear,
+  };
 }
 
 function renderWdBriefing(sim) {
@@ -8892,15 +8952,14 @@ function renderWdBriefing(sim) {
   if (!bar) return;
   const m = computeWdMetrics(sim);
   const fmt = v => Math.round(v).toLocaleString('ko-KR');
-  const achieve = m.totalTarget > 0 ? Math.round(m.totalWithdraw / m.totalTarget * 100) : 0;
+  const sColor = m.survivabilityScore >= 100 ? '#16a34a'
+               : m.survivabilityScore >= 0   ? '#d97706' : '#dc2626';
   bar.style.display = 'flex';
   bar.innerHTML =
-    `<span>💰 총 인출액 <b>${fmt(m.totalWithdraw)}M</b></span>` +
-    `<span>🏦 최종 잔액 <b>${fmt(m.finalBalance)}M</b></span>` +
-    `<span>🧾 총 세금 <b style="color:#dc2626">${fmt(m.totalTax)}M</b></span>` +
-    `<span>🎯 목표 달성률 <b>${achieve}%</b></span>` +
-    `<span>⭐ 점수 <b style="color:#7c3aed;font-size:13.5px">${fmt(m.score)}M</b></span>` +
-    `<span style="font-size:10.5px;color:#64748b;align-self:center">점수 = 총인출 + 최종잔액 − 총세금</span>`;
+    `<span>⭐ 생존점수 <b style="color:${sColor};font-size:13.5px">${fmt(m.survivabilityScore)}</b></span>` +
+    `<span>🎯 지속가능 실수령 <b>${fmt(m.swl)}M/년</b>&nbsp;<span style="color:${m.swlColor};font-weight:700">[${m.swlLevel}]</span></span>` +
+    `<span>🧾 실효세율 <b style="color:#dc2626">${m.effectiveTaxRate}%</b></span>` +
+    `<span>🏦 95세 잔액(현재가치) <b>${fmt(m.pvBalance)}M</b></span>`;
 }
 
 // ===== 테이블 토글 =====
@@ -8984,25 +9043,35 @@ function renderWdScenarioTable() {
     wrap.innerHTML = `<div style="font-size:11.5px;color:#9ca3af;padding:4px 0">저장된 시나리오가 없습니다. 설정 변경 후 "현재 저장"으로 비교 목록을 만드세요.</div>`;
     return;
   }
+  const hasNew = list.some(s => s.metrics.survivabilityScore != null);
+  const maxSurv = hasNew ? Math.max(...list.map(s => s.metrics.survivabilityScore ?? s.metrics.score)) : 0;
   const maxScore = Math.max(...list.map(s => s.metrics.score));
   const fmt = v => (v || 0).toLocaleString('ko-KR');
   let h = `<div style="overflow-x:auto"><table class="wd-scenario-table"><thead><tr>
     <th style="text-align:left">이름</th><th>저장일</th><th>인출시작</th><th>은퇴나이</th>
-    <th>수익률</th><th>총인출(M)</th><th>최종잔액(M)</th><th>총세금(M)</th><th>점수(M)</th><th></th>
+    <th>수익률</th><th>목표(M)</th><th>생존점수</th><th>SWL(M/년)</th><th>레벨</th><th>실효세율</th><th></th>
   </tr></thead><tbody>`;
   list.forEach((sc, i) => {
     const m = sc.metrics;
-    const best = m.score === maxScore;
     const cfg = sc.wdPlan || sc.settings || {};
     const isActive = i === _wdSelectedScenIdx;
+    const hasSurv = m.survivabilityScore != null;
+    const survVal = hasSurv ? m.survivabilityScore : m.score;
+    const best = survVal === maxSurv;
+    const sColor = hasSurv
+      ? (m.survivabilityScore >= 100 ? '#16a34a' : m.survivabilityScore >= 0 ? '#d97706' : '#dc2626')
+      : '#7c3aed';
     h += `<tr${isActive ? ' class="wd-sc-active"' : ''}>
-      <td onclick="loadWdScenario(${i})" title="클릭하여 선택">${isActive ? '▶ ' : ''}${sc.name}</td><td>${sc.savedAt}</td>
+      <td onclick="loadWdScenario(${i})" title="클릭하여 선택">${isActive ? '▶ ' : ''}${sc.name}</td>
+      <td>${sc.savedAt}</td>
       <td>${cfg.startYear}년</td><td>${cfg.retireAge || 60}세</td>
       <td>${cfg.returnRate}%</td>
-      <td>${fmt(m.totalWithdraw)}</td><td>${fmt(m.finalBalance)}</td>
-      <td style="color:#dc2626">${fmt(m.totalTax)}</td>
-      <td ${best ? 'class="wd-scenario-best"' : 'style="color:#7c3aed;font-weight:700"'}>
-        ${best ? '⭐ ' : ''}${fmt(m.score)}</td>
+      <td>${fmt(cfg.annualTarget)}</td>
+      <td ${best ? 'class="wd-scenario-best"' : ''} style="color:${sColor};font-weight:700">
+        ${best ? '⭐ ' : ''}${fmt(survVal)}${hasSurv ? '' : 'M'}</td>
+      <td>${hasSurv ? fmt(m.swl) : '-'}</td>
+      <td style="color:${m.swlColor||'#6b7280'};font-weight:600">${m.swlLevel || '-'}</td>
+      <td>${hasSurv ? (m.effectiveTaxRate || 0) + '%' : '-'}</td>
       <td style="white-space:nowrap">
         <button onclick="loadWdScenario(${i})" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:2px 7px;font-size:11px;color:#1d4ed8;cursor:pointer;margin-right:4px">선택</button>
         <button class="tbl-icon-btn" onclick="deleteWdScenario(${i})" title="삭제">🗑️</button>
