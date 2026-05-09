@@ -2554,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.212';
+const APP_VERSION = 'MyPM v0.213';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6841,7 +6841,7 @@ function openOnboardingModal() {
     wifeRetireAge: 60,
     startYear: wdPlan.startYear || (cy + 10),
     wifeStartYear: wdPlan.wifeRetireYear || (cy + 10),
-    annualTarget: wdPlan.annualTarget || 80,
+    annualTarget: (appSettings.hasWife ? 80 : 40),
     returnRate: 7,
     inflationRate: wdPlan.inflation || 2.2,
     myNP:  { use: myNpDef.use||false,  monthly: myNpDef.monthlyManwon||0,  startYear: myNpDef.startYear||0, startMonth: myNpDef.startMonth||1 },
@@ -7243,6 +7243,9 @@ function obToggleWife(val) {
   document.getElementById('obWifeNo').classList.toggle('active', !val);
   const sec = document.getElementById('ob_wifeSection');
   if (sec) sec.style.display = val ? '' : 'none';
+  _obData.annualTarget = val ? 80 : 40;
+  const tgtEl = document.getElementById('ob_annualTarget');
+  if (tgtEl) { tgtEl.value = (val ? 80000 : 40000).toLocaleString('ko-KR'); obUpdateMonthly(); }
 }
 
 function obNpStartAge(birthYear) {
