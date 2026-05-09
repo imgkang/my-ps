@@ -2554,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.211';
+const APP_VERSION = 'MyPM v0.212';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8438,6 +8438,8 @@ function computeWithdrawalSim() {
     ...activeMyIds, 'pension1', 'pension2',
     ...activeWifeIds, ...(appSettings.hasWife ? ['wife_pension1', 'wife_pension2'] : [])
   ])];
+  // 통합 후 생성된 pension2도 인출 대상에 포함 (activeMyIds에는 없을 수 있음)
+  const myWithdrawIds = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
   const endDate = `${startYear - 1}-12-31`;
   const wifeStartYear = (wp.method === 1) ? startYear : (wp.wifeRetireYear || wp.wifeFixStartYear || startYear);
   const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
@@ -8724,8 +8726,8 @@ function computeWithdrawalSim() {
     const _snap = {};
     for (const id of allAccIds) _snap[id] = { ...state[id] };
 
-    doWithdraw(activeMyIds, myRemaining, basic);
-    applyPensionTaxThreshold(activeMyIds);
+    doWithdraw(myWithdrawIds, myRemaining, basic);
+    applyPensionTaxThreshold(myWithdrawIds);
     doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
     applyPensionTaxThreshold(getActiveWifeAccIds());
 
@@ -8739,7 +8741,7 @@ function computeWithdrawalSim() {
       const _deficit = target - _actualNet1;
       if (Math.abs(_deficit) > 10000) {
         // 패스1 직후 나의 regularOut으로 한계세율 결정 (1500만원 초과 여부 반영)
-        const myRegOut1 = activeMyIds.reduce((a, id) => a + withdrawals[yr][id].regularOut, 0);
+        const myRegOut1 = myWithdrawIds.reduce((a, id) => a + withdrawals[yr][id].regularOut, 0);
         const _margRate = allAccIds.some(id => state[id].anse > 0) ? 0
           : allAccIds.some(id => DC_ACC_IDS.has(id) && state[id].dcPrincipal > 0) ? rTR
           : myRegOut1 >= PENSION_THRESHOLD ? epTR : getPTR(myBY, yr);
@@ -8756,8 +8758,8 @@ function computeWithdrawalSim() {
         } else {
           myRemaining = Math.max(0, myRemaining + _corrGross);
         }
-        doWithdraw(activeMyIds, myRemaining, basic);
-        applyPensionTaxThreshold(activeMyIds);
+        doWithdraw(myWithdrawIds, myRemaining, basic);
+        applyPensionTaxThreshold(myWithdrawIds);
         doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
         applyPensionTaxThreshold(getActiveWifeAccIds());
       }
