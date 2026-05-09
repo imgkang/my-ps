@@ -2554,7 +2554,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.218';
+const APP_VERSION = 'MyPM v0.219';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8874,41 +8874,6 @@ function renderWithdrawalPlan() {
 }
 
 // ===== 브리핑 =====
-function findMaxSustainableWithdrawal(sim, effectiveTaxRate) {
-  const { years, balances, summary, allAccIds, initState } = sim;
-  const wp  = wdPlan;
-  const inf = (wp.inflation || 2.2) / 100;
-  const r   = (wp.returnRate || 4) / 100;
-  const todayYear = new Date().getFullYear();
-  const activeYears = years.filter(yr => balances[yr] !== null);
-  if (!activeYears.length) return 0;
-
-  const initBal = allAccIds.reduce((s, id) => s + (initState?.[id]?.total || 0), 0);
-  // 실제 사적 인출은 세금만큼 더 필요 (net 목표 달성을 위한 gross 배율)
-  const taxFactor = effectiveTaxRate > 0 ? 1 / (1 - Math.min(effectiveTaxRate, 0.6)) : 1;
-
-  function testTarget(annualTargetM) {
-    let bal = initBal;
-    for (const yr of activeYears) {
-      bal *= (1 + r);
-      const publicInc = (summary[yr].myPublicInc || 0) + (summary[yr].wifePublicInc || 0);
-      const targetNominal = annualTargetM * 1_000_000 * Math.pow(1 + inf, yr - todayYear);
-      const privateNeededGross = Math.max(0, targetNominal - publicInc) * taxFactor;
-      bal -= Math.min(bal, privateNeededGross);
-    }
-    return bal > 0;
-  }
-
-  if (!testTarget(0)) return 0;
-  let lo = 0, hi = 2000;
-  while (hi < 100000 && testTarget(hi)) hi *= 2;
-  for (let i = 0; i < 40; i++) {
-    const mid = (lo + hi) / 2;
-    if (testTarget(mid)) lo = mid; else hi = mid;
-  }
-  return Math.round(lo);
-}
-
 function computeWdMetrics(sim) {
   const { years, balances, summary, allAccIds } = sim;
   const M = 1_000_000;
@@ -8951,25 +8916,12 @@ function computeWdMetrics(sim) {
       ? Math.round(pvBalance / (annualTargetPV * 25) * 100) : 0;
   }
 
-  // 지속가능 한도: 95세까지 고갈 없이 인출 가능한 최대 연간 금액 (이진탐색, 오늘 화폐가치 M단위)
-  // 세금 보정을 위해 먼저 실효세율을 계산해서 전달
-  const taxRateForSim = totalWithdraw > 0 ? totalTax / totalWithdraw : 0;
-  const swl = findMaxSustainableWithdrawal(sim, taxRateForSim);
-
-  // SWL level vs current target
-  const tgt = wp.annualTarget || 0;
-  let swlLevel = '?', swlColor = '#6b7280';
-  if (tgt > 0 && swl > 0) {
-    const r = tgt / swl;
-    if      (r > 1)    { swlLevel = '과부하'; swlColor = '#dc2626'; }
-    else if (r > 0.85) { swlLevel = '적정';   swlColor = '#d97706'; }
-    else if (r > 0.65) { swlLevel = '여유';   swlColor = '#16a34a'; }
-    else               { swlLevel = '풍족';   swlColor = '#2563eb'; }
-  }
-  // 고갈 발생 시 레벨 강제 오버라이드 (SWL 수치와 무관하게 고갈 상태 표시)
-  if (depletedYear !== null && depletedYear < endYear) {
-    swlLevel = '고갈'; swlColor = '#dc2626';
-  }
+  // 세후 월 실수령액: 연도별 순수령(세후)을 오늘 화폐가치로 환산한 평균의 월액 (만원)
+  const totalNetPV = activeYears.reduce((s, yr) => {
+    const net = summary[yr].totalInc - summary[yr].totalTax;
+    return s + net / Math.pow(1 + inf, yr - todayYear);
+  }, 0);
+  const monthlyNetManwon = nYears > 0 ? Math.round(totalNetPV / nYears / 12 / 10000) : 0;
 
   // Effective tax rate
   const effectiveTaxRate = totalWithdraw > 0
@@ -8978,7 +8930,7 @@ function computeWdMetrics(sim) {
   return {
     totalWithdraw, totalTax, totalTarget, finalBalance, pvBalance,
     score: totalWithdraw + finalBalance - totalTax,
-    survivabilityScore, swl, swlLevel, swlColor,
+    survivabilityScore, monthlyNetManwon,
     effectiveTaxRate, depletedYear,
   };
 }
@@ -8993,7 +8945,7 @@ function renderWdBriefing(sim) {
   bar.style.display = 'flex';
   bar.innerHTML =
     `<span>⭐ 생존점수 <b style="color:${sColor};font-size:13.5px">${fmt(m.survivabilityScore)}</b></span>` +
-    `<span>🎯 지속가능 한도 <b>${fmt(m.swl)}M/년</b>&nbsp;<span style="color:${m.swlColor};font-weight:700">[${m.swlLevel}]</span></span>` +
+    `<span>💴 세후 실수령액 <b>${fmt(m.monthlyNetManwon)}만원/월</b></span>` +
     `<span>🧾 실효세율 <b style="color:#dc2626">${m.effectiveTaxRate}%</b></span>` +
     `<span>🏦 95세 잔액(현재가치) <b>${fmt(m.pvBalance)}M</b></span>`;
 }
@@ -9081,11 +9033,10 @@ function renderWdScenarioTable() {
   }
   const hasNew = list.some(s => s.metrics.survivabilityScore != null);
   const maxSurv = hasNew ? Math.max(...list.map(s => s.metrics.survivabilityScore ?? s.metrics.score)) : 0;
-  const maxScore = Math.max(...list.map(s => s.metrics.score));
   const fmt = v => (v || 0).toLocaleString('ko-KR');
   let h = `<div style="overflow-x:auto"><table class="wd-scenario-table"><thead><tr>
     <th style="text-align:left">이름</th><th>저장일</th><th>인출시작</th><th>은퇴나이</th>
-    <th>수익률</th><th>목표(M)</th><th>생존점수</th><th>SWL(M/년)</th><th>레벨</th><th>실효세율</th><th></th>
+    <th>수익률</th><th>목표(M)</th><th>생존점수</th><th>세후 실수령</th><th>실효세율</th><th></th>
   </tr></thead><tbody>`;
   list.forEach((sc, i) => {
     const m = sc.metrics;
@@ -9105,8 +9056,7 @@ function renderWdScenarioTable() {
       <td>${fmt(cfg.annualTarget)}</td>
       <td ${best ? 'class="wd-scenario-best"' : ''} style="color:${sColor};font-weight:700">
         ${best ? '⭐ ' : ''}${fmt(survVal)}${hasSurv ? '' : 'M'}</td>
-      <td>${hasSurv ? fmt(m.swl) : '-'}</td>
-      <td style="color:${m.swlColor||'#6b7280'};font-weight:600">${m.swlLevel || '-'}</td>
+      <td>${hasSurv && m.monthlyNetManwon != null ? fmt(m.monthlyNetManwon) + '만/월' : '-'}</td>
       <td>${hasSurv ? (m.effectiveTaxRate || 0) + '%' : '-'}</td>
       <td style="white-space:nowrap">
         <button onclick="loadWdScenario(${i})" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:2px 7px;font-size:11px;color:#1d4ed8;cursor:pointer;margin-right:4px">선택</button>
