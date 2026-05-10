@@ -2591,7 +2591,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.221';
+const APP_VERSION = 'MyPM v0.222';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5925,6 +5925,8 @@ function renderEvalTable() {
 
 // ===== 계좌적립 계획 =====
 let _editingMplanId = null;
+let _pendingDeletePlanId = null;
+let _pendingEditPlanData = null;
 
 function renderMonthlyPlanList() {
   updateMplanCountBadge();
@@ -5994,13 +5996,36 @@ function addMonthlyPlan() {
   if (startYear > endYear || (startYear === endYear && startMonth > endMonth)) { alert('종료 시점이 시작 시점보다 빨리 설정되었습니다.'); return; }
   if (!annualPlan.monthlyPlans) annualPlan.monthlyPlans = [];
   if (_editingMplanId) {
-    const idx = annualPlan.monthlyPlans.findIndex(p => p.id === _editingMplanId);
-    if (idx !== -1) annualPlan.monthlyPlans[idx] = { id: _editingMplanId, accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth };
-    _editingMplanId = null;
-    document.getElementById('mplanSaveBtn').textContent = '+ 추가';
-    document.getElementById('mplanCancelBtn').style.display = 'none';
+    const newPlanData = { id: _editingMplanId, accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth };
+    const hasRecords = depositData.transactions.some(t => t.autoFromPlan === _editingMplanId);
+    if (hasRecords) {
+      _pendingEditPlanData = newPlanData;
+      document.getElementById('editPlanModal').style.display = 'flex';
+      return;
+    }
+    applyEditPlan(newPlanData, false);
   } else {
     annualPlan.monthlyPlans.push({ id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth });
+    localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+    document.getElementById('mplanAmt').value = '';
+    document.getElementById('mplanAnse').value = '';
+    renderMonthlyPlanList();
+    renderPrincipalTable();
+    renderEvalTable();
+    renderAnnualCharts();
+    applyAutoDeposits();
+  }
+}
+
+function applyEditPlan(planData, refreshRecords) {
+  const idx = annualPlan.monthlyPlans.findIndex(p => p.id === planData.id);
+  if (idx !== -1) annualPlan.monthlyPlans[idx] = planData;
+  _editingMplanId = null;
+  document.getElementById('mplanSaveBtn').textContent = '+ 추가';
+  document.getElementById('mplanCancelBtn').style.display = 'none';
+  if (refreshRecords) {
+    depositData.transactions = depositData.transactions.filter(t => t.autoFromPlan !== planData.id);
+    saveDeposits();
   }
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   document.getElementById('mplanAmt').value = '';
@@ -6010,12 +6035,47 @@ function addMonthlyPlan() {
   renderEvalTable();
   renderAnnualCharts();
   applyAutoDeposits();
+  if (refreshRecords) renderDepositList();
+}
+
+function closeEditPlanModal() {
+  document.getElementById('editPlanModal').style.display = 'none';
+  _pendingEditPlanData = null;
+}
+
+function confirmEditPlan(refreshRecords) {
+  const data = _pendingEditPlanData;
+  if (!data) return;
+  closeEditPlanModal();
+  applyEditPlan(data, refreshRecords);
 }
 
 function deleteMonthlyPlan(id) {
   if (!annualPlan.monthlyPlans) return;
-  if (!confirm('이 적립계획을 삭제하시겠습니까?')) return;
+  _pendingDeletePlanId = id;
+  const hasRecords = depositData.transactions.some(t => t.autoFromPlan === id);
+  if (hasRecords) {
+    document.getElementById('deletePlanModal').style.display = 'flex';
+  } else {
+    confirmDeletePlan(false);
+  }
+}
+
+function closeDeletePlanModal() {
+  document.getElementById('deletePlanModal').style.display = 'none';
+  _pendingDeletePlanId = null;
+}
+
+function confirmDeletePlan(withRecords) {
+  const id = _pendingDeletePlanId;
+  if (!id) return;
+  closeDeletePlanModal();
   if (_editingMplanId === id) cancelEditMonthlyPlan();
+  if (withRecords) {
+    depositData.transactions = depositData.transactions.filter(t => t.autoFromPlan !== id);
+    saveDeposits();
+    renderDepositList();
+  }
   annualPlan.monthlyPlans = annualPlan.monthlyPlans.filter(p => p.id !== id);
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderMonthlyPlanList();
@@ -10303,6 +10363,36 @@ if ('serviceWorker' in navigator) {
     <div style="padding:14px 20px;display:flex;gap:10px;border-top:1px solid var(--border);flex-shrink:0">
       <button id="obPrevBtn" class="btn-secondary" onclick="onboardingPrev()" style="display:none;min-width:80px">← 이전</button>
       <button id="obNextBtn" class="btn-primary" style="flex:1" onclick="onboardingNext()">다음 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 적립계획 삭제 확인 모달 ===== -->
+<div class="modal-backdrop" id="deletePlanModal" style="z-index:1150;display:none" onclick="if(event.target.id==='deletePlanModal')closeDeletePlanModal()">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <h3 style="margin-bottom:10px">적립계획 삭제</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      이 계획으로 자동 등록된 입출금 기록이 있습니다.<br>함께 삭제하시겠습니까?
+    </p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn-secondary" onclick="closeDeletePlanModal()">취소</button>
+      <button onclick="confirmDeletePlan(false)" style="padding:8px 14px;border-radius:8px;border:1.5px solid #64748b;color:#64748b;background:#fff;cursor:pointer;font-size:13px;font-weight:500">계획만 삭제</button>
+      <button class="btn-primary" onclick="confirmDeletePlan(true)">기록도 함께 삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 적립계획 수정 확인 모달 ===== -->
+<div class="modal-backdrop" id="editPlanModal" style="z-index:1150;display:none" onclick="if(event.target.id==='editPlanModal')closeEditPlanModal()">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <h3 style="margin-bottom:10px">적립계획 수정</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      이 계획으로 자동 등록된 기존 기록을<br>어떻게 처리할까요?
+    </p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn-secondary" onclick="closeEditPlanModal()">취소</button>
+      <button onclick="confirmEditPlan(false)" style="padding:8px 14px;border-radius:8px;border:1.5px solid #64748b;color:#64748b;background:#fff;cursor:pointer;font-size:13px;font-weight:500">기존 기록 유지</button>
+      <button class="btn-primary" onclick="confirmEditPlan(true)">기록 삭제 후 재적용</button>
     </div>
   </div>
 </div>
