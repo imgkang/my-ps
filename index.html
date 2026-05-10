@@ -2591,7 +2591,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.223';
+const APP_VERSION = 'MyPM v0.224';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6583,6 +6583,24 @@ async function loadDividendData() {
   }
 }
 
+function applyDividendCashDelta(accounts, sign) {
+  // sign: +1 to add, -1 to subtract. Returns array of negative account names.
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  const negativeAccs = [];
+  for (const [accId, amount] of Object.entries(accounts || {})) {
+    if (!activeIds.has(accId)) continue;
+    const amt = Number(amount) || 0;
+    if (!amt) continue;
+    cashAccounts[accId] = (cashAccounts[accId] || 0) + sign * amt;
+    if (cashAccounts[accId] < 0) {
+      negativeAccs.push(`${getAccName(accId)}: ${cashAccounts[accId].toLocaleString()}원`);
+    }
+  }
+  persistCashAccounts();
+  if (typeof renderPortfolioChart === 'function') renderPortfolioChart();
+  return negativeAccs;
+}
+
 function calcDivAccounts(stockPerShareData) {
   const activeAccs = getActiveAccounts();
   const result = {};
@@ -6625,7 +6643,13 @@ function addDividendRecord() {
 
   if (_divEditingId) {
     const idx = dividendRecords.findIndex(r => r.id === _divEditingId);
-    if (idx >= 0) dividendRecords[idx] = { id: _divEditingId, year, month, stocks, stocksPerShare, accounts };
+    if (idx >= 0) {
+      // 기존 배당금 현금 차감 후 새 배당금 현금 추가
+      applyDividendCashDelta(dividendRecords[idx].accounts || {}, -1);
+      dividendRecords[idx] = { id: _divEditingId, year, month, stocks, stocksPerShare, accounts };
+      const negAccs = applyDividendCashDelta(accounts, +1);
+      if (negAccs.length) alert(`⚠️ 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
+    }
     _divEditingId = null;
     const saveBtn = document.getElementById('divSaveBtn');
     if (saveBtn) saveBtn.textContent = '저장';
@@ -6636,6 +6660,8 @@ function addDividendRecord() {
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
       year, month, stocks, stocksPerShare, accounts
     });
+    // 신규 배당 기록 → 계좌별 현금 추가
+    applyDividendCashDelta(accounts, +1);
   }
   saveDividendRecords();
   renderDividendLists();
@@ -6649,6 +6675,9 @@ function deleteDividendRecord(id) {
   if (!confirm(`${rec.year}년 ${rec.month}월 배당 기록을 삭제하시겠습니까?`)) return;
   dividendRecords = dividendRecords.filter(r => r.id !== id);
   saveDividendRecords();
+  // 배당 기록 삭제 → 계좌별 현금 차감
+  const negAccs = applyDividendCashDelta(rec.accounts || {}, -1);
+  if (negAccs.length) alert(`⚠️ 배당금 차감 후 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
   renderDividendLists();
   renderDivCharts();
 }
