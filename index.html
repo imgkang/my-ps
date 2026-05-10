@@ -655,6 +655,32 @@ Chart.register({
     font-size: 12px;
   }
 
+  /* 거래내역 탭 */
+  #tradeList .txn-row {
+    display: grid;
+    grid-template-columns: 100px 90px 1fr 90px 80px 80px 80px 60px;
+    gap: 8px;
+    padding: 8px 12px;
+    align-items: center;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  #tradeList .txn-row:last-child { border-bottom: none; }
+  #tradeList .txn-row:hover { background: #fafafa; }
+  #tradeList .txn-row .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+  .trade-buy-badge  { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#fee2e2;color:#b91c1c; }
+  .trade-sell-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#dbeafe;color:#1d4ed8; }
+
+  /* 매수/매도 인라인 버튼 */
+  .tbl-trade-btn {
+    padding: 2px 7px; font-size: 11px; font-weight: 600; border-radius: 4px;
+    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    transition: opacity 0.1s;
+  }
+  .tbl-trade-btn.buy  { background:#fee2e2;color:#b91c1c;border-color:#fca5a5; }
+  .tbl-trade-btn.sell { background:#dbeafe;color:#1d4ed8;border-color:#93c5fd; }
+  .tbl-trade-btn:hover { opacity: 0.75; }
+
   /* 입출금 편집 서브 모달 */
   .txn-form {
     display: flex; flex-direction: column; gap: 12px;
@@ -1261,6 +1287,12 @@ Chart.register({
     </svg>
     인출계획
   </button>
+  <button class="tab-nav-btn" id="tab-trades" onclick="openTradesTab()">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+    </svg>
+    거래내역
+  </button>
 </nav>
 
 <!-- 종목 추가 모달 -->
@@ -1800,6 +1832,7 @@ Chart.register({
     <div class="deposit-toolbar">
       <button class="btn-primary" onclick="openTxnEditor()">➕ 입출금 추가</button>
       <button class="btn-secondary" onclick="openTransferEditor()">🔁 계좌이전</button>
+      <button class="btn-secondary" onclick="openCashAdjModal()">🔧 현금 조정</button>
     </div>
     <div class="deposit-list-header">
       <span>입출금일</span><span>계좌</span><span>금액</span><span></span>
@@ -2306,6 +2339,142 @@ Chart.register({
 
 </div><!-- /panel-withdrawal -->
 
+<!-- 거래내역 패널 -->
+<div id="panel-trades" class="tab-panel">
+  <div class="modal-header">
+    <div>
+      <h2>📊 거래내역</h2>
+      <div class="modal-subtitle">매수·매도 기록 (현금 자동 연동)</div>
+    </div>
+  </div>
+  <div class="deposit-toolbar" style="justify-content:space-between;align-items:center">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="tradeFilterAcc" onchange="renderTradeList()" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+        <option value="">전체 계좌</option>
+      </select>
+      <select id="tradeFilterCode" onchange="renderTradeList()" style="padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px">
+        <option value="">전체 종목</option>
+      </select>
+    </div>
+    <div style="font-size:12px;color:var(--muted)" id="tradeListSummary"></div>
+  </div>
+  <div class="deposit-list-header" style="grid-template-columns:100px 90px 1fr 90px 80px 80px 80px 60px">
+    <span>날짜</span><span>계좌</span><span>종목</span><span style="text-align:right">수량</span><span style="text-align:right">단가</span><span style="text-align:right">거래금액</span><span>구분</span><span></span>
+  </div>
+  <div class="deposit-list-wrap" style="max-height:none">
+    <div id="tradeList"></div>
+  </div>
+</div><!-- /panel-trades -->
+
+<!-- 매수/매도 입력 모달 -->
+<div class="modal-backdrop" id="tradeModal" onclick="handleTradeModalBackdropClick(event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div>
+        <h2 id="tradeModalTitle">매수 입력</h2>
+        <div class="modal-subtitle" id="tradeModalSubtitle">종목명 · 계좌 · 수량 · 단가를 입력하세요</div>
+      </div>
+      <button class="close-btn" onclick="closeTradeModal()">×</button>
+    </div>
+    <div class="txn-form">
+      <label>
+        <span>구분</span>
+        <select id="tradeType" onchange="onTradeTypeChange()">
+          <option value="buy">매수</option>
+          <option value="sell">매도</option>
+        </select>
+      </label>
+      <label>
+        <span>계좌</span>
+        <select id="tradeAccount" onchange="onTradeAccountChange()"></select>
+      </label>
+      <label>
+        <span>날짜</span>
+        <input type="date" id="tradeDate">
+      </label>
+      <label>
+        <span>종목</span>
+        <select id="tradeCode" onchange="onTradeCodeChange()"></select>
+      </label>
+      <label>
+        <span>수량</span>
+        <input type="text" id="tradeQty" inputmode="numeric" placeholder="매수/매도 수량" oninput="updateTradeTotal()">
+      </label>
+      <label>
+        <span>단가 (원)</span>
+        <input type="text" id="tradePrice" inputmode="numeric" placeholder="체결 단가" oninput="updateTradeTotal()">
+      </label>
+    </div>
+    <div id="tradeTotalBox" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--muted)">거래금액</span>
+        <span id="tradeTotalAmt" style="font-weight:700;font-variant-numeric:tabular-nums">0 원</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)" id="tradeCashLabel">거래 후 현금</span>
+        <span id="tradeCashAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+      </div>
+      <div id="tradeQtyAfterRow" style="display:flex;justify-content:space-between;margin-top:4px">
+        <span style="color:var(--muted)">거래 후 보유수</span>
+        <span id="tradeQtyAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+      </div>
+    </div>
+    <div id="tradeWarnBox" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;font-size:12px;color:#b91c1c;margin-bottom:8px"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeTradeModal()">취소</button>
+      <button class="btn-primary" id="tradeSaveBtn" onclick="saveTrade()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 현금조정 모달 -->
+<div class="modal-backdrop" id="cashAdjModal" onclick="handleCashAdjBackdropClick(event)">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <div>
+        <h2>현금 조정</h2>
+        <div class="modal-subtitle">수수료·환전차이 등 현금 직접 조정</div>
+      </div>
+      <button class="close-btn" onclick="closeCashAdjModal()">×</button>
+    </div>
+    <div class="txn-form">
+      <label>
+        <span>계좌</span>
+        <select id="cashAdjAccount"></select>
+      </label>
+      <label>
+        <span>구분</span>
+        <select id="cashAdjType">
+          <option value="add">증가 (+)</option>
+          <option value="sub">감소 (−)</option>
+        </select>
+      </label>
+      <label>
+        <span>날짜</span>
+        <input type="date" id="cashAdjDate">
+      </label>
+      <label>
+        <span>금액 (원)</span>
+        <input type="text" id="cashAdjAmount" inputmode="numeric" placeholder="예: 5,000">
+      </label>
+      <label>
+        <span>메모</span>
+        <input type="text" id="cashAdjNote" placeholder="예: 수수료, 환전차이">
+      </label>
+    </div>
+    <div id="cashAdjPreview" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">조정 후 현금</span>
+        <span id="cashAdjAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeCashAdjModal()">취소</button>
+      <button class="btn-primary" onclick="saveCashAdj()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- 인출계획 설정 모달 -->
 <div class="modal-backdrop" id="wdSettingsModal" onclick="handleWdSettingsBackdropClick(event)">
   <div class="modal" style="max-width:420px;height:90vh;display:flex;flex-direction:column">
@@ -2591,7 +2760,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.224';
+const APP_VERSION = 'MyPM v0.225';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2612,7 +2781,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyAutoDeposits();
 });
 
-const _TAB_NAMES = ['portfolio','records','dividend','deposit','annual','withdrawal'];
+const _TAB_NAMES = ['portfolio','records','dividend','deposit','annual','withdrawal','trades'];
 function switchTab(name) {
   _TAB_NAMES.forEach(t => {
     const panel = document.getElementById('panel-' + t);
@@ -2753,6 +2922,24 @@ function loadHoldings() {
 function saveHoldings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings));
 }
+
+// ===== 거래내역 (매수/매도) =====
+const TRADES_KEY = 'pension_trades_v1';
+let tradeRecords = loadTradeRecords();
+let editingTradeId = null;
+
+function loadTradeRecords() {
+  try {
+    const raw = localStorage.getItem('pension_trades_v1');
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+function saveTradeRecords() {
+  localStorage.setItem(TRADES_KEY, JSON.stringify(tradeRecords));
+}
+
 function loadCashAccounts() {
   const empty = () => { const o = {}; for (const a of ACCOUNTS) o[a.id] = 0; return o; };
   try {
@@ -5120,6 +5307,7 @@ function render() {
             <th>손익률</th>
             <th>비중</th>
             <th>비중차이</th>
+            <th>매수/매도</th>
             <th></th>
           </tr>
         </thead>
@@ -5163,6 +5351,10 @@ function render() {
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
+        <td style="white-space:nowrap">
+          <button class="tbl-trade-btn buy" onclick="openTradeModal('${it.code}','buy')" title="매수">매수</button>
+          <button class="tbl-trade-btn sell" onclick="openTradeModal('${it.code}','sell')" title="매도">매도</button>
+        </td>
         <td>
           <button class="tbl-icon-btn" onclick="openAccountModal('${it.code}')" title="계좌별 수량 입력">✏️</button>
           <button class="tbl-icon-btn" onclick="removeStock('${it.code}')" title="삭제">🗑️</button>
@@ -5192,6 +5384,7 @@ function render() {
         <td>-</td>
         <td>${cashWeight.toFixed(1)}%</td>
         <td>-</td>
+        <td></td>
         <td><button class="tbl-icon-btn" onclick="openCashAccountModal()" title="계좌별 현금 입력">✏️</button></td>
       </tr>
     `;
@@ -5216,6 +5409,7 @@ function render() {
             <td>${totalValue > 0 ? '100.0%' : '-'}</td>
             <td>-</td>
             <td></td>
+            <td></td>
           </tr>
         </tfoot>
       </table>
@@ -5232,6 +5426,326 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ===== 거래내역 탭 =====
+function openTradesTab() {
+  switchTab('trades');
+  renderTradeFilterOptions();
+  renderTradeList();
+}
+
+function renderTradeFilterOptions() {
+  const accSel = document.getElementById('tradeFilterAcc');
+  const codeSel = document.getElementById('tradeFilterCode');
+  if (!accSel || !codeSel) return;
+  const curAcc = accSel.value;
+  const curCode = codeSel.value;
+  accSel.innerHTML = '<option value="">전체 계좌</option>' +
+    getActiveAccounts().map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  accSel.value = curAcc;
+  const codes = [...new Set(tradeRecords.map(r => r.code))].sort();
+  codeSel.innerHTML = '<option value="">전체 종목</option>' +
+    codes.map(c => {
+      const h = holdings.find(x => x.code === c);
+      return `<option value="${c}">${h ? escapeHtml(h.name) : c} (${c})</option>`;
+    }).join('');
+  codeSel.value = curCode;
+}
+
+function renderTradeList() {
+  const list = document.getElementById('tradeList');
+  if (!list) return;
+  const accFilter = (document.getElementById('tradeFilterAcc') || {}).value || '';
+  const codeFilter = (document.getElementById('tradeFilterCode') || {}).value || '';
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  let rows = tradeRecords.slice()
+    .filter(r => activeIds.has(r.accId))
+    .filter(r => !accFilter || r.accId === accFilter)
+    .filter(r => !codeFilter || r.code === codeFilter)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  const sumEl = document.getElementById('tradeListSummary');
+  if (sumEl) sumEl.textContent = `총 ${rows.length}건`;
+
+  if (!rows.length) {
+    list.innerHTML = '<div class="deposit-empty">거래 내역이 없습니다. 포트폴리오 탭에서 매수/매도 버튼을 눌러 기록하세요.</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(r => {
+    const accName = getAccName(r.accId) || r.accId;
+    const h = holdings.find(x => x.code === r.code);
+    const stockName = r.name || (h ? h.name : r.code);
+    const badge = r.type === 'buy'
+      ? '<span class="trade-buy-badge">매수</span>'
+      : '<span class="trade-sell-badge">매도</span>';
+    const total = (Number(r.qty) * Number(r.price));
+    return `<div class="txn-row">
+      <span class="txn-date">${r.date}</span>
+      <span class="txn-acc">${accName}</span>
+      <span>${escapeHtml(stockName)}<br><span style="font-size:10px;color:var(--muted)">${r.code}</span></span>
+      <span class="num-cell">${Number(r.qty).toLocaleString('ko-KR')}</span>
+      <span class="num-cell">${Number(r.price).toLocaleString('ko-KR')}</span>
+      <span class="num-cell">${total.toLocaleString('ko-KR')}</span>
+      <span>${badge}</span>
+      <span style="display:flex;align-items:center;gap:2px">
+        <button class="tbl-icon-btn" onclick="deleteTrade('${r.id}')" title="삭제">🗑️</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+// ===== 매수/매도 모달 =====
+function openTradeModal(code, type) {
+  editingTradeId = null;
+  const accs = getActiveAccounts();
+  const accSel = document.getElementById('tradeAccount');
+  accSel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+
+  const codeSel = document.getElementById('tradeCode');
+  codeSel.innerHTML = holdings.map(h =>
+    `<option value="${h.code}" ${h.code === code ? 'selected' : ''}>${escapeHtml(h.name)} (${h.code})</option>`
+  ).join('');
+  if (!holdings.length) {
+    codeSel.innerHTML = '<option value="">보유 종목 없음</option>';
+  }
+
+  document.getElementById('tradeType').value = type || 'buy';
+  const now = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  document.getElementById('tradeDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('tradeQty').value = '';
+  document.getElementById('tradePrice').value = '';
+  document.getElementById('tradeWarnBox').style.display = 'none';
+
+  onTradeTypeChange();
+  updateTradeTotal();
+  document.getElementById('tradeModal').classList.add('open');
+}
+
+function closeTradeModal() {
+  document.getElementById('tradeModal').classList.remove('open');
+  editingTradeId = null;
+}
+function handleTradeModalBackdropClick(e) {
+  if (e.target.id === 'tradeModal') closeTradeModal();
+}
+
+function onTradeTypeChange() {
+  const type = document.getElementById('tradeType').value;
+  document.getElementById('tradeModalTitle').textContent = type === 'buy' ? '매수 입력' : '매도 입력';
+  document.getElementById('tradeCashLabel').textContent = type === 'buy' ? '거래 후 현금 (감소)' : '거래 후 현금 (증가)';
+  document.getElementById('tradeQtyAfterRow').style.display = type === 'sell' ? '' : '';
+  updateTradeTotal();
+}
+
+function onTradeAccountChange() { updateTradeTotal(); }
+function onTradeCodeChange() { updateTradeTotal(); }
+
+function updateTradeTotal() {
+  const type = document.getElementById('tradeType').value;
+  const accId = document.getElementById('tradeAccount').value;
+  const code = document.getElementById('tradeCode').value;
+  const qty = Number(String(document.getElementById('tradeQty').value || '').replace(/[^\d]/g, '')) || 0;
+  const price = Number(String(document.getElementById('tradePrice').value || '').replace(/[^\d]/g, '')) || 0;
+  const total = qty * price;
+
+  document.getElementById('tradeTotalAmt').textContent = total.toLocaleString('ko-KR') + ' 원';
+
+  const currentCash = Number(cashAccounts[accId]) || 0;
+  const cashAfter = type === 'buy' ? currentCash - total : currentCash + total;
+  const cashAfterEl = document.getElementById('tradeCashAfter');
+  cashAfterEl.textContent = cashAfter.toLocaleString('ko-KR') + ' 원';
+  cashAfterEl.style.color = cashAfter < 0 ? 'var(--plus)' : 'inherit';
+
+  const h = holdings.find(x => x.code === code);
+  const accData = h && h.accounts && h.accounts[accId];
+  const curQty = accData ? (Number(accData.qty) || 0) : 0;
+  const qtyAfter = type === 'buy' ? curQty + qty : curQty - qty;
+  document.getElementById('tradeQtyAfter').textContent = qtyAfter.toLocaleString('ko-KR') + ' 주';
+
+  const warn = document.getElementById('tradeWarnBox');
+  if (type === 'buy' && total > 0 && cashAfter < 0) {
+    warn.textContent = `⚠️ 현금 부족: 현재 ${currentCash.toLocaleString('ko-KR')}원, 필요 ${total.toLocaleString('ko-KR')}원`;
+    warn.style.display = '';
+  } else if (type === 'sell' && qty > 0 && qtyAfter < 0) {
+    warn.textContent = `⚠️ 수량 부족: 현재 ${curQty.toLocaleString('ko-KR')}주, 매도 요청 ${qty.toLocaleString('ko-KR')}주`;
+    warn.style.display = '';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function saveTrade() {
+  const type = document.getElementById('tradeType').value;
+  const accId = document.getElementById('tradeAccount').value;
+  const date = document.getElementById('tradeDate').value;
+  const code = document.getElementById('tradeCode').value;
+  const qty = Number(String(document.getElementById('tradeQty').value || '').replace(/[^\d]/g, ''));
+  const price = Number(String(document.getElementById('tradePrice').value || '').replace(/[^\d]/g, ''));
+
+  if (!accId) { alert('계좌를 선택해 주세요.'); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('날짜를 입력해 주세요.'); return; }
+  if (!code) { alert('종목을 선택해 주세요.'); return; }
+  if (!qty || qty <= 0) { alert('수량을 입력해 주세요.'); return; }
+  if (!price || price <= 0) { alert('단가를 입력해 주세요.'); return; }
+
+  const total = qty * price;
+  const currentCash = Number(cashAccounts[accId]) || 0;
+
+  if (type === 'buy' && currentCash < total) {
+    alert(`현금이 부족합니다.\n필요 금액: ${total.toLocaleString('ko-KR')}원\n현재 현금: ${currentCash.toLocaleString('ko-KR')}원`);
+    return;
+  }
+
+  const h = holdings.find(x => x.code === code);
+  if (!h) { alert('해당 종목을 찾을 수 없습니다.'); return; }
+  if (!h.accounts) h.accounts = {};
+
+  const accData = h.accounts[accId] || { qty: 0, avgPrice: 0 };
+  const curQty = Number(accData.qty) || 0;
+  const curAvg = Number(accData.avgPrice) || 0;
+
+  if (type === 'sell' && qty > curQty) {
+    alert(`보유 수량이 부족합니다.\n보유: ${curQty.toLocaleString('ko-KR')}주\n매도 요청: ${qty.toLocaleString('ko-KR')}주`);
+    return;
+  }
+
+  if (type === 'buy') {
+    const newQty = curQty + qty;
+    const newAvg = newQty > 0 ? Math.round((curQty * curAvg + qty * price) / newQty) : price;
+    h.accounts[accId] = { qty: newQty, avgPrice: newAvg };
+    cashAccounts[accId] = currentCash - total;
+  } else {
+    const newQty = curQty - qty;
+    h.accounts[accId] = { qty: newQty, avgPrice: curAvg };
+    if (newQty === 0) delete h.accounts[accId];
+    cashAccounts[accId] = currentCash + total;
+  }
+
+  const record = {
+    id: generateTxnId(),
+    date, type, accId, code,
+    name: h.name,
+    qty, price, total
+  };
+  tradeRecords.push(record);
+
+  saveTradeRecords();
+  saveHoldings();
+  persistCashAccounts();
+  closeTradeModal();
+  render();
+}
+
+function deleteTrade(id) {
+  const r = tradeRecords.find(x => x.id === id);
+  if (!r) return;
+  const accName = getAccName(r.accId) || r.accId;
+  const typeStr = r.type === 'buy' ? '매수' : '매도';
+  if (!confirm(`다음 거래를 삭제할까요?\n\n${r.date} · ${accName} · ${escapeHtml(r.name)} · ${typeStr} ${r.qty.toLocaleString('ko-KR')}주 · ${Number(r.price).toLocaleString('ko-KR')}원`)) return;
+
+  const h = holdings.find(x => x.code === r.code);
+  const total = Number(r.qty) * Number(r.price);
+
+  if (r.type === 'buy') {
+    const currentCash = Number(cashAccounts[r.accId]) || 0;
+    if (h && h.accounts && h.accounts[r.accId]) {
+      const acc = h.accounts[r.accId];
+      const newQty = (Number(acc.qty) || 0) - r.qty;
+      if (newQty < 0) { alert('보유 수량이 부족해 삭제할 수 없습니다.'); return; }
+      acc.qty = newQty;
+      if (newQty === 0) delete h.accounts[r.accId];
+    }
+    cashAccounts[r.accId] = currentCash + total;
+  } else {
+    const currentCash = Number(cashAccounts[r.accId]) || 0;
+    if (currentCash < total) { alert('현금이 부족해 삭제할 수 없습니다.'); return; }
+    if (h) {
+      if (!h.accounts) h.accounts = {};
+      const acc = h.accounts[r.accId] || { qty: 0, avgPrice: 0 };
+      acc.qty = (Number(acc.qty) || 0) + r.qty;
+      h.accounts[r.accId] = acc;
+    }
+    cashAccounts[r.accId] = currentCash - total;
+  }
+
+  tradeRecords = tradeRecords.filter(x => x.id !== id);
+  saveTradeRecords();
+  saveHoldings();
+  persistCashAccounts();
+  renderTradeFilterOptions();
+  renderTradeList();
+  render();
+}
+
+// ===== 현금 조정 =====
+let cashAdjRecords = loadCashAdjRecords();
+const CASH_ADJ_KEY = 'pension_cash_adj_v1';
+
+function loadCashAdjRecords() {
+  try {
+    const raw = localStorage.getItem('pension_cash_adj_v1');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+function saveCashAdjRecords() {
+  localStorage.setItem(CASH_ADJ_KEY, JSON.stringify(cashAdjRecords));
+}
+
+function openCashAdjModal() {
+  const accs = getActiveAccounts();
+  const sel = document.getElementById('cashAdjAccount');
+  sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  document.getElementById('cashAdjType').value = 'sub';
+  const now = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  document.getElementById('cashAdjDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('cashAdjAmount').value = '';
+  document.getElementById('cashAdjNote').value = '';
+  sel.onchange = updateCashAdjPreview;
+  document.getElementById('cashAdjType').onchange = updateCashAdjPreview;
+  document.getElementById('cashAdjAmount').oninput = updateCashAdjPreview;
+  updateCashAdjPreview();
+  document.getElementById('cashAdjModal').classList.add('open');
+}
+function closeCashAdjModal() {
+  document.getElementById('cashAdjModal').classList.remove('open');
+}
+function handleCashAdjBackdropClick(e) {
+  if (e.target.id === 'cashAdjModal') closeCashAdjModal();
+}
+function updateCashAdjPreview() {
+  const accId = document.getElementById('cashAdjAccount').value;
+  const type = document.getElementById('cashAdjType').value;
+  const amt = Number(String(document.getElementById('cashAdjAmount').value || '').replace(/[^\d]/g, '')) || 0;
+  const cur = Number(cashAccounts[accId]) || 0;
+  const after = type === 'add' ? cur + amt : cur - amt;
+  const el = document.getElementById('cashAdjAfter');
+  if (el) {
+    el.textContent = after.toLocaleString('ko-KR') + ' 원';
+    el.style.color = after < 0 ? 'var(--plus)' : 'inherit';
+  }
+}
+function saveCashAdj() {
+  const accId = document.getElementById('cashAdjAccount').value;
+  const type = document.getElementById('cashAdjType').value;
+  const date = document.getElementById('cashAdjDate').value;
+  const amt = Number(String(document.getElementById('cashAdjAmount').value || '').replace(/[^\d]/g, ''));
+  const note = document.getElementById('cashAdjNote').value.trim();
+
+  if (!accId) { alert('계좌를 선택해 주세요.'); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('날짜를 입력해 주세요.'); return; }
+  if (!amt || amt <= 0) { alert('금액을 입력해 주세요.'); return; }
+
+  const delta = type === 'add' ? amt : -amt;
+  cashAccounts[accId] = (Number(cashAccounts[accId]) || 0) + delta;
+
+  cashAdjRecords.push({ id: generateTxnId(), date, accId, type, amount: amt, note });
+  saveCashAdjRecords();
+  persistCashAccounts();
+  closeCashAdjModal();
+  render();
+}
 
 // ===== 초기 렌더 및 실행 제어 =====
 function init() {
