@@ -377,7 +377,7 @@
       <div class="kd-form-row">
         <div class="kd-field">
           <label>종목코드 (6자리)</label>
-          <input type="text" id="kdTradeCode" maxlength="6" placeholder="예: 005930"
+          <input type="text" id="kdTradeCode" maxlength="6" placeholder="예: 005930, 0153K0"
             oninput="kdOnCodeInput(this.value)" onblur="kdAutoFetchName()">
         </div>
         <div class="kd-field">
@@ -1130,7 +1130,7 @@ function kdHandleTradeBackdrop(e) {
 }
 
 function kdOnCodeInput(val) {
-  document.getElementById('kdTradeCode').value = val.replace(/\D/g, '').slice(0, 6);
+  document.getElementById('kdTradeCode').value = val.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 6);
 }
 
 let _kdNameFetchTimer = null;
@@ -1377,6 +1377,14 @@ const KD_STOCK_DB = [
   ["388690","TIGER 미국필라델피아반도체나스닥"],["448280","TIGER 인도"],
   ["461850","KODEX 미국S&P500TR"],["443560","KODEX 미국나스닥100TR"],
   ["278530","KODEX 주주환원고배당"],["395160","TIGER 주주환원100"],
+  // 추가 ETF
+  ["278240","KODEX 200TR"],["292150","TIGER 200TR"],
+  ["379800","KODEX 미국S&P500"],["385510","TIGER 미국S&P500"],
+  ["359200","TIGER 차이나전기차SOLACTIVE"],["381180","KODEX 테슬라인컴프리미엄채권혼합"],
+  ["143850","TIGER 200에너지화학"],["227550","TIGER 200건설"],
+  ["152100","ARIRANG 200"],["494670","SOL 미국배당다우존스"],
+  ["308180","TIGER 미국채10년선물"],["530617","ACE 미국500"],
+  ["453850","KODEX 인도Nifty50"],["251340","KODEX 코스닥150레버리지"],
 ];
 
 async function kdFetchAutocomplete(query) {
@@ -1384,32 +1392,30 @@ async function kdFetchAutocomplete(query) {
   const q = query.trim();
   const ql = q.toLowerCase();
 
-  // 1. 로컬 DB 즉시 검색 (한글 이름 또는 코드)
+  // 1. 로컬 DB 즉시 검색 (대소문자 무시)
   const local = KD_STOCK_DB
-    .filter(([code, name]) => name.includes(q) || code.startsWith(q))
+    .filter(([code, name]) => name.toLowerCase().includes(ql) || code.toLowerCase().startsWith(ql))
     .slice(0, 8)
     .map(([code, name]) => ({ code, name }));
 
   if (local.length >= 4) return local;
 
-  // 2. Yahoo Finance (영문 포함 쿼리, 주로 ETF 이름에 유효)
-  if (/[a-zA-Z]/.test(q)) {
-    try {
-      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=8&newsCount=0`;
-      const text = await kdFetchViaProxy(url);
-      const d = JSON.parse(text);
-      const quotes = d.quotes || [];
-      const yahoo = quotes
-        .filter(it => it.symbol && (it.symbol.endsWith('.KS') || it.symbol.endsWith('.KQ')))
-        .slice(0, 8 - local.length)
-        .map(it => ({
-          name: it.shortname || it.longname || it.symbol,
-          code: it.symbol.replace(/\.(KS|KQ)$/, '').padStart(6, '0')
-        }));
-      const seen = new Set(local.map(r => r.code));
-      return [...local, ...yahoo.filter(y => !seen.has(y.code))].slice(0, 8);
-    } catch(_) {}
-  }
+  // 2. Yahoo Finance — 한국 시장(.KS/.KQ) 우선, 영문 포함 쿼리에도 적용
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`;
+    const text = await kdFetchViaProxy(url);
+    const d = JSON.parse(text);
+    const quotes = d.quotes || [];
+    const yahoo = quotes
+      .filter(it => it.symbol && (it.symbol.endsWith('.KS') || it.symbol.endsWith('.KQ')))
+      .slice(0, 8 - local.length)
+      .map(it => ({
+        name: it.shortname || it.longname || it.symbol,
+        code: it.symbol.replace(/\.(KS|KQ)$/, '')
+      }));
+    const seen = new Set(local.map(r => r.code));
+    return [...local, ...yahoo.filter(y => !seen.has(y.code))].slice(0, 8);
+  } catch(_) {}
 
   return local;
 }
@@ -1701,7 +1707,7 @@ function kdImportFromFile(event) {
 }
 
 // ===== 버전 =====
-const APP_VERSION = 'KDeal v0.226';
+const APP_VERSION = 'KDeal v0.227';
 
 // ===== 초기화 =====
 document.addEventListener('DOMContentLoaded', () => {
