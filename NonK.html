@@ -947,12 +947,17 @@
       </div>
       <div class="nkt-field">
         <label>거래일</label>
-        <input type="date" id="nktTradeDate" onchange="nktUpdateSellStockOptions()">
+        <input type="date" id="nktTradeDate">
+      </div>
+      <div class="nkt-field">
+        <label>계좌</label>
+        <select id="nktTradeAcc" onchange="nktOnSellAccChange(this.value)">
+        </select>
       </div>
       <div class="nkt-field" id="nktSellStockRow" style="display:none">
         <label>보유 종목 선택</label>
         <select id="nktSellStockSelect" onchange="nktOnSellStockSelect(this.value)">
-          <option value="">-- 날짜 기준 보유 종목 --</option>
+          <option value="">-- 보유 종목 선택 --</option>
         </select>
         <div class="nkt-sell-hint" id="nktSellQtyHint"></div>
       </div>
@@ -1225,7 +1230,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.239';
+const APP_VERSION = 'NonK v0.240';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2851,22 +2856,68 @@ function nktUpdateSellStockOptions() {
   if (!sel) return;
   const type = document.getElementById('nktTradeType')?.value;
   if (type !== 'sell') return;
-  const date = document.getElementById('nktTradeDate').value;
   const prevTicker = sel.value;
-  const held = date ? nktGetHeldStocksAsOf(date) : [];
-  sel.innerHTML = '<option value="">-- 날짜 기준 보유 종목 --</option>' +
-    held.map(h => `<option value="${h.ticker}" data-name="${h.name}" data-qty="${h.qty}">${h.ticker} (${h.name}) · ${parseFloat(h.qty).toLocaleString('en-US',{maximumFractionDigits:4})}주</option>`).join('');
-  if (prevTicker) sel.value = prevTicker;
+
+  const held = (nkHoldings || [])
+    .map(h => {
+      const totalQty = Object.values(h.accounts || {})
+        .reduce((s, a) => s + (Number(a.qty) || 0), 0);
+      return totalQty > 0
+        ? { ticker: h.ticker, name: h.name || h.ticker, qty: totalQty, price: h.price }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.ticker.localeCompare(b.ticker));
+
+  sel.innerHTML = '<option value="">-- 보유 종목 선택 --</option>' +
+    held.map(h =>
+      `<option value="${h.ticker}" data-name="${h.name}" data-qty="${h.qty}" data-price="${h.price || ''}">`+
+      `${h.ticker} (${h.name}) · 총 ${h.qty.toLocaleString('en-US',{maximumFractionDigits:4})}주</option>`
+    ).join('');
+  if (prevTicker) { sel.value = prevTicker; nktOnSellStockSelect(prevTicker, true); }
 }
 
-function nktOnSellStockSelect(val) {
+function nktOnSellStockSelect(val, skipPrice) {
   const sel = document.getElementById('nktSellStockSelect');
   if (!sel || !val) return;
   const opt = sel.options[sel.selectedIndex];
   document.getElementById('nktTradeTicker').value = val;
   document.getElementById('nktTradeName').value = opt.dataset.name || '';
+
+  const priceEl = document.getElementById('nktTradePrice');
+  if (!skipPrice && opt.dataset.price && !priceEl.value) {
+    priceEl.value = parseFloat(opt.dataset.price).toFixed(2);
+    nktUpdateTradePreview();
+  }
+
+  // 이 종목 보유 계좌로 계좌 셀렉터 갱신
+  const accSel = document.getElementById('nktTradeAcc');
+  const holding = (nkHoldings || []).find(h => h.ticker === val);
+  if (accSel && holding) {
+    const accs = NK_ACCOUNTS.filter(a => (holding.accounts?.[a.id]?.qty || 0) > 0);
+    if (accs.length > 0) {
+      accSel.innerHTML = accs.map(a => {
+        const qty = holding.accounts[a.id].qty;
+        return `<option value="${a.id}">${a.name} · ${Number(qty).toLocaleString('en-US',{maximumFractionDigits:4})}주</option>`;
+      }).join('');
+      nktOnSellAccChange(accSel.value);
+    }
+  }
+}
+
+function nktOnSellAccChange(accId) {
   const hintEl = document.getElementById('nktSellQtyHint');
-  if (hintEl) hintEl.textContent = opt.dataset.qty ? `최대 ${parseFloat(opt.dataset.qty).toLocaleString('en-US',{maximumFractionDigits:4})}주 매도 가능` : '';
+  if (!hintEl) return;
+  const type = document.getElementById('nktTradeType')?.value;
+  if (type !== 'sell') { hintEl.textContent = ''; return; }
+  const ticker = document.getElementById('nktTradeTicker').value;
+  const holding = (nkHoldings || []).find(h => h.ticker === ticker);
+  if (!holding || !accId) { hintEl.textContent = ''; return; }
+  const qty = holding.accounts?.[accId]?.qty || 0;
+  const accName = NK_ACCOUNTS.find(a => a.id === accId)?.name || accId;
+  hintEl.textContent = qty > 0
+    ? `${accName} 계좌: 최대 ${Number(qty).toLocaleString('en-US',{maximumFractionDigits:4})}주 보유 중`
+    : '';
 }
 
 // 거래 내역 토글
@@ -2926,9 +2977,11 @@ function nktRenderTradeHistory() {
     } else {
       pnlCols = '<td colspan="4" class="ta-c" style="color:var(--muted);font-size:11px">-</td>';
     }
+    const accName = t.accId ? (NK_ACCOUNTS.find(a => a.id === t.accId)?.name || t.accId) : '-';
     return `<tr class="${isSell?'nkt-row-sell':'nkt-row-buy'}">
       <td style="white-space:nowrap">${t.date}</td>
       <td><span class="nkt-type-badge ${isSell?'sell':'buy'}">${isSell?'매도':'매수'}</span></td>
+      <td style="white-space:nowrap">${accName}</td>
       <td><div style="font-weight:600;font-size:12px">${t.ticker}</div><div style="font-size:11px;color:var(--muted)">${t.name||''}</div></td>
       <td class="ta-r">${fmtQty(t.qty)}</td>
       <td class="ta-r">${fmtUSD(t.price)}</td>
@@ -2944,7 +2997,7 @@ function nktRenderTradeHistory() {
 
   container.innerHTML = `<div style="overflow-x:auto"><table class="nkt-table">
     <thead><tr>
-      <th>날짜</th><th>구분</th><th>종목</th>
+      <th>날짜</th><th>구분</th><th>계좌</th><th>종목</th>
       <th class="ta-r">수량</th><th class="ta-r">단가(USD)</th>
       <th class="ta-r">금액(USD)</th><th class="ta-r">수수료</th>
       <th class="ta-r">손익</th><th class="ta-r">수익률</th>
@@ -2969,6 +3022,13 @@ function nktSetTradeType(type) {
 function nktOpenTradeModal(editId = null) {
   nktEditingTradeId = editId;
   const titleEl = document.getElementById('nktTradeModalTitle');
+
+  // 계좌 셀렉터 기본 초기화 (전체 계좌)
+  const accSel = document.getElementById('nktTradeAcc');
+  if (accSel) {
+    accSel.innerHTML = NK_ACCOUNTS.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  }
+
   if (editId) {
     const t = nktTrades.find(x => x.id === editId);
     if (!t) return;
@@ -2981,10 +3041,12 @@ function nktOpenTradeModal(editId = null) {
     document.getElementById('nktTradeQty').value   = t.qty;
     document.getElementById('nktTradeFee').value   = t.fee || '';
     document.getElementById('nktTradeMemo').value  = t.memo || '';
+    if (t.accId && accSel) accSel.value = t.accId;
     if (t.type === 'sell') {
       setTimeout(() => {
         const sel = document.getElementById('nktSellStockSelect');
-        if (sel) sel.value = t.ticker;
+        if (sel) { sel.value = t.ticker; nktOnSellStockSelect(t.ticker, true); }
+        if (accSel && t.accId) accSel.value = t.accId;
       }, 0);
     }
   } else {
@@ -3045,7 +3107,8 @@ function nktSaveTrade() {
   if (price <= 0) { alert('단가를 입력해 주세요.'); return; }
   if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }
 
-  const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo };
+  const accId = document.getElementById('nktTradeAcc')?.value || '';
+  const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
   if (nktEditingTradeId) {
     const idx = nktTrades.findIndex(x => x.id === nktEditingTradeId);
     if (idx >= 0) nktTrades[idx] = { ...nktTrades[idx], ...entry };
