@@ -2782,7 +2782,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.230';
+const APP_VERSION = 'MyPM v0.231';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3245,6 +3245,9 @@ function deleteTxn(id) {
   renderDepositTotals();
   renderDepositList();
   renderPortfolioChart();
+  renderPrincipalTable();
+  renderEvalTable();
+  setTimeout(renderAnnualCharts, 50);
 }
 
 // ===== 적립계획 자동 입금 처리 =====
@@ -3395,6 +3398,9 @@ function saveTxn() {
   renderDepositList();
   renderPortfolioChart();
   render();
+  renderPrincipalTable();
+  renderEvalTable();
+  setTimeout(renderAnnualCharts, 50);
 }
 
 function openTransferEditor() {
@@ -6386,6 +6392,8 @@ function renderEvalTable() {
         const actual = getGroupYearEndWon(accIds, yr);
         vals[yr] = actual;
         if (actual !== null) base = actual; // update base to latest actual
+      } else if (yr === currentYear) {
+        vals[yr] = base; // current year: show latest available record, not a projection
       } else {
         // Incremental planned deposit this year: (cumulative yr) - (cumulative yr-1), in 백만원
         const prevMil = getGroupCumMil(accIds, yr - 1);
@@ -6418,7 +6426,7 @@ function renderEvalTable() {
     if (yr === currentYear)                flags += '<span class="retire-flag">📅</span>';
     if (yr === _eMyRetireYr - 1)           flags += '<span class="retire-flag">🏁</span>';
     if (_evalWifeIds.length && yr === _eWifeRetireYr - 1) flags += '<span class="retire-flag">👩</span>';
-    h += `<th class="${cls}">${yr}${yr > lastRecYear ? '(예상)' : ''}${flags}</th>`;
+    h += `<th class="${cls}">${yr}${yr > lastRecYear && yr !== currentYear ? '(예상)' : ''}${flags}</th>`;
   }
   h += '</tr></thead>';
 
@@ -6545,6 +6553,7 @@ function renderEvalTable() {
     if (tw == null) { body += _eTd(yr, '-'); continue; }
     const prevWon = getTotalWonPrev(i);
     if (prevWon == null) { body += _eTd(yr, '-'); continue; }
+    if (yr === currentYear && yr > lastRecYear) { body += _eTd(yr, '-'); continue; }
     const princIncWon = (princMil[yr] - getPrincMilPrev(i)) * 1_000_000;
     const profit = Math.round((tw - prevWon - princIncWon) / 1_000_000);
     body += _eTd(yr, fmtDiff(profit));
@@ -6827,6 +6836,9 @@ function renderAnnualCharts() {
         const v = getGroupYearEnd(yr);
         if (v != null) { base = v; mil.push(Math.round(v / 1_000_000)); won.push(v); }
         else { mil.push(null); won.push(null); }
+      } else if (yr === currentYear) {
+        mil.push(base ? Math.round(base / 1_000_000) : null);
+        won.push(base || null);
       } else {
         const prevMil = accIds.reduce((s, id) => s + getCellManwon(id, yr - 1), 0);
         const currMil = accIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
