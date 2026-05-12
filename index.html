@@ -2785,7 +2785,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.236';
+const APP_VERSION = 'MyPM v0.237';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5036,11 +5036,12 @@ function renderRecordsList() {
     return;
   }
 
-  // 날짜 내림차순 정렬 (최신이 위)
+  // 날짜 내림차순, 같은 날엔 최근 추가순 (id 내림차순)
   const sorted = [...monthlyRecords].sort((a, b) => {
     if (b.year !== a.year) return b.year - a.year;
     if (b.month !== a.month) return b.month - a.month;
-    return (b.day || 0) - (a.day || 0);
+    if ((b.day || 0) !== (a.day || 0)) return (b.day || 0) - (a.day || 0);
+    return String(b.id) > String(a.id) ? 1 : -1;
   });
 
   const activeAccs = getActiveAccounts();
