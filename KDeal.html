@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.261';
+const APP_VERSION = 'KDeal v0.262';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2258,6 +2258,10 @@ function kdDeleteTxn(id) {
 
 function kdOpenTxnEditor(editId) {
   kdEditingTxnId = editId || null;
+  if (!KD_ACCOUNTS.filter(a => a.active !== false).length) {
+    KD_ACCOUNTS.push({ id: 'acc1', name: '기본계좌', active: true });
+    kdSaveAccounts();
+  }
   const sel = document.getElementById('kdTxnAccount');
   sel.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
   const titleEl = document.getElementById('kdTxnEditorTitle');
@@ -2285,6 +2289,7 @@ function kdCloseTxnEditor() {
 
 function kdSaveTxn() {
   const accId  = document.getElementById('kdTxnAccount').value;
+  if (!accId) { alert('계좌를 선택해주세요.'); return; }
   const type   = document.getElementById('kdTxnType').value;
   const date   = document.getElementById('kdTxnDate').value;
   const amount = Number(document.getElementById('kdTxnAmount').value);
@@ -3295,6 +3300,7 @@ function kdtSaveTrade() {
   if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }
 
   const accId = document.getElementById('kdtTradeAcc')?.value || '';
+  if (!accId) { alert('계좌를 선택해주세요.'); return; }
   const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
   if (kdtEditingTradeId) {
     const idx = kdtTrades.findIndex(x => x.id === kdtEditingTradeId);
