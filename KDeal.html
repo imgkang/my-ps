@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.259';
+const APP_VERSION = 'KDeal v0.260';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2185,6 +2185,12 @@ function kdCloseCashModal() {
   document.getElementById('kdCashModal').classList.remove('open');
 }
 
+function kdAdjustCash(accId, delta) {
+  if (!accId) return;
+  kdCashAccounts[accId] = (Number(kdCashAccounts[accId]) || 0) + delta;
+  kdSaveCashData();
+}
+
 function kdSaveCash() {
   for (const a of KD_ACCOUNTS.filter(x => x.active !== false)) {
     kdCashAccounts[a.id] = Number(document.getElementById(`kdCashInput_${a.id}`)?.value) || 0;
@@ -2239,10 +2245,15 @@ function kdRenderDepositList() {
 }
 
 function kdDeleteTxn(id) {
+  const t = kdDepositData.transactions.find(x => x.id === id);
+  if (!t) return;
   if (!confirm('이 입출금 내역을 삭제하시겠습니까?')) return;
-  kdDepositData.transactions = kdDepositData.transactions.filter(t => t.id !== id);
+  // 현금 역산
+  kdAdjustCash(t.accId, t.type === 'deposit' ? -t.amount : +t.amount);
+  kdDepositData.transactions = kdDepositData.transactions.filter(x => x.id !== id);
   kdSaveDeposits();
   kdRenderDepositList();
+  kdRender();
 }
 
 function kdOpenTxnEditor(editId) {
@@ -2277,16 +2288,25 @@ function kdSaveTxn() {
   const type   = document.getElementById('kdTxnType').value;
   const date   = document.getElementById('kdTxnDate').value;
   const amount = Number(document.getElementById('kdTxnAmount').value);
-  if (!amount || amount <= 0) { alert('금액을 올바르게 입력하세요'); return; }
+  if (!amount || amount === 0) { alert('금액을 입력하세요'); return; }
+  const absAmt = Math.abs(amount);
   if (kdEditingTxnId) {
     const t = kdDepositData.transactions.find(x => x.id === kdEditingTxnId);
-    if (t) { t.accId = accId; t.type = type; t.date = date; t.amount = amount; }
+    if (t) {
+      // 기존 효과 역산
+      const oldDelta = t.type === 'deposit' ? -t.amount : +t.amount;
+      kdAdjustCash(t.accId, oldDelta);
+      t.accId = accId; t.type = type; t.date = date; t.amount = absAmt;
+    }
   } else {
-    kdDepositData.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount });
+    kdDepositData.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount: absAmt });
   }
+  // 현금 자동 조정
+  kdAdjustCash(accId, type === 'deposit' ? absAmt : -absAmt);
   kdSaveDeposits();
   kdCloseTxnEditor();
   kdRenderDepositList();
+  kdRender();
 }
 
 // --- Records modal ---
@@ -3278,13 +3298,23 @@ function kdtSaveTrade() {
   const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
   if (kdtEditingTradeId) {
     const idx = kdtTrades.findIndex(x => x.id === kdtEditingTradeId);
-    if (idx >= 0) kdtTrades[idx] = { ...kdtTrades[idx], ...entry };
+    if (idx >= 0) {
+      const old = kdtTrades[idx];
+      // 기존 거래 현금 효과 역산
+      const oldCash = old.type === 'buy' ? +(old.price * old.qty + (old.fee||0)) : -(old.price * old.qty - (old.fee||0));
+      kdAdjustCash(old.accId, oldCash);
+      kdtTrades[idx] = { ...old, ...entry };
+    }
   } else {
     kdtTrades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
   }
+  // 새 거래 현금 효과 적용
+  const delta = type === 'buy' ? -(price * qty + fee) : +(price * qty - fee);
+  kdAdjustCash(accId, delta);
   kdtSaveTrades();
   kdtCloseTradeModal();
   if (kdtHistoryOpen) kdtRenderTradeHistory();
+  kdRender();
 }
 
 function kdtDeleteTrade(id) {
@@ -3292,9 +3322,12 @@ function kdtDeleteTrade(id) {
   if (!t) return;
   const qtyStr = parseFloat(t.qty).toLocaleString('en-US', { maximumFractionDigits:4 });
   if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
+  const reverseDelta = t.type === 'buy' ? +(t.price * t.qty + (t.fee||0)) : -(t.price * t.qty - (t.fee||0));
+  kdAdjustCash(t.accId, reverseDelta);
   kdtTrades = kdtTrades.filter(x => x.id !== id);
   kdtSaveTrades();
   kdtRenderTradeHistory();
+  kdRender();
 }
 
 // 자동완성 (한국 주식)
@@ -3413,6 +3446,20 @@ function kdRunMigration() {
     kdHoldings = kdFifoToHoldings(trades);
     kdSaveHoldings();
   }
+
+  // 입출금 + 거래 내역으로 현금 재계산
+  let migratedCash = 0;
+  if (Array.isArray(kdDepositData.transactions)) {
+    kdDepositData.transactions.forEach(d => {
+      migratedCash += d.type === 'deposit' ? d.amount : -d.amount;
+    });
+  }
+  trades.forEach(t => {
+    if (t.type === 'buy')  migratedCash -= (t.price * t.qty + (t.fee||0));
+    if (t.type === 'sell') migratedCash += (t.price * t.qty - (t.fee||0));
+  });
+  kdCashAccounts[DEF_ACC] = migratedCash;
+  kdSaveCashData();
 
   const msg = `거래 ${trades.length}건 → 보유종목 ${kdHoldings.length}개`;
   console.log('[KDeal] 마이그레이션 완료: ' + msg);
