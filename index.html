@@ -2786,7 +2786,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.271';
+const APP_VERSION = 'MyPM v0.273';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -10968,7 +10968,7 @@ async function driveFindFile() {
 function buildDriveBundle() {
   const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
   return {
-    version: 10,
+    version: 11,
     exportedAt: new Date().toISOString(),
     mypm: {
       appSettings: appSettings,
@@ -10993,6 +10993,16 @@ function buildDriveBundle() {
       trades:    tryParse('kdeal_trades_v1')    || [],
       deposits:  tryParse('kdeal_deposits_v1')  || [],
       watchlist: tryParse('kdeal_watchlist_v1') || []
+    },
+    kd: {
+      holdings:  tryParse('kd_holdings_v1')  || [],
+      cash:      tryParse('kd_cash_v1')      || {},
+      deposits:  tryParse('kd_deposits_v1')  || { transactions: [] },
+      monthly:   tryParse('kd_monthly_v1')   || [],
+      dividends: tryParse('kd_dividends_v1') || [],
+      accounts:  tryParse('kd_accounts_v1')  || [],
+      trades:    tryParse('kd_trades_v1')    || [],
+      watchlist: tryParse('kd_watchlist_v1') || []
     }
   };
 }
@@ -11092,6 +11102,19 @@ function _applyImportData(data) {
     if (kd.trades    !== undefined) localStorage.setItem('kdeal_trades_v1',    JSON.stringify(kd.trades));
     if (kd.deposits  !== undefined) localStorage.setItem('kdeal_deposits_v1',  JSON.stringify(kd.deposits));
     if (kd.watchlist !== undefined) localStorage.setItem('kdeal_watchlist_v1', JSON.stringify(kd.watchlist));
+  }
+  if (data.kd) {
+    const kd = data.kd;
+    if (kd.holdings)  localStorage.setItem('kd_holdings_v1',  JSON.stringify(kd.holdings));
+    if (kd.cash)      localStorage.setItem('kd_cash_v1',      JSON.stringify(kd.cash));
+    if (kd.deposits)  localStorage.setItem('kd_deposits_v1',  JSON.stringify(kd.deposits));
+    if (kd.monthly)   localStorage.setItem('kd_monthly_v1',   JSON.stringify(kd.monthly));
+    if (kd.dividends) localStorage.setItem('kd_dividends_v1', JSON.stringify(kd.dividends));
+    if (kd.accounts && Array.isArray(kd.accounts) && kd.accounts.length > 0)
+                      localStorage.setItem('kd_accounts_v1',  JSON.stringify(kd.accounts));
+    if (kd.trades)    localStorage.setItem('kd_trades_v1',    JSON.stringify(kd.trades));
+    if (kd.watchlist) localStorage.setItem('kd_watchlist_v1', JSON.stringify(kd.watchlist));
+    localStorage.setItem('kd_migration_done_v1', '1');
   }
 }
 

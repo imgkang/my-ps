@@ -1255,7 +1255,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.271';
+const APP_VERSION = 'NonK v0.273';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1366,7 +1366,6 @@ const NK_DEP_KEY   = 'nonk_deposits_v1';
 const NK_MON_KEY   = 'nonk_monthly_v1';
 const NK_DIV_KEY   = 'nonk_dividends_v1';
 const NK_WATCH_KEY = 'nonk_watchlist_v1';
-
 let nkHoldings        = nkLoadHoldings();
 let nkCashAccounts    = nkLoadCash();
 let nkDepositData     = nkLoadDeposits();
@@ -1565,6 +1564,8 @@ function nkRender() {
       <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-secondary" onclick="nkExportToFile()">📤 내보내기</button>
+      <button class="btn-secondary" onclick="document.getElementById('nkImportInput').click()">📥 가져오기</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     nkRenderAccountButtons();
@@ -1776,6 +1777,8 @@ function nkRender() {
       <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-secondary" onclick="nkExportToFile()">📤 내보내기</button>
+      <button class="btn-secondary" onclick="document.getElementById('nkImportInput').click()">📥 가져오기</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
   nkRenderAccountButtons();
@@ -3332,7 +3335,10 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
 }
+
 </script>
 <div class="app-version" id="appVersion"></div>
+<input type="file" id="nkImportInput" accept=".json" style="display:none" onchange="nkImportFromFile(event)">
+
 </body>
 </html>
