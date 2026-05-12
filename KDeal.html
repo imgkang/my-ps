@@ -872,13 +872,13 @@
         <polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn active" onclick="kdRefreshAll(); return false;" title="가격 갱신">
+    <a href="NonK.html" class="hdr-btn" title="NonK">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><line x1="2" y1="12" x2="22" y2="12"/>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn" title="KDeal">
+    <a href="KDeal.html" class="hdr-btn active" onclick="kdRefreshAll(); return false;" title="가격 갱신">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
         <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
@@ -897,7 +897,7 @@
       <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="kdtOpenTradeModal()">+ 거래 추가</button>
     </div>
     <div id="kdHoldingsContainer">
-      <div class="empty-state"><div class="icon">🇺🇸</div><div>'+ 종목 추가' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>
+      <div class="empty-state"><div class="icon">🇰🇷</div><div>'+ 종목 추가' 버튼을 눌러 한국 주식을 추가해 주세요</div></div>
     </div>
   </div>
 
@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.257';
+const APP_VERSION = 'KDeal v0.258';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1579,7 +1579,7 @@ function kdRender() {
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">누적</span></div>
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">XIRR</span></div>
     </div>`;
-    container.innerHTML = `<div class="empty-state"><div class="icon">🇺🇸</div><div>'+ 종목 추가' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>
+    container.innerHTML = `<div class="empty-state"><div class="icon">🇰🇷</div><div>'+ 종목 추가' 버튼을 눌러 한국 주식을 추가해 주세요</div></div>
     <div class="nk-action-btns">
       <button class="btn-primary" onclick="kdOpenAddModal()">+ 종목 추가</button>
       <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
@@ -2890,15 +2890,15 @@ function kdRenderWatchlist() {
   }
   const rows = kdWatchlist.map(w => {
     const info = kdWatchPrices[w.ticker];
-    const cur  = info ? info.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
-    const chg  = info ? (info.change || 0) : null;
+    const cur    = info ? fmtKRW(info.price) : '-';
+    const chg    = info ? (info.change || 0) : null;
     const chgPct = info ? (info.changeRate || 0) : null;
-    const cls  = chg != null ? (chg >= 0 ? 'kdw-pos' : 'kdw-neg') : '';
-    const chgStr = chg != null ? `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}` : '-';
+    const cls    = chg != null ? (chg >= 0 ? 'kdw-pos' : 'kdw-neg') : '';
+    const chgStr = chg != null ? (chg >= 0 ? '+' : '') + fmtKRW(chg) : '-';
     const pctStr = chgPct != null ? `${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%` : '-';
     return `<tr>
       <td><div class="kdw-name">${w.name}</div><div class="kdw-ticker">${w.ticker}</div></td>
-      <td class="ta-r" style="font-weight:700;font-variant-numeric:tabular-nums">$${cur}</td>
+      <td class="ta-r" style="font-weight:700;font-variant-numeric:tabular-nums">${cur}</td>
       <td class="ta-r ${cls}" style="font-variant-numeric:tabular-nums">${chgStr}</td>
       <td class="ta-r ${cls}">${pctStr}</td>
       <td class="ta-c"><button class="kdw-btn-del" onclick="kdDeleteWatch('${w.ticker}')">삭제</button></td>
@@ -2906,7 +2906,7 @@ function kdRenderWatchlist() {
   }).join('');
   c.innerHTML = `<div style="overflow-x:auto"><table class="kdw-table">
     <thead><tr>
-      <th>종목</th><th class="ta-r">현재가</th><th class="ta-r">변동($)</th><th class="ta-r">변동률</th><th></th>
+      <th>종목</th><th class="ta-r">현재가</th><th class="ta-r">변동(원)</th><th class="ta-r">변동률</th><th></th>
     </tr></thead><tbody>${rows}</tbody>
   </table></div>`;
 }
@@ -3348,9 +3348,11 @@ function kdFifoToHoldings(trades) {
     .map(([ticker, ls]) => {
       const totalQty = ls.reduce((s, l) => s + l.qty, 0);
       const avgPrice = ls.reduce((s, l) => s + l.qty * l.price, 0) / totalQty;
-      return { ticker, name: nameMap[ticker] || ticker, qty: totalQty, avgPrice,
-               price: avgPrice, change: 0, changeRate: 0, accId: accMap[ticker] || 'acc1' };
-    }).filter(h => h.qty > 0);
+      const accId = accMap[ticker] || 'acc1';
+      return { ticker, name: nameMap[ticker] || ticker,
+               accounts: { [accId]: { qty: totalQty, avgPrice } },
+               price: avgPrice, change: 0, changeRate: 0 };
+    }).filter(h => Object.values(h.accounts||{}).some(a => a.qty > 0));
 }
 
 function kdRunMigration() {
