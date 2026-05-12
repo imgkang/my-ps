@@ -918,7 +918,7 @@
   </div>
 
   <div class="card">
-    <h2>📈 월별 추세 (USD)</h2>
+    <h2>📈 월별 추세 (원)</h2>
     <div class="chart-subtitle">진한 색 = 누적 입금액, 연한 색 = 평가총액</div>
     <div class="chart-wrap"><canvas id="kdPortfolioChart"></canvas></div>
     <div id="kdChartEmpty" class="chart-empty" style="display:none">
@@ -996,19 +996,19 @@
       </div>
       <div class="kdt-form-row">
         <div class="kdt-field">
-          <label>단가 (USD)</label>
-          <input type="number" id="kdtTradePrice" min="0.0001" step="0.01" placeholder="예: 185.50"
+          <label>단가 (원)</label>
+          <input type="number" id="kdtTradePrice" min="1" step="1" placeholder="예: 55000"
             oninput="kdtUpdateTradePreview()">
         </div>
         <div class="kdt-field">
           <label>수량 (주)</label>
-          <input type="number" id="kdtTradeQty" min="0.0001" step="0.001" placeholder="예: 10"
+          <input type="number" id="kdtTradeQty" min="1" step="1" placeholder="예: 10"
             oninput="kdtUpdateTradePreview()">
         </div>
       </div>
       <div class="kdt-field">
-        <label>수수료 (USD)</label>
-        <input type="number" id="kdtTradeFee" min="0" step="0.01" placeholder="0">
+        <label>수수료 (원)</label>
+        <input type="number" id="kdtTradeFee" min="0" step="1" placeholder="0">
       </div>
       <div class="kdt-field">
         <label>메모 (선택)</label>
@@ -1065,7 +1065,7 @@
       <div id="kdFetchResult" style="grid-column:1/-1;font-size:13px;color:var(--muted)"></div>
     </div>
     <div class="account-head" style="margin-top:12px">
-      <div>계좌</div><div>수량</div><div>매입단가 (USD)</div><div>매입총액 (USD)</div>
+      <div>계좌</div><div>수량</div><div>매입단가 (원)</div><div>매입총액 (원)</div>
     </div>
     <div class="account-grid" id="kdAddAccountInputs"></div>
     <div class="modal-actions">
@@ -1083,14 +1083,14 @@
       <button class="close-btn" onclick="kdCloseAccountModal()" aria-label="닫기">×</button>
     </div>
     <div class="account-head">
-      <div>계좌</div><div>수량</div><div>매입단가 (USD)</div><div>매입총액 (USD)</div>
+      <div>계좌</div><div>수량</div><div>매입단가 (원)</div><div>매입총액 (원)</div>
     </div>
     <div class="account-grid" id="kdAccountInputs"></div>
     <div class="modal-total">
       <span>합계</span>
       <span>
         <span id="kdModalTotalQty" style="margin-right:16px;color:var(--text);font-weight:600;">0 주</span>
-        <strong id="kdModalTotalCost">$0</strong>
+        <strong id="kdModalTotalCost">0원</strong>
       </span>
     </div>
     <div class="modal-actions">
@@ -1123,7 +1123,7 @@
 <div class="modal-backdrop" id="kdCashModal" onclick="if(event.target===this)kdCloseCashModal()">
   <div class="modal">
     <div class="modal-header">
-      <div><h2>💵 현금 (예수금)</h2><div class="modal-subtitle">계좌별 보유 현금 (USD)</div></div>
+      <div><h2>💰 현금 (예수금)</h2><div class="modal-subtitle">계좌별 보유 현금 (원)</div></div>
       <button class="close-btn" onclick="kdCloseCashModal()" aria-label="닫기">×</button>
     </div>
     <div class="account-grid" id="kdCashInputs"></div>
@@ -1138,7 +1138,7 @@
 <div class="modal-backdrop" id="kdDepositModal" onclick="if(event.target===this)kdCloseDepositModal()">
   <div class="modal modal-wide modal-deposit">
     <div class="modal-header">
-      <div><h2>💰 계좌 입출금 관리</h2><div class="modal-subtitle">계좌별 입금·출금 내역 (USD)</div></div>
+      <div><h2>💰 계좌 입출금 관리</h2><div class="modal-subtitle">계좌별 입금·출금 내역 (원)</div></div>
       <button class="close-btn" onclick="kdCloseDepositModal()" aria-label="닫기">×</button>
     </div>
     <div class="deposit-grand" id="kdDepositGrand"></div>
@@ -1163,7 +1163,7 @@
       <label><span>계좌</span><select id="kdTxnAccount"></select></label>
       <label><span>구분</span><select id="kdTxnType"><option value="deposit">입금 (+)</option><option value="withdraw">출금 (−)</option></select></label>
       <label><span>입출금일</span><input type="date" id="kdTxnDate"></label>
-      <label><span>금액 (USD)</span><input type="number" id="kdTxnAmount" min="0" step="0.01" placeholder="0.00"></label>
+      <label><span>금액 (원)</span><input type="number" id="kdTxnAmount" min="0" step="1" placeholder="0"></label>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="kdCloseTxnEditor()">취소</button>
@@ -1176,7 +1176,7 @@
 <div class="modal-backdrop" id="kdAccountRecordsModal" onclick="if(event.target===this)kdCloseRecordsModal()">
   <div class="modal modal-wide modal-records">
     <div class="modal-header">
-      <div><h2>📒 계좌 기록 관리</h2><div class="modal-subtitle">월별 계좌 평가금액 기록 (USD)</div></div>
+      <div><h2>📒 계좌 기록 관리</h2><div class="modal-subtitle">월별 계좌 평가금액 기록 (원)</div></div>
       <button class="close-btn" onclick="kdCloseRecordsModal()" aria-label="닫기">×</button>
     </div>
     <div class="records-input-card">
@@ -1187,7 +1187,7 @@
       </div>
       <div class="records-input-accounts" id="kdRecAccountInputs"></div>
       <div class="records-input-total">
-        <span>전체 총합</span><strong id="kdRecTotal">$0</strong>
+        <span>전체 총합</span><strong id="kdRecTotal">0원</strong>
       </div>
       <div class="records-input-actions">
         <button class="btn-secondary" id="kdRecCancelBtn" style="display:none" onclick="kdCancelRecordEdit()">취소</button>
@@ -1218,11 +1218,11 @@
       </div>
       <div style="overflow-x:auto;margin-top:8px">
         <table class="div-stock-table">
-          <thead><tr><th>종목</th><th>배당금 (USD)</th></tr></thead>
+          <thead><tr><th>종목</th><th>배당금 (원)</th></tr></thead>
           <tbody id="kdDivStockInputs"></tbody>
         </table>
       </div>
-      <div class="div-grand-total"><span>배당금 총합</span><strong id="kdDivGrandTotal">$0</strong></div>
+      <div class="div-grand-total"><span>배당금 총합</span><strong id="kdDivGrandTotal">0원</strong></div>
       <div class="records-input-actions">
         <button class="btn-primary" onclick="kdAddDividendRecord()">➕ 추가</button>
       </div>
@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.252';
+const APP_VERSION = 'KDeal v0.253';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1402,14 +1402,19 @@ function kdSaveMonthly()   { localStorage.setItem(KD_MON_KEY, JSON.stringify(kdM
 function kdLoadDividends() { try { return JSON.parse(localStorage.getItem(KD_DIV_KEY)) || []; } catch(e) { return []; } }
 function kdSaveDividends() { localStorage.setItem(KD_DIV_KEY, JSON.stringify(kdDividendRecords)); }
 
-function fmtUSD(n) {
-  if (!n && n !== 0) return '$0';
+function fmtKRW(n) {
+  if (!n && n !== 0) return '0원';
   const abs = Math.abs(n);
-  if (abs >= 1000000) return (n < 0 ? '-' : '') + '$' + (abs/1000000).toFixed(2) + 'M';
-  if (abs >= 1000) return (n < 0 ? '-' : '') + '$' + (abs/1000).toFixed(1) + 'K';
-  return (n < 0 ? '-$' : '$') + abs.toFixed(2);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 100000000) return sign + (abs / 100000000).toFixed(2) + '억원';
+  if (abs >= 10000000)  return sign + Math.round(abs / 10000).toLocaleString() + '만원';
+  if (abs >= 100000)    return sign + (abs / 10000).toFixed(1) + '만원';
+  return sign + Math.round(abs).toLocaleString() + '원';
 }
-function fmtUSDSigned(n) { return (n >= 0 ? '+' : '') + fmtUSD(n); }
+function fmtKRWSigned(n) { return (n >= 0 ? '+' : '') + fmtKRW(n); }
+// 하위 호환
+const fmtUSD = fmtKRW;
+const fmtUSDSigned = fmtKRWSigned;
 
 function switchPage(page) {
   const mypm = document.getElementById('pageMyPM');
@@ -1555,7 +1560,7 @@ function kdRender() {
   if (!kdHoldings.length) {
     const heroEl0 = document.getElementById('kdHeroContainer');
     if (heroEl0) heroEl0.innerHTML = `<div class="card nk-hero">
-      <div class="nk-hero-value-row"><div class="nk-hero-value">$0</div></div>
+      <div class="nk-hero-value-row"><div class="nk-hero-value">0원</div></div>
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">오늘</span></div>
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">누적</span></div>
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">XIRR</span></div>
@@ -1737,7 +1742,7 @@ function kdRender() {
   tableHtml += `
     <tr class="row-cash">
       <td>
-        <div class="stock-name">💵 현금 (예수금)${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
+        <div class="stock-name">💰 현금 (예수금)${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
         <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
       </td>
       <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
@@ -1858,8 +1863,8 @@ function kdOpenAddModal() {
     <div class="account-row">
       <span>${a.name}</span>
       <input type="number" id="kdAddQty_${a.id}" min="0" step="1" value="0" placeholder="0">
-      <input type="number" id="kdAddAvg_${a.id}" min="0" step="0.01" value="0" placeholder="0.00">
-      <span id="kdAddTotal_${a.id}">$0</span>
+      <input type="number" id="kdAddAvg_${a.id}" min="0" step="1" value="0" placeholder="0">
+      <span id="kdAddTotal_${a.id}">0원</span>
     </div>`).join('');
   activeAccs.forEach(a => {
     document.getElementById(`kdAddQty_${a.id}`).addEventListener('input', kdUpdateAddTotals);
@@ -1939,7 +1944,7 @@ function kdOpenAccountModal(ticker) {
     return `<div class="account-row">
       <span>${a.name}</span>
       <input type="number" id="kdAccQty_${a.id}" min="0" step="1" value="${acc.qty || 0}">
-      <input type="number" id="kdAccAvg_${a.id}" min="0" step="0.01" value="${acc.avgPrice || 0}">
+      <input type="number" id="kdAccAvg_${a.id}" min="0" step="1" value="${acc.avgPrice || 0}">
       <span id="kdAccTotal_${a.id}">${fmtUSD((acc.qty || 0) * (acc.avgPrice || 0))}</span>
     </div>`;
   }).join('');
@@ -2065,7 +2070,7 @@ function kdOpenAccountDetail(accId) {
     const cashWeight = totalVal > 0 ? cash / totalVal * 100 : 0;
     tbody += `
       <tr class="row-cash">
-        <td><div class="stock-name">💵 현금 (예수금)</div><div class="stock-code">CASH</div></td>
+        <td><div class="stock-name">💰 현금 (예수금)</div><div class="stock-code">CASH</div></td>
         <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
         <td><strong>${fmtUSD(cash)}</strong></td>
         <td>-</td><td>-</td>
@@ -2143,7 +2148,7 @@ function kdOpenCashModal() {
   const grid = document.getElementById('kdCashInputs');
   grid.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<div class="account-row">
     <span>${a.name}</span>
-    <input type="number" id="kdCashInput_${a.id}" min="0" step="0.01" value="${Number(kdCashAccounts[a.id])||0}" style="grid-column:span 2">
+    <input type="number" id="kdCashInput_${a.id}" min="0" step="1" value="${Number(kdCashAccounts[a.id])||0}" style="grid-column:span 2">
     <span>${fmtUSD(Number(kdCashAccounts[a.id])||0)}</span>
   </div>`).join('');
   document.getElementById('kdCashModal').classList.add('open');
@@ -2275,7 +2280,7 @@ function kdRenderRecAccountInputs() {
   if (!div) return;
   div.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<label>
     <span>${a.name}</span>
-    <input type="number" id="kdRecVal_${a.id}" min="0" step="0.01" placeholder="0.00" oninput="kdUpdateRecTotal()">
+    <input type="number" id="kdRecVal_${a.id}" min="0" step="1" placeholder="0" oninput="kdUpdateRecTotal()">
   </label>`).join('');
   document.getElementById('kdRecTotal').textContent = '$0';
 }
@@ -2482,7 +2487,7 @@ function kdRenderDivStockInputs() {
   if (!tbody) return;
   tbody.innerHTML = kdHoldings.map(h => `<tr>
     <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
-    <td><input type="number" id="kdDivAmt_${h.ticker}" min="0" step="0.01" value="0" style="width:100px" oninput="kdUpdateDivTotal()"></td>
+    <td><input type="number" id="kdDivAmt_${h.ticker}" min="0" step="1" value="0" style="width:100px" oninput="kdUpdateDivTotal()"></td>
   </tr>`).join('');
   kdUpdateDivTotal();
 }
