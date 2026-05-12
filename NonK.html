@@ -1263,7 +1263,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.245';
+const APP_VERSION = 'NonK v0.246';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1506,10 +1506,10 @@ function nkComputeAccountValue(accId) {
   return total;
 }
 
-function nkTotalDeposited(accId = null) {
-  const txns = accId
-    ? nkDepositData.transactions.filter(t => t.accId === accId)
-    : nkDepositData.transactions;
+function nkTotalDeposited(accId = null, accIds = null) {
+  let txns = nkDepositData.transactions;
+  if (accId) txns = txns.filter(t => t.accId === accId);
+  else if (accIds) txns = txns.filter(t => accIds.includes(t.accId));
   return txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
 }
 
@@ -1540,10 +1540,10 @@ function nkXirrCalc(cashflows) {
   return isFinite(rate) && rate > -1 ? rate : null;
 }
 
-function nkCalcXIRR(totalCurrentValue, accId = null) {
-  const txns = accId
-    ? nkDepositData.transactions.filter(t => t.accId === accId)
-    : nkDepositData.transactions;
+function nkCalcXIRR(totalCurrentValue, accId = null, accIds = null) {
+  let txns = nkDepositData.transactions;
+  if (accId) txns = txns.filter(t => t.accId === accId);
+  else if (accIds) txns = txns.filter(t => accIds.includes(t.accId));
   if (!txns.length || totalCurrentValue <= 0) return null;
   const sorted = txns.slice().sort((a, b) => a.date.localeCompare(b.date));
   const cashflows = sorted.map(t => ({
@@ -1598,10 +1598,11 @@ function nkRender() {
   // add cash (active accounts only)
   const totalCash = _activeAccs.reduce((s, a) => s + (Number(nkCashAccounts[a.id]) || 0), 0);
   totalValue += totalCash;
-  const deposited  = nkTotalDeposited();
+  const _activeAccIds = _activeAccs.map(a => a.id);
+  const deposited  = nkTotalDeposited(null, _activeAccIds);
   const pnl        = totalValue - deposited;
   const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
-  const xirrRate   = nkCalcXIRR(totalValue);
+  const xirrRate   = nkCalcXIRR(totalValue, null, _activeAccIds);
   const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
   const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
   const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
@@ -1616,7 +1617,7 @@ function nkRender() {
     const prevVal = _activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
     const cutoff = `${_yr}-${String(_thisM).padStart(2,'0')}-01`;
     const moDeposits = nkDepositData.transactions
-      .filter(t => t.date >= cutoff)
+      .filter(t => t.date >= cutoff && _activeAccIds.includes(t.accId))
       .reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
     monthPnl = totalValue - prevVal - moDeposits;
     const moBase = prevVal + Math.max(0, moDeposits);
@@ -1827,8 +1828,11 @@ function nkRenderChart() {
   const _activeForChart = NK_ACCOUNTS.filter(a => a.active !== false);
   const evalVals = sorted.map(r => _activeForChart.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0));
 
-  // Deposit principal: cumulative deposits up to each month
-  const txns = [...nkDepositData.transactions].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+  // Deposit principal: cumulative deposits up to each month (active accounts only)
+  const _activeChartIds = _activeForChart.map(a => a.id);
+  const txns = [...nkDepositData.transactions]
+    .filter(t => _activeChartIds.includes(t.accId))
+    .sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
   const depVals = sorted.map(r => {
     const cutoff = `${r.year}-${String(r.month).padStart(2,'0')}-31`;
     return txns.filter(t => (t.date || '') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
