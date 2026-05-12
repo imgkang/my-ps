@@ -2785,7 +2785,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.234';
+const APP_VERSION = 'MyPM v0.235';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2836,9 +2836,15 @@ const DC_ACC_IDS   = new Set(['dc', 'wife_dc']);
 function getWifeTitle() { return (typeof appSettings !== 'undefined' && appSettings.wifeTitle) || '아내'; }
 function getAccName(id) {
   const acc = ACCOUNTS.find(a => a.id === id);
-  if (!acc) return id;
-  const t = getWifeTitle();
-  return t === '아내' ? acc.name : acc.name.replace(/^아내/, t);
+  if (acc) {
+    const t = getWifeTitle();
+    return t === '아내' ? acc.name : acc.name.replace(/^아내/, t);
+  }
+  const myExtra = (appSettings.my?.extraAccounts || []).find(e => e.id === id);
+  if (myExtra) return myExtra.name;
+  const wifeExtra = (appSettings.wife?.extraAccounts || []).find(e => e.id === id);
+  if (wifeExtra) return wifeExtra.name;
+  return id;
 }
 
 // ===== 앱 설정 =====
