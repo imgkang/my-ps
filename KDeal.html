@@ -10,15 +10,15 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --primary: #1e293b;
-    --primary-dark: #0f172a;
+    --primary: #ca8a04;
+    --primary-dark: #a16207;
     --bg: #f5f7fa;
     --card: #ffffff;
     --text: #1f2937;
     --muted: #6b7280;
     --border: #e5e7eb;
-    --plus: #16a34a;
-    --minus: #dc2626;
+    --plus: #e53935;
+    --minus: #1e88e5;
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
   .app-version {
@@ -95,7 +95,7 @@
     background: #fff;
     min-width: 0;
   }
-  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(3,199,90,0.15); }
+  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(202,138,4,0.15); }
 
   button {
     padding: 10px 16px;
@@ -739,12 +739,11 @@
   .cfg-grid { display: grid; grid-template-columns: auto 1fr; gap: 9px 18px; align-items: center; margin-bottom: 8px; }
   .cfg-grid label { font-size: 14px; color: var(--text); white-space: nowrap; }
   /* ===== KDeal-specific ===== */
-  :root { --primary: #1a73e8; --primary-dark: #1558b0; }
-  .summary-card { background: linear-gradient(135deg,#1a73e8 0%,#1558b0 100%); }
+  .summary-card { background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%); color: #78350f; }
   .ptr-indicator { background: var(--primary); }
   .ptr-indicator.ptr-ready { background: var(--primary-dark); }
-  .pos { color: #16a34a; }
-  .neg { color: #dc2626; }
+  .pos { color: #e53935; }
+  .neg { color: #1e88e5; }
   .nav-btn {
     padding: 8px 20px; border: 2px solid var(--border); border-radius: 20px;
     font-size: 15px; font-weight: 700; cursor: pointer;
@@ -786,16 +785,17 @@
 
   /* KDeal hero card */
   .nk-hero { padding: 22px 24px 18px; margin-bottom: 10px;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    color: #fff; border-radius: 12px; box-shadow: var(--shadow); }
+    background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
+    color: #78350f; border-radius: 12px; box-shadow: var(--shadow); }
   .nk-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
-  .nk-hero-value { font-size: 38px; font-weight: 800; color: #fff;
+  .nk-hero-value { font-size: 38px; font-weight: 800; color: #78350f;
     font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; }
+  .nk-hero-unit { font-size: 14px; font-weight: 500; color: rgba(120,53,15,0.65); }
   .nk-hero-row { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
-    line-height: 1.6; display: flex; align-items: baseline; gap: 6px; }
-  .nk-hero-label { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); }
-  .nk-hero .diff-positive { color: #86efac; }
-  .nk-hero .diff-negative { color: #fca5a5; }
+    line-height: 1.6; display: flex; align-items: baseline; gap: 6px; color: rgba(120,53,15,0.9); }
+  .nk-hero-label { font-size: 12px; font-weight: 500; color: rgba(120,53,15,0.75); }
+  .nk-hero .diff-positive { color: #e53935; }
+  .nk-hero .diff-negative { color: #1e88e5; }
   .nk-action-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
   .nk-action-btns button { font-size: 12px; padding: 6px 12px; }
   /* 관심종목 */
@@ -843,7 +843,7 @@
   .kdt-field { display:flex; flex-direction:column; gap:4px; }
   .kdt-field label { font-size:12px; color:var(--muted); font-weight:500; }
   .kdt-field input, .kdt-field select { padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; background:#fff; }
-  .kdt-field input:focus, .kdt-field select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(26,115,232,0.12); }
+  .kdt-field input:focus, .kdt-field select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(202,138,4,0.12); }
   .kdt-type-toggle { display:flex; gap:8px; }
   .kdt-type-btn { flex:1; padding:9px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; background:#fff; color:var(--muted); }
   .kdt-type-btn.active-buy { background:#dcfce7; border-color:#16a34a; color:#166534; }
@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.258';
+const APP_VERSION = 'KDeal v0.259';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1428,6 +1428,19 @@ function fmtKRW(n) {
   return sign + Math.round(abs).toLocaleString() + '원';
 }
 function fmtKRWSigned(n) { return (n >= 0 ? '+' : '') + fmtKRW(n); }
+
+// 천원 단위 (영웅 카드)
+function fmtThou(n) { if (!n && n !== 0) return '0'; return Math.round(n / 1000).toLocaleString('ko-KR'); }
+function fmtThouSigned(n) { return (n >= 0 ? '+' : '') + fmtThou(n); }
+
+// 원 단위 정수 (종목 가격·단가)
+function fmtWon(n) { if (!n && n !== 0) return '0'; return Math.round(n).toLocaleString('ko-KR'); }
+function fmtWonSigned(n) { return (n >= 0 ? '+' : '') + fmtWon(n); }
+
+// 백만원 단위 소수1자리 (집계 금액)
+function formatMil(n) { if (n == null || isNaN(n)) return '-'; return (n / 1000000).toFixed(1); }
+function formatMilSigned(n) { if (n == null || isNaN(n)) return '-'; return (n > 0 ? '+' : '') + (n / 1000000).toFixed(1); }
+
 // 하위 호환
 
 function switchPage(page) {
@@ -1574,7 +1587,7 @@ function kdRender() {
   if (!kdHoldings.length) {
     const heroEl0 = document.getElementById('kdHeroContainer');
     if (heroEl0) heroEl0.innerHTML = `<div class="card nk-hero">
-      <div class="nk-hero-value-row"><div class="nk-hero-value">0원</div></div>
+      <div class="nk-hero-value-row"><div class="nk-hero-value">0</div><div class="nk-hero-unit">(천원)</div></div>
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">오늘</span></div>
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">누적</span></div>
       <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">XIRR</span></div>
@@ -1651,10 +1664,10 @@ function kdRender() {
   const heroXirrCls = (xirrRate == null || xirrRate >= 0) ? 'diff-positive' : 'diff-negative';
   const heroEl = document.getElementById('kdHeroContainer');
   if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
-    <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtKRW(totalValue)}</div></div>
-    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtKRW(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">오늘</span></div>
-    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtKRW(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
-    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtKRW(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
+    <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtThou(totalValue)}</div><div class="nk-hero-unit">(천원)</div></div>
+    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtThou(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">오늘</span></div>
+    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtThou(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
+    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtThou(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
   </div>`;
 
   // Holdings table — My PM style
@@ -1700,11 +1713,11 @@ function kdRender() {
       <th>현재가</th>
       <th>오늘<br>손익</th>
       <th>매입<br>비중</th>
-      <th>매입액</th>
+      <th>매입(백만)</th>
       <th>보유수</th>
       <th>매입단가</th>
-      <th>평가금액</th>
-      <th>총손익</th>
+      <th>평가(백만)</th>
+      <th>손익(백만)</th>
       <th>손익률</th>
       <th>비중</th>
       <th>비중차이</th>
@@ -1730,16 +1743,16 @@ function kdRender() {
           <div class="stock-code">${it.ticker}</div>
         </td>
         <td>
-          <div>${it.price > 0 ? fmtKRW(it.price) : '-'}</div>
-          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtKRW(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
+          <div>${it.price > 0 ? fmtWon(it.price) : '-'}</div>
+          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtWon(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
         </td>
-        <td class="${chCls}">${dayAmt ? fmtKRWSigned(dayAmt) : '-'}</td>
+        <td class="${chCls}">${dayAmt ? fmtWonSigned(dayAmt) : '-'}</td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
-        <td>${it.hasCost ? fmtKRW(it.cost) : '-'}</td>
+        <td>${it.hasCost ? formatMil(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();kdOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
-        <td>${it.avgPrice > 0 ? fmtKRW(it.avgPrice) : '-'}</td>
-        <td><strong>${fmtKRW(it.currentValue)}</strong></td>
-        <td class="${pCls}">${it.hasCost ? fmtKRWSigned(it.profit) : '-'}</td>
+        <td>${it.avgPrice > 0 ? fmtWon(it.avgPrice) : '-'}</td>
+        <td><strong>${formatMil(it.currentValue)}</strong></td>
+        <td class="${pCls}">${it.hasCost ? formatMilSigned(it.profit) : '-'}</td>
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
@@ -1760,7 +1773,7 @@ function kdRender() {
         <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
       </td>
       <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-      <td><strong>${fmtKRW(totalCash)}</strong></td>
+      <td><strong>${formatMil(totalCash)}</strong></td>
       <td>-</td><td>-</td>
       <td>${cashWeight.toFixed(1)}%</td>
       <td>-</td>
@@ -1777,12 +1790,12 @@ function kdRender() {
     <tfoot><tr>
       <td>합계</td>
       <td>-</td>
-      <td class="${dayCls}">${todayPnl ? fmtKRWSigned(todayPnl) : '-'}</td>
+      <td class="${dayCls}">${todayPnl ? fmtWonSigned(todayPnl) : '-'}</td>
       <td>${totalCost > 0 ? '100.0%' : '-'}</td>
-      <td>${totalCost > 0 ? fmtKRW(totalCost) : '-'}</td>
+      <td>${totalCost > 0 ? formatMil(totalCost) : '-'}</td>
       <td>-</td><td>-</td>
-      <td>${fmtKRW(totalValue)}</td>
-      <td class="${totPCls}">${deposited > 0 ? fmtKRWSigned(pnl) : '-'}</td>
+      <td>${formatMil(totalValue)}</td>
+      <td class="${totPCls}">${deposited > 0 ? formatMilSigned(pnl) : '-'}</td>
       <td class="${totPCls}">${deposited > 0 ? totPSign + pnlRate.toFixed(2) + '%' : '-'}</td>
       <td>${totalValue > 0 ? '100.0%' : '-'}</td>
       <td>-</td>
@@ -1807,7 +1820,7 @@ function kdRenderAccountButtons() {
   const active = KD_ACCOUNTS.filter(a => a.active !== false);
   grid.innerHTML = active.map(a => {
     const val = kdComputeAccountValue(a.id);
-    return `<button class="btn-account-view" onclick="kdOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtKRW(val)}</span></button>`;
+    return `<button class="btn-account-view" onclick="kdOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${formatMil(val)}</span></button>`;
   }).join('');
 }
 
@@ -2036,14 +2049,14 @@ function kdOpenAccountDetail(accId) {
   const accXirrCls   = accXirr != null && accXirr >= 0 ? 'pos' : 'neg';
   const accXirrText  = accXirr != null ? accXirrSign + (accXirr * 100).toFixed(2) + '%' : '-';
 
-  document.getElementById('kdDetailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${fmtKRW(cash)}`;
+  document.getElementById('kdDetailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${fmtThou(cash)}천원`;
 
   const summaryEl = document.getElementById('kdDetailSummary');
   summaryEl.innerHTML = `
-    <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${accDeposited > 0 ? fmtKRW(accDeposited) : '-'}</span></div>
-    <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtKRW(totalVal)}</span></div>
-    <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtKRWSigned(todayPnl)}</span></div>
-    <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${accPnl >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? fmtKRWSigned(accPnl) : '-'}</span></div>
+    <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${accDeposited > 0 ? fmtThou(accDeposited) + '천원' : '-'}</span></div>
+    <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtThou(totalVal)}천원</span></div>
+    <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtThouSigned(todayPnl)}천원</span></div>
+    <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${accPnl >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? fmtThouSigned(accPnl) + '천원' : '-'}</span></div>
     <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${accPnlRate >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? (accPnlRate >= 0 ? '+' : '') + accPnlRate.toFixed(2) + '%' : '-'}</span></div>
     <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${accXirrCls}" title="이 계좌의 입출금 내역 기준 연환산 내부수익률">${accXirrText}</span></div>`;
 
@@ -2067,12 +2080,12 @@ function kdOpenAccountDetail(accId) {
           <div class="stock-code">${i.ticker}</div>
         </td>
         <td>${i.cost > 0 ? buyWeight.toFixed(1) + '%' : '-'}</td>
-        <td>${i.cost > 0 ? fmtKRW(i.cost) : '-'}</td>
+        <td>${i.cost > 0 ? formatMil(i.cost) : '-'}</td>
         <td>${i.qty.toLocaleString()}</td>
-        <td>${i.avg > 0 ? fmtKRW(i.avg) : '-'}</td>
-        <td>${i.price > 0 ? fmtKRW(i.price) : '-'}</td>
-        <td><strong>${fmtKRW(i.val)}</strong></td>
-        <td class="${pCls}">${i.cost > 0 ? pSign + fmtKRWSigned(i.pnl) : '-'}</td>
+        <td>${i.avg > 0 ? fmtWon(i.avg) : '-'}</td>
+        <td>${i.price > 0 ? fmtWon(i.price) : '-'}</td>
+        <td><strong>${formatMil(i.val)}</strong></td>
+        <td class="${pCls}">${i.cost > 0 ? formatMilSigned(i.pnl) : '-'}</td>
         <td class="${pCls}">${i.rate != null && i.cost > 0 ? pSign + i.rate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${i.cost > 0 ? dSign + diff.toFixed(1) + '%' : '-'}</td>
@@ -2086,7 +2099,7 @@ function kdOpenAccountDetail(accId) {
       <tr class="row-cash">
         <td><div class="stock-name">💰 현금 (예수금)</div><div class="stock-code">CASH</div></td>
         <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-        <td><strong>${fmtKRW(cash)}</strong></td>
+        <td><strong>${formatMil(cash)}</strong></td>
         <td>-</td><td>-</td>
         <td>${cashWeight.toFixed(1)}%</td>
         <td>-</td>
@@ -2097,18 +2110,18 @@ function kdOpenAccountDetail(accId) {
   const tfPSign = accPnl >= 0 ? '+' : '';
   tableEl.innerHTML = `
     <thead><tr>
-      <th>종목</th><th>매입비중</th><th>매입액</th><th>보유수</th>
-      <th>매입단가</th><th>현재가</th><th>평가금액</th>
-      <th>손익</th><th>손익률</th><th>비중</th><th>비중차이</th>
+      <th>종목</th><th>매입비중</th><th>매입(백만)</th><th>보유수</th>
+      <th>매입단가</th><th>현재가</th><th>평가(백만)</th>
+      <th>손익(백만)</th><th>손익률</th><th>비중</th><th>비중차이</th>
     </tr></thead>
     <tbody>${tbody}</tbody>
     <tfoot><tr>
       <td>합계</td>
       <td>${itemsTotalCost > 0 ? '100.0%' : '-'}</td>
-      <td>${itemsTotalCost > 0 ? fmtKRW(itemsTotalCost) : '-'}</td>
+      <td>${itemsTotalCost > 0 ? formatMil(itemsTotalCost) : '-'}</td>
       <td>-</td><td>-</td><td>-</td>
-      <td>${fmtKRW(totalVal)}</td>
-      <td class="${tfPCls}">${accDeposited > 0 ? fmtKRWSigned(accPnl) : '-'}</td>
+      <td>${formatMil(totalVal)}</td>
+      <td class="${tfPCls}">${accDeposited > 0 ? formatMilSigned(accPnl) : '-'}</td>
       <td class="${tfPCls}">${accDeposited > 0 ? tfPSign + accPnlRate.toFixed(2) + '%' : '-'}</td>
       <td>100.0%</td>
       <td>-</td>
@@ -2890,11 +2903,11 @@ function kdRenderWatchlist() {
   }
   const rows = kdWatchlist.map(w => {
     const info = kdWatchPrices[w.ticker];
-    const cur    = info ? fmtKRW(info.price) : '-';
+    const cur    = info ? fmtWon(info.price) : '-';
     const chg    = info ? (info.change || 0) : null;
     const chgPct = info ? (info.changeRate || 0) : null;
     const cls    = chg != null ? (chg >= 0 ? 'kdw-pos' : 'kdw-neg') : '';
-    const chgStr = chg != null ? (chg >= 0 ? '+' : '') + fmtKRW(chg) : '-';
+    const chgStr = chg != null ? (chg >= 0 ? '+' : '') + fmtWon(chg) : '-';
     const pctStr = chgPct != null ? `${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%` : '-';
     return `<tr>
       <td><div class="kdw-name">${w.name}</div><div class="kdw-ticker">${w.ticker}</div></td>
