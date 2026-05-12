@@ -1188,8 +1188,7 @@
     </div>
     <div class="records-input-card">
       <div class="records-input-top">
-        <label><span>연도</span><input type="number" id="nkRecYear" min="2000" max="2100" step="1" placeholder="YYYY"></label>
-        <label><span>월</span><input type="number" id="nkRecMonth" min="1" max="12" step="1" placeholder="M"></label>
+        <label><span>기록일</span><input type="date" id="nkRecDate"></label>
         <button class="btn-secondary" onclick="nkFillCurrentValues()">💾 현재값 저장</button>
         <button class="btn-secondary" onclick="nkLoadHistoricalValues()">📅 이전 가치 불러오기</button>
       </div>
@@ -1263,7 +1262,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.246';
+const APP_VERSION = 'NonK v0.247';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2267,8 +2266,7 @@ function nkSaveTxn() {
 // --- Records modal ---
 function nkOpenRecordsModal() {
   const d = new Date();
-  document.getElementById('nkRecYear').value  = d.getFullYear();
-  document.getElementById('nkRecMonth').value = d.getMonth() + 1;
+  document.getElementById('nkRecDate').value = d.toISOString().slice(0, 10);
   nkRenderRecAccountInputs();
   nkRenderRecordsList();
   document.getElementById('nkAccountRecordsModal').classList.add('open');
@@ -2323,8 +2321,9 @@ async function nkFetchHistoricalClose(ticker, year, month) {
 }
 
 async function nkLoadHistoricalValues() {
-  const year  = parseInt(document.getElementById('nkRecYear').value, 10);
-  const month = parseInt(document.getElementById('nkRecMonth').value, 10);
+  const dateVal = document.getElementById('nkRecDate').value;
+  if (!dateVal) { alert('기록일을 선택하세요'); return; }
+  const [year, month] = dateVal.split('-').map(Number);
   if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
   if (!month || month < 1 || month > 12)   { alert('월을 1~12 사이로 입력해 주세요.'); return; }
 
@@ -2377,21 +2376,22 @@ async function nkLoadHistoricalValues() {
 }
 
 function nkAddMonthlyRecord() {
-  const year  = Number(document.getElementById('nkRecYear').value);
-  const month = Number(document.getElementById('nkRecMonth').value);
-  if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
+  const dateVal = document.getElementById('nkRecDate').value;
+  if (!dateVal) { alert('기록일을 선택하세요'); return; }
+  const [year, month, day] = dateVal.split('-').map(Number);
+  if (!year || !month || !day) { alert('날짜를 올바르게 입력하세요'); return; }
   const accounts = {};
   NK_ACCOUNTS.forEach(a => { accounts[a.id] = Number(document.getElementById(`nkRecVal_${a.id}`)?.value) || 0; });
   if (nkEditingRecordId) {
     const rec = nkMonthlyRecords.find(r => r.id === nkEditingRecordId);
-    if (rec) { rec.year = year; rec.month = month; rec.accounts = accounts; }
+    if (rec) { rec.year = year; rec.month = month; rec.day = day; rec.accounts = accounts; }
     nkCancelRecordEdit();
   } else {
-    if (nkMonthlyRecords.some(r => r.year === year && r.month === month)) {
-      if (!confirm(`${year}년 ${month}월 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
-      nkMonthlyRecords = nkMonthlyRecords.filter(r => !(r.year === year && r.month === month));
+    if (nkMonthlyRecords.some(r => r.year === year && r.month === month && (r.day || 1) === day)) {
+      if (!confirm(`${year}년 ${month}월 ${day}일 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
+      nkMonthlyRecords = nkMonthlyRecords.filter(r => !(r.year === year && r.month === month && (r.day || 1) === day));
     }
-    nkMonthlyRecords.push({ id: String(Date.now()), year, month, accounts });
+    nkMonthlyRecords.push({ id: String(Date.now()), year, month, day, accounts });
   }
   nkSaveMonthly();
   nkRenderRecordsList();
@@ -2402,8 +2402,8 @@ function nkEditMonthlyRecord(id) {
   const rec = nkMonthlyRecords.find(r => r.id === id);
   if (!rec) return;
   nkEditingRecordId = id;
-  document.getElementById('nkRecYear').value  = rec.year;
-  document.getElementById('nkRecMonth').value = rec.month;
+  const d = rec.day || 1;
+  document.getElementById('nkRecDate').value = `${rec.year}-${String(rec.month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   nkRenderRecAccountInputs();
   NK_ACCOUNTS.forEach(a => {
     const inp = document.getElementById(`nkRecVal_${a.id}`);
@@ -2414,7 +2414,7 @@ function nkEditMonthlyRecord(id) {
   const cancelBtn = document.getElementById('nkRecCancelBtn');
   if (addBtn)    addBtn.textContent = '✏️ 수정';
   if (cancelBtn) cancelBtn.style.display = '';
-  document.getElementById('nkRecYear').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('nkRecDate').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function nkCancelRecordEdit() {
@@ -2445,13 +2445,20 @@ function nkRenderRecordsList() {
   }
   const cols = `80px ${NK_ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 90px`;
   header.style.gridTemplateColumns = cols;
-  header.innerHTML = `<span>연/월</span>${NK_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
-  const sorted = [...nkMonthlyRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+  header.innerHTML = `<span>날짜</span>${NK_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
+  const sorted = [...nkMonthlyRecords].sort((a, b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    if (b.month !== a.month) return b.month - a.month;
+    return (b.day || 1) - (a.day || 1);
+  });
   list.innerHTML = sorted.map(rec => {
+    const dateLabel = rec.day
+      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
+      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
     const total = NK_ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
     const cells = NK_ACCOUNTS.map(a => `<span class="amount">${fmtUSD(Number(rec.accounts[a.id])||0)}</span>`).join('');
     return `<div class="records-row" style="grid-template-columns:${cols}">
-      <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>
+      <span>${dateLabel}</span>
       ${cells}
       <span class="total">${fmtUSD(total)}</span>
       <span>
