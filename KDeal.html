@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.270';
+const APP_VERSION = 'KDeal v0.271';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2641,7 +2641,7 @@ function kdRenderDividendLists() {
 function kdExportToFile() {
   const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
   const payload = {
-    version: 8, exportedAt: new Date().toISOString(),
+    version: 9, exportedAt: new Date().toISOString(),
     mypm: {
       holdings:        tryParse('pension_portfolio_v1')       || [],
       cashAccounts:    tryParse('pension_cash_accounts_v1')   || {},
@@ -2651,6 +2651,16 @@ function kdExportToFile() {
       annualPlan:      tryParse('pension_annual_plan_v1')     || {}
     },
     nonk: {
+      holdings:  kdHoldings,
+      cash:      kdCashAccounts,
+      deposits:  kdDepositData,
+      monthly:   kdMonthlyRecords,
+      dividends: kdDividendRecords,
+      accounts:  KD_ACCOUNTS,
+      trades:    kdtTrades,
+      watchlist: kdWatchlist
+    },
+    kd: {
       holdings:  kdHoldings,
       cash:      kdCashAccounts,
       deposits:  kdDepositData,
@@ -2678,7 +2688,10 @@ function kdImportFromFile(event) {
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
-      const src = (data.version >= 8 && data.nonk) ? data.nonk : data;
+      // data.kd 우선 (v0.271+), 없으면 data.nonk 폴백 (version<=9 구 KDeal export만)
+      const src = data.kd
+        || (data.nonk && (data.version == null || data.version <= 9) ? data.nonk : null)
+        || {};
       if (src.holdings)  { kdHoldings       = src.holdings;  kdSaveHoldings(); }
       if (src.cash)      { kdCashAccounts    = src.cash;      kdSaveCashData(); }
       if (src.deposits)  { kdDepositData     = src.deposits;  kdSaveDeposits(); }

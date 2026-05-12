@@ -2786,7 +2786,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.270';
+const APP_VERSION = 'MyPM v0.271';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4043,7 +4043,7 @@ function saveCashAccounts() {
 function exportToFile() {
   const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
   const payload = {
-    version: 10,
+    version: 11,
     exportedAt: new Date().toISOString(),
     mypm: {
       appSettings: appSettings,
@@ -4068,6 +4068,16 @@ function exportToFile() {
       trades:    tryParse('kdeal_trades_v1')    || [],
       deposits:  tryParse('kdeal_deposits_v1')  || [],
       watchlist: tryParse('kdeal_watchlist_v1') || []
+    },
+    kd: {
+      holdings:  tryParse('kd_holdings_v1')  || [],
+      cash:      tryParse('kd_cash_v1')      || {},
+      deposits:  tryParse('kd_deposits_v1')  || {},
+      monthly:   tryParse('kd_monthly_v1')   || [],
+      dividends: tryParse('kd_dividends_v1') || [],
+      accounts:  tryParse('kd_accounts_v1')  || [],
+      trades:    tryParse('kd_trades_v1')    || [],
+      watchlist: tryParse('kd_watchlist_v1') || []
     }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -4249,16 +4259,6 @@ function importFromFile(event) {
         if (nk.deposits)  localStorage.setItem('nonk_deposits_v1',  JSON.stringify(nk.deposits));
         if (nk.monthly)   localStorage.setItem('nonk_monthly_v1',   JSON.stringify(nk.monthly));
         if (nk.dividends) localStorage.setItem('nonk_dividends_v1', JSON.stringify(nk.dividends));
-        // KDeal은 kd_*_v1 키를 사용하므로 동일 데이터를 KDeal 키에도 저장
-        if (nk.holdings)  localStorage.setItem('kd_holdings_v1',   JSON.stringify(nk.holdings));
-        if (nk.cash)      localStorage.setItem('kd_cash_v1',       JSON.stringify(nk.cash));
-        if (nk.deposits)  localStorage.setItem('kd_deposits_v1',   JSON.stringify(nk.deposits));
-        if (nk.monthly)   localStorage.setItem('kd_monthly_v1',    JSON.stringify(nk.monthly));
-        if (nk.dividends) localStorage.setItem('kd_dividends_v1',  JSON.stringify(nk.dividends));
-        if (nk.accounts)  localStorage.setItem('kd_accounts_v1',   JSON.stringify(nk.accounts));
-        if (nk.trades)    localStorage.setItem('kd_trades_v1',     JSON.stringify(nk.trades));
-        if (nk.watchlist) localStorage.setItem('kd_watchlist_v1',  JSON.stringify(nk.watchlist));
-        localStorage.setItem('kd_migration_done_v1', '1');
       }
       if (data.kdeal) {
         const kd = data.kdeal;
@@ -4266,7 +4266,19 @@ function importFromFile(event) {
         if (kd.deposits  !== undefined) localStorage.setItem('kdeal_deposits_v1',  JSON.stringify(kd.deposits));
         if (kd.watchlist !== undefined) localStorage.setItem('kdeal_watchlist_v1', JSON.stringify(kd.watchlist));
       }
-      alert('불러오기 완료' + (data.nonk ? '\n(My PM + NonK 통합 데이터)' : ''));
+      if (data.kd) {
+        const kd = data.kd;
+        if (kd.holdings)  localStorage.setItem('kd_holdings_v1',  JSON.stringify(kd.holdings));
+        if (kd.cash)      localStorage.setItem('kd_cash_v1',      JSON.stringify(kd.cash));
+        if (kd.deposits)  localStorage.setItem('kd_deposits_v1',  JSON.stringify(kd.deposits));
+        if (kd.monthly)   localStorage.setItem('kd_monthly_v1',   JSON.stringify(kd.monthly));
+        if (kd.dividends) localStorage.setItem('kd_dividends_v1', JSON.stringify(kd.dividends));
+        if (kd.accounts)  localStorage.setItem('kd_accounts_v1',  JSON.stringify(kd.accounts));
+        if (kd.trades)    localStorage.setItem('kd_trades_v1',    JSON.stringify(kd.trades));
+        if (kd.watchlist) localStorage.setItem('kd_watchlist_v1', JSON.stringify(kd.watchlist));
+        localStorage.setItem('kd_migration_done_v1', '1');
+      }
+      alert('불러오기 완료' + ((data.nonk || data.kd) ? '\n(My PM + NonK/KDeal 통합 데이터)' : ''));
     } catch (err) {
       alert('불러오기 실패: ' + err.message);
     } finally {
