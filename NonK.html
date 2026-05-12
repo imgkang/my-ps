@@ -909,6 +909,14 @@
   </div>
 
   <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">👁 관심종목</h2>
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenWatchModal()">+ 추가</button>
+    </div>
+    <div id="nkWatchContainer"><div class="nkw-empty">관심종목이 없습니다.</div></div>
+  </div>
+
+  <div class="card">
     <h2>계좌별 상태 보기</h2>
     <div class="account-buttons-grid" id="nkAccountButtonsGrid"></div>
   </div>
@@ -920,14 +928,6 @@
     <div id="nkChartEmpty" class="chart-empty" style="display:none">
       계좌 기록이 아직 없습니다. '📒 계좌 기록'에서 월별 평가금액을 먼저 추가해 주세요.
     </div>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <h2 style="margin:0">👁 관심종목</h2>
-      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenWatchModal()">+ 추가</button>
-    </div>
-    <div id="nkWatchContainer"><div class="nkw-empty">관심종목이 없습니다.</div></div>
   </div>
 
   <!-- 거래 내역 (확장형) -->
@@ -1260,7 +1260,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.243';
+const APP_VERSION = 'NonK v0.244';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
