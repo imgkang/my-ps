@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.267';
+const APP_VERSION = 'KDeal v0.268';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3427,8 +3427,10 @@ function kdRunMigration() {
   const MIGRATION_DONE = 'kd_migration_done_v1';
   if (localStorage.getItem(MIGRATION_DONE)) return;
   if (!localStorage.getItem(OLD_TRADES) && !localStorage.getItem(OLD_DEPOSITS) && !localStorage.getItem(OLD_WATCHLIST)) return;
-  if (localStorage.getItem(KDT_TRADES_KEY) || localStorage.getItem(KD_HOLD_KEY)) {
-    // 신규 키 존재 = 이미 마이그레이션 완료. 구 키만 남은 경우 정리 + 완료 플래그
+  const _existT = JSON.parse(localStorage.getItem(KDT_TRADES_KEY) || 'null');
+  const _existH = JSON.parse(localStorage.getItem(KD_HOLD_KEY) || 'null');
+  if ((Array.isArray(_existT) && _existT.length > 0) || (Array.isArray(_existH) && _existH.length > 0)) {
+    // 신규 키에 실제 데이터 존재 = 이미 마이그레이션 완료. 구 키만 남은 경우 정리 + 완료 플래그
     localStorage.removeItem(OLD_TRADES);
     localStorage.removeItem(OLD_DEPOSITS);
     localStorage.removeItem(OLD_WATCHLIST);
@@ -3497,7 +3499,9 @@ function kdRunMigration() {
 
   const msg = `거래 ${trades.length}건 → 보유종목 ${kdHoldings.length}개`;
   console.log('[KDeal] 마이그레이션 완료: ' + msg);
-  alert('이전 KDeal 데이터를 자동으로 가져왔습니다.\n' + msg + '\n\n기본계좌로 통합되었습니다. 계좌 설정에서 수정하세요.');
+  if (trades.length > 0) {
+    alert('이전 KDeal 데이터를 자동으로 가져왔습니다.\n' + msg + '\n\n기본계좌로 통합되었습니다. 계좌 설정에서 수정하세요.');
+  }
 }
 
 function kdInitCashIfEmpty() {
