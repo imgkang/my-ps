@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.260';
+const APP_VERSION = 'KDeal v0.261';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3466,8 +3466,27 @@ function kdRunMigration() {
   alert('이전 KDeal 데이터를 자동으로 가져왔습니다.\n' + msg + '\n\n기본계좌로 통합되었습니다. 계좌 설정에서 수정하세요.');
 }
 
+function kdInitCashIfEmpty() {
+  if (localStorage.getItem(KD_CASH_KEY)) return;
+  if (!kdtTrades.length && !kdDepositData.transactions.length) return;
+  const cashMap = {};
+  kdDepositData.transactions.forEach(d => {
+    const id = d.accId || 'acc1';
+    cashMap[id] = (cashMap[id] || 0) + (d.type === 'deposit' ? d.amount : -d.amount);
+  });
+  kdtTrades.forEach(t => {
+    const id = t.accId || 'acc1';
+    if (t.type === 'buy')  cashMap[id] = (cashMap[id] || 0) - (t.price * t.qty + (t.fee||0));
+    if (t.type === 'sell') cashMap[id] = (cashMap[id] || 0) + (t.price * t.qty - (t.fee||0));
+  });
+  Object.assign(kdCashAccounts, cashMap);
+  kdSaveCashData();
+  console.log('[KDeal] 현금 초기계산 완료:', cashMap);
+}
+
 // Init
 kdRunMigration();
+kdInitCashIfEmpty();
 kdRender();
 kdRenderChart();
 kdRenderAccountButtons();
