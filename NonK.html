@@ -1255,7 +1255,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.266';
+const APP_VERSION = 'NonK v0.267';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3328,6 +3328,10 @@ nkRenderAccountButtons();
 nkRenderWatchlist();
 nkInitAutoRefresh();
 if (nkHoldings.length || nkWatchlist.length) nkRefreshAll();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .catch(err => console.warn('SW 등록 실패:', err));
+}
 </script>
 <div class="app-version" id="appVersion"></div>
 </body>

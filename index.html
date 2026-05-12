@@ -2786,7 +2786,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.266';
+const APP_VERSION = 'MyPM v0.267';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8712,6 +8712,9 @@ function doReset(andOnboard) {
     'nonk_holdings_v1', 'nonk_cash_v1', 'nonk_deposits_v1',
     'nonk_monthly_v1', 'nonk_dividends_v1',
     'kdeal_trades_v1', 'kdeal_deposits_v1', 'kdeal_watchlist_v1',
+    'kd_trades_v1', 'kd_holdings_v1', 'kd_deposits_v1',
+    'kd_cash_v1', 'kd_accounts_v1', 'kd_monthly_v1',
+    'kd_dividends_v1', 'kd_watchlist_v1', 'kd_migration_done_v1',
     'setup_skipped',
   ].forEach(k => localStorage.removeItem(k));
   closeResetConfirmModal();
@@ -11076,7 +11079,7 @@ function _applyImportData(data) {
 // =============================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
       .then(reg => {
         // 새 버전이 감지되면 사용자에게 알림
         reg.addEventListener('updatefound', () => {
