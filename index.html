@@ -2785,7 +2785,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.249';
+const APP_VERSION = 'MyPM v0.250';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4408,8 +4408,9 @@ const STOCK_DB = [
   ["308620","KBSTAR 200"],["153130","KODEX 단기채권"],
   ["388690","TIGER 미국필라델피아반도체나스닥"],["448280","TIGER 인도"],
   ["461850","KODEX 미국S&P500TR"],["443560","KODEX 미국나스닥100TR"],
-  ["278530","KODEX 주주환원고배당"],["395160","TIGER 주주환원100"],
-  ["278240","KODEX 200TR"],["292150","TIGER 200TR"],
+  ["278530","KODEX 200TR"],["395160","TIGER 주주환원100"],
+  ["278240","RISE 코스닥150선물레버리지"],["292150","TIGER 200TR"],
+  ["0153K0","KODEX 주주환원고배당주"],
   ["379800","KODEX 미국S&P500"],["385510","TIGER 미국S&P500"],
   ["494670","SOL 미국배당다우존스"],["251340","KODEX 코스닥150레버리지"],
   ["453850","KODEX 인도Nifty50"],["152100","ARIRANG 200"],
@@ -4474,7 +4475,9 @@ function onStockNameInput(val) {
 }
 
 function onStockCodeInput(val) {
-  document.getElementById('stockCode').value = val.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 6);
+  const clean = val.replace(/[^0-9A-Za-z]/g, '').toUpperCase().slice(0, 6);
+  document.getElementById('stockCode').value = clean;
+  if (clean.length === 6) autoFetchStockName();
 }
 
 function autoFetchStockName() {
