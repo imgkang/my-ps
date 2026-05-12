@@ -1035,7 +1035,7 @@
     <div style="padding:4px 0 12px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">종목 검색 (이름 또는 티커)</label>
       <div class="kdw-ac-wrap">
-        <input type="text" id="kdWatchSearch" class="form-input" placeholder="예: Apple 또는 AAPL"
+        <input type="text" id="kdWatchSearch" class="form-input" placeholder="예: 삼성전자 또는 005930"
           oninput="kdOnWatchSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
         <div class="kdw-ac-list" id="kdWatchAcList"></div>
       </div>
@@ -1208,7 +1208,7 @@
 <div class="modal-backdrop" id="kdDividendModal" onclick="if(event.target===this)kdCloseDividendModal()">
   <div class="modal modal-wide modal-records">
     <div class="modal-header">
-      <div><h2>💸 배당 기록 관리</h2><div class="modal-subtitle">월별 배당금 수령 내역 (USD)</div></div>
+      <div><h2>💸 배당 기록 관리</h2><div class="modal-subtitle">월별 배당금 수령 내역 (원)</div></div>
       <button class="close-btn" onclick="kdCloseDividendModal()" aria-label="닫기">×</button>
     </div>
     <div class="records-input-card">
@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.256';
+const APP_VERSION = 'KDeal v0.257';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1344,7 +1344,6 @@ async function fetchKdPrice(code) {
 
   throw new Error('가격 조회 실패: ' + code);
 }
-const fetchNkPrice = fetchKdPrice;
 
 async function kdFetchAutocompleteKR(query) {
   if (!query || !query.trim()) return [];
@@ -1430,8 +1429,6 @@ function fmtKRW(n) {
 }
 function fmtKRWSigned(n) { return (n >= 0 ? '+' : '') + fmtKRW(n); }
 // 하위 호환
-const fmtUSD = fmtKRW;
-const fmtUSDSigned = fmtKRWSigned;
 
 function switchPage(page) {
   const mypm = document.getElementById('pageMyPM');
@@ -1460,7 +1457,7 @@ async function kdRefreshAll() {
 
   await Promise.all(kdHoldings.map(async h => {
     try {
-      const info = await fetchNkPrice(h.ticker);
+      const info = await fetchKdPrice(h.ticker);
       h.price = info.price; h.change = info.change;
       h.changeRate = info.changeRate;
       h.updatedAt  = new Date().toISOString();
@@ -1471,7 +1468,7 @@ async function kdRefreshAll() {
   const holdTickers = new Set(kdHoldings.map(h => h.ticker));
   await Promise.all(kdWatchlist.filter(w => !holdTickers.has(w.ticker)).map(async w => {
     try {
-      const info = await fetchNkPrice(w.ticker);
+      const info = await fetchKdPrice(w.ticker);
       if (info) {
         kdWatchPrices[w.ticker] = info;
         if (info.name && info.name !== w.ticker) { w.name = info.name; kdSaveWatchlist(); }
@@ -1654,10 +1651,10 @@ function kdRender() {
   const heroXirrCls = (xirrRate == null || xirrRate >= 0) ? 'diff-positive' : 'diff-negative';
   const heroEl = document.getElementById('kdHeroContainer');
   if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
-    <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtUSD(totalValue)}</div></div>
-    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">오늘</span></div>
-    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtUSD(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
-    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtUSD(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
+    <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtKRW(totalValue)}</div></div>
+    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtKRW(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">오늘</span></div>
+    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtKRW(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
+    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtKRW(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
   </div>`;
 
   // Holdings table — My PM style
@@ -1733,16 +1730,16 @@ function kdRender() {
           <div class="stock-code">${it.ticker}</div>
         </td>
         <td>
-          <div>${it.price > 0 ? fmtUSD(it.price) : '-'}</div>
-          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
+          <div>${it.price > 0 ? fmtKRW(it.price) : '-'}</div>
+          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtKRW(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
         </td>
-        <td class="${chCls}">${dayAmt ? fmtUSDSigned(dayAmt) : '-'}</td>
+        <td class="${chCls}">${dayAmt ? fmtKRWSigned(dayAmt) : '-'}</td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
-        <td>${it.hasCost ? fmtUSD(it.cost) : '-'}</td>
+        <td>${it.hasCost ? fmtKRW(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();kdOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
-        <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
-        <td><strong>${fmtUSD(it.currentValue)}</strong></td>
-        <td class="${pCls}">${it.hasCost ? fmtUSDSigned(it.profit) : '-'}</td>
+        <td>${it.avgPrice > 0 ? fmtKRW(it.avgPrice) : '-'}</td>
+        <td><strong>${fmtKRW(it.currentValue)}</strong></td>
+        <td class="${pCls}">${it.hasCost ? fmtKRWSigned(it.profit) : '-'}</td>
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
@@ -1763,7 +1760,7 @@ function kdRender() {
         <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
       </td>
       <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-      <td><strong>${fmtUSD(totalCash)}</strong></td>
+      <td><strong>${fmtKRW(totalCash)}</strong></td>
       <td>-</td><td>-</td>
       <td>${cashWeight.toFixed(1)}%</td>
       <td>-</td>
@@ -1780,12 +1777,12 @@ function kdRender() {
     <tfoot><tr>
       <td>합계</td>
       <td>-</td>
-      <td class="${dayCls}">${todayPnl ? fmtUSDSigned(todayPnl) : '-'}</td>
+      <td class="${dayCls}">${todayPnl ? fmtKRWSigned(todayPnl) : '-'}</td>
       <td>${totalCost > 0 ? '100.0%' : '-'}</td>
-      <td>${totalCost > 0 ? fmtUSD(totalCost) : '-'}</td>
+      <td>${totalCost > 0 ? fmtKRW(totalCost) : '-'}</td>
       <td>-</td><td>-</td>
-      <td>${fmtUSD(totalValue)}</td>
-      <td class="${totPCls}">${deposited > 0 ? fmtUSDSigned(pnl) : '-'}</td>
+      <td>${fmtKRW(totalValue)}</td>
+      <td class="${totPCls}">${deposited > 0 ? fmtKRWSigned(pnl) : '-'}</td>
       <td class="${totPCls}">${deposited > 0 ? totPSign + pnlRate.toFixed(2) + '%' : '-'}</td>
       <td>${totalValue > 0 ? '100.0%' : '-'}</td>
       <td>-</td>
@@ -1810,7 +1807,7 @@ function kdRenderAccountButtons() {
   const active = KD_ACCOUNTS.filter(a => a.active !== false);
   grid.innerHTML = active.map(a => {
     const val = kdComputeAccountValue(a.id);
-    return `<button class="btn-account-view" onclick="kdOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtUSD(val)}</span></button>`;
+    return `<button class="btn-account-view" onclick="kdOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtKRW(val)}</span></button>`;
   }).join('');
 }
 
@@ -1863,7 +1860,7 @@ function kdRenderChart() {
         { label: '평가총액', data: evalVals, borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,0.15)', fill: true, tension: 0.2 }
       ]
     },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => fmtUSD(v) } } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => fmtKRW(v) } } } }
   });
 }
 
@@ -1896,7 +1893,7 @@ function kdUpdateAddTotals() {
     const qty = Number(document.getElementById(`kdAddQty_${a.id}`)?.value) || 0;
     const avg = Number(document.getElementById(`kdAddAvg_${a.id}`)?.value) || 0;
     const el = document.getElementById(`kdAddTotal_${a.id}`);
-    if (el) el.textContent = fmtUSD(qty * avg);
+    if (el) el.textContent = fmtKRW(qty * avg);
   });
 }
 
@@ -1910,9 +1907,9 @@ async function kdFetchInfo() {
   const resultEl = document.getElementById('kdFetchResult');
   resultEl.textContent = '조회 중...';
   try {
-    const info = await fetchNkPrice(ticker);
+    const info = await fetchKdPrice(ticker);
     document.getElementById('kdName').value = info.name;
-    resultEl.textContent = `현재가: ${fmtUSD(info.price)} (${info.changeRate >= 0 ? '+' : ''}${info.changeRate.toFixed(2)}%)`;
+    resultEl.textContent = `현재가: ${fmtKRW(info.price)} (${info.changeRate >= 0 ? '+' : ''}${info.changeRate.toFixed(2)}%)`;
     resultEl.style.color = info.changeRate >= 0 ? 'var(--pos)' : 'var(--neg)';
   } catch(e) {
     resultEl.textContent = '조회 실패: ' + e.message;
@@ -1940,7 +1937,7 @@ function kdAddStock() {
   kdCloseAddModal();
   kdRender();
   // Fetch price in background
-  fetchNkPrice(ticker).then(info => {
+  fetchKdPrice(ticker).then(info => {
     const h = kdHoldings.find(x => x.ticker === ticker);
     if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); kdSaveHoldings(); kdRender(); }
   }).catch(() => {});
@@ -1962,7 +1959,7 @@ function kdOpenAccountModal(ticker) {
       <span>${a.name}</span>
       <input type="number" id="kdAccQty_${a.id}" min="0" step="1" value="${acc.qty || 0}">
       <input type="number" id="kdAccAvg_${a.id}" min="0" step="1" value="${acc.avgPrice || 0}">
-      <span id="kdAccTotal_${a.id}">${fmtUSD((acc.qty || 0) * (acc.avgPrice || 0))}</span>
+      <span id="kdAccTotal_${a.id}">${fmtKRW((acc.qty || 0) * (acc.avgPrice || 0))}</span>
     </div>`;
   }).join('');
   activeAccs2.forEach(a => {
@@ -1979,13 +1976,13 @@ function kdUpdateAccTotals() {
     const qty = Number(document.getElementById(`kdAccQty_${a.id}`)?.value) || 0;
     const avg = Number(document.getElementById(`kdAccAvg_${a.id}`)?.value) || 0;
     const el = document.getElementById(`kdAccTotal_${a.id}`);
-    if (el) el.textContent = fmtUSD(qty * avg);
+    if (el) el.textContent = fmtKRW(qty * avg);
     totalQty += qty; totalCost += qty * avg;
   });
   const qEl = document.getElementById('kdModalTotalQty');
   const cEl = document.getElementById('kdModalTotalCost');
   if (qEl) qEl.textContent = totalQty.toLocaleString() + ' 주';
-  if (cEl) cEl.textContent = fmtUSD(totalCost);
+  if (cEl) cEl.textContent = fmtKRW(totalCost);
 }
 
 function kdCloseAccountModal() {
@@ -2039,14 +2036,14 @@ function kdOpenAccountDetail(accId) {
   const accXirrCls   = accXirr != null && accXirr >= 0 ? 'pos' : 'neg';
   const accXirrText  = accXirr != null ? accXirrSign + (accXirr * 100).toFixed(2) + '%' : '-';
 
-  document.getElementById('kdDetailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${fmtUSD(cash)}`;
+  document.getElementById('kdDetailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${fmtKRW(cash)}`;
 
   const summaryEl = document.getElementById('kdDetailSummary');
   summaryEl.innerHTML = `
-    <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${accDeposited > 0 ? fmtUSD(accDeposited) : '-'}</span></div>
-    <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtUSD(totalVal)}</span></div>
-    <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtUSDSigned(todayPnl)}</span></div>
-    <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${accPnl >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? fmtUSDSigned(accPnl) : '-'}</span></div>
+    <div class="summary-item"><span class="summary-label">원금 합계</span><span class="summary-value">${accDeposited > 0 ? fmtKRW(accDeposited) : '-'}</span></div>
+    <div class="summary-item"><span class="summary-label">평가금액</span><span class="summary-value">${fmtKRW(totalVal)}</span></div>
+    <div class="summary-item"><span class="summary-label">오늘의 손익</span><span class="summary-value ${todayPnl >= 0 ? 'pos' : 'neg'}">${fmtKRWSigned(todayPnl)}</span></div>
+    <div class="summary-item"><span class="summary-label">손익</span><span class="summary-value ${accPnl >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? fmtKRWSigned(accPnl) : '-'}</span></div>
     <div class="summary-item"><span class="summary-label">누적수익률</span><span class="summary-value ${accPnlRate >= 0 ? 'pos' : 'neg'}">${accDeposited > 0 ? (accPnlRate >= 0 ? '+' : '') + accPnlRate.toFixed(2) + '%' : '-'}</span></div>
     <div class="summary-item"><span class="summary-label">내부수익률 (XIRR)</span><span class="summary-value ${accXirrCls}" title="이 계좌의 입출금 내역 기준 연환산 내부수익률">${accXirrText}</span></div>`;
 
@@ -2070,12 +2067,12 @@ function kdOpenAccountDetail(accId) {
           <div class="stock-code">${i.ticker}</div>
         </td>
         <td>${i.cost > 0 ? buyWeight.toFixed(1) + '%' : '-'}</td>
-        <td>${i.cost > 0 ? fmtUSD(i.cost) : '-'}</td>
+        <td>${i.cost > 0 ? fmtKRW(i.cost) : '-'}</td>
         <td>${i.qty.toLocaleString()}</td>
-        <td>${i.avg > 0 ? fmtUSD(i.avg) : '-'}</td>
-        <td>${i.price > 0 ? fmtUSD(i.price) : '-'}</td>
-        <td><strong>${fmtUSD(i.val)}</strong></td>
-        <td class="${pCls}">${i.cost > 0 ? pSign + fmtUSDSigned(i.pnl) : '-'}</td>
+        <td>${i.avg > 0 ? fmtKRW(i.avg) : '-'}</td>
+        <td>${i.price > 0 ? fmtKRW(i.price) : '-'}</td>
+        <td><strong>${fmtKRW(i.val)}</strong></td>
+        <td class="${pCls}">${i.cost > 0 ? pSign + fmtKRWSigned(i.pnl) : '-'}</td>
         <td class="${pCls}">${i.rate != null && i.cost > 0 ? pSign + i.rate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${i.cost > 0 ? dSign + diff.toFixed(1) + '%' : '-'}</td>
@@ -2089,7 +2086,7 @@ function kdOpenAccountDetail(accId) {
       <tr class="row-cash">
         <td><div class="stock-name">💰 현금 (예수금)</div><div class="stock-code">CASH</div></td>
         <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-        <td><strong>${fmtUSD(cash)}</strong></td>
+        <td><strong>${fmtKRW(cash)}</strong></td>
         <td>-</td><td>-</td>
         <td>${cashWeight.toFixed(1)}%</td>
         <td>-</td>
@@ -2108,10 +2105,10 @@ function kdOpenAccountDetail(accId) {
     <tfoot><tr>
       <td>합계</td>
       <td>${itemsTotalCost > 0 ? '100.0%' : '-'}</td>
-      <td>${itemsTotalCost > 0 ? fmtUSD(itemsTotalCost) : '-'}</td>
+      <td>${itemsTotalCost > 0 ? fmtKRW(itemsTotalCost) : '-'}</td>
       <td>-</td><td>-</td><td>-</td>
-      <td>${fmtUSD(totalVal)}</td>
-      <td class="${tfPCls}">${accDeposited > 0 ? fmtUSDSigned(accPnl) : '-'}</td>
+      <td>${fmtKRW(totalVal)}</td>
+      <td class="${tfPCls}">${accDeposited > 0 ? fmtKRWSigned(accPnl) : '-'}</td>
       <td class="${tfPCls}">${accDeposited > 0 ? tfPSign + accPnlRate.toFixed(2) + '%' : '-'}</td>
       <td>100.0%</td>
       <td>-</td>
@@ -2147,7 +2144,7 @@ function kdOpenAccountDetail(accId) {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
-        scales: { y: { ticks: { callback: v => fmtUSD(v), font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.06)' } }, x: { ticks: { font: { size: 10 } } } }
+        scales: { y: { ticks: { callback: v => fmtKRW(v), font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.06)' } }, x: { ticks: { font: { size: 10 } } } }
       }
     });
   }
@@ -2166,7 +2163,7 @@ function kdOpenCashModal() {
   grid.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<div class="account-row">
     <span>${a.name}</span>
     <input type="number" id="kdCashInput_${a.id}" min="0" step="1" value="${Number(kdCashAccounts[a.id])||0}" style="grid-column:span 2">
-    <span>${fmtUSD(Number(kdCashAccounts[a.id])||0)}</span>
+    <span>${fmtKRW(Number(kdCashAccounts[a.id])||0)}</span>
   </div>`).join('');
   document.getElementById('kdCashModal').classList.add('open');
 }
@@ -2202,12 +2199,12 @@ function kdRenderDepositList() {
 
   const txns = kdDepositData.transactions;
   const total = txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-  if (grand) grand.innerHTML = `<strong>순 입금액 합계: ${fmtUSD(total)}</strong>`;
+  if (grand) grand.innerHTML = `<strong>순 입금액 합계: ${fmtKRW(total)}</strong>`;
 
   if (totals) {
     totals.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => {
       const v = txns.filter(t => t.accId === a.id).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-      return `<span>${a.name}: ${fmtUSD(v)}</span>`;
+      return `<span>${a.name}: ${fmtKRW(v)}</span>`;
     }).join('');
   }
 
@@ -2219,7 +2216,7 @@ function kdRenderDepositList() {
     return `<div class="deposit-row">
       <span>${t.date || '-'}</span>
       <span>${accName}</span>
-      <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtUSD(Number(t.amount))}</span>
+      <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtKRW(Number(t.amount))}</span>
       <span>
         <button class="edit-btn" onclick="kdOpenTxnEditor('${t.id}')">편집</button>
         <button class="del-btn" onclick="kdDeleteTxn('${t.id}')">삭제</button>
@@ -2304,7 +2301,7 @@ function kdRenderRecAccountInputs() {
 
 function kdUpdateRecTotal() {
   const total = KD_ACCOUNTS.filter(a => a.active !== false).reduce((s, a) => s + (Number(document.getElementById(`kdRecVal_${a.id}`)?.value) || 0), 0);
-  document.getElementById('kdRecTotal').textContent = fmtUSD(total);
+  document.getElementById('kdRecTotal').textContent = fmtKRW(total);
 }
 
 function kdFillCurrentValues() {
@@ -2383,8 +2380,8 @@ async function kdLoadHistoricalValues() {
     const refDate = dates.pop() || '';
     const total = KD_ACCOUNTS.reduce((s, a) => s + (values[a.id] || 0), 0);
     const msg = errors.length
-      ? `조회 완료 (일부 실패):\n${errors.join('\n')}\n\n기준일: ${refDate}\n총 주식 평가액: ${fmtUSD(total)}`
-      : `기준일: ${refDate} 종가\n총 주식 평가액: ${fmtUSD(total)}\n\n※ 현금은 포함되지 않습니다.`;
+      ? `조회 완료 (일부 실패):\n${errors.join('\n')}\n\n기준일: ${refDate}\n총 주식 평가액: ${fmtKRW(total)}`
+      : `기준일: ${refDate} 종가\n총 주식 평가액: ${fmtKRW(total)}\n\n※ 현금은 포함되지 않습니다.`;
     alert(msg);
   } finally {
     if (btn) { btn.textContent = '📅 이전 가치 불러오기'; btn.disabled = false; }
@@ -2472,11 +2469,11 @@ function kdRenderRecordsList() {
       ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
       : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
     const total = KD_ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
-    const cells = KD_ACCOUNTS.map(a => `<span class="amount">${fmtUSD(Number(rec.accounts[a.id])||0)}</span>`).join('');
+    const cells = KD_ACCOUNTS.map(a => `<span class="amount">${fmtKRW(Number(rec.accounts[a.id])||0)}</span>`).join('');
     return `<div class="records-row" style="grid-template-columns:${cols}">
       <span>${dateLabel}</span>
       ${cells}
-      <span class="total">${fmtUSD(total)}</span>
+      <span class="total">${fmtKRW(total)}</span>
       <span>
         <button class="edit-btn" onclick="kdEditMonthlyRecord('${rec.id}')">편집</button>
         <button class="del-btn" onclick="kdDeleteMonthlyRecord('${rec.id}')">삭제</button>
@@ -2511,7 +2508,7 @@ function kdRenderDivStockInputs() {
 
 function kdUpdateDivTotal() {
   const total = kdHoldings.reduce((s, h) => s + (Number(document.getElementById(`kdDivAmt_${h.ticker}`)?.value)||0), 0);
-  document.getElementById('kdDivGrandTotal').textContent = fmtUSD(total);
+  document.getElementById('kdDivGrandTotal').textContent = fmtKRW(total);
 }
 
 function kdAddDividendRecord() {
@@ -2562,10 +2559,10 @@ function kdRenderDividendLists() {
       const sorted = [...kdDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       sList.innerHTML = sorted.map(rec => {
         const total = Object.values(rec.stocks).reduce((s,v)=>s+(Number(v)||0),0);
-        const cells = allTickers.map(t=>`<span class="amount">${Number(rec.stocks[t])||0 ? fmtUSD(Number(rec.stocks[t])) : '-'}</span>`).join('');
+        const cells = allTickers.map(t=>`<span class="amount">${Number(rec.stocks[t])||0 ? fmtKRW(Number(rec.stocks[t])) : '-'}</span>`).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
           <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
-          <span class="total">${fmtUSD(total)}</span>
+          <span class="total">${fmtKRW(total)}</span>
           <span><button class="del-btn" onclick="kdDeleteDividendRecord('${rec.id}')">삭제</button></span>
         </div>`;
       }).join('');
@@ -2584,10 +2581,10 @@ function kdRenderDividendLists() {
       const sorted = [...kdDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       aList.innerHTML = sorted.map(rec => {
         const total = KD_ACCOUNTS.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
-        const cells = KD_ACCOUNTS.map(a=>`<span class="amount">${Number(rec.accounts[a.id])||0 ? fmtUSD(Number(rec.accounts[a.id])) : '-'}</span>`).join('');
+        const cells = KD_ACCOUNTS.map(a=>`<span class="amount">${Number(rec.accounts[a.id])||0 ? fmtKRW(Number(rec.accounts[a.id])) : '-'}</span>`).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
           <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
-          <span class="total">${fmtUSD(total)}</span>
+          <span class="total">${fmtKRW(total)}</span>
         </div>`;
       }).join('');
     }
@@ -2866,7 +2863,7 @@ function kdSaveWatch() {
   kdSaveWatchlist();
   kdCloseWatchModal();
   kdRenderWatchlist();
-  fetchNkPrice(ticker).then(info => {
+  fetchKdPrice(ticker).then(info => {
     if (info) {
       kdWatchPrices[ticker] = info;
       if (info.name && info.name !== ticker) {
@@ -2926,7 +2923,7 @@ function kdtLoadTrades() {
 }
 function kdtSaveTrades() { localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(kdtTrades)); }
 
-// FIFO 분석 (USD)
+// FIFO 분석
 function kdtFifoAnalysis() {
   const sorted = [...kdtTrades].sort((a, b) =>
     a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
@@ -3117,7 +3114,6 @@ function kdtRenderTradeHistory() {
     return;
   }
 
-  const fmtUSD = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
   const fmtPct = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
   const fmtQty = v => parseFloat(v).toLocaleString('en-US', { maximumFractionDigits:4 });
 
@@ -3128,7 +3124,7 @@ function kdtRenderTradeHistory() {
     if (isSell && cl) {
       const pCls = cl.pnl >= 0 ? 'price-plus' : 'price-minus';
       pnlCols = `
-        <td class="ta-r ${pCls}" style="white-space:nowrap">${cl.pnl >= 0 ? '+' : ''}${fmtUSD(cl.pnl)}</td>
+        <td class="ta-r ${pCls}" style="white-space:nowrap">${cl.pnl >= 0 ? '+' : ''}${fmtKRW(cl.pnl)}</td>
         <td class="ta-r ${pCls}">${fmtPct(cl.simpleReturn)}</td>
         <td class="ta-r" style="color:var(--muted)">${cl.holdingDays}일</td>
         <td class="ta-r ${cl.annReturn>=0?'price-plus':'price-minus'}">${fmtPct(cl.annReturn)}</td>`;
@@ -3142,9 +3138,9 @@ function kdtRenderTradeHistory() {
       <td style="white-space:nowrap">${accName}</td>
       <td><div style="font-weight:600;font-size:12px">${t.ticker}</div><div style="font-size:11px;color:var(--muted)">${t.name||''}</div></td>
       <td class="ta-r">${fmtQty(t.qty)}</td>
-      <td class="ta-r">${fmtUSD(t.price)}</td>
-      <td class="ta-r">${fmtUSD(t.price * t.qty)}</td>
-      <td class="ta-r" style="color:var(--muted)">${t.fee ? fmtUSD(t.fee) : '-'}</td>
+      <td class="ta-r">${fmtKRW(t.price)}</td>
+      <td class="ta-r">${fmtKRW(t.price * t.qty)}</td>
+      <td class="ta-r" style="color:var(--muted)">${t.fee ? fmtKRW(t.fee) : '-'}</td>
       ${pnlCols}
       <td style="white-space:nowrap">
         <button class="kdt-btn-sm" onclick="kdtOpenTradeModal('${t.id}')">편집</button>
@@ -3156,8 +3152,8 @@ function kdtRenderTradeHistory() {
   container.innerHTML = `<div style="overflow-x:auto"><table class="kdt-table">
     <thead><tr>
       <th>날짜</th><th>구분</th><th>계좌</th><th>종목</th>
-      <th class="ta-r">수량</th><th class="ta-r">단가(USD)</th>
-      <th class="ta-r">금액(USD)</th><th class="ta-r">수수료</th>
+      <th class="ta-r">수량</th><th class="ta-r">단가(원)</th>
+      <th class="ta-r">금액(원)</th><th class="ta-r">수수료</th>
       <th class="ta-r">손익</th><th class="ta-r">수익률</th>
       <th class="ta-r">보유일</th><th class="ta-r">연환산</th>
       <th></th>
