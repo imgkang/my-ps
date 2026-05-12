@@ -1262,7 +1262,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.247';
+const APP_VERSION = 'NonK v0.248';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2702,6 +2702,8 @@ function nkAddAccount() {
   nkSaveAccounts();
   nkRenderAccountSettingsBody();
   nkRenderAccountButtons();
+  nkRender();
+  nkRenderChart();
 }
 
 function nkToggleAccountActive(id) {
@@ -2711,6 +2713,8 @@ function nkToggleAccountActive(id) {
   nkSaveAccounts();
   nkRenderAccountSettingsBody();
   nkRenderAccountButtons();
+  nkRender();
+  nkRenderChart();
 }
 
 function nkRenameAccount(id) {
@@ -2722,6 +2726,8 @@ function nkRenameAccount(id) {
   nkSaveAccounts();
   nkRenderAccountSettingsBody();
   nkRenderAccountButtons();
+  nkRender();
+  nkRenderChart();
 }
 
 function nkDeleteAccount(id) {
@@ -2739,6 +2745,8 @@ function nkDeleteAccount(id) {
   nkSaveAccounts();
   nkRenderAccountSettingsBody();
   nkRenderAccountButtons();
+  nkRender();
+  nkRenderChart();
 }
 
 // ESC key closes any open NonK modal
