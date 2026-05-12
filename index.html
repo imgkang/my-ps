@@ -2782,7 +2782,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.229';
+const APP_VERSION = 'MyPM v0.230';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4953,6 +4953,7 @@ function addMonthlyRecord() {
   renderRecChart();
   renderPrincipalTable();
   renderEvalTable();
+  setTimeout(renderAnnualCharts, 50);
   toggleRecForm(false);
 }
 
@@ -4994,6 +4995,7 @@ function deleteMonthlyRecord(id) {
   renderRecChart();
   renderPrincipalTable();
   renderEvalTable();
+  setTimeout(renderAnnualCharts, 50);
 }
 
 function renderRecordsTableHeader() {
