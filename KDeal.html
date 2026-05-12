@@ -861,25 +861,6 @@
   .kdt-ac-name { font-size:13px; font-weight:500; }
   .kdt-ac-code { font-size:11px; color:var(--muted); }
   @media (max-width:600px) { .kdt-form-row { grid-template-columns:1fr; } }
-  .drive-modal-body { display:flex; flex-direction:column; gap:14px; }
-  .drive-status { padding:8px 12px; border-radius:6px; font-size:13px; text-align:center; }
-  .drive-status.idle    { background:#f1f5f9; color:#64748b; }
-  .drive-status.ok      { background:#dcfce7; color:#15803d; }
-  .drive-status.error   { background:#fee2e2; color:#dc2626; }
-  .drive-status.loading { background:#dbeafe; color:#1d4ed8; }
-  .drive-action-row { display:flex; gap:8px; }
-  .drive-action-row button { flex:1; padding:10px 0; border-radius:8px; font-size:13px; border:1.5px solid; cursor:pointer; background:white; font-weight:600; }
-  .drive-btn-load { border-color:#4285f4; color:#4285f4; }
-  .drive-btn-load:hover { background:#4285f4; color:white; }
-  .drive-btn-save { border-color:var(--primary); color:var(--primary); }
-  .drive-btn-save:hover { background:var(--primary); color:white; }
-  .drive-btn-logout { border-color:#dc2626; color:#dc2626; background:white; width:100%; padding:8px; cursor:pointer; border-radius:8px; font-size:13px; font-weight:600; }
-  .drive-btn-logout:hover { background:#dc2626; color:white; }
-  .drive-setup { background:#fffbeb; border:1px solid #fbbf24; border-radius:8px; padding:12px 14px; font-size:12px; line-height:1.5; }
-  .drive-setup code { background:#fef3c7; padding:1px 5px; border-radius:3px; }
-  .drive-setup ol { margin:6px 0 0 16px; padding:0; }
-  .drive-toast { position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); color:white; padding:10px 18px; border-radius:20px; font-size:13px; z-index:9999; opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap; }
-  .drive-toast.show { opacity:1; }
 </style>
 </head>
 <body>
@@ -1275,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.272';
+const APP_VERSION = 'KDeal v0.273';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1403,13 +1384,6 @@ const KD_MON_KEY   = 'kd_monthly_v1';
 const KD_DIV_KEY   = 'kd_dividends_v1';
 const KD_WATCH_KEY = 'kd_watchlist_v1';
 
-// Drive state (initialized by kdLoadDriveSettings at startup)
-let kdDriveClientId = '';
-let kdDriveAccessToken = null;
-let kdDriveFileId = null;
-let kdDriveLastSync = null;
-let _kdDriveSaveTimer = null;
-
 let kdHoldings        = kdLoadHoldings();
 let kdCashAccounts    = kdLoadCash();
 let kdDepositData     = kdLoadDeposits();
@@ -1435,17 +1409,17 @@ function kdLoadAccounts() {
   try { localStorage.setItem(KD_ACC_KEY, JSON.stringify(defaultAccs)); } catch(_) {}
   return defaultAccs;
 }
-function kdSaveAccounts()  { localStorage.setItem(KD_ACC_KEY, JSON.stringify(KD_ACCOUNTS)); kdDriveAutoSave(); }
+function kdSaveAccounts()  { localStorage.setItem(KD_ACC_KEY, JSON.stringify(KD_ACCOUNTS)); }
 function kdLoadHoldings()  { try { return JSON.parse(localStorage.getItem(KD_HOLD_KEY)) || []; } catch(e) { return []; } }
-function kdSaveHoldings()  { localStorage.setItem(KD_HOLD_KEY, JSON.stringify(kdHoldings)); kdDriveAutoSave(); }
+function kdSaveHoldings()  { localStorage.setItem(KD_HOLD_KEY, JSON.stringify(kdHoldings)); }
 function kdLoadCash()      { try { return JSON.parse(localStorage.getItem(KD_CASH_KEY)) || {}; } catch(e) { return {}; } }
-function kdSaveCashData()  { localStorage.setItem(KD_CASH_KEY, JSON.stringify(kdCashAccounts)); kdDriveAutoSave(); }
+function kdSaveCashData()  { localStorage.setItem(KD_CASH_KEY, JSON.stringify(kdCashAccounts)); }
 function kdLoadDeposits()  { try { return JSON.parse(localStorage.getItem(KD_DEP_KEY)) || { transactions: [] }; } catch(e) { return { transactions: [] }; } }
-function kdSaveDeposits()  { localStorage.setItem(KD_DEP_KEY, JSON.stringify(kdDepositData)); kdDriveAutoSave(); }
+function kdSaveDeposits()  { localStorage.setItem(KD_DEP_KEY, JSON.stringify(kdDepositData)); }
 function kdLoadMonthly()   { try { return JSON.parse(localStorage.getItem(KD_MON_KEY)) || []; } catch(e) { return []; } }
-function kdSaveMonthly()   { localStorage.setItem(KD_MON_KEY, JSON.stringify(kdMonthlyRecords)); kdDriveAutoSave(); }
+function kdSaveMonthly()   { localStorage.setItem(KD_MON_KEY, JSON.stringify(kdMonthlyRecords)); }
 function kdLoadDividends() { try { return JSON.parse(localStorage.getItem(KD_DIV_KEY)) || []; } catch(e) { return []; } }
-function kdSaveDividends() { localStorage.setItem(KD_DIV_KEY, JSON.stringify(kdDividendRecords)); kdDriveAutoSave(); }
+function kdSaveDividends() { localStorage.setItem(KD_DIV_KEY, JSON.stringify(kdDividendRecords)); }
 
 function fmtKRW(n) {
   if (!n && n !== 0) return '0원';
@@ -1629,7 +1603,6 @@ function kdRender() {
       <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
       <button class="btn-secondary" onclick="kdExportToFile()">📤 내보내기</button>
       <button class="btn-secondary" onclick="document.getElementById('kdImportInput').click()">📥 가져오기</button>
-      <button class="btn-secondary" onclick="kdOpenDriveModal()" style="color:${kdDriveAccessToken?'#16a34a':'inherit'}">☁️ ${kdDriveAccessToken?'동기화됨':'Drive'}</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     kdRenderAccountButtons();
@@ -1843,7 +1816,6 @@ function kdRender() {
       <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
       <button class="btn-secondary" onclick="kdExportToFile()">📤 내보내기</button>
       <button class="btn-secondary" onclick="document.getElementById('kdImportInput').click()">📥 가져오기</button>
-      <button class="btn-secondary" onclick="kdOpenDriveModal()" style="color:${kdDriveAccessToken?'#16a34a':'inherit'}">☁️ ${kdDriveAccessToken?'동기화됨':'Drive'}</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
   kdRenderAccountButtons();
@@ -2900,7 +2872,7 @@ document.addEventListener('keydown', e => {
 
 // ===== 관심종목 =====
 function kdLoadWatchlist() { try { return JSON.parse(localStorage.getItem(KD_WATCH_KEY)) || []; } catch(_) { return []; } }
-function kdSaveWatchlist() { localStorage.setItem(KD_WATCH_KEY, JSON.stringify(kdWatchlist)); kdDriveAutoSave(); }
+function kdSaveWatchlist() { localStorage.setItem(KD_WATCH_KEY, JSON.stringify(kdWatchlist)); }
 
 const kdWatchPrices = {};
 let _kdWatchPending = null;
@@ -3024,7 +2996,7 @@ let kdtHistoryOpen = false;
 function kdtLoadTrades() {
   try { return JSON.parse(localStorage.getItem(KDT_TRADES_KEY)) || []; } catch(_) { return []; }
 }
-function kdtSaveTrades() { localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(kdtTrades)); kdDriveAutoSave(); }
+function kdtSaveTrades() { localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(kdtTrades)); }
 
 // FIFO 분석
 function kdtFifoAnalysis() {
@@ -3577,359 +3549,18 @@ function kdInitCashIfEmpty() {
 // Init
 kdRunMigration();
 kdInitCashIfEmpty();
-kdLoadDriveSettings();
 kdRender();
 kdRenderChart();
 kdRenderAccountButtons();
 kdRenderWatchlist();
 kdInitAutoRefresh();
 if (kdHoldings.length || kdWatchlist.length) kdRefreshAll();
-// Drive: auto-init if Client ID saved
-if (kdDriveClientId) {
-  const _gisScript = document.createElement('script');
-  _gisScript.src = 'https://accounts.google.com/gsi/client';
-  _gisScript.async = true;
-  _gisScript.onload = () => kdInitGIS();
-  document.head.appendChild(_gisScript);
-}
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
 }
-
-// =============================================
-// ☁️ Google Drive 동기화 (KDeal)
-// =============================================
-const KD_DRIVE_SETTINGS_KEY = 'mypm_drive_settings_v1';
-
-function kdLoadDriveSettings() {
-  try {
-    const s = JSON.parse(localStorage.getItem(KD_DRIVE_SETTINGS_KEY) || '{}');
-    kdDriveClientId = s.clientId || '';
-    kdDriveFileId   = s.fileId   || null;
-    kdDriveLastSync = s.lastSync || null;
-  } catch(_) {}
-  try {
-    const t = JSON.parse(localStorage.getItem('drive_token_v2') || 'null');
-    if (t && t.token && t.expiresAt > Date.now()) {
-      kdDriveAccessToken = t.token;
-    } else {
-      localStorage.removeItem('drive_token_v2');
-    }
-  } catch(_) { localStorage.removeItem('drive_token_v2'); }
-  sessionStorage.removeItem('drive_token');
-}
-
-function kdSaveDriveSettings() {
-  localStorage.setItem(KD_DRIVE_SETTINGS_KEY, JSON.stringify({
-    clientId: kdDriveClientId, fileId: kdDriveFileId, lastSync: kdDriveLastSync
-  }));
-}
-
-function kdOpenDriveModal() {
-  document.getElementById('kdDriveClientIdInput').value = kdDriveClientId;
-  kdUpdateDriveUI();
-  document.getElementById('kdDriveModal').classList.add('open');
-}
-function kdCloseDriveModal() {
-  document.getElementById('kdDriveModal').classList.remove('open');
-}
-function kdOnDriveClientIdChange() {
-  kdDriveClientId = document.getElementById('kdDriveClientIdInput').value.trim();
-  kdSaveDriveSettings();
-  kdUpdateDriveUI();
-}
-function kdSetDriveStatus(type, msg) {
-  const el = document.getElementById('kdDriveStatusMsg');
-  if (el) { el.className = 'drive-status ' + type; el.textContent = msg; }
-}
-function kdUpdateDriveUI() {
-  const connected = !!kdDriveAccessToken;
-  const ls = document.getElementById('kdDriveLoginSection');
-  const as = document.getElementById('kdDriveActionSection');
-  if (ls) ls.style.display = connected ? 'none' : 'block';
-  if (as) as.style.display = connected ? 'block' : 'none';
-  if (kdDriveLastSync) {
-    const el = document.getElementById('kdDriveLastSync');
-    if (el) el.textContent = '마지막 동기화: ' + new Date(kdDriveLastSync).toLocaleString('ko-KR');
-  }
-  if (!connected) kdSetDriveStatus('idle', kdDriveClientId ? '로그인이 필요합니다' : '연결되지 않음');
-}
-function kdShowDriveToast(msg, dur = 2500) {
-  const el = document.getElementById('kdDriveToast');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
-}
-
-function kdInitGIS(skipSilentAuth = false) {
-  if (!kdDriveClientId) return;
-  if (typeof google === 'undefined' || !google.accounts) {
-    setTimeout(() => kdInitGIS(skipSilentAuth), 500); return;
-  }
-  let _silentPending = false;
-  window._kdGisClient = google.accounts.oauth2.initTokenClient({
-    client_id: kdDriveClientId,
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    callback: resp => {
-      const wasSilent = _silentPending;
-      _silentPending = false;
-      if (resp.error) {
-        if (!wasSilent) kdSetDriveStatus('error', '로그인 실패: ' + resp.error);
-        kdUpdateDriveUI(); return;
-      }
-      const expiresAt = Date.now() + ((resp.expires_in || 3600) * 1000) - 60000;
-      localStorage.setItem('drive_token_v2', JSON.stringify({ token: resp.access_token, expiresAt }));
-      kdDriveAccessToken = resp.access_token;
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { 'Authorization': 'Bearer ' + resp.access_token }
-      }).then(r => r.json()).then(u => {
-        if (u.email) localStorage.setItem('drive_user_hint', u.email);
-      }).catch(() => {});
-      kdUpdateDriveUI();
-      if (!wasSilent) {
-        kdSetDriveStatus('ok', '✅ Google Drive 연결됨');
-      } else {
-        kdDriveAutoLoadOnStartup();
-      }
-    }
-  });
-  if (skipSilentAuth) return;
-  if (!kdDriveAccessToken) {
-    _silentPending = true;
-    window._kdGisClient.requestAccessToken({ prompt: 'none' });
-  } else {
-    kdDriveAutoLoadOnStartup();
-    try {
-      const stored = JSON.parse(localStorage.getItem('drive_token_v2') || 'null');
-      if (stored && stored.expiresAt - Date.now() < 5 * 60 * 1000) {
-        _silentPending = true;
-        window._kdGisClient.requestAccessToken({ prompt: 'none' });
-      }
-    } catch(_) {}
-  }
-}
-
-function kdDriveSignIn() {
-  if (!kdDriveClientId) { alert('Client ID를 입력해주세요.'); return; }
-  if (!document.querySelector('script[src*="gsi/client"]')) {
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.async = true; s.onload = kdDriveSignIn;
-    document.head.appendChild(s); return;
-  }
-  if (!window._kdGisClient) { kdInitGIS(true); setTimeout(kdDriveSignIn, 600); return; }
-  const hint = localStorage.getItem('drive_user_hint') || '';
-  window._kdGisClient.requestAccessToken(hint ? { prompt: '', hint } : { prompt: 'consent' });
-}
-function kdDriveSignOut() {
-  if (kdDriveAccessToken && typeof google !== 'undefined') {
-    google.accounts.oauth2.revoke(kdDriveAccessToken);
-  }
-  kdDriveAccessToken = null;
-  localStorage.removeItem('drive_token_v2');
-  kdUpdateDriveUI();
-  kdRender();
-}
-
-async function kdDriveReq(url, opts = {}) {
-  const res = await fetch(url, {
-    ...opts,
-    headers: { 'Authorization': 'Bearer ' + kdDriveAccessToken, ...(opts.headers || {}) }
-  });
-  if (res.status === 401) {
-    kdDriveAccessToken = null;
-    localStorage.removeItem('drive_token_v2');
-    if (window._kdGisClient) {
-      const hint = localStorage.getItem('drive_user_hint') || '';
-      window._kdGisClient.requestAccessToken(hint ? { prompt: 'none', hint } : { prompt: 'none' });
-    } else kdUpdateDriveUI();
-    throw new Error('인증이 만료되었습니다. 잠시 후 다시 시도해주세요.');
-  }
-  return res;
-}
-
-async function kdDriveFindFile() {
-  if (kdDriveFileId) return kdDriveFileId;
-  const res = await kdDriveReq(
-    "https://www.googleapis.com/drive/v3/files?q=name%3D'mypm-data.json'+and+trashed%3Dfalse&fields=files(id)"
-  );
-  const d = await res.json();
-  const id = d.files && d.files[0] ? d.files[0].id : null;
-  if (id) { kdDriveFileId = id; kdSaveDriveSettings(); }
-  return id;
-}
-
-function kdBuildDriveSection() {
-  return {
-    holdings:  kdHoldings,
-    cash:      kdCashAccounts,
-    deposits:  kdDepositData,
-    monthly:   kdMonthlyRecords,
-    dividends: kdDividendRecords,
-    accounts:  KD_ACCOUNTS,
-    trades:    kdtTrades,
-    watchlist: kdWatchlist
-  };
-}
-
-async function kdDriveSave() {
-  if (!kdDriveAccessToken) { kdDriveSignIn(); return; }
-  kdSetDriveStatus('loading', '⏳ Drive에 저장 중...');
-  try {
-    const fileId = await kdDriveFindFile();
-    let bundle = { version: 11, exportedAt: new Date().toISOString() };
-    if (fileId) {
-      try {
-        const r = await kdDriveReq(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
-        bundle = await r.json();
-      } catch(_) {}
-    }
-    bundle.version = 11;
-    bundle.exportedAt = new Date().toISOString();
-    bundle.kd = kdBuildDriveSection();
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-    if (fileId) {
-      await kdDriveReq(
-        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-        { method: 'PATCH', body: blob, headers: { 'Content-Type': 'application/json' } }
-      );
-    } else {
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify({ name: 'mypm-data.json' })], { type: 'application/json' }));
-      form.append('file', blob);
-      const cr = await kdDriveReq(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-        { method: 'POST', body: form }
-      );
-      kdDriveFileId = (await cr.json()).id;
-    }
-    kdDriveLastSync = new Date().toISOString();
-    localStorage.setItem('kd_drive_last_load', String(Date.now()));
-    kdSaveDriveSettings();
-    kdUpdateDriveUI();
-    kdSetDriveStatus('ok', '✅ 저장 완료 — ' + new Date().toLocaleTimeString('ko-KR'));
-    kdShowDriveToast('☁️ Drive에 저장됨');
-    kdRender();
-  } catch(e) {
-    kdSetDriveStatus('error', '❌ ' + e.message);
-  }
-}
-
-async function kdDriveLoad() {
-  if (!kdDriveAccessToken) { kdDriveSignIn(); return; }
-  kdSetDriveStatus('loading', '⏳ Drive에서 불러오는 중...');
-  try {
-    const fileId = await kdDriveFindFile();
-    if (!fileId) { kdSetDriveStatus('idle', 'Drive에 저장된 데이터가 없습니다'); return; }
-    const res = await kdDriveReq(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
-    const data = await res.json();
-    const savedAt = data.exportedAt ? new Date(data.exportedAt).toLocaleString('ko-KR') : '알 수 없음';
-    if (!confirm(`Drive에서 데이터를 불러옵니다.\n저장 일시: ${savedAt}\n\n현재 기기의 데이터가 덮어쓰여집니다. 계속할까요?`)) {
-      kdSetDriveStatus('idle', '취소됨'); return;
-    }
-    kdApplyDriveData(data);
-    kdDriveLastSync = new Date().toISOString();
-    localStorage.setItem('kd_drive_last_load', String(Date.now()));
-    kdSaveDriveSettings();
-    kdSetDriveStatus('ok', '✅ 불러오기 완료 — 페이지 새로고침 중...');
-    setTimeout(() => location.reload(), 1200);
-  } catch(e) {
-    kdSetDriveStatus('error', '❌ ' + e.message);
-  }
-}
-
-function kdApplyDriveData(data) {
-  const src = data.kd
-    || (data.nonk && (data.version == null || data.version <= 9) ? data.nonk : null)
-    || {};
-  if (src.holdings)  { kdHoldings        = src.holdings;  localStorage.setItem(KD_HOLD_KEY, JSON.stringify(kdHoldings)); }
-  if (src.cash)      { kdCashAccounts     = src.cash;      localStorage.setItem(KD_CASH_KEY, JSON.stringify(kdCashAccounts)); }
-  if (src.deposits)  { kdDepositData      = src.deposits;  localStorage.setItem(KD_DEP_KEY,  JSON.stringify(kdDepositData)); }
-  if (src.monthly)   { kdMonthlyRecords   = src.monthly;   localStorage.setItem(KD_MON_KEY,  JSON.stringify(kdMonthlyRecords)); }
-  if (src.dividends) { kdDividendRecords  = src.dividends; localStorage.setItem(KD_DIV_KEY,  JSON.stringify(kdDividendRecords)); }
-  if (src.accounts && Array.isArray(src.accounts) && src.accounts.length > 0) {
-    KD_ACCOUNTS = src.accounts; localStorage.setItem(KD_ACC_KEY, JSON.stringify(KD_ACCOUNTS));
-  }
-  if (src.trades)    { kdtTrades   = src.trades;    localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(kdtTrades)); }
-  if (src.watchlist) { kdWatchlist = src.watchlist; localStorage.setItem(KD_WATCH_KEY,   JSON.stringify(kdWatchlist)); }
-  localStorage.setItem('kd_migration_done_v1', '1');
-}
-
-async function kdDriveAutoLoadOnStartup() {
-  if (!kdDriveAccessToken || !kdDriveClientId) return;
-  try {
-    const fileId = await kdDriveFindFile();
-    if (!fileId) return;
-    const res = await kdDriveReq(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
-    const data = await res.json();
-    const driveTime = data.exportedAt ? new Date(data.exportedAt).getTime() : 0;
-    const lastLoad  = parseInt(localStorage.getItem('kd_drive_last_load') || '0');
-    if (driveTime > lastLoad) {
-      kdApplyDriveData(data);
-      localStorage.setItem('kd_drive_last_load', String(driveTime));
-      kdRender();
-      kdRenderChart();
-      kdShowDriveToast('☁️ Drive에서 최신 데이터를 불러왔습니다');
-    }
-  } catch(_) {}
-}
-
-function kdDriveAutoSave() {
-  if (!kdDriveAccessToken) return;
-  clearTimeout(_kdDriveSaveTimer);
-  _kdDriveSaveTimer = setTimeout(() => kdDriveSave(), 5000);
-}
 </script>
 <div class="app-version" id="appVersion"></div>
 <input type="file" id="kdImportInput" accept=".json" style="display:none" onchange="kdImportFromFile(event)">
-
-<!-- ☁️ Google Drive 동기화 모달 -->
-<div class="modal-backdrop" id="kdDriveModal" onclick="if(event.target.id==='kdDriveModal')kdCloseDriveModal()">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-header">
-      <div><h2>☁️ Google Drive 동기화</h2></div>
-      <button class="close-btn" onclick="kdCloseDriveModal()">×</button>
-    </div>
-    <div class="drive-modal-body" style="padding:4px 0 8px">
-      <div class="drive-status idle" id="kdDriveStatusMsg">연결되지 않음</div>
-      <div>
-        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Google Client ID</label>
-        <input id="kdDriveClientIdInput" type="text" placeholder="123456789-xxx.apps.googleusercontent.com"
-               style="width:100%;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;font-family:monospace"
-               oninput="kdOnDriveClientIdChange()">
-      </div>
-      <div id="kdDriveLoginSection">
-        <button onclick="kdDriveSignIn()"
-                style="width:100%;padding:11px;background:#4285f4;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFF" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
-          Google 로그인
-        </button>
-      </div>
-      <div id="kdDriveActionSection" style="display:none">
-        <div class="drive-action-row">
-          <button class="drive-btn-load" onclick="kdDriveLoad()">⬇️ Drive에서 불러오기</button>
-          <button class="drive-btn-save" onclick="kdDriveSave()">⬆️ Drive에 저장</button>
-        </div>
-        <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px" id="kdDriveLastSync"></div>
-        <button class="drive-btn-logout" onclick="kdDriveSignOut()">연결 해제</button>
-      </div>
-      <div class="drive-setup">
-        <strong>⚙️ 최초 설정 방법 (1회만)</strong>
-        <ol>
-          <li><a href="https://console.cloud.google.com" target="_blank" style="color:#92400e">console.cloud.google.com</a> 접속</li>
-          <li>새 프로젝트 생성 → <strong>APIs &amp; Services → 사용자 인증 정보</strong></li>
-          <li><strong>OAuth 2.0 클라이언트 ID</strong> 생성 (웹 애플리케이션)</li>
-          <li>승인된 JavaScript 출처에 이 앱의 주소 입력</li>
-          <li><strong>Google Drive API</strong> 활성화</li>
-          <li>발급된 클라이언트 ID를 위 입력란에 붙여넣기</li>
-        </ol>
-        <div style="margin-top:8px">💡 데이터는 본인 구글 드라이브에 <code>mypm-data.json</code> 파일로 저장됩니다. 변경사항은 자동으로 저장됩니다.</div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="drive-toast" id="kdDriveToast"></div>
 </body>
 </html>
