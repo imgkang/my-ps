@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.262';
+const APP_VERSION = 'KDeal v0.263';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2319,6 +2319,7 @@ function kdOpenRecordsModal() {
   const d = new Date();
   document.getElementById('kdRecDate').value = d.toISOString().slice(0, 10);
   kdRenderRecAccountInputs();
+  kdFillCurrentValues();
   kdRenderRecordsList();
   document.getElementById('kdAccountRecordsModal').classList.add('open');
 }
@@ -2334,7 +2335,7 @@ function kdRenderRecAccountInputs() {
     <span>${a.name}</span>
     <input type="number" id="kdRecVal_${a.id}" min="0" step="1" placeholder="0" oninput="kdUpdateRecTotal()">
   </label>`).join('');
-  document.getElementById('kdRecTotal').textContent = '$0';
+  document.getElementById('kdRecTotal').textContent = fmtKRW(0);
 }
 
 function kdUpdateRecTotal() {
