@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.265';
+const APP_VERSION = 'KDeal v0.266';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1403,8 +1403,11 @@ function kdLoadAccounts() {
     if (Array.isArray(saved) && saved.length > 0) return saved;
   } catch(e) {}
   const hasExistingData = localStorage.getItem('kd_holdings_v1') || localStorage.getItem('kd_cash_v1');
-  if (hasExistingData) return [{ id: 'ds', name: 'D&S', active: true }, { id: 'nk1', name: 'nK1', active: true }];
-  return [{ id: 'acc1', name: '기본계좌', active: true }];
+  const defaultAccs = hasExistingData
+    ? [{ id: 'ds', name: 'D&S', active: true }, { id: 'nk1', name: 'nK1', active: true }]
+    : [{ id: 'acc1', name: '기본계좌', active: true }];
+  try { localStorage.setItem(KD_ACC_KEY, JSON.stringify(defaultAccs)); } catch(_) {}
+  return defaultAccs;
 }
 function kdSaveAccounts()  { localStorage.setItem(KD_ACC_KEY, JSON.stringify(KD_ACCOUNTS)); }
 function kdLoadHoldings()  { try { return JSON.parse(localStorage.getItem(KD_HOLD_KEY)) || []; } catch(e) { return []; } }
@@ -3424,7 +3427,14 @@ function kdRunMigration() {
   const MIGRATION_DONE = 'kd_migration_done_v1';
   if (localStorage.getItem(MIGRATION_DONE)) return;
   if (!localStorage.getItem(OLD_TRADES) && !localStorage.getItem(OLD_DEPOSITS) && !localStorage.getItem(OLD_WATCHLIST)) return;
-  if (localStorage.getItem(KDT_TRADES_KEY) || localStorage.getItem(KD_HOLD_KEY)) return;
+  if (localStorage.getItem(KDT_TRADES_KEY) || localStorage.getItem(KD_HOLD_KEY)) {
+    // 신규 키 존재 = 이미 마이그레이션 완료. 구 키만 남은 경우 정리 + 완료 플래그
+    localStorage.removeItem(OLD_TRADES);
+    localStorage.removeItem(OLD_DEPOSITS);
+    localStorage.removeItem(OLD_WATCHLIST);
+    localStorage.setItem(MIGRATION_DONE, '1');
+    return;
+  }
 
   console.log('[KDeal] 구 kdeal_* 데이터 마이그레이션 시작');
   const DEF_ACC = 'acc1';
