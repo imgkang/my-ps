@@ -783,6 +783,26 @@
   .nk-hero .diff-negative { color: #fca5a5; }
   .nk-action-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
   .nk-action-btns button { font-size: 12px; padding: 6px 12px; }
+  /* 관심종목 */
+  .nkw-table { width:100%; border-collapse:collapse; }
+  .nkw-table th { background:#f9fafb; padding:6px 5px; text-align:left; font-size:11px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; }
+  .nkw-table td { padding:9px 5px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+  .nkw-table th:first-child, .nkw-table td:first-child { padding-left:10px; }
+  .nkw-table tr:last-child td { border-bottom:none; }
+  .nkw-name { font-weight:600; font-size:14px; }
+  .nkw-ticker { font-size:11px; color:var(--muted); margin-top:1px; }
+  .nkw-pos { color:#e53935; }
+  .nkw-neg { color:#1e88e5; }
+  .nkw-ac-wrap { position:relative; }
+  .nkw-ac-list { display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:300; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.12); max-height:240px; overflow-y:auto; }
+  .nkw-ac-list.open { display:block; }
+  .nkw-ac-item { padding:9px 12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  .nkw-ac-item:hover { background:#f3f4f6; }
+  .nkw-ac-name { font-size:13px; font-weight:500; }
+  .nkw-ac-ticker { font-size:11px; color:var(--muted); }
+  .nkw-btn-del { font-size:11px; padding:3px 9px; border-radius:4px; cursor:pointer; border:none; background:#fee2e2; color:#991b1b; }
+  .nkw-btn-del:hover { background:#fecaca; }
+  .nkw-empty { padding:28px 20px; text-align:center; color:var(--muted); font-size:13px; }
 </style>
 </head>
 <body>
@@ -833,6 +853,40 @@
     <div class="chart-wrap"><canvas id="nkPortfolioChart"></canvas></div>
     <div id="nkChartEmpty" class="chart-empty" style="display:none">
       계좌 기록이 아직 없습니다. '📒 계좌 기록'에서 월별 평가금액을 먼저 추가해 주세요.
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">👁 관심종목</h2>
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenWatchModal()">+ 추가</button>
+    </div>
+    <div id="nkWatchContainer"><div class="nkw-empty">관심종목이 없습니다.</div></div>
+  </div>
+</div>
+
+<!-- 관심종목 추가 모달 -->
+<div class="modal-backdrop" id="nkWatchModal" onclick="if(event.target.id==='nkWatchModal')nkCloseWatchModal()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h2>👁 관심종목 추가</h2>
+      <button class="close-btn" onclick="nkCloseWatchModal()">×</button>
+    </div>
+    <div style="padding:4px 0 12px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">종목 검색 (이름 또는 티커)</label>
+      <div class="nkw-ac-wrap">
+        <input type="text" id="nkWatchSearch" class="form-input" placeholder="예: Apple 또는 AAPL"
+          oninput="nkOnWatchSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+        <div class="nkw-ac-list" id="nkWatchAcList"></div>
+      </div>
+      <div id="nkWatchPreview" style="display:none;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:13px">
+        <span id="nkWatchPreviewName" style="font-weight:600"></span>
+        <span id="nkWatchPreviewTicker" style="color:var(--muted);margin-left:8px"></span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="nkCloseWatchModal()">취소</button>
+      <button class="btn-primary" onclick="nkSaveWatch()">추가</button>
     </div>
   </div>
 </div>
@@ -1034,7 +1088,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.237';
+const APP_VERSION = 'NonK v0.238';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1143,12 +1197,14 @@ const NK_CASH_KEY  = 'nonk_cash_v1';
 const NK_DEP_KEY   = 'nonk_deposits_v1';
 const NK_MON_KEY   = 'nonk_monthly_v1';
 const NK_DIV_KEY   = 'nonk_dividends_v1';
+const NK_WATCH_KEY = 'nonk_watchlist_v1';
 
 let nkHoldings        = nkLoadHoldings();
 let nkCashAccounts    = nkLoadCash();
 let nkDepositData     = nkLoadDeposits();
 let nkMonthlyRecords  = nkLoadMonthly();
 let nkDividendRecords = nkLoadDividends();
+let nkWatchlist       = nkLoadWatchlist();
 let nkChartInstance       = null;
 let nkDetailChartInstance = null;
 let nkEditingTicker   = null;
@@ -1197,7 +1253,6 @@ function switchPage(page) {
 }
 
 async function nkRefreshAll() {
-  if (!nkHoldings.length) return;
   const statusEl = document.getElementById('nkRefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
@@ -1210,10 +1265,26 @@ async function nkRefreshAll() {
       h.updatedAt  = new Date().toISOString();
     } catch(e) { failCount++; }
   }));
+
+  // 관심종목 가격 갱신 (보유 종목과 중복 없이)
+  const holdTickers = new Set(nkHoldings.map(h => h.ticker));
+  await Promise.all(nkWatchlist.filter(w => !holdTickers.has(w.ticker)).map(async w => {
+    try {
+      const info = await fetchNkPrice(w.ticker);
+      if (info) {
+        nkWatchPrices[w.ticker] = info;
+        if (info.name && info.name !== w.ticker) { w.name = info.name; nkSaveWatchlist(); }
+      }
+    } catch(_) {}
+  }));
+  // 보유 종목이 관심에도 있으면 가격 공유
+  nkHoldings.forEach(h => { if (holdTickers.has(h.ticker) && nkWatchlist.find(w => w.ticker === h.ticker)) nkWatchPrices[h.ticker] = h; });
+
   nkLastRefreshTime = new Date();
   nkSaveHoldings();
   nkRender();
   nkRenderChart();
+  nkRenderWatchlist();
   if (statusEl) {
     const _mo = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
     const _dd = String(nkLastRefreshTime.getDate()).padStart(2,'0');
@@ -2416,12 +2487,137 @@ document.addEventListener('keydown', e => {
   });
 })();
 
+// ===== 관심종목 =====
+function nkLoadWatchlist() { try { return JSON.parse(localStorage.getItem(NK_WATCH_KEY)) || []; } catch(_) { return []; } }
+function nkSaveWatchlist() { localStorage.setItem(NK_WATCH_KEY, JSON.stringify(nkWatchlist)); }
+
+const nkWatchPrices = {};
+let _nkWatchPending = null;
+let _nkWatchAcTimer = null;
+
+function nkOpenWatchModal() {
+  _nkWatchPending = null;
+  document.getElementById('nkWatchSearch').value = '';
+  document.getElementById('nkWatchPreview').style.display = 'none';
+  const listEl = document.getElementById('nkWatchAcList');
+  if (listEl) listEl.classList.remove('open');
+  document.getElementById('nkWatchModal').classList.add('open');
+  setTimeout(() => document.getElementById('nkWatchSearch').focus(), 50);
+}
+function nkCloseWatchModal() {
+  document.getElementById('nkWatchModal').classList.remove('open');
+  _nkWatchPending = null;
+}
+
+function nkOnWatchSearchInput(val) {
+  clearTimeout(_nkWatchAcTimer);
+  _nkWatchPending = null;
+  document.getElementById('nkWatchPreview').style.display = 'none';
+  const listEl = document.getElementById('nkWatchAcList');
+  if (!val.trim()) { listEl.classList.remove('open'); return; }
+  _nkWatchAcTimer = setTimeout(async () => {
+    const items = await nkWatchFetchAutocomplete(val.trim());
+    listEl.innerHTML = '';
+    if (!items.length) { listEl.classList.remove('open'); return; }
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'nkw-ac-item';
+      div.innerHTML = `<span class="nkw-ac-name">${item.name}</span><span class="nkw-ac-ticker">${item.ticker}</span>`;
+      div.addEventListener('mousedown', e => {
+        e.preventDefault();
+        _nkWatchPending = item;
+        document.getElementById('nkWatchSearch').value = item.name;
+        listEl.classList.remove('open');
+        const prev = document.getElementById('nkWatchPreview');
+        prev.style.display = '';
+        document.getElementById('nkWatchPreviewName').textContent = item.name;
+        document.getElementById('nkWatchPreviewTicker').textContent = item.ticker;
+      });
+      listEl.appendChild(div);
+    });
+    listEl.classList.add('open');
+  }, 300);
+}
+
+async function nkWatchFetchAutocomplete(query) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=US&quotesCount=8&newsCount=0`;
+    const text = await fetchViaProxy(url);
+    const d = JSON.parse(text);
+    return (d.quotes || [])
+      .filter(it => it.symbol && !it.symbol.endsWith('.KS') && !it.symbol.endsWith('.KQ') && it.quoteType === 'EQUITY')
+      .slice(0, 8)
+      .map(it => ({ ticker: it.symbol, name: it.shortname || it.longname || it.symbol }));
+  } catch(_) { return []; }
+}
+
+function nkSaveWatch() {
+  if (!_nkWatchPending) {
+    const val = document.getElementById('nkWatchSearch').value.trim().toUpperCase();
+    if (!val) { alert('종목을 선택해 주세요.'); return; }
+    _nkWatchPending = { ticker: val, name: val };
+  }
+  const { ticker, name } = _nkWatchPending;
+  if (nkWatchlist.find(w => w.ticker === ticker)) { alert('이미 추가된 종목입니다.'); return; }
+  nkWatchlist.push({ ticker, name });
+  nkSaveWatchlist();
+  nkCloseWatchModal();
+  nkRenderWatchlist();
+  fetchNkPrice(ticker).then(info => {
+    if (info) {
+      nkWatchPrices[ticker] = info;
+      if (info.name && info.name !== ticker) {
+        const w = nkWatchlist.find(x => x.ticker === ticker);
+        if (w) { w.name = info.name; nkSaveWatchlist(); }
+      }
+      nkRenderWatchlist();
+    }
+  }).catch(() => {});
+}
+
+function nkDeleteWatch(ticker) {
+  nkWatchlist = nkWatchlist.filter(w => w.ticker !== ticker);
+  nkSaveWatchlist();
+  nkRenderWatchlist();
+}
+
+function nkRenderWatchlist() {
+  const c = document.getElementById('nkWatchContainer');
+  if (!c) return;
+  if (!nkWatchlist.length) {
+    c.innerHTML = '<div class="nkw-empty">관심종목이 없습니다.</div>';
+    return;
+  }
+  const rows = nkWatchlist.map(w => {
+    const info = nkWatchPrices[w.ticker];
+    const cur  = info ? info.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+    const chg  = info ? (info.change || 0) : null;
+    const chgPct = info ? (info.changeRate || 0) : null;
+    const cls  = chg != null ? (chg >= 0 ? 'nkw-pos' : 'nkw-neg') : '';
+    const chgStr = chg != null ? `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}` : '-';
+    const pctStr = chgPct != null ? `${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%` : '-';
+    return `<tr>
+      <td><div class="nkw-name">${w.name}</div><div class="nkw-ticker">${w.ticker}</div></td>
+      <td class="ta-r" style="font-weight:700;font-variant-numeric:tabular-nums">$${cur}</td>
+      <td class="ta-r ${cls}" style="font-variant-numeric:tabular-nums">${chgStr}</td>
+      <td class="ta-r ${cls}">${pctStr}</td>
+      <td class="ta-c"><button class="nkw-btn-del" onclick="nkDeleteWatch('${w.ticker}')">삭제</button></td>
+    </tr>`;
+  }).join('');
+  c.innerHTML = `<div style="overflow-x:auto"><table class="nkw-table">
+    <thead><tr>
+      <th>종목</th><th class="ta-r">현재가</th><th class="ta-r">변동($)</th><th class="ta-r">변동률</th><th></th>
+    </tr></thead><tbody>${rows}</tbody>
+  </table></div>`;
+}
+
 // Init
 nkRender();
 nkRenderChart();
 nkRenderAccountButtons();
+nkRenderWatchlist();
 nkInitAutoRefresh();
-if (nkHoldings.length) nkRefreshAll();
+if (nkHoldings.length || nkWatchlist.length) nkRefreshAll();
 </script>
 <div class="app-version" id="appVersion"></div>
 </body>
