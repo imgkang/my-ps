@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.255';
+const APP_VERSION = 'KDeal v0.256';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3327,7 +3327,89 @@ document.addEventListener('click', e => {
   }
 });
 
+// ===== 구 kdeal_* 데이터 자동 마이그레이션 =====
+function kdFifoToHoldings(trades) {
+  const sorted = [...trades].sort((a, b) => a.date.localeCompare(b.date));
+  const lots = {}, nameMap = {}, accMap = {};
+  for (const t of sorted) {
+    const tk = t.ticker;
+    if (!tk) continue;
+    if (t.name) nameMap[tk] = t.name;
+    if (t.accId) accMap[tk] = t.accId;
+    if (!lots[tk]) lots[tk] = [];
+    if (t.type === 'buy') {
+      lots[tk].push({ qty: t.qty, price: t.price });
+    } else if (t.type === 'sell') {
+      let rem = t.qty;
+      while (rem > 0 && lots[tk].length > 0) {
+        if (lots[tk][0].qty <= rem) { rem -= lots[tk][0].qty; lots[tk].shift(); }
+        else { lots[tk][0].qty -= rem; rem = 0; }
+      }
+    }
+  }
+  return Object.entries(lots)
+    .filter(([, ls]) => ls.length > 0)
+    .map(([ticker, ls]) => {
+      const totalQty = ls.reduce((s, l) => s + l.qty, 0);
+      const avgPrice = ls.reduce((s, l) => s + l.qty * l.price, 0) / totalQty;
+      return { ticker, name: nameMap[ticker] || ticker, qty: totalQty, avgPrice,
+               price: avgPrice, change: 0, changeRate: 0, accId: accMap[ticker] || 'acc1' };
+    }).filter(h => h.qty > 0);
+}
+
+function kdRunMigration() {
+  const OLD_TRADES    = 'kdeal_trades_v1';
+  const OLD_DEPOSITS  = 'kdeal_deposits_v1';
+  const OLD_WATCHLIST = 'kdeal_watchlist_v1';
+  if (!localStorage.getItem(OLD_TRADES) && !localStorage.getItem(OLD_DEPOSITS) && !localStorage.getItem(OLD_WATCHLIST)) return;
+  if (localStorage.getItem(KDT_TRADES_KEY) || localStorage.getItem(KD_HOLD_KEY)) return;
+
+  console.log('[KDeal] 구 kdeal_* 데이터 마이그레이션 시작');
+  const DEF_ACC = 'acc1';
+
+  if (!localStorage.getItem(KD_ACC_KEY)) {
+    KD_ACCOUNTS = [{ id: DEF_ACC, name: '기본계좌', active: true }];
+    kdSaveAccounts();
+  }
+
+  let trades = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(OLD_TRADES));
+    if (Array.isArray(raw)) {
+      trades = raw.map(({ code, ticker, ...rest }) => ({ ticker: code || ticker || '', accId: DEF_ACC, ...rest }));
+      kdtTrades = trades;
+      kdtSaveTrades();
+    }
+  } catch(e) { console.warn('[KDeal] 거래 마이그레이션 오류:', e); }
+
+  try {
+    const raw = JSON.parse(localStorage.getItem(OLD_DEPOSITS));
+    if (Array.isArray(raw) && raw.length > 0) {
+      kdDepositData = { transactions: raw.map(d => ({ ...d, accId: DEF_ACC })) };
+      kdSaveDeposits();
+    }
+  } catch(e) { console.warn('[KDeal] 입출금 마이그레이션 오류:', e); }
+
+  try {
+    const raw = JSON.parse(localStorage.getItem(OLD_WATCHLIST));
+    if (Array.isArray(raw) && raw.length > 0) {
+      kdWatchlist = raw.map(({ code, ticker, ...rest }) => ({ ticker: code || ticker || '', ...rest }));
+      kdSaveWatchlist();
+    }
+  } catch(e) { console.warn('[KDeal] 관심종목 마이그레이션 오류:', e); }
+
+  if (trades.length > 0) {
+    kdHoldings = kdFifoToHoldings(trades);
+    kdSaveHoldings();
+  }
+
+  const msg = `거래 ${trades.length}건 → 보유종목 ${kdHoldings.length}개`;
+  console.log('[KDeal] 마이그레이션 완료: ' + msg);
+  alert('이전 KDeal 데이터를 자동으로 가져왔습니다.\n' + msg + '\n\n기본계좌로 통합되었습니다. 계좌 설정에서 수정하세요.');
+}
+
 // Init
+kdRunMigration();
 kdRender();
 kdRenderChart();
 kdRenderAccountButtons();
