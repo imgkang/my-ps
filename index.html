@@ -1044,6 +1044,7 @@ Chart.register({
     font-size: 12px; color: rgba(0,0,0,0.35); line-height: 1; font-weight: 700; }
   .cfg-acc-btn.active .cfg-extra-del { color: rgba(255,255,255,0.7); }
   .cfg-extra-del:hover { color: #ef4444 !important; }
+  .cfg-extra-acc-btn:not(.active) .cfg-extra-del { font-size: 15px; right: 4px; }
   .cfg-add-acc-btn { font-size: 12px; color: var(--primary); background: none; border: 1px dashed var(--primary);
     border-radius: 6px; padding: 4px 10px; cursor: pointer; margin-bottom: 4px; }
   .cfg-note { font-size: 11px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
@@ -2784,7 +2785,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.233';
+const APP_VERSION = 'MyPM v0.234';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -8802,6 +8803,9 @@ function cfgAddExtraAcc(person) {
   _renderCfgAccGrid(person);
 }
 function cfgRemoveExtraAcc(person, idx) {
+  const acc = _cfgExtraAccounts[person][idx];
+  if (!acc) return;
+  if (!confirm(`'${acc.name}' 계좌를 삭제할까요?`)) return;
   _cfgExtraAccounts[person].splice(idx, 1);
   _renderCfgAccGrid(person);
 }
