@@ -861,6 +861,25 @@
   .nkt-ac-name { font-size:13px; font-weight:500; }
   .nkt-ac-code { font-size:11px; color:var(--muted); }
   @media (max-width:600px) { .nkt-form-row { grid-template-columns:1fr; } }
+  .drive-modal-body { display:flex; flex-direction:column; gap:14px; }
+  .drive-status { padding:8px 12px; border-radius:6px; font-size:13px; text-align:center; }
+  .drive-status.idle    { background:#f1f5f9; color:#64748b; }
+  .drive-status.ok      { background:#dcfce7; color:#15803d; }
+  .drive-status.error   { background:#fee2e2; color:#dc2626; }
+  .drive-status.loading { background:#dbeafe; color:#1d4ed8; }
+  .drive-action-row { display:flex; gap:8px; }
+  .drive-action-row button { flex:1; padding:10px 0; border-radius:8px; font-size:13px; border:1.5px solid; cursor:pointer; background:white; font-weight:600; }
+  .drive-btn-load { border-color:#4285f4; color:#4285f4; }
+  .drive-btn-load:hover { background:#4285f4; color:white; }
+  .drive-btn-save { border-color:var(--primary); color:var(--primary); }
+  .drive-btn-save:hover { background:var(--primary); color:white; }
+  .drive-btn-logout { border-color:#dc2626; color:#dc2626; background:white; width:100%; padding:8px; cursor:pointer; border-radius:8px; font-size:13px; font-weight:600; }
+  .drive-btn-logout:hover { background:#dc2626; color:white; }
+  .drive-setup { background:#fffbeb; border:1px solid #fbbf24; border-radius:8px; padding:12px 14px; font-size:12px; line-height:1.5; }
+  .drive-setup code { background:#fef3c7; padding:1px 5px; border-radius:3px; }
+  .drive-setup ol { margin:6px 0 0 16px; padding:0; }
+  .drive-toast { position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); color:white; padding:10px 18px; border-radius:20px; font-size:13px; z-index:9999; opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap; }
+  .drive-toast.show { opacity:1; }
 </style>
 </head>
 <body>
@@ -1255,7 +1274,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.271';
+const APP_VERSION = 'NonK v0.272';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1367,6 +1386,13 @@ const NK_MON_KEY   = 'nonk_monthly_v1';
 const NK_DIV_KEY   = 'nonk_dividends_v1';
 const NK_WATCH_KEY = 'nonk_watchlist_v1';
 
+// Drive state (initialized by nkLoadDriveSettings at startup)
+let nkDriveClientId = '';
+let nkDriveAccessToken = null;
+let nkDriveFileId = null;
+let nkDriveLastSync = null;
+let _nkDriveSaveTimer = null;
+
 let nkHoldings        = nkLoadHoldings();
 let nkCashAccounts    = nkLoadCash();
 let nkDepositData     = nkLoadDeposits();
@@ -1389,17 +1415,17 @@ function nkLoadAccounts() {
   if (hasExistingData) return [{ id: 'ds', name: 'D&S', active: true }, { id: 'nk1', name: 'nK1', active: true }];
   return [{ id: 'acc1', name: '기본계좌', active: true }];
 }
-function nkSaveAccounts()  { localStorage.setItem(NK_ACC_KEY, JSON.stringify(NK_ACCOUNTS)); }
+function nkSaveAccounts()  { localStorage.setItem(NK_ACC_KEY, JSON.stringify(NK_ACCOUNTS)); nkDriveAutoSave(); }
 function nkLoadHoldings()  { try { return JSON.parse(localStorage.getItem(NK_HOLD_KEY)) || []; } catch(e) { return []; } }
-function nkSaveHoldings()  { localStorage.setItem(NK_HOLD_KEY, JSON.stringify(nkHoldings)); }
+function nkSaveHoldings()  { localStorage.setItem(NK_HOLD_KEY, JSON.stringify(nkHoldings)); nkDriveAutoSave(); }
 function nkLoadCash()      { try { return JSON.parse(localStorage.getItem(NK_CASH_KEY)) || {}; } catch(e) { return {}; } }
-function nkSaveCashData()  { localStorage.setItem(NK_CASH_KEY, JSON.stringify(nkCashAccounts)); }
+function nkSaveCashData()  { localStorage.setItem(NK_CASH_KEY, JSON.stringify(nkCashAccounts)); nkDriveAutoSave(); }
 function nkLoadDeposits()  { try { return JSON.parse(localStorage.getItem(NK_DEP_KEY)) || { transactions: [] }; } catch(e) { return { transactions: [] }; } }
-function nkSaveDeposits()  { localStorage.setItem(NK_DEP_KEY, JSON.stringify(nkDepositData)); }
+function nkSaveDeposits()  { localStorage.setItem(NK_DEP_KEY, JSON.stringify(nkDepositData)); nkDriveAutoSave(); }
 function nkLoadMonthly()   { try { return JSON.parse(localStorage.getItem(NK_MON_KEY)) || []; } catch(e) { return []; } }
-function nkSaveMonthly()   { localStorage.setItem(NK_MON_KEY, JSON.stringify(nkMonthlyRecords)); }
+function nkSaveMonthly()   { localStorage.setItem(NK_MON_KEY, JSON.stringify(nkMonthlyRecords)); nkDriveAutoSave(); }
 function nkLoadDividends() { try { return JSON.parse(localStorage.getItem(NK_DIV_KEY)) || []; } catch(e) { return []; } }
-function nkSaveDividends() { localStorage.setItem(NK_DIV_KEY, JSON.stringify(nkDividendRecords)); }
+function nkSaveDividends() { localStorage.setItem(NK_DIV_KEY, JSON.stringify(nkDividendRecords)); nkDriveAutoSave(); }
 
 function fmtUSD(n) {
   if (!n && n !== 0) return '$0';
@@ -1565,6 +1591,9 @@ function nkRender() {
       <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-secondary" onclick="nkExportToFile()">📤 내보내기</button>
+      <button class="btn-secondary" onclick="document.getElementById('nkImportInput').click()">📥 가져오기</button>
+      <button class="btn-secondary" onclick="nkOpenDriveModal()" style="color:${nkDriveAccessToken?'#16a34a':'inherit'}">☁️ ${nkDriveAccessToken?'동기화됨':'Drive'}</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     nkRenderAccountButtons();
@@ -1776,6 +1805,9 @@ function nkRender() {
       <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-secondary" onclick="nkExportToFile()">📤 내보내기</button>
+      <button class="btn-secondary" onclick="document.getElementById('nkImportInput').click()">📥 가져오기</button>
+      <button class="btn-secondary" onclick="nkOpenDriveModal()" style="color:${nkDriveAccessToken?'#16a34a':'inherit'}">☁️ ${nkDriveAccessToken?'동기화됨':'Drive'}</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
   nkRenderAccountButtons();
@@ -2777,7 +2809,7 @@ document.addEventListener('keydown', e => {
 
 // ===== 관심종목 =====
 function nkLoadWatchlist() { try { return JSON.parse(localStorage.getItem(NK_WATCH_KEY)) || []; } catch(_) { return []; } }
-function nkSaveWatchlist() { localStorage.setItem(NK_WATCH_KEY, JSON.stringify(nkWatchlist)); }
+function nkSaveWatchlist() { localStorage.setItem(NK_WATCH_KEY, JSON.stringify(nkWatchlist)); nkDriveAutoSave(); }
 
 const nkWatchPrices = {};
 let _nkWatchPending = null;
@@ -2909,7 +2941,7 @@ let nktHistoryOpen = false;
 function nktLoadTrades() {
   try { return JSON.parse(localStorage.getItem(NKT_TRADES_KEY)) || []; } catch(_) { return []; }
 }
-function nktSaveTrades() { localStorage.setItem(NKT_TRADES_KEY, JSON.stringify(nktTrades)); }
+function nktSaveTrades() { localStorage.setItem(NKT_TRADES_KEY, JSON.stringify(nktTrades)); nkDriveAutoSave(); }
 
 // FIFO 분석 (USD)
 function nktFifoAnalysis() {
@@ -3322,17 +3354,356 @@ document.addEventListener('click', e => {
 });
 
 // Init
+nkLoadDriveSettings();
 nkRender();
 nkRenderChart();
 nkRenderAccountButtons();
 nkRenderWatchlist();
 nkInitAutoRefresh();
 if (nkHoldings.length || nkWatchlist.length) nkRefreshAll();
+// Drive: auto-init if Client ID saved
+if (nkDriveClientId) {
+  const _gisScript = document.createElement('script');
+  _gisScript.src = 'https://accounts.google.com/gsi/client';
+  _gisScript.async = true;
+  _gisScript.onload = () => nkInitGIS();
+  document.head.appendChild(_gisScript);
+}
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
 }
+
+// =============================================
+// ☁️ Google Drive 동기화 (NonK)
+// =============================================
+const NK_DRIVE_SETTINGS_KEY = 'mypm_drive_settings_v1';
+
+function nkLoadDriveSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(NK_DRIVE_SETTINGS_KEY) || '{}');
+    nkDriveClientId = s.clientId || '';
+    nkDriveFileId   = s.fileId   || null;
+    nkDriveLastSync = s.lastSync || null;
+  } catch(_) {}
+  try {
+    const t = JSON.parse(localStorage.getItem('drive_token_v2') || 'null');
+    if (t && t.token && t.expiresAt > Date.now()) {
+      nkDriveAccessToken = t.token;
+    } else {
+      localStorage.removeItem('drive_token_v2');
+    }
+  } catch(_) { localStorage.removeItem('drive_token_v2'); }
+  sessionStorage.removeItem('drive_token');
+}
+
+function nkSaveDriveSettings() {
+  localStorage.setItem(NK_DRIVE_SETTINGS_KEY, JSON.stringify({
+    clientId: nkDriveClientId, fileId: nkDriveFileId, lastSync: nkDriveLastSync
+  }));
+}
+
+function nkOpenDriveModal() {
+  document.getElementById('nkDriveClientIdInput').value = nkDriveClientId;
+  nkUpdateDriveUI();
+  document.getElementById('nkDriveModal').classList.add('open');
+}
+function nkCloseDriveModal() {
+  document.getElementById('nkDriveModal').classList.remove('open');
+}
+function nkOnDriveClientIdChange() {
+  nkDriveClientId = document.getElementById('nkDriveClientIdInput').value.trim();
+  nkSaveDriveSettings();
+  nkUpdateDriveUI();
+}
+function nkSetDriveStatus(type, msg) {
+  const el = document.getElementById('nkDriveStatusMsg');
+  if (el) { el.className = 'drive-status ' + type; el.textContent = msg; }
+}
+function nkUpdateDriveUI() {
+  const connected = !!nkDriveAccessToken;
+  const ls = document.getElementById('nkDriveLoginSection');
+  const as = document.getElementById('nkDriveActionSection');
+  if (ls) ls.style.display = connected ? 'none' : 'block';
+  if (as) as.style.display = connected ? 'block' : 'none';
+  if (nkDriveLastSync) {
+    const el = document.getElementById('nkDriveLastSync');
+    if (el) el.textContent = '마지막 동기화: ' + new Date(nkDriveLastSync).toLocaleString('ko-KR');
+  }
+  if (!connected) nkSetDriveStatus('idle', nkDriveClientId ? '로그인이 필요합니다' : '연결되지 않음');
+}
+function nkShowDriveToast(msg, dur = 2500) {
+  const el = document.getElementById('nkDriveToast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function nkInitGIS(skipSilentAuth = false) {
+  if (!nkDriveClientId) return;
+  if (typeof google === 'undefined' || !google.accounts) {
+    setTimeout(() => nkInitGIS(skipSilentAuth), 500); return;
+  }
+  let _silentPending = false;
+  window._nkGisClient = google.accounts.oauth2.initTokenClient({
+    client_id: nkDriveClientId,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: resp => {
+      const wasSilent = _silentPending;
+      _silentPending = false;
+      if (resp.error) {
+        if (!wasSilent) nkSetDriveStatus('error', '로그인 실패: ' + resp.error);
+        nkUpdateDriveUI(); return;
+      }
+      const expiresAt = Date.now() + ((resp.expires_in || 3600) * 1000) - 60000;
+      localStorage.setItem('drive_token_v2', JSON.stringify({ token: resp.access_token, expiresAt }));
+      nkDriveAccessToken = resp.access_token;
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { 'Authorization': 'Bearer ' + resp.access_token }
+      }).then(r => r.json()).then(u => {
+        if (u.email) localStorage.setItem('drive_user_hint', u.email);
+      }).catch(() => {});
+      nkUpdateDriveUI();
+      if (!wasSilent) {
+        nkSetDriveStatus('ok', '✅ Google Drive 연결됨');
+      } else {
+        nkDriveAutoLoadOnStartup();
+      }
+    }
+  });
+  if (skipSilentAuth) return;
+  if (!nkDriveAccessToken) {
+    _silentPending = true;
+    window._nkGisClient.requestAccessToken({ prompt: 'none' });
+  } else {
+    nkDriveAutoLoadOnStartup();
+    try {
+      const stored = JSON.parse(localStorage.getItem('drive_token_v2') || 'null');
+      if (stored && stored.expiresAt - Date.now() < 5 * 60 * 1000) {
+        _silentPending = true;
+        window._nkGisClient.requestAccessToken({ prompt: 'none' });
+      }
+    } catch(_) {}
+  }
+}
+
+function nkDriveSignIn() {
+  if (!nkDriveClientId) { alert('Client ID를 입력해주세요.'); return; }
+  if (!document.querySelector('script[src*="gsi/client"]')) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.onload = nkDriveSignIn;
+    document.head.appendChild(s); return;
+  }
+  if (!window._nkGisClient) { nkInitGIS(true); setTimeout(nkDriveSignIn, 600); return; }
+  const hint = localStorage.getItem('drive_user_hint') || '';
+  window._nkGisClient.requestAccessToken(hint ? { prompt: '', hint } : { prompt: 'consent' });
+}
+function nkDriveSignOut() {
+  if (nkDriveAccessToken && typeof google !== 'undefined') {
+    google.accounts.oauth2.revoke(nkDriveAccessToken);
+  }
+  nkDriveAccessToken = null;
+  localStorage.removeItem('drive_token_v2');
+  nkUpdateDriveUI();
+  nkRender();
+}
+
+async function nkDriveReq(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + nkDriveAccessToken, ...(opts.headers || {}) }
+  });
+  if (res.status === 401) {
+    nkDriveAccessToken = null;
+    localStorage.removeItem('drive_token_v2');
+    if (window._nkGisClient) {
+      const hint = localStorage.getItem('drive_user_hint') || '';
+      window._nkGisClient.requestAccessToken(hint ? { prompt: 'none', hint } : { prompt: 'none' });
+    } else nkUpdateDriveUI();
+    throw new Error('인증이 만료되었습니다. 잠시 후 다시 시도해주세요.');
+  }
+  return res;
+}
+
+async function nkDriveFindFile() {
+  if (nkDriveFileId) return nkDriveFileId;
+  const res = await nkDriveReq(
+    "https://www.googleapis.com/drive/v3/files?q=name%3D'mypm-data.json'+and+trashed%3Dfalse&fields=files(id)"
+  );
+  const d = await res.json();
+  const id = d.files && d.files[0] ? d.files[0].id : null;
+  if (id) { nkDriveFileId = id; nkSaveDriveSettings(); }
+  return id;
+}
+
+function nkBuildDriveSection() {
+  return {
+    holdings:  nkHoldings,
+    cash:      nkCashAccounts,
+    deposits:  nkDepositData,
+    monthly:   nkMonthlyRecords,
+    dividends: nkDividendRecords,
+    accounts:  NK_ACCOUNTS,
+    trades:    nktTrades,
+    watchlist: nkWatchlist
+  };
+}
+
+async function nkDriveSave() {
+  if (!nkDriveAccessToken) { nkDriveSignIn(); return; }
+  nkSetDriveStatus('loading', '⏳ Drive에 저장 중...');
+  try {
+    const fileId = await nkDriveFindFile();
+    let bundle = { version: 11, exportedAt: new Date().toISOString() };
+    if (fileId) {
+      try {
+        const r = await nkDriveReq(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+        bundle = await r.json();
+      } catch(_) {}
+    }
+    bundle.version = 11;
+    bundle.exportedAt = new Date().toISOString();
+    bundle.nonk = nkBuildDriveSection();
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    if (fileId) {
+      await nkDriveReq(
+        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+        { method: 'PATCH', body: blob, headers: { 'Content-Type': 'application/json' } }
+      );
+    } else {
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: 'mypm-data.json' })], { type: 'application/json' }));
+      form.append('file', blob);
+      const cr = await nkDriveReq(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        { method: 'POST', body: form }
+      );
+      nkDriveFileId = (await cr.json()).id;
+    }
+    nkDriveLastSync = new Date().toISOString();
+    localStorage.setItem('nonk_drive_last_load', String(Date.now()));
+    nkSaveDriveSettings();
+    nkUpdateDriveUI();
+    nkSetDriveStatus('ok', '✅ 저장 완료 — ' + new Date().toLocaleTimeString('ko-KR'));
+    nkShowDriveToast('☁️ Drive에 저장됨');
+    nkRender();
+  } catch(e) {
+    nkSetDriveStatus('error', '❌ ' + e.message);
+  }
+}
+
+async function nkDriveLoad() {
+  if (!nkDriveAccessToken) { nkDriveSignIn(); return; }
+  nkSetDriveStatus('loading', '⏳ Drive에서 불러오는 중...');
+  try {
+    const fileId = await nkDriveFindFile();
+    if (!fileId) { nkSetDriveStatus('idle', 'Drive에 저장된 데이터가 없습니다'); return; }
+    const res = await nkDriveReq(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+    const data = await res.json();
+    const savedAt = data.exportedAt ? new Date(data.exportedAt).toLocaleString('ko-KR') : '알 수 없음';
+    if (!confirm(`Drive에서 데이터를 불러옵니다.\n저장 일시: ${savedAt}\n\n현재 기기의 데이터가 덮어쓰여집니다. 계속할까요?`)) {
+      nkSetDriveStatus('idle', '취소됨'); return;
+    }
+    nkApplyDriveData(data);
+    nkDriveLastSync = new Date().toISOString();
+    localStorage.setItem('nonk_drive_last_load', String(Date.now()));
+    nkSaveDriveSettings();
+    nkSetDriveStatus('ok', '✅ 불러오기 완료 — 페이지 새로고침 중...');
+    setTimeout(() => location.reload(), 1200);
+  } catch(e) {
+    nkSetDriveStatus('error', '❌ ' + e.message);
+  }
+}
+
+function nkApplyDriveData(data) {
+  const src = (data.version >= 8 && data.nonk) ? data.nonk : data;
+  if (src.holdings)  { nkHoldings        = src.holdings;  localStorage.setItem(NK_HOLD_KEY, JSON.stringify(nkHoldings)); }
+  if (src.cash)      { nkCashAccounts     = src.cash;      localStorage.setItem(NK_CASH_KEY, JSON.stringify(nkCashAccounts)); }
+  if (src.deposits)  { nkDepositData      = src.deposits;  localStorage.setItem(NK_DEP_KEY,  JSON.stringify(nkDepositData)); }
+  if (src.monthly)   { nkMonthlyRecords   = src.monthly;   localStorage.setItem(NK_MON_KEY,  JSON.stringify(nkMonthlyRecords)); }
+  if (src.dividends) { nkDividendRecords  = src.dividends; localStorage.setItem(NK_DIV_KEY,  JSON.stringify(nkDividendRecords)); }
+  if (src.accounts && Array.isArray(src.accounts) && src.accounts.length > 0) {
+    NK_ACCOUNTS = src.accounts; localStorage.setItem(NK_ACC_KEY, JSON.stringify(NK_ACCOUNTS));
+  }
+  if (src.trades)    { nktTrades   = src.trades;    localStorage.setItem(NKT_TRADES_KEY, JSON.stringify(nktTrades)); }
+  if (src.watchlist) { nkWatchlist = src.watchlist; localStorage.setItem(NK_WATCH_KEY,   JSON.stringify(nkWatchlist)); }
+}
+
+async function nkDriveAutoLoadOnStartup() {
+  if (!nkDriveAccessToken || !nkDriveClientId) return;
+  try {
+    const fileId = await nkDriveFindFile();
+    if (!fileId) return;
+    const res = await nkDriveReq(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+    const data = await res.json();
+    const driveTime = data.exportedAt ? new Date(data.exportedAt).getTime() : 0;
+    const lastLoad  = parseInt(localStorage.getItem('nonk_drive_last_load') || '0');
+    if (driveTime > lastLoad) {
+      nkApplyDriveData(data);
+      localStorage.setItem('nonk_drive_last_load', String(driveTime));
+      nkRender();
+      nkRenderChart();
+      nkShowDriveToast('☁️ Drive에서 최신 데이터를 불러왔습니다');
+    }
+  } catch(_) {}
+}
+
+function nkDriveAutoSave() {
+  if (!nkDriveAccessToken) return;
+  clearTimeout(_nkDriveSaveTimer);
+  _nkDriveSaveTimer = setTimeout(() => nkDriveSave(), 5000);
+}
 </script>
 <div class="app-version" id="appVersion"></div>
+<input type="file" id="nkImportInput" accept=".json" style="display:none" onchange="nkImportFromFile(event)">
+
+<!-- ☁️ Google Drive 동기화 모달 -->
+<div class="modal-backdrop" id="nkDriveModal" onclick="if(event.target.id==='nkDriveModal')nkCloseDriveModal()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div><h2>☁️ Google Drive 동기화</h2></div>
+      <button class="close-btn" onclick="nkCloseDriveModal()">×</button>
+    </div>
+    <div class="drive-modal-body" style="padding:4px 0 8px">
+      <div class="drive-status idle" id="nkDriveStatusMsg">연결되지 않음</div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Google Client ID</label>
+        <input id="nkDriveClientIdInput" type="text" placeholder="123456789-xxx.apps.googleusercontent.com"
+               style="width:100%;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;font-family:monospace"
+               oninput="nkOnDriveClientIdChange()">
+      </div>
+      <div id="nkDriveLoginSection">
+        <button onclick="nkDriveSignIn()"
+                style="width:100%;padding:11px;background:#4285f4;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFF" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
+          Google 로그인
+        </button>
+      </div>
+      <div id="nkDriveActionSection" style="display:none">
+        <div class="drive-action-row">
+          <button class="drive-btn-load" onclick="nkDriveLoad()">⬇️ Drive에서 불러오기</button>
+          <button class="drive-btn-save" onclick="nkDriveSave()">⬆️ Drive에 저장</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px" id="nkDriveLastSync"></div>
+        <button class="drive-btn-logout" onclick="nkDriveSignOut()">연결 해제</button>
+      </div>
+      <div class="drive-setup">
+        <strong>⚙️ 최초 설정 방법 (1회만)</strong>
+        <ol>
+          <li><a href="https://console.cloud.google.com" target="_blank" style="color:#92400e">console.cloud.google.com</a> 접속</li>
+          <li>새 프로젝트 생성 → <strong>APIs &amp; Services → 사용자 인증 정보</strong></li>
+          <li><strong>OAuth 2.0 클라이언트 ID</strong> 생성 (웹 애플리케이션)</li>
+          <li>승인된 JavaScript 출처에 이 앱의 주소 입력</li>
+          <li><strong>Google Drive API</strong> 활성화</li>
+          <li>발급된 클라이언트 ID를 위 입력란에 붙여넣기</li>
+        </ol>
+        <div style="margin-top:8px">💡 데이터는 본인 구글 드라이브에 <code>mypm-data.json</code> 파일로 저장됩니다. 변경사항은 자동으로 저장됩니다.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="drive-toast" id="nkDriveToast"></div>
 </body>
 </html>
