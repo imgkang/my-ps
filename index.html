@@ -1039,9 +1039,11 @@ Chart.register({
   .cfg-acc-btn { padding: 5px 10px; font-size: 12px; border: 1.5px solid var(--border);
     border-radius: 6px; background: #f8fafc; cursor: pointer; }
   .cfg-acc-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-  .cfg-extra-acc-row { display: flex; align-items: center; justify-content: space-between;
-    padding: 4px 8px; background: #f1f5f9; border-radius: 6px; margin-bottom: 4px; font-size: 13px; }
-  .cfg-extra-acc-row button { background: none; border: none; cursor: pointer; color: #ef4444; padding: 0 4px; }
+  .cfg-extra-acc-btn { position: relative; padding-right: 22px !important; }
+  .cfg-extra-del { position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: rgba(0,0,0,0.35); line-height: 1; font-weight: 700; }
+  .cfg-acc-btn.active .cfg-extra-del { color: rgba(255,255,255,0.7); }
+  .cfg-extra-del:hover { color: #ef4444 !important; }
   .cfg-add-acc-btn { font-size: 12px; color: var(--primary); background: none; border: 1px dashed var(--primary);
     border-radius: 6px; padding: 4px 10px; cursor: pointer; margin-bottom: 4px; }
   .cfg-note { font-size: 11px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
@@ -2782,7 +2784,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.232';
+const APP_VERSION = 'MyPM v0.233';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5958,12 +5960,16 @@ init();  //render();
 function getActiveAccounts() {
   const myActive = appSettings.my?.activeAccIds || MY_ACC_IDS;
   const myAccs   = ACCOUNTS.filter(a => MY_ACC_IDS.includes(a.id) && myActive.includes(a.id));
-  const myExtras = (appSettings.my?.extraAccounts || []).map(e => ({ id: e.id, name: e.name }));
+  const myExtras = (appSettings.my?.extraAccounts || [])
+    .filter(e => e.active !== false)
+    .map(e => ({ id: e.id, name: e.name }));
   let wifeAccs = [], wifeExtras = [];
   if (appSettings.hasWife) {
     const wifeActive = appSettings.wife?.activeAccIds || WIFE_ACC_IDS;
     wifeAccs   = ACCOUNTS.filter(a => WIFE_ACC_IDS.includes(a.id) && wifeActive.includes(a.id));
-    wifeExtras = (appSettings.wife?.extraAccounts || []).map(e => ({ id: e.id, name: e.name }));
+    wifeExtras = (appSettings.wife?.extraAccounts || [])
+      .filter(e => e.active !== false)
+      .map(e => ({ id: e.id, name: e.name }));
   }
   return [...myAccs, ...myExtras, ...wifeAccs, ...wifeExtras];
 }
@@ -8792,11 +8798,16 @@ function cfgAddExtraAcc(person) {
   const name = prompt('추가할 계좌 이름:');
   if (!name?.trim()) return;
   const id = (person === 'wife' ? 'wife_extra_' : 'extra_') + Date.now();
-  _cfgExtraAccounts[person].push({ id, name: name.trim() });
+  _cfgExtraAccounts[person].push({ id, name: name.trim(), active: true });
   _renderCfgAccGrid(person);
 }
 function cfgRemoveExtraAcc(person, idx) {
   _cfgExtraAccounts[person].splice(idx, 1);
+  _renderCfgAccGrid(person);
+}
+function toggleCfgExtraAcc(person, idx) {
+  const acc = _cfgExtraAccounts[person][idx];
+  if (acc) acc.active = !(acc.active !== false);
   _renderCfgAccGrid(person);
 }
 function _renderCfgAccGrid(person) {
@@ -8805,18 +8816,22 @@ function _renderCfgAccGrid(person) {
   const active   = _cfgActiveAccIds[person];
   const gridEl   = document.getElementById(person === 'my' ? 'cfgMyAccGrid' : 'cfgWifeAccGrid');
   if (gridEl) {
-    gridEl.innerHTML = fixedIds.map(id =>
+    const builtIn = fixedIds.map(id =>
       `<button class="cfg-acc-btn${active.includes(id) ? ' active' : ''}"
                onclick="toggleCfgAcc('${person}','${id}')">${accNames[id]}</button>`
     ).join('');
+    const extras = _cfgExtraAccounts[person].map((e, i) => {
+      const isActive = e.active !== false;
+      return `<button class="cfg-acc-btn${isActive ? ' active' : ''} cfg-extra-acc-btn"
+                      onclick="toggleCfgExtraAcc('${person}',${i})"
+              >${e.name}<span class="cfg-extra-del"
+                      onclick="cfgRemoveExtraAcc('${person}',${i});event.stopPropagation()"
+                      title="삭제">×</span></button>`;
+    }).join('');
+    gridEl.innerHTML = builtIn + extras;
   }
   const extrasEl = document.getElementById(person === 'my' ? 'cfgMyExtraAccs' : 'cfgWifeExtraAccs');
-  if (extrasEl) {
-    extrasEl.innerHTML = _cfgExtraAccounts[person].map((e, i) =>
-      `<div class="cfg-extra-acc-row"><span>${e.name}</span>
-       <button onclick="cfgRemoveExtraAcc('${person}',${i})" title="삭제">🗑</button></div>`
-    ).join('');
-  }
+  if (extrasEl) extrasEl.innerHTML = '';
   _updateRetireTaxVisibility(person);
 }
 function onCfgBirthYearChange(person) {
