@@ -2785,7 +2785,7 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script>
-const APP_VERSION = 'MyPM v0.235';
+const APP_VERSION = 'MyPM v0.236';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6249,8 +6249,8 @@ function renderPrincipalTable() {
   const currentYear = new Date().getFullYear();
 
   const _allAccs = getActiveAccounts();
-  const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
-  const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
+  const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
+  const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
 
   const myRetireYr   = (wdPlan && wdPlan.startYear)      ? wdPlan.startYear      : 9999;
   const wifeRetireYr = (wdPlan && wdPlan.wifeRetireYear) ? wdPlan.wifeRetireYear : 9999;
@@ -6428,8 +6428,8 @@ function renderEvalTable() {
   };
 
   const _evalAllAccs    = getActiveAccounts();
-  const _evalMyIds      = _evalAllAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
-  const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
+  const _evalMyIds      = _evalAllAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
+  const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
   const _evalAllIds     = [..._evalMyIds, ..._evalWifeIds];
   const _eBothRetireYr  = _evalWifeIds.length ? Math.max(_eMyRetireYr, _eWifeRetireYr) : _eMyRetireYr;
   // 더 나중 은퇴연도 전년도까지만 표시
@@ -6830,8 +6830,8 @@ function renderAnnualCharts() {
   const projRate = (Number((document.getElementById('projRate') || {}).value) || annualPlan.projRate || 7) / 100;
 
   const activeAccs = getActiveAccounts();
-  const myIds   = activeAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id));
-  const wifeIds = activeAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id));
+  const myIds   = activeAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
+  const wifeIds = activeAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
   const allIds  = [...myIds, ...wifeIds];
 
   // 원금 누적 (백만원)
