@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.266';
+const CACHE_NAME = 'mypm-v0.267';
 
 const BASE = '/my-ps/';
 
@@ -21,7 +21,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// 활성화: 이전 버전 캐시 삭제
+// 활성화: 이전 버전 캐시 삭제 후 모든 탭 강제 리로드
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
@@ -29,7 +29,14 @@ self.addEventListener('activate', event => {
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(clients => clients.forEach(c => { try { c.navigate(c.url); } catch(_) {} }))
   );
+});
+
+// SKIP_WAITING 메시지 처리
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // 요청 처리: 캐시 우선, 백그라운드 갱신

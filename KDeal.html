@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.266';
+const APP_VERSION = 'KDeal v0.267';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3527,6 +3527,10 @@ kdRenderAccountButtons();
 kdRenderWatchlist();
 kdInitAutoRefresh();
 if (kdHoldings.length || kdWatchlist.length) kdRefreshAll();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .catch(err => console.warn('SW 등록 실패:', err));
+}
 </script>
 <div class="app-version" id="appVersion"></div>
 </body>
