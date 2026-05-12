@@ -981,14 +981,14 @@
       </div>
       <div class="kdt-form-row">
         <div class="kdt-field">
-          <label>티커 (Ticker)</label>
-          <input type="text" id="kdtTradeTicker" maxlength="12" placeholder="예: AAPL, TSLA"
+          <label>종목코드</label>
+          <input type="text" id="kdtTradeTicker" maxlength="6" placeholder="예: 005930"
             oninput="kdtOnTickerInput(this.value)" autocomplete="off">
         </div>
         <div class="kdt-field">
           <label>종목명 (검색 자동완성)</label>
           <div class="kdt-ac-wrap">
-            <input type="text" id="kdtTradeName" placeholder="예: Apple Inc."
+            <input type="text" id="kdtTradeName" placeholder="예: 삼성전자"
               oninput="kdtOnNameInput(this.value)" autocomplete="off">
             <div class="kdt-ac-list" id="kdtNameAcList"></div>
           </div>
@@ -1059,7 +1059,7 @@
       <button class="close-btn" onclick="kdCloseAddModal()" aria-label="닫기">×</button>
     </div>
     <div class="add-form" style="grid-template-columns:1fr 1fr;gap:12px">
-      <input type="text" id="kdTicker" placeholder="Ticker (예: AAPL)" autocomplete="off" style="grid-column:1/-1" oninput="this.value=this.value.toUpperCase()">
+      <input type="text" id="kdTicker" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off" style="grid-column:1/-1" oninput="this.value=this.value.replace(/[^0-9A-Za-z]/g,'').toUpperCase()">
       <input type="text" id="kdName" placeholder="종목명 (자동입력)" autocomplete="off" style="grid-column:1/-1">
       <button class="btn-secondary" onclick="kdFetchInfo()" style="grid-column:1/-1">🔍 조회</button>
       <div id="kdFetchResult" style="grid-column:1/-1;font-size:13px;color:var(--muted)"></div>
@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.254';
+const APP_VERSION = 'KDeal v0.255';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1906,7 +1906,7 @@ function kdCloseAddModal() {
 
 async function kdFetchInfo() {
   const ticker = document.getElementById('kdTicker').value.trim().toUpperCase();
-  if (!ticker) { alert('Ticker를 입력하세요'); return; }
+  if (!ticker) { alert('종목코드를 입력하세요'); return; }
   const resultEl = document.getElementById('kdFetchResult');
   resultEl.textContent = '조회 중...';
   try {
@@ -1923,7 +1923,7 @@ async function kdFetchInfo() {
 function kdAddStock() {
   const ticker = document.getElementById('kdTicker').value.trim().toUpperCase();
   const name   = document.getElementById('kdName').value.trim();
-  if (!ticker) { alert('Ticker를 입력하세요'); return; }
+  if (!ticker) { alert('종목코드를 입력하세요'); return; }
   if (kdHoldings.some(h => h.ticker === ticker)) { alert('이미 추가된 종목입니다'); return; }
 
   const accounts = {};
@@ -3234,7 +3234,7 @@ function kdtHandleTradeBackdrop(e) {
 }
 
 function kdtOnTickerInput(val) {
-  document.getElementById('kdtTradeTicker').value = val.replace(/[^0-9A-Za-z.\-]/g, '').toUpperCase();
+  document.getElementById('kdtTradeTicker').value = val.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
 }
 
 function kdtUpdateTradePreview() {
@@ -3244,7 +3244,7 @@ function kdtUpdateTradePreview() {
   const amt   = document.getElementById('kdtTradePreviewAmt');
   if (price > 0 && qty > 0) {
     if (prev) prev.style.display = '';
-    if (amt) amt.textContent = '$' + (price * qty).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+    if (amt) amt.textContent = fmtKRW(price * qty);
   } else {
     if (prev) prev.style.display = 'none';
   }
@@ -3260,7 +3260,7 @@ function kdtSaveTrade() {
   const fee    = parseFloat(document.getElementById('kdtTradeFee').value) || 0;
   const memo   = document.getElementById('kdtTradeMemo').value.trim();
 
-  if (!ticker) { alert('티커를 입력해 주세요.'); return; }
+  if (!ticker) { alert('종목코드를 입력해 주세요.'); return; }
   if (!date)   { alert('날짜를 선택해 주세요.'); return; }
   if (price <= 0) { alert('단가를 입력해 주세요.'); return; }
   if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }
@@ -3288,7 +3288,7 @@ function kdtDeleteTrade(id) {
   kdtRenderTradeHistory();
 }
 
-// 자동완성 (US 주식)
+// 자동완성 (한국 주식)
 let _kdtNameAcTimer = null;
 function kdtOnNameInput(val) {
   clearTimeout(_kdtNameAcTimer);
