@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.263';
+const APP_VERSION = 'KDeal v0.264';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3467,6 +3467,11 @@ function kdRunMigration() {
   });
   kdCashAccounts[DEF_ACC] = migratedCash;
   kdSaveCashData();
+
+  // 이전 키 삭제 — 다음 로드 시 재실행 방지
+  localStorage.removeItem(OLD_TRADES);
+  localStorage.removeItem(OLD_DEPOSITS);
+  localStorage.removeItem(OLD_WATCHLIST);
 
   const msg = `거래 ${trades.length}건 → 보유종목 ${kdHoldings.length}개`;
   console.log('[KDeal] 마이그레이션 완료: ' + msg);
