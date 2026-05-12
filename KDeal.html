@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.268';
+const APP_VERSION = 'KDeal v0.269';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1601,6 +1601,8 @@ function kdRender() {
       <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-secondary" onclick="kdExportToFile()">📤 내보내기</button>
+      <button class="btn-secondary" onclick="document.getElementById('kdImportInput').click()">📥 가져오기</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     kdRenderAccountButtons();
@@ -1812,6 +1814,8 @@ function kdRender() {
       <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-secondary" onclick="kdExportToFile()">📤 내보내기</button>
+      <button class="btn-secondary" onclick="document.getElementById('kdImportInput').click()">📥 가져오기</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
   kdRenderAccountButtons();
@@ -2651,7 +2655,10 @@ function kdExportToFile() {
       cash:      kdCashAccounts,
       deposits:  kdDepositData,
       monthly:   kdMonthlyRecords,
-      dividends: kdDividendRecords
+      dividends: kdDividendRecords,
+      accounts:  KD_ACCOUNTS,
+      trades:    kdtTrades,
+      watchlist: kdWatchlist
     }
   };
   const now = new Date();
@@ -2672,11 +2679,15 @@ function kdImportFromFile(event) {
     try {
       const data = JSON.parse(e.target.result);
       const src = (data.version >= 8 && data.nonk) ? data.nonk : data;
-      if (src.holdings)  { kdHoldings        = src.holdings;  kdSaveHoldings(); }
-      if (src.cash)      { kdCashAccounts     = src.cash;      kdSaveCashData(); }
-      if (src.deposits)  { kdDepositData      = src.deposits;  kdSaveDeposits(); }
-      if (src.monthly)   { kdMonthlyRecords   = src.monthly;   kdSaveMonthly(); }
-      if (src.dividends) { kdDividendRecords  = src.dividends; kdSaveDividends(); }
+      if (src.holdings)  { kdHoldings       = src.holdings;  kdSaveHoldings(); }
+      if (src.cash)      { kdCashAccounts    = src.cash;      kdSaveCashData(); }
+      if (src.deposits)  { kdDepositData     = src.deposits;  kdSaveDeposits(); }
+      if (src.monthly)   { kdMonthlyRecords  = src.monthly;   kdSaveMonthly(); }
+      if (src.dividends) { kdDividendRecords = src.dividends; kdSaveDividends(); }
+      if (src.accounts)  { KD_ACCOUNTS       = src.accounts;  kdSaveAccounts(); }
+      if (src.trades)    { kdtTrades         = src.trades;    kdtSaveTrades(); }
+      if (src.watchlist) { kdWatchlist       = src.watchlist; kdSaveWatchlist(); }
+      localStorage.setItem('kd_migration_done_v1', '1');
       if (data.mypm) {
         const mp = data.mypm;
         if (mp.holdings)        localStorage.setItem('pension_portfolio_v1',       JSON.stringify(mp.holdings));
@@ -3537,5 +3548,6 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 <div class="app-version" id="appVersion"></div>
+<input type="file" id="kdImportInput" accept=".json" style="display:none" onchange="kdImportFromFile(event)">
 </body>
 </html>

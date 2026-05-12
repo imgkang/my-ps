@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.268';
+const CACHE_NAME = 'mypm-v0.269';
 
 const BASE = '/my-ps/';
 
