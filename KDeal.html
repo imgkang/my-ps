@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.264';
+const APP_VERSION = 'KDeal v0.265';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2762,6 +2762,15 @@ function kdRenameAccount(id) {
   acc.name = newName.trim();
   kdSaveAccounts();
   kdRenderAccountSettingsBody();
+  // 열려있는 모달의 계좌 드롭다운도 즉시 갱신
+  ['kdTxnAccount', 'kdtTradeAcc'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+      sel.value = cur;
+    }
+  });
   kdRenderAccountButtons();
   kdRender();
   kdRenderChart();
@@ -3412,6 +3421,8 @@ function kdRunMigration() {
   const OLD_TRADES    = 'kdeal_trades_v1';
   const OLD_DEPOSITS  = 'kdeal_deposits_v1';
   const OLD_WATCHLIST = 'kdeal_watchlist_v1';
+  const MIGRATION_DONE = 'kd_migration_done_v1';
+  if (localStorage.getItem(MIGRATION_DONE)) return;
   if (!localStorage.getItem(OLD_TRADES) && !localStorage.getItem(OLD_DEPOSITS) && !localStorage.getItem(OLD_WATCHLIST)) return;
   if (localStorage.getItem(KDT_TRADES_KEY) || localStorage.getItem(KD_HOLD_KEY)) return;
 
@@ -3468,10 +3479,11 @@ function kdRunMigration() {
   kdCashAccounts[DEF_ACC] = migratedCash;
   kdSaveCashData();
 
-  // 이전 키 삭제 — 다음 로드 시 재실행 방지
+  // 이전 키 삭제 + 완료 플래그 — 다음 로드 시 재실행 방지
   localStorage.removeItem(OLD_TRADES);
   localStorage.removeItem(OLD_DEPOSITS);
   localStorage.removeItem(OLD_WATCHLIST);
+  localStorage.setItem(MIGRATION_DONE, '1');
 
   const msg = `거래 ${trades.length}건 → 보유종목 ${kdHoldings.length}개`;
   console.log('[KDeal] 마이그레이션 완료: ' + msg);
