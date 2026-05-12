@@ -803,6 +803,49 @@
   .nkw-btn-del { font-size:11px; padding:3px 9px; border-radius:4px; cursor:pointer; border:none; background:#fee2e2; color:#991b1b; }
   .nkw-btn-del:hover { background:#fecaca; }
   .nkw-empty { padding:28px 20px; text-align:center; color:var(--muted); font-size:13px; }
+
+  /* NonK 거래 내역 */
+  .nkt-type-badge { display:inline-block; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:700; }
+  .nkt-type-badge.buy { background:#dcfce7; color:#166534; }
+  .nkt-type-badge.sell { background:#fee2e2; color:#991b1b; }
+  .nkt-row-buy td { background:#f9fff9; }
+  .nkt-row-sell td { background:#fff9f9; }
+  .nkt-btn-sm { font-size:11px; padding:3px 8px; border-radius:4px; cursor:pointer; border:none; }
+  .nkt-btn-sm:not(.del) { background:#e0f2fe; color:#0369a1; }
+  .nkt-btn-sm:not(.del):hover { background:#bae6fd; }
+  .nkt-btn-sm.del { background:#fee2e2; color:#991b1b; margin-left:3px; }
+  .nkt-btn-sm.del:hover { background:#fecaca; }
+  .nkt-empty { padding:28px 20px; text-align:center; color:var(--muted); font-size:13px; }
+  .nkt-tabs { display:flex; gap:4px; }
+  .nkt-tab { padding:5px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:#fff; color:var(--muted); }
+  .nkt-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .nkt-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .nkt-table th { background:#f9fafb; padding:5px 4px; text-align:left; font-size:10px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; }
+  .nkt-table td { padding:5px 4px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+  .nkt-table tr:hover td { background:#fafafa; }
+  .nkt-form { display:flex; flex-direction:column; gap:10px; }
+  .nkt-form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .nkt-field { display:flex; flex-direction:column; gap:4px; }
+  .nkt-field label { font-size:12px; color:var(--muted); font-weight:500; }
+  .nkt-field input, .nkt-field select { padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; background:#fff; }
+  .nkt-field input:focus, .nkt-field select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(26,115,232,0.12); }
+  .nkt-type-toggle { display:flex; gap:8px; }
+  .nkt-type-btn { flex:1; padding:9px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; background:#fff; color:var(--muted); }
+  .nkt-type-btn.active-buy { background:#dcfce7; border-color:#16a34a; color:#166534; }
+  .nkt-type-btn.active-sell { background:#fee2e2; border-color:#dc2626; color:#991b1b; }
+  .nkt-total-preview { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; font-size:13px; font-weight:600; color:#1e40af; }
+  .nkt-sell-hint { font-size:11px; color:var(--muted); margin-top:2px; min-height:14px; }
+  .nkt-toggle-btn { display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0; font-size:15px; font-weight:700; color:var(--text); cursor:pointer; text-align:left; }
+  .nkt-toggle-btn:hover { color:var(--primary); }
+  .nkt-chevron { font-size:11px; transition:transform 0.2s; display:inline-block; color:var(--muted); }
+  .nkt-ac-wrap { position:relative; }
+  .nkt-ac-list { display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:300; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.12); max-height:240px; overflow-y:auto; }
+  .nkt-ac-list.open { display:block; }
+  .nkt-ac-item { padding:9px 12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  .nkt-ac-item:hover { background:#f3f4f6; }
+  .nkt-ac-name { font-size:13px; font-weight:500; }
+  .nkt-ac-code { font-size:11px; color:var(--muted); }
+  @media (max-width:600px) { .nkt-form-row { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -836,6 +879,7 @@
   <div class="card">
     <div class="status-bar">
       <span id="nkStatusText">보유종목 0개</span>
+      <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="nktOpenTradeModal()">+ 거래 추가</button>
     </div>
     <div id="nkHoldingsContainer">
       <div class="empty-state"><div class="icon">🇺🇸</div><div>'+ 종목 추가' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>
@@ -862,6 +906,99 @@
       <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenWatchModal()">+ 추가</button>
     </div>
     <div id="nkWatchContainer"><div class="nkw-empty">관심종목이 없습니다.</div></div>
+  </div>
+
+  <!-- 거래 내역 (확장형) -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button class="nkt-toggle-btn" onclick="nktToggleHistory()">
+        <span>📋 거래 내역</span>
+        <span class="nkt-chevron" id="nktChevron">▶</span>
+      </button>
+    </div>
+    <div id="nktHistoryWrap" style="display:none;margin-top:14px">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <div class="nkt-tabs">
+          <button class="nkt-tab active" id="nktTabAll" onclick="nktSetTab('all')">전체</button>
+          <button class="nkt-tab" id="nktTabOpen" onclick="nktSetTab('open')">보유중</button>
+          <button class="nkt-tab" id="nktTabClosed" onclick="nktSetTab('closed')">완료</button>
+        </div>
+      </div>
+      <div id="nktTradeHistoryContainer"><div class="nkt-empty">거래 내역이 없습니다.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- NonK 거래 추가/편집 모달 -->
+<div class="modal-backdrop" id="nktTradeModal" onclick="nktHandleTradeBackdrop(event)">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h2 id="nktTradeModalTitle">거래 추가</h2>
+      <button class="close-btn" onclick="nktCloseTradeModal()">×</button>
+    </div>
+    <div class="nkt-form">
+      <div class="nkt-field">
+        <label>구분</label>
+        <div class="nkt-type-toggle">
+          <button id="nktTypeBuyBtn" class="nkt-type-btn active-buy" onclick="nktSetTradeType('buy')">📈 매수</button>
+          <button id="nktTypeSellBtn" class="nkt-type-btn" onclick="nktSetTradeType('sell')">📉 매도</button>
+        </div>
+        <input type="hidden" id="nktTradeType" value="buy">
+      </div>
+      <div class="nkt-field">
+        <label>거래일</label>
+        <input type="date" id="nktTradeDate" onchange="nktUpdateSellStockOptions()">
+      </div>
+      <div class="nkt-field" id="nktSellStockRow" style="display:none">
+        <label>보유 종목 선택</label>
+        <select id="nktSellStockSelect" onchange="nktOnSellStockSelect(this.value)">
+          <option value="">-- 날짜 기준 보유 종목 --</option>
+        </select>
+        <div class="nkt-sell-hint" id="nktSellQtyHint"></div>
+      </div>
+      <div class="nkt-form-row">
+        <div class="nkt-field">
+          <label>티커 (Ticker)</label>
+          <input type="text" id="nktTradeTicker" maxlength="12" placeholder="예: AAPL, TSLA"
+            oninput="nktOnTickerInput(this.value)" autocomplete="off">
+        </div>
+        <div class="nkt-field">
+          <label>종목명 (검색 자동완성)</label>
+          <div class="nkt-ac-wrap">
+            <input type="text" id="nktTradeName" placeholder="예: Apple Inc."
+              oninput="nktOnNameInput(this.value)" autocomplete="off">
+            <div class="nkt-ac-list" id="nktNameAcList"></div>
+          </div>
+        </div>
+      </div>
+      <div class="nkt-form-row">
+        <div class="nkt-field">
+          <label>단가 (USD)</label>
+          <input type="number" id="nktTradePrice" min="0.0001" step="0.01" placeholder="예: 185.50"
+            oninput="nktUpdateTradePreview()">
+        </div>
+        <div class="nkt-field">
+          <label>수량 (주)</label>
+          <input type="number" id="nktTradeQty" min="0.0001" step="0.001" placeholder="예: 10"
+            oninput="nktUpdateTradePreview()">
+        </div>
+      </div>
+      <div class="nkt-field">
+        <label>수수료 (USD)</label>
+        <input type="number" id="nktTradeFee" min="0" step="0.01" placeholder="0">
+      </div>
+      <div class="nkt-field">
+        <label>메모 (선택)</label>
+        <input type="text" id="nktTradeMemo" placeholder="거래 메모">
+      </div>
+      <div class="nkt-total-preview" id="nktTradePreview" style="display:none">
+        <span>거래 금액</span><span id="nktTradePreviewAmt">-</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="nktCloseTradeModal()">취소</button>
+      <button class="btn-primary" onclick="nktSaveTrade()">저장</button>
+    </div>
   </div>
 </div>
 
@@ -1088,7 +1225,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.238';
+const APP_VERSION = 'NonK v0.239';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2610,6 +2747,373 @@ function nkRenderWatchlist() {
     </tr></thead><tbody>${rows}</tbody>
   </table></div>`;
 }
+
+// ===== NonK 거래 추가/내역 =====
+const NKT_TRADES_KEY = 'nonk_trades_v1';
+let nktTrades = nktLoadTrades();
+let nktEditingTradeId = null;
+let nktCurrentTab = 'all';
+let nktHistoryOpen = false;
+
+function nktLoadTrades() {
+  try { return JSON.parse(localStorage.getItem(NKT_TRADES_KEY)) || []; } catch(_) { return []; }
+}
+function nktSaveTrades() { localStorage.setItem(NKT_TRADES_KEY, JSON.stringify(nktTrades)); }
+
+// FIFO 분석 (USD)
+function nktFifoAnalysis() {
+  const sorted = [...nktTrades].sort((a, b) =>
+    a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
+  const openLots = {};
+  const closedMap = {};
+
+  for (const t of sorted) {
+    const fee = Number(t.fee) || 0;
+    if (t.type === 'buy') {
+      if (!openLots[t.ticker]) openLots[t.ticker] = [];
+      openLots[t.ticker].push({ id: t.id, date: t.date, price: t.price,
+        qty: t.qty, remaining: t.qty, fee, name: t.name });
+    } else {
+      const lots = openLots[t.ticker] || [];
+      let sellRemain = t.qty;
+      let matchedCost = 0, matchedQty = 0, weightedDays = 0;
+      while (sellRemain > 0 && lots.length > 0) {
+        const lot = lots[0];
+        const take = Math.min(lot.remaining, sellRemain);
+        const feeAlloc = lot.qty > 0 ? (lot.fee / lot.qty) * take : 0;
+        matchedCost += lot.price * take + feeAlloc;
+        weightedDays += Math.max(1, Math.round((new Date(t.date) - new Date(lot.date)) / 86400000)) * take;
+        matchedQty += take;
+        lot.remaining -= take; sellRemain -= take;
+        if (lot.remaining === 0) lots.shift();
+      }
+      if (matchedQty > 0) {
+        const feeAlloc = t.qty > 0 ? fee * (matchedQty / t.qty) : 0;
+        const sellNet = t.price * matchedQty - feeAlloc;
+        const pnl = sellNet - matchedCost;
+        const simpleReturn = matchedCost > 0 ? pnl / matchedCost : 0;
+        const avgDays = Math.round(weightedDays / matchedQty);
+        const annReturn = avgDays > 0
+          ? Math.pow(Math.max(0, sellNet / matchedCost), 365 / avgDays) - 1
+          : simpleReturn;
+        closedMap[t.id] = { pnl, simpleReturn, annReturn, holdingDays: avgDays, qty: matchedQty };
+      }
+    }
+  }
+
+  const positions = [];
+  for (const [ticker, lots] of Object.entries(openLots)) {
+    const qty = lots.reduce((s, l) => s + l.remaining, 0);
+    if (qty <= 0) continue;
+    const cost = lots.reduce((s, l) => {
+      const feePerShare = l.qty > 0 ? l.fee / l.qty : 0;
+      return s + (l.price + feePerShare) * l.remaining;
+    }, 0);
+    positions.push({ ticker, name: lots[lots.length-1].name || ticker,
+      qty, avgPrice: cost / qty, cost });
+  }
+  positions.sort((a, b) => a.ticker.localeCompare(b.ticker));
+  return { positions, closedMap };
+}
+
+// 날짜 기준 보유 종목
+function nktGetHeldStocksAsOf(date) {
+  const sorted = [...nktTrades]
+    .filter(t => t.date <= date)
+    .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
+  const openLots = {};
+  for (const t of sorted) {
+    if (t.type === 'buy') {
+      if (!openLots[t.ticker]) openLots[t.ticker] = [];
+      openLots[t.ticker].push({ qty: t.qty, remaining: t.qty, name: t.name });
+    } else {
+      const lots = openLots[t.ticker] || [];
+      let sellRemain = t.qty;
+      while (sellRemain > 0 && lots.length > 0) {
+        const lot = lots[0];
+        const take = Math.min(lot.remaining, sellRemain);
+        lot.remaining -= take; sellRemain -= take;
+        if (lot.remaining === 0) lots.shift();
+      }
+    }
+  }
+  return Object.entries(openLots)
+    .map(([ticker, lots]) => {
+      const qty = lots.reduce((s, l) => s + l.remaining, 0);
+      return qty > 0 ? { ticker, name: lots[lots.length-1].name || ticker, qty } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.ticker.localeCompare(b.ticker));
+}
+
+function nktUpdateSellStockOptions() {
+  const sel = document.getElementById('nktSellStockSelect');
+  if (!sel) return;
+  const type = document.getElementById('nktTradeType')?.value;
+  if (type !== 'sell') return;
+  const date = document.getElementById('nktTradeDate').value;
+  const prevTicker = sel.value;
+  const held = date ? nktGetHeldStocksAsOf(date) : [];
+  sel.innerHTML = '<option value="">-- 날짜 기준 보유 종목 --</option>' +
+    held.map(h => `<option value="${h.ticker}" data-name="${h.name}" data-qty="${h.qty}">${h.ticker} (${h.name}) · ${parseFloat(h.qty).toLocaleString('en-US',{maximumFractionDigits:4})}주</option>`).join('');
+  if (prevTicker) sel.value = prevTicker;
+}
+
+function nktOnSellStockSelect(val) {
+  const sel = document.getElementById('nktSellStockSelect');
+  if (!sel || !val) return;
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('nktTradeTicker').value = val;
+  document.getElementById('nktTradeName').value = opt.dataset.name || '';
+  const hintEl = document.getElementById('nktSellQtyHint');
+  if (hintEl) hintEl.textContent = opt.dataset.qty ? `최대 ${parseFloat(opt.dataset.qty).toLocaleString('en-US',{maximumFractionDigits:4})}주 매도 가능` : '';
+}
+
+// 거래 내역 토글
+function nktToggleHistory() {
+  nktHistoryOpen = !nktHistoryOpen;
+  const wrap = document.getElementById('nktHistoryWrap');
+  const chevron = document.getElementById('nktChevron');
+  if (wrap) wrap.style.display = nktHistoryOpen ? '' : 'none';
+  if (chevron) chevron.style.transform = nktHistoryOpen ? 'rotate(90deg)' : '';
+  if (nktHistoryOpen) nktRenderTradeHistory();
+}
+
+// 탭 전환
+function nktSetTab(tab) {
+  nktCurrentTab = tab;
+  ['all','open','closed'].forEach(t => {
+    const el = document.getElementById('nktTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) el.classList.toggle('active', t === tab);
+  });
+  nktRenderTradeHistory();
+}
+
+// 거래 내역 렌더링
+function nktRenderTradeHistory() {
+  const { closedMap, positions } = nktFifoAnalysis();
+  const openTickers = new Set(positions.map(p => p.ticker));
+  const container = document.getElementById('nktTradeHistoryContainer');
+  if (!container) return;
+
+  let trades = [...nktTrades].sort((a, b) => b.date.localeCompare(a.date));
+  if (nktCurrentTab === 'open') {
+    trades = trades.filter(t => t.type === 'buy' && openTickers.has(t.ticker));
+  } else if (nktCurrentTab === 'closed') {
+    trades = trades.filter(t => t.type === 'sell' && closedMap[t.id]);
+  }
+
+  if (!trades.length) {
+    container.innerHTML = '<div class="nkt-empty">해당 거래 내역이 없습니다.</div>';
+    return;
+  }
+
+  const fmtUSD = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const fmtPct = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+  const fmtQty = v => parseFloat(v).toLocaleString('en-US', { maximumFractionDigits:4 });
+
+  const rows = trades.map(t => {
+    const isSell = t.type === 'sell';
+    const cl = closedMap[t.id];
+    let pnlCols = '';
+    if (isSell && cl) {
+      const pCls = cl.pnl >= 0 ? 'price-plus' : 'price-minus';
+      pnlCols = `
+        <td class="ta-r ${pCls}" style="white-space:nowrap">${cl.pnl >= 0 ? '+' : ''}${fmtUSD(cl.pnl)}</td>
+        <td class="ta-r ${pCls}">${fmtPct(cl.simpleReturn)}</td>
+        <td class="ta-r" style="color:var(--muted)">${cl.holdingDays}일</td>
+        <td class="ta-r ${cl.annReturn>=0?'price-plus':'price-minus'}">${fmtPct(cl.annReturn)}</td>`;
+    } else {
+      pnlCols = '<td colspan="4" class="ta-c" style="color:var(--muted);font-size:11px">-</td>';
+    }
+    return `<tr class="${isSell?'nkt-row-sell':'nkt-row-buy'}">
+      <td style="white-space:nowrap">${t.date}</td>
+      <td><span class="nkt-type-badge ${isSell?'sell':'buy'}">${isSell?'매도':'매수'}</span></td>
+      <td><div style="font-weight:600;font-size:12px">${t.ticker}</div><div style="font-size:11px;color:var(--muted)">${t.name||''}</div></td>
+      <td class="ta-r">${fmtQty(t.qty)}</td>
+      <td class="ta-r">${fmtUSD(t.price)}</td>
+      <td class="ta-r">${fmtUSD(t.price * t.qty)}</td>
+      <td class="ta-r" style="color:var(--muted)">${t.fee ? fmtUSD(t.fee) : '-'}</td>
+      ${pnlCols}
+      <td style="white-space:nowrap">
+        <button class="nkt-btn-sm" onclick="nktOpenTradeModal('${t.id}')">편집</button>
+        <button class="nkt-btn-sm del" onclick="nktDeleteTrade('${t.id}')">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<div style="overflow-x:auto"><table class="nkt-table">
+    <thead><tr>
+      <th>날짜</th><th>구분</th><th>종목</th>
+      <th class="ta-r">수량</th><th class="ta-r">단가(USD)</th>
+      <th class="ta-r">금액(USD)</th><th class="ta-r">수수료</th>
+      <th class="ta-r">손익</th><th class="ta-r">수익률</th>
+      <th class="ta-r">보유일</th><th class="ta-r">연환산</th>
+      <th></th>
+    </tr></thead><tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// 모달 제어
+function nktSetTradeType(type) {
+  document.getElementById('nktTradeType').value = type;
+  document.getElementById('nktTypeBuyBtn').className = 'nkt-type-btn' + (type==='buy' ? ' active-buy' : '');
+  document.getElementById('nktTypeSellBtn').className = 'nkt-type-btn' + (type==='sell' ? ' active-sell' : '');
+  const sellRow = document.getElementById('nktSellStockRow');
+  if (sellRow) sellRow.style.display = type === 'sell' ? '' : 'none';
+  const hintEl = document.getElementById('nktSellQtyHint');
+  if (hintEl) hintEl.textContent = '';
+  if (type === 'sell') nktUpdateSellStockOptions();
+}
+
+function nktOpenTradeModal(editId = null) {
+  nktEditingTradeId = editId;
+  const titleEl = document.getElementById('nktTradeModalTitle');
+  if (editId) {
+    const t = nktTrades.find(x => x.id === editId);
+    if (!t) return;
+    if (titleEl) titleEl.textContent = '거래 수정';
+    document.getElementById('nktTradeDate').value  = t.date;
+    nktSetTradeType(t.type);
+    document.getElementById('nktTradeTicker').value = t.ticker;
+    document.getElementById('nktTradeName').value  = t.name || '';
+    document.getElementById('nktTradePrice').value = t.price;
+    document.getElementById('nktTradeQty').value   = t.qty;
+    document.getElementById('nktTradeFee').value   = t.fee || '';
+    document.getElementById('nktTradeMemo').value  = t.memo || '';
+    if (t.type === 'sell') {
+      setTimeout(() => {
+        const sel = document.getElementById('nktSellStockSelect');
+        if (sel) sel.value = t.ticker;
+      }, 0);
+    }
+  } else {
+    if (titleEl) titleEl.textContent = '거래 추가';
+    const now = new Date();
+    document.getElementById('nktTradeDate').value =
+      `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    nktSetTradeType('buy');
+    document.getElementById('nktTradeTicker').value = '';
+    document.getElementById('nktTradeName').value  = '';
+    document.getElementById('nktTradePrice').value = '';
+    document.getElementById('nktTradeQty').value   = '';
+    document.getElementById('nktTradeFee').value   = '';
+    document.getElementById('nktTradeMemo').value  = '';
+  }
+  nktUpdateTradePreview();
+  document.getElementById('nktTradeModal').classList.add('open');
+}
+
+function nktCloseTradeModal() {
+  document.getElementById('nktTradeModal').classList.remove('open');
+  nktEditingTradeId = null;
+}
+
+function nktHandleTradeBackdrop(e) {
+  if (e.target.id === 'nktTradeModal') nktCloseTradeModal();
+}
+
+function nktOnTickerInput(val) {
+  document.getElementById('nktTradeTicker').value = val.replace(/[^0-9A-Za-z.\-]/g, '').toUpperCase();
+}
+
+function nktUpdateTradePreview() {
+  const price = parseFloat(document.getElementById('nktTradePrice').value) || 0;
+  const qty   = parseFloat(document.getElementById('nktTradeQty').value) || 0;
+  const prev  = document.getElementById('nktTradePreview');
+  const amt   = document.getElementById('nktTradePreviewAmt');
+  if (price > 0 && qty > 0) {
+    if (prev) prev.style.display = '';
+    if (amt) amt.textContent = '$' + (price * qty).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  } else {
+    if (prev) prev.style.display = 'none';
+  }
+}
+
+function nktSaveTrade() {
+  const type   = document.getElementById('nktTradeType').value;
+  const ticker = document.getElementById('nktTradeTicker').value.trim().toUpperCase();
+  const name   = document.getElementById('nktTradeName').value.trim();
+  const date   = document.getElementById('nktTradeDate').value;
+  const price  = parseFloat(document.getElementById('nktTradePrice').value) || 0;
+  const qty    = parseFloat(document.getElementById('nktTradeQty').value) || 0;
+  const fee    = parseFloat(document.getElementById('nktTradeFee').value) || 0;
+  const memo   = document.getElementById('nktTradeMemo').value.trim();
+
+  if (!ticker) { alert('티커를 입력해 주세요.'); return; }
+  if (!date)   { alert('날짜를 선택해 주세요.'); return; }
+  if (price <= 0) { alert('단가를 입력해 주세요.'); return; }
+  if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }
+
+  const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo };
+  if (nktEditingTradeId) {
+    const idx = nktTrades.findIndex(x => x.id === nktEditingTradeId);
+    if (idx >= 0) nktTrades[idx] = { ...nktTrades[idx], ...entry };
+  } else {
+    nktTrades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
+  }
+  nktSaveTrades();
+  nktCloseTradeModal();
+  if (nktHistoryOpen) nktRenderTradeHistory();
+}
+
+function nktDeleteTrade(id) {
+  const t = nktTrades.find(x => x.id === id);
+  if (!t) return;
+  const qtyStr = parseFloat(t.qty).toLocaleString('en-US', { maximumFractionDigits:4 });
+  if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
+  nktTrades = nktTrades.filter(x => x.id !== id);
+  nktSaveTrades();
+  nktRenderTradeHistory();
+}
+
+// 자동완성 (US 주식)
+let _nktNameAcTimer = null;
+function nktOnNameInput(val) {
+  clearTimeout(_nktNameAcTimer);
+  const listEl = document.getElementById('nktNameAcList');
+  if (!val) { if (listEl) listEl.classList.remove('open'); return; }
+  _nktNameAcTimer = setTimeout(async () => {
+    const items = await nktFetchAutocomplete(val);
+    if (listEl) nktShowAcList(listEl, items, item => {
+      document.getElementById('nktTradeName').value  = item.name;
+      document.getElementById('nktTradeTicker').value = item.ticker;
+      listEl.classList.remove('open');
+    });
+  }, 300);
+}
+
+async function nktFetchAutocomplete(query) {
+  if (!query || !query.trim()) return [];
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query.trim())}&lang=en-US&region=US&quotesCount=8&newsCount=0`;
+    const text = await fetchViaProxy(url);
+    const d = JSON.parse(text);
+    return (d.quotes || [])
+      .filter(it => it.symbol && !it.symbol.includes('.') && it.quoteType !== 'FUTURE')
+      .slice(0, 8)
+      .map(it => ({ ticker: it.symbol, name: it.shortname || it.longname || it.symbol }));
+  } catch(_) { return []; }
+}
+
+function nktShowAcList(listEl, items, onSelect) {
+  listEl.innerHTML = '';
+  if (!items.length) { listEl.classList.remove('open'); return; }
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'nkt-ac-item';
+    div.innerHTML = `<span class="nkt-ac-name">${item.name}</span><span class="nkt-ac-code">${item.ticker}</span>`;
+    div.addEventListener('mousedown', e => { e.preventDefault(); onSelect(item); });
+    listEl.appendChild(div);
+  });
+  listEl.classList.add('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nkt-ac-wrap')) {
+    document.querySelectorAll('.nkt-ac-list').forEach(el => el.classList.remove('open'));
+  }
+});
 
 // Init
 nkRender();
