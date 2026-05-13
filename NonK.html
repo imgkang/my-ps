@@ -1253,7 +1253,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.298';
+const APP_VERSION = 'NonK v0.299';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1406,6 +1406,12 @@ function fmtUSD(n) {
   return (n < 0 ? '-$' : '$') + abs.toFixed(2);
 }
 function fmtUSDSigned(n) { return (n >= 0 ? '+' : '') + fmtUSD(n); }
+function fmtUSDInt(n) {
+  if (!n && n !== 0) return '$0';
+  const rounded = Math.round(n);
+  return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString('en-US');
+}
+function fmtUSDIntSigned(n) { return (n >= 0 ? '+' : '') + fmtUSDInt(n); }
 
 function switchPage(page) {
   const mypm = document.getElementById('pageMyPM');
@@ -1712,13 +1718,13 @@ function nkRender() {
           <div>${it.price > 0 ? fmtUSD(it.price) : '-'}</div>
           <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
         </td>
-        <td class="${chCls}">${dayAmt ? fmtUSDSigned(dayAmt) : '-'}</td>
+        <td class="${chCls}">${dayAmt ? fmtUSDIntSigned(dayAmt) : '-'}</td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
-        <td>${it.hasCost ? fmtUSD(it.cost) : '-'}</td>
+        <td>${it.hasCost ? fmtUSDInt(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
-        <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
-        <td><strong>${fmtUSD(it.currentValue)}</strong></td>
-        <td class="${pCls}">${it.hasCost ? fmtUSDSigned(it.profit) : '-'}</td>
+        <td>${it.avgPrice > 0 ? fmtUSDInt(it.avgPrice) : '-'}</td>
+        <td><strong>${fmtUSDInt(it.currentValue)}</strong></td>
+        <td class="${pCls}">${it.hasCost ? fmtUSDIntSigned(it.profit) : '-'}</td>
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
@@ -1739,7 +1745,7 @@ function nkRender() {
         <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
       </td>
       <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-      <td><strong>${fmtUSD(totalCash)}</strong></td>
+      <td><strong>${fmtUSDInt(totalCash)}</strong></td>
       <td>-</td><td>-</td>
       <td>${cashWeight.toFixed(1)}%</td>
       <td>-</td>
@@ -1756,12 +1762,12 @@ function nkRender() {
     <tfoot><tr>
       <td>합계</td>
       <td>-</td>
-      <td class="${dayCls}">${todayPnl ? fmtUSDSigned(todayPnl) : '-'}</td>
+      <td class="${dayCls}">${todayPnl ? fmtUSDIntSigned(todayPnl) : '-'}</td>
       <td>${totalCost > 0 ? '100.0%' : '-'}</td>
-      <td>${totalCost > 0 ? fmtUSD(totalCost) : '-'}</td>
+      <td>${totalCost > 0 ? fmtUSDInt(totalCost) : '-'}</td>
       <td>-</td><td>-</td>
-      <td>${fmtUSD(totalValue)}</td>
-      <td class="${totPCls}">${deposited > 0 ? fmtUSDSigned(pnl) : '-'}</td>
+      <td>${fmtUSDInt(totalValue)}</td>
+      <td class="${totPCls}">${deposited > 0 ? fmtUSDIntSigned(pnl) : '-'}</td>
       <td class="${totPCls}">${deposited > 0 ? totPSign + pnlRate.toFixed(2) + '%' : '-'}</td>
       <td>${totalValue > 0 ? '100.0%' : '-'}</td>
       <td>-</td>
