@@ -2650,7 +2650,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.284';
+const APP_VERSION = 'MyPM v0.285';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9208,8 +9208,8 @@ function readWdPeriodsFromForm() {
       startYear:         n(`wdP${i}_start`)    || p.startYear,
       type:              isPct ? 'pct' : 'fixed',
       totalAmount:       n(`wdP${i}_totalAmt`) || p.totalAmount || 0,
-      wifeAmount:        n(`wdP${i}_wifeAmt`)  || p.wifeAmount  || 0,
-      myAmount:          n(`wdP${i}_myAmt`)    || p.myAmount    || 0,
+      wifeAmount:        (() => { const el = document.getElementById(`wdP${i}_wifeAmt`); return el ? (parseFloat(el.value) || 0) : (p.wifeAmount ?? 0); })(),
+      myAmount:          (() => { const el = document.getElementById(`wdP${i}_myAmt`);   return el ? (parseFloat(el.value) || 0) : (p.myAmount   ?? 0); })(),
       wifeContrib:       contrib,
       wifeRatio:         n(`wdP${i}_wifeRatio`)|| p.wifeRatio   || 50,
       pct:               n(`wdP${i}_pctVal`)   || p.pct         || 4,
@@ -9615,7 +9615,8 @@ function computeWithdrawalSim() {
           }
           const extraNetNeeded  = Math.max(0, target - pubContrib - basicNet - wifeBasisNet);
           const needExtra       = extraNetNeeded * grossMult;
-          const wifeGrossCap    = wifeNetTarget > 0 ? wifeNetTarget * grossMult : wifeBasisAmt;
+          const wifeGrossCap    = wifeNetTarget > 0 ? wifeNetTarget * grossMult
+            : (activePeriod.wifeContrib === 'fixed' && (activePeriod.wifeAmount || 0) === 0 ? 0 : wifeBasisAmt);
           wifeRemaining         = Math.min(wifeGrossCap, wifeBasisAmt + needExtra);
           const wifeExtraActual = Math.max(0, wifeRemaining - wifeBasisAmt);
           myRemaining           = basic + (needExtra - wifeExtraActual);
@@ -9704,8 +9705,9 @@ function computeWithdrawalSim() {
     if (_2passActive) {
       const _priv1 = allAccIds.reduce((s, id) =>
         s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
-      const _actualNet1 = _priv1 + myPublicInc + wifePublicInc
-        - totalRT - totalPT - (myPublicInc + wifePublicInc) * npTR;
+      const _pubContrib2p = (_activePeriod2p?.publicPensionMode || 'include') === 'include'
+        ? (myPublicInc + wifePublicInc) * (1 - npTR) : 0;
+      const _actualNet1 = _priv1 - totalRT - totalPT + _pubContrib2p;
       const _deficit = target - _actualNet1;
       if (Math.abs(_deficit) > 10000) {
         // 패스1 직후 나의 regularOut으로 한계세율 결정 (1500만원 초과 여부 반영)
@@ -9921,8 +9923,10 @@ function readQuickPeriodsFromForm() {
     const contrib = document.getElementById(`qwdP${i}_wifeContribBt`)?.dataset.contrib || p.wifeContrib || 'fixed';
     const startYear   = n(`qwdP${i}_start`)    || p.startYear;
     const totalAmount = n(`qwdP${i}_totalAmt`) || p.totalAmount || 0;
-    const wifeAmount  = n(`qwdP${i}_wifeAmt`)  || (contrib === 'fixed' ? p.wifeAmount || 0 : 0);
-    const myAmount    = n(`qwdP${i}_myAmt`)    || (contrib === 'topup' ? p.myAmount   || 0 : totalAmount - wifeAmount);
+    const wifeAmtEl   = document.getElementById(`qwdP${i}_wifeAmt`);
+    const wifeAmount  = wifeAmtEl ? (parseFloat(wifeAmtEl.value) || 0) : (contrib === 'fixed' ? (p.wifeAmount ?? 0) : 0);
+    const myAmtEl     = document.getElementById(`qwdP${i}_myAmt`);
+    const myAmount    = myAmtEl   ? (parseFloat(myAmtEl.value)   || 0) : (contrib === 'topup' ? (p.myAmount   ?? 0) : totalAmount - wifeAmount);
     return { ...p, startYear, type, totalAmount, wifeAmount, myAmount,
              wifeContrib: contrib, wifeRatio: n(`qwdP${i}_wifeRatio`) || p.wifeRatio || 50,
              pct: n(`qwdP${i}_pct`) || p.pct || 4,
