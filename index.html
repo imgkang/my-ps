@@ -2792,7 +2792,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.276';
+const APP_VERSION = 'MyPM v0.277';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9520,9 +9520,6 @@ function computeWithdrawalSim() {
         : wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
       target = targetNet;
       const publicNet = (myPublicInc + wifePublicInc) * (1 - npTR);
-      const privateNetNeeded = (wp.annualTargetType === 'pct' && wp.pctPublicMode === 'additive')
-        ? targetNet
-        : Math.max(0, targetNet - publicNet);
       const privTotalBal = allAccIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
       const anseTotalBal = allAccIds.reduce((s, id) => s + Math.max(0, state[id].anse), 0);
       const dcTotalBal   = allAccIds.reduce((s, id) => s + Math.max(0, state[id].dcPrincipal || 0), 0);
@@ -9530,8 +9527,18 @@ function computeWithdrawalSim() {
       const estPrivRate = privTotalBal > 0
         ? (anseTotalBal * getPTR(myBY, yr) + dcTotalBal * _rTR + regTotalBal * epTR) / privTotalBal
         : getPTR(myBY, yr);
-      const grossMult1 = estPrivRate < 1 ? 1 / (1 - estPrivRate) : 1;
-      const pgNeeded = privateNetNeeded * grossMult1;
+      let pgNeeded;
+      if (wp.annualTargetType === 'pct') {
+        // targetNet = portfolio×% = GROSS 값 → grossMult 불필요, publicGross 사용
+        const publicGross = myPublicInc + wifePublicInc;
+        pgNeeded = (wp.pctPublicMode === 'additive')
+          ? targetNet
+          : Math.max(0, targetNet - publicGross);
+      } else {
+        const privateNetNeeded = Math.max(0, targetNet - publicNet);
+        const grossMult1 = estPrivRate < 1 ? 1 / (1 - estPrivRate) : 1;
+        pgNeeded = privateNetNeeded * grossMult1;
+      }
       const myRF = (wp.method1MyRatio ?? 50) / 100;
       myRemaining   = appSettings.hasWife ? pgNeeded * myRF : pgNeeded;
       wifeRemaining = appSettings.hasWife ? pgNeeded * (1 - myRF) : 0;
@@ -9560,11 +9567,18 @@ function computeWithdrawalSim() {
       const pubNet       = (myPublicInc + wifePublicInc) * (1 - npTR);
       const basicNet     = basic * (1 - estPrivRate);
       const wifeBasisNet = wifeBasisAmt * (1 - estPrivRate);
-      const extraNetNeeded = (wp.annualTargetType === 'pct' && wp.pctPublicMode === 'additive')
-        ? Math.max(0, netTarget - basicNet - wifeBasisNet)
-        : Math.max(0, netTarget - pubNet - basicNet - wifeBasisNet);
-      const grossMult = estPrivRate < 1 ? 1 / (1 - estPrivRate) : 1;
-      const needExtra = extraNetNeeded * grossMult;
+      let needExtra;
+      if (wp.annualTargetType === 'pct') {
+        // netTarget = portfolio×% = GROSS 값 → gross arithmetic, grossMult 불필요
+        const publicGross = myPublicInc + wifePublicInc;
+        needExtra = (wp.pctPublicMode === 'additive')
+          ? Math.max(0, netTarget - basic - wifeBasisAmt)
+          : Math.max(0, netTarget - publicGross - basic - wifeBasisAmt);
+      } else {
+        const extraNetNeeded = Math.max(0, netTarget - pubNet - basicNet - wifeBasisNet);
+        const grossMult = estPrivRate < 1 ? 1 / (1 - estPrivRate) : 1;
+        needExtra = extraNetNeeded * grossMult;
+      }
       const wifeActive = yr >= wifeStartYear && yr >= (wp.wifeFixStartYear || wifeStartYear);
       // wifeFixWithdraw = 아내 계좌 최대인출금액 (기본인출 포함 총액 상한)
       const wifeMaxTotal = wifeActive
