@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.293';
+const APP_VERSION = 'MyPM v0.294';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -10146,6 +10146,16 @@ function promptSaveWdScenario() {
   renderWdScenarioTable();
 }
 
+function renameWdScenario(idx) {
+  const list = loadWdScenarios();
+  if (!list[idx]) return;
+  const newName = prompt('시나리오 이름을 입력하세요:', list[idx].name);
+  if (!newName || !newName.trim()) return;
+  list[idx].name = newName.trim();
+  localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(list));
+  renderWdScenarioTable();
+}
+
 function deleteWdScenario(idx) {
   if (!confirm('이 시나리오를 삭제하시겠습니까?')) return;
   const list = loadWdScenarios();
@@ -10196,7 +10206,7 @@ function renderWdScenarioTable() {
   const fmt = v => (v || 0).toLocaleString('ko-KR');
   let h = `<div style="overflow-x:auto"><table class="wd-scenario-table"><thead><tr>
     <th style="text-align:left">이름</th><th>저장일</th><th>인출시작</th><th>은퇴나이</th>
-    <th>수익률</th><th>목표(M)</th><th>생존점수</th><th>세후 실수령</th><th>실효세율</th><th></th>
+    <th>수익률</th><th>생존점수</th><th>세후 실수령</th><th>최저수령</th><th>실효세율</th><th></th>
   </tr></thead><tbody>`;
   list.forEach((sc, i) => {
     const m = sc.metrics;
@@ -10209,14 +10219,14 @@ function renderWdScenarioTable() {
       ? (m.survivabilityScore >= 100 ? '#16a34a' : m.survivabilityScore >= 0 ? '#d97706' : '#dc2626')
       : '#7c3aed';
     h += `<tr${isActive ? ' class="wd-sc-active"' : ''}>
-      <td onclick="loadWdScenario(${i})" title="클릭하여 선택">${isActive ? '▶ ' : ''}${sc.name}</td>
+      <td><span onclick="loadWdScenario(${i})" title="클릭하여 선택" style="cursor:pointer">${isActive ? '▶ ' : ''}${sc.name}</span> <button onclick="event.stopPropagation();renameWdScenario(${i})" style="background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;color:#94a3b8" title="이름 변경">✏️</button></td>
       <td>${sc.savedAt}</td>
       <td>${cfg.startYear}년</td><td>${cfg.retireAge || 60}세</td>
       <td>${cfg.returnRate}%</td>
-      <td>${fmt(cfg.annualTarget)}</td>
       <td ${best ? 'class="wd-scenario-best"' : ''} style="color:${sColor};font-weight:700">
         ${best ? '⭐ ' : ''}${fmt(survVal)}${hasSurv ? '' : 'M'}</td>
       <td>${hasSurv && m.monthlyNetManwon != null ? fmt(m.monthlyNetManwon) + '만/월' : '-'}</td>
+      <td>${hasSurv && m.minMonthlyNetManwon != null ? fmt(m.minMonthlyNetManwon) + '만/월' : '-'}</td>
       <td>${hasSurv ? (m.effectiveTaxRate || 0) + '%' : '-'}</td>
       <td style="white-space:nowrap">
         <button onclick="loadWdScenario(${i})" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:2px 7px;font-size:11px;color:#1d4ed8;cursor:pointer;margin-right:4px">선택</button>
