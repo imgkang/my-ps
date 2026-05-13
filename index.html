@@ -2173,14 +2173,15 @@ Chart.register({
         </label>
       </div>
       <div id="qwd_mainSection">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
           <label style="display:flex;align-items:center;gap:3px;color:var(--muted)">기본인출 (계좌/년)
             <input id="qwd_basicWithdraw" type="number" min="0" step="1"
                    style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
                    oninput="saveQuickWdPlan()">백만
           </label>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">구간별 인출 설정은 ⚙️ 버튼에서 / 은퇴연도 = 구간1 시작연도</div>
+        <div id="qwd_periodsContainer"></div>
+        <button onclick="addWdPeriod()" style="margin-top:6px;padding:3px 10px;font-size:11px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:5px;cursor:pointer;color:#475569">+ 구간 추가</button>
       </div>
     </div>
 
@@ -2465,6 +2466,7 @@ Chart.register({
           <span id="wdYL_wifeFixAmt" style="color:#64748b;font-size:10px;padding:0 4px"></span>
         </div>
       </div>
+      <div id="wdYL_periodsList" style="margin-top:2px;display:flex;flex-direction:column;gap:2px"></div>
     </div>
     <div style="overflow-y:auto;flex:1;padding:0 4px 4px">
       <div class="cfg-section">📈 수익률 / 물가</div>
@@ -2655,7 +2657,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.281';
+const APP_VERSION = 'MyPM v0.282';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9024,12 +9026,41 @@ function updateWdYearTimeline() {
   el('wdYL_myRetire',  '은퇴 ' + fmt(sy, myBy));
   el('wdYL_myAmt',     '');
   el('wdYL_target',    pCount > 0 ? `구간 ${pCount}개` : '구간 없음');
-  el('wdYL_targetAmt', p0 ? (p0.type === 'pct' ? `잔액 ${p0.pct||4}%` : `${p0.totalAmount||0}백만/년`) : '');
+  el('wdYL_targetAmt', '');
   el('wdYL_wifeRetire','은퇴 ' + fmt(wry, wifeBy));
   el('wdYL_wifeAmt',   '');
   el('wdYL_wifeFix',   '');
   el('wdYL_wifeFixAmt','');
   if (wifeRow) wifeRow.style.display = as.hasWife ? 'flex' : 'none';
+
+  // 구간별 요약 목록
+  const listEl = document.getElementById('wdYL_periodsList');
+  if (listEl) {
+    const _myBYt = myBy, _maxYrt = _myBYt > 0 ? _myBYt + 95 : 2100;
+    const wt = as.hasWife;
+    listEl.innerHTML = periods.map((p, i) => {
+      const nextStart = periods[i+1]?.startYear;
+      const endYr = nextStart ? nextStart - 1 : _maxYrt;
+      const endAge = _myBYt > 0 ? `(~${endYr - _myBYt}세)` : '';
+      let detail = '';
+      if (p.type === 'pct') {
+        detail = `인출율 ${p.pct||4}%`;
+      } else {
+        detail = `고정 ${p.totalAmount||0}백만/년`;
+        if (wt) {
+          const mode = p.wifeContrib || 'fixed';
+          if (mode === 'fixed') detail += ` · 아내고정 ${p.wifeAmount||0}백만`;
+          else if (mode === 'topup') detail += ` · 본인${p.myAmount||0}백만 충당`;
+          else detail += ` · 비율 아내${p.wifeRatio||50}%`;
+        }
+      }
+      return `<div style="font-size:10px;color:#475569;padding:1px 4px;background:#e0f2fe;border-radius:4px;display:inline-flex;gap:4px;flex-wrap:wrap">
+        <span style="color:#0369a1;font-weight:600">구간${i+1}</span>
+        <span>${p.startYear||'?'}~${endYr}년 ${endAge}</span>
+        <span style="color:#0f172a">${detail}</span>
+      </div>`;
+    }).join('');
+  }
 }
 function setWdAutoConsolidate(person, val) {
   const yes = document.getElementById(`wd_${person}AutoConsolidate_yes`);
@@ -9050,14 +9081,20 @@ function renderWdPeriods() {
     container.innerHTML = '<div style="padding:10px 0;color:var(--muted);font-size:12px;text-align:center">구간이 없습니다. 위 버튼으로 구간을 추가하세요.</div>';
     return;
   }
-  container.innerHTML = periods.map((p, i) => renderWdPeriodCard(i, p, hasWife)).join('');
+  const _myBY2 = appSettings.myBirthYear || 0;
+  const _maxYr2 = _myBY2 > 0 ? _myBY2 + 95 : 2100;
+  container.innerHTML = periods.map((p, i) => {
+    const nextStart = periods[i+1]?.startYear;
+    const endYr = nextStart ? nextStart - 1 : _maxYr2;
+    return renderWdPeriodCard(i, p, hasWife, endYr);
+  }).join('');
   periods.forEach((p, i) => {
     setWdPeriodType(i, p.type || 'fixed', true);
     if ((p.type || 'fixed') === 'fixed' && hasWife) setWdPeriodWifeContrib(i, p.wifeContrib || 'fixed', true);
   });
 }
 
-function renderWdPeriodCard(idx, period, hasWife) {
+function renderWdPeriodCard(idx, period, hasWife, endYr) {
   const wifeContribSection = hasWife ? `
     <div style="margin-top:8px">
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">배우자 기여방식</div>
@@ -9087,8 +9124,8 @@ function renderWdPeriodCard(idx, period, hasWife) {
   <div class="cfg-grid" style="margin-bottom:6px">
     <label>시작연도</label>
     <input id="wdP${idx}_start" type="number" min="2020" max="2080" value="${period.startYear || ''}">
-    <label>끝연도</label>
-    <input id="wdP${idx}_end" type="number" min="2020" max="2080" value="${period.endYear || ''}">
+    <label style="color:var(--muted);font-size:11px">~${endYr || '?'}년까지 (자동)</label>
+    <span></span>
   </div>
   <div class="toggle-row" style="margin-bottom:8px">
     <button id="wdP${idx}_fixed" class="toggle-btn" onclick="setWdPeriodType(${idx},'fixed')">고정금액</button>
@@ -9111,20 +9148,25 @@ function renderWdPeriodCard(idx, period, hasWife) {
 }
 
 function addWdPeriod() {
+  if ((wdPlan.periods||[]).length > 0) wdPlan.periods = readWdPeriodsFromForm();
   const periods = wdPlan.periods || [];
   const last = periods[periods.length - 1];
   const cy = new Date().getFullYear();
-  const newStart = last ? last.endYear + 1 : cy + 2;
-  periods.push({ startYear: newStart, endYear: newStart + 9, type: 'fixed', totalAmount: 120, wifeAmount: 40, myAmount: 80, wifeContrib: 'fixed', wifeRatio: 50, pct: 4 });
+  const newStart = last ? last.startYear + 1 : cy + 2;
+  periods.push({ startYear: newStart, type: 'fixed', totalAmount: 120, wifeAmount: 40, myAmount: 80, wifeContrib: 'fixed', wifeRatio: 50, pct: 4 });
   wdPlan.periods = periods;
   renderWdPeriods();
+  renderQuickPeriods();
 }
 
 function removeWdPeriod(idx) {
+  if (!confirm(`구간 ${idx+1}을(를) 삭제하시겠습니까?`)) return;
+  if ((wdPlan.periods||[]).length > 0) wdPlan.periods = readWdPeriodsFromForm();
   const periods = wdPlan.periods || [];
   periods.splice(idx, 1);
   wdPlan.periods = periods;
   renderWdPeriods();
+  renderQuickPeriods();
 }
 
 function setWdPeriodType(idx, type, noSync) {
@@ -9167,7 +9209,6 @@ function readWdPeriodsFromForm() {
     }) || p.wifeContrib || 'fixed';
     return {
       startYear:   n(`wdP${i}_start`)    || p.startYear,
-      endYear:     n(`wdP${i}_end`)      || p.endYear,
       type:        isPct ? 'pct' : 'fixed',
       totalAmount: n(`wdP${i}_totalAmt`) || p.totalAmount || 0,
       wifeAmount:  n(`wdP${i}_wifeAmt`)  || p.wifeAmount  || 0,
@@ -9189,9 +9230,14 @@ function applyWdSettings() {
     return;
   }
   for (let i = 0; i < periods.length; i++) {
-    const p = periods[i];
-    if (!p.startYear || !p.endYear || p.endYear < p.startYear) {
-      alert(`구간 ${i+1}: 끝연도는 시작연도보다 크거나 같아야 합니다.`);
+    if (!periods[i].startYear) {
+      alert(`구간 ${i+1}: 시작연도를 입력해주세요.`);
+      return;
+    }
+  }
+  for (let i = 1; i < periods.length; i++) {
+    if (periods[i].startYear <= periods[i-1].startYear) {
+      alert(`구간${i+1} 시작연도는 구간${i}(${periods[i-1].startYear}년)보다 나중이어야 합니다.`);
       return;
     }
   }
@@ -9414,6 +9460,15 @@ function computeWithdrawalSim() {
 
   const withdrawals = {}, balances = {}, summary = {};
 
+  // 끝연도 자동 파생 (구간i+1의 시작-1, 마지막은 본인 95세)
+  const _myBY = wp.myBirthYear || appSettings.myBirthYear || 0;
+  const _maxYear = _myBY > 0 ? _myBY + 95 : 2100;
+  const _sortedP = [...(wp.periods||[])].sort((a,b)=>a.startYear-b.startYear);
+  const periodsWithEnd = _sortedP.map((p,i)=>({
+    ...p,
+    derivedEndYear: i < _sortedP.length-1 ? _sortedP[i+1].startYear-1 : _maxYear
+  }));
+
   for (const yr of years) {
     withdrawals[yr] = {};
     for (const accId of allAccIds) withdrawals[yr][accId] = { anseOut: 0, dcOut: 0, regularOut: 0, pensionTax: 0 };
@@ -9503,7 +9558,7 @@ function computeWithdrawalSim() {
     if (yr < startYear) {
       myRemaining = 0; wifeRemaining = 0; target = 0;
     } else {
-      const activePeriod = (wp.periods || []).find(p => yr >= p.startYear && yr <= p.endYear);
+      const activePeriod = periodsWithEnd.find(p => yr >= p.startYear && yr <= p.derivedEndYear);
       if (!activePeriod) {
         // 구간 없는 연도: 기본인출액만
         myRemaining   = basic;
@@ -9645,7 +9700,7 @@ function computeWithdrawalSim() {
     applyPensionTaxThreshold(getActiveWifeAccIds());
 
     // 고정금액 구간에서 세후 실수령액 = target 2차 보정 (pct 모드는 gross 직접 계산이므로 불필요)
-    const _activePeriod2p = yr >= startYear ? (wp.periods || []).find(p => yr >= p.startYear && yr <= p.endYear) : null;
+    const _activePeriod2p = yr >= startYear ? periodsWithEnd.find(p => yr >= p.startYear && yr <= p.derivedEndYear) : null;
     const _2passActive = yr >= startYear && (!_activePeriod2p || _activePeriod2p.type !== 'pct');
     if (_2passActive) {
       const _priv1 = allAccIds.reduce((s, id) =>
@@ -9705,12 +9760,161 @@ function loadQuickWdValues() {
   s('qwd_basicWithdraw', wp.basicWithdraw);
   s('qwd_returnRate',    wp.returnRate);
   s('qwd_inflation',     wp.inflation);
+  renderQuickPeriods();
+}
+function renderQuickPeriods() {
+  const container = document.getElementById('qwd_periodsContainer');
+  if (!container) return;
+  const periods = wdPlan.periods || [];
+  const hasWife = !!appSettings.hasWife;
+  const myBY = appSettings.myBirthYear || 0;
+  const maxYear = myBY > 0 ? myBY + 95 : 2100;
+  container.innerHTML = periods.map((p, i) => {
+    const nextStart = periods[i + 1]?.startYear;
+    const endYr = nextStart ? nextStart - 1 : maxYear;
+    return renderQuickPeriodCard(i, p, hasWife, endYr);
+  }).join('');
+  periods.forEach((p, i) => {
+    setQwdPeriodType(i, p.type || 'fixed', true);
+    if ((p.type || 'fixed') === 'fixed' && hasWife) setQwdPeriodWifeContrib(i, p.wifeContrib || 'fixed', true);
+  });
+}
+function renderQuickPeriodCard(idx, period, hasWife, endYr) {
+  const p = period;
+  const isFix = (p.type || 'fixed') === 'fixed';
+  const isTopup = (p.wifeContrib || 'fixed') === 'topup';
+  const isRatio = (p.wifeContrib || 'fixed') === 'ratio';
+  const btnBase = 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #cbd5e1;cursor:pointer;';
+  const btnAct  = btnBase + 'background:#3b82f6;color:#fff;border-color:#3b82f6;';
+  const btnOff  = btnBase + 'background:#f1f5f9;color:#475569;';
+  const wifeFixCfg = `
+    <span style="color:var(--muted);font-size:11px;margin-left:4px">아내 고정
+      <input id="qwdP${idx}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}"
+             style="width:46px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
+             oninput="saveQuickWdPlan()">백만
+    </span>`;
+  const wifeTopupCfg = `<span style="color:var(--muted);font-size:11px;margin-left:4px">(본인 부족분 충당)</span>`;
+  const wifeRatioCfg = `
+    <span style="color:var(--muted);font-size:11px;margin-left:4px">아내
+      <input id="qwdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}"
+             style="width:40px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
+             oninput="saveQuickWdPlan()">%
+    </span>`;
+  return `<div style="border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;margin-bottom:5px;background:#fff;font-size:11px">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-weight:600;color:#334155;min-width:34px">구간${idx+1}</span>
+      <input id="qwdP${idx}_start" type="number" min="2000" max="2100" step="1" value="${p.startYear||''}"
+             style="width:60px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
+             oninput="saveQuickWdPlan()">년
+      <span style="color:var(--muted)">(~${endYr}년)</span>
+      <button id="qwdP${idx}_type_fixed" style="${isFix?btnAct:btnOff}" onclick="setQwdPeriodType(${idx},'fixed')">고정금액</button>
+      <button id="qwdP${idx}_type_pct"   style="${!isFix?btnAct:btnOff}" onclick="setQwdPeriodType(${idx},'pct')">인출율</button>
+      <button onclick="removeWdPeriod(${idx})" style="margin-left:auto;padding:2px 6px;font-size:11px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;color:#dc2626">삭제</button>
+    </div>
+    <div id="qwdP${idx}_fixedCfg" style="margin-top:5px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+      <span style="color:var(--muted)">총인출
+        <input id="qwdP${idx}_totalAmt" type="number" min="0" step="1" value="${p.totalAmount||0}"
+               style="width:52px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
+               oninput="saveQuickWdPlan()">백만/년
+      </span>
+      ${hasWife ? `
+      <button id="qwdP${idx}_contrib_fixed_w" style="${!isTopup&&!isRatio?btnAct:btnOff}" onclick="setQwdPeriodWifeContrib(${idx},'fixed')">아내고정</button>
+      <button id="qwdP${idx}_contrib_topup"   style="${isTopup?btnAct:btnOff}"             onclick="setQwdPeriodWifeContrib(${idx},'topup')">부족충당</button>
+      <button id="qwdP${idx}_contrib_ratio"   style="${isRatio?btnAct:btnOff}"             onclick="setQwdPeriodWifeContrib(${idx},'ratio')">비율</button>
+      <div id="qwdP${idx}_wifeCfg" style="display:inline-flex;align-items:center">
+        ${!isTopup&&!isRatio ? wifeFixCfg : isTopup ? wifeTopupCfg : wifeRatioCfg}
+      </div>` : ''}
+    </div>
+    <div id="qwdP${idx}_pctCfg" style="margin-top:5px;display:none;align-items:center;gap:4px">
+      <span style="color:var(--muted)">인출율
+        <input id="qwdP${idx}_pct" type="number" min="0" max="20" step="0.1" value="${p.pct||4}"
+               style="width:46px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
+               oninput="saveQuickWdPlan()">%
+      </span>
+    </div>
+  </div>`;
+}
+function setQwdPeriodType(i, type, noSync) {
+  const fixBtn = document.getElementById(`qwdP${i}_type_fixed`);
+  const pctBtn = document.getElementById(`qwdP${i}_type_pct`);
+  const fixCfg = document.getElementById(`qwdP${i}_fixedCfg`);
+  const pctCfg = document.getElementById(`qwdP${i}_pctCfg`);
+  if (!fixBtn) return;
+  const btnAct = 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #3b82f6;cursor:pointer;background:#3b82f6;color:#fff;';
+  const btnOff = 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #cbd5e1;cursor:pointer;background:#f1f5f9;color:#475569;';
+  if (type === 'pct') {
+    fixBtn.style.cssText = btnOff; pctBtn.style.cssText = btnAct;
+    if (fixCfg) fixCfg.style.display = 'none';
+    if (pctCfg) pctCfg.style.display = 'flex';
+  } else {
+    fixBtn.style.cssText = btnAct; pctBtn.style.cssText = btnOff;
+    if (fixCfg) fixCfg.style.display = 'flex';
+    if (pctCfg) pctCfg.style.display = 'none';
+  }
+  if (!noSync) saveQuickWdPlan();
+}
+function setQwdPeriodWifeContrib(i, mode, noSync) {
+  const btnBase = 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #cbd5e1;cursor:pointer;';
+  const btnAct  = btnBase + 'background:#3b82f6;color:#fff;border-color:#3b82f6;';
+  const btnOff  = btnBase + 'background:#f1f5f9;color:#475569;';
+  ['fixed','topup','ratio'].forEach(m => {
+    const id = m === 'fixed' ? `qwdP${i}_contrib_fixed_w` : `qwdP${i}_contrib_${m}`;
+    const el = document.getElementById(id);
+    if (el) el.style.cssText = m === mode ? btnAct : btnOff;
+  });
+  const wifeCfg = document.getElementById(`qwdP${i}_wifeCfg`);
+  if (wifeCfg) {
+    const p = (wdPlan.periods || [])[i] || {};
+    if (mode === 'topup') {
+      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">(본인 부족분 충당)</span>`;
+    } else if (mode === 'ratio') {
+      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내
+        <input id="qwdP${i}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}"
+               style="width:40px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
+               oninput="saveQuickWdPlan()">%</span>`;
+    } else {
+      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 고정
+        <input id="qwdP${i}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}"
+               style="width:46px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
+               oninput="saveQuickWdPlan()">백만</span>`;
+    }
+  }
+  if (!noSync) saveQuickWdPlan();
+}
+function readQuickPeriodsFromForm() {
+  return (wdPlan.periods || []).map((p, i) => {
+    const n = id => { const v = Number(document.getElementById(id)?.value); return isNaN(v) ? 0 : v; };
+    const isPct = document.getElementById(`qwdP${i}_type_pct`)?.style.cssText?.includes('#3b82f6') ||
+                  document.getElementById(`qwdP${i}_type_pct`)?.classList.contains('active');
+    const typeEl = document.getElementById(`qwdP${i}_pctCfg`);
+    const type = typeEl && typeEl.style.display !== 'none' ? 'pct' : 'fixed';
+    const contrib = ['fixed','topup','ratio'].find(m => {
+      const id = m === 'fixed' ? `qwdP${i}_contrib_fixed_w` : `qwdP${i}_contrib_${m}`;
+      const el = document.getElementById(id);
+      return el && el.style.cssText?.includes('#3b82f6');
+    }) || p.wifeContrib || 'fixed';
+    const startYear = n(`qwdP${i}_start`) || p.startYear;
+    const totalAmount = n(`qwdP${i}_totalAmt`) || p.totalAmount || 0;
+    const wifeAmount  = n(`qwdP${i}_wifeAmt`)  || (contrib==='fixed' ? p.wifeAmount||0 : 0);
+    const myAmount    = totalAmount - wifeAmount;
+    return { ...p, startYear, type, totalAmount, wifeAmount, myAmount,
+             wifeContrib: contrib, wifeRatio: n(`qwdP${i}_wifeRatio`) || p.wifeRatio || 50,
+             pct: n(`qwdP${i}_pct`) || p.pct || 4 };
+  });
 }
 function saveQuickWdPlan() {
   const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) || v === 0 ? def : v; };
   wdPlan.returnRate    = nv('qwd_returnRate', wdPlan.returnRate);
   wdPlan.inflation     = nv('qwd_inflation',  wdPlan.inflation);
   wdPlan.basicWithdraw = nv('qwd_basicWithdraw', wdPlan.basicWithdraw);
+  const qPeriods = readQuickPeriodsFromForm();
+  for (let i = 1; i < qPeriods.length; i++) {
+    if (qPeriods[i].startYear > 0 && qPeriods[i-1].startYear > 0 &&
+        qPeriods[i].startYear <= qPeriods[i-1].startYear) break;
+  }
+  wdPlan.periods = qPeriods;
+  const newStart = qPeriods[0]?.startYear || wdPlan.startYear;
+  if (newStart) { wdPlan.startYear = newStart; wdPlan.wifeRetireYear = newStart; }
   saveWdPlan();
   if (document.getElementById('panel-withdrawal')?.classList.contains('active')) {
     _wdSelectedScenIdx = null;
