@@ -548,7 +548,7 @@ Chart.register({
   }
   .detail-table th:first-child, .detail-table td:first-child {
     text-align: left; padding-left: 10px;
-    white-space: normal; min-width: 140px; max-width: 220px;
+    white-space: normal; width: 160px; min-width: 140px; max-width: 220px;
     position: sticky; left: 0; z-index: 1;
   }
   .detail-table th:first-child { background: #f9fafb; z-index: 2; }
@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.299';
+const APP_VERSION = 'MyPM v0.300';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
