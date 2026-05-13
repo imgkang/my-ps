@@ -2792,7 +2792,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.277';
+const APP_VERSION = 'MyPM v0.278';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9664,8 +9664,8 @@ function computeWithdrawalSim() {
     doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
     applyPensionTaxThreshold(getActiveWifeAccIds());
 
-    // 목표액 구간: 세후 실수령액 = target이 되도록 2차 보정
-    const _2passActive = wp.method === 1 ? yr >= startYear : yr >= targetStartYear;
+    // 목표액 구간: 세후 실수령액 = target이 되도록 2차 보정 (pct 모드는 pass1에서 gross 직접 계산하므로 불필요)
+    const _2passActive = wp.annualTargetType !== 'pct' && (wp.method === 1 ? yr >= startYear : yr >= targetStartYear);
     if (_2passActive) {
       const _priv1 = allAccIds.reduce((s, id) =>
         s + withdrawals[yr][id].anseOut + withdrawals[yr][id].dcOut + withdrawals[yr][id].regularOut, 0);
