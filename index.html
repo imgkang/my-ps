@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.294';
+const APP_VERSION = 'MyPM v0.295';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9199,8 +9199,13 @@ function removeWdPeriod(idx) {
   const periods = wdPlan.periods || [];
   periods.splice(idx, 1);
   wdPlan.periods = periods;
+  saveWdPlan();
   renderWdPeriods();
   renderQuickPeriods();
+  if (document.getElementById('panel-withdrawal')?.classList.contains('active')) {
+    _wdSelectedScenIdx = null;
+    renderWithdrawalPlan();
+  }
 }
 
 function setWdPeriodType(idx, type, noSync) {
