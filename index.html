@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.288';
+const APP_VERSION = 'MyPM v0.289';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7504,6 +7504,7 @@ saveAppSettings();
 function getWdDefaults() {
   const cy = new Date().getFullYear();
   return {
+    _v2: true,
     startYear: cy + 2, retireAge: 60, annualTarget: 80,
     inflation: 2.2, returnRate: 4.0,
     retireTaxRate: 12, pensionTaxRateU70: 5.5, pensionTaxRate7080: 4.4, pensionTaxRateO80: 3.3, npTaxRate: 4, excessPensionTaxRate: 16.5,
