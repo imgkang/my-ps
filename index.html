@@ -2558,11 +2558,16 @@ Chart.register({
       <div id="wdTargetPct" style="display:none">
         <div class="cfg-grid">
           <label>연간 인출 비율 (%)</label>
-          <input id="wd_withdrawalPct" type="number" min="0.1" max="20" step="0.1" oninput="updateWdYearTimeline()">
+          <input id="wd_withdrawalPct" type="number" min="0.1" max="20" step="0.1" oninput="setWdPctPublicMode()">
         </div>
-        <div style="font-size:11px;color:var(--muted);padding:2px 0 6px;line-height:1.5">
-          사적연금(퇴직금 포함) 연초 잔액 기준. 공적연금은 별도 수령액으로 가산됩니다.
+        <div class="cfg-grid">
+          <label>공적연금 처리</label>
+          <div class="toggle-row">
+            <button id="wd_pctPublic_deduct"   class="toggle-btn active" onclick="setWdPctPublicMode('deduct')">차감 후 인출</button>
+            <button id="wd_pctPublic_additive" class="toggle-btn"        onclick="setWdPctPublicMode('additive')">별도 가산</button>
+          </div>
         </div>
+        <div id="wdPctPublicDesc" style="font-size:11px;color:var(--muted);padding:2px 0 6px;line-height:1.5"></div>
       </div>
       <div style="display:flex;gap:6px;padding:2px 0 6px;align-items:center">
         <button id="wd_method0_btn" class="toggle-btn active" onclick="setWdMethod(0)" style="flex:1;font-size:12px">방식0: 목표인출</button>
@@ -2787,7 +2792,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.275';
+const APP_VERSION = 'MyPM v0.276';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7636,7 +7641,7 @@ function getWdDefaults() {
     targetStartYear: cy + 7, wifeFixWithdraw: 0, wifeFixStartYear: cy + 4,
     myBirthYear: 0, myBirthMonth: 1, wifeBirthYear: 0, wifeBirthMonth: 1,
     method: 0, method1StartYear: 0, method1MyRatio: 50,
-    annualTargetType: 'fixed', withdrawalPct: 4,
+    annualTargetType: 'fixed', withdrawalPct: 4, pctPublicMode: 'deduct',
   };
 }
 function loadWdPlan() {
@@ -9070,7 +9075,19 @@ function setWdTargetType(type) {
   const isM1 = wdPlan.method === 1;
   const d = (id, hide) => { const el = document.getElementById(id); if (el) el.style.display = hide ? 'none' : ''; };
   d('wdM0TargetYear', isM1 || isPct);
+  if (isPct) setWdPctPublicMode();
   updateWdYearTimeline();
+}
+function setWdPctPublicMode(mode) {
+  const currentMode = mode ?? (document.getElementById('wd_pctPublic_additive')?.classList.contains('active') ? 'additive' : 'deduct');
+  const isAdd = currentMode === 'additive';
+  document.getElementById('wd_pctPublic_deduct')?.classList.toggle('active', !isAdd);
+  document.getElementById('wd_pctPublic_additive')?.classList.toggle('active', isAdd);
+  const desc = document.getElementById('wdPctPublicDesc');
+  const pct = document.getElementById('wd_withdrawalPct')?.value || (wdPlan?.withdrawalPct ?? 4);
+  if (desc) desc.textContent = isAdd
+    ? `잔액 ${pct}% = 사적연금 인출액. 공적연금은 별도 수령으로 가산됩니다.`
+    : `잔액 ${pct}% = 연간 총 수령 목표. 공적연금이 나오는 만큼 사적 인출 감소.`;
 }
 function onM1RatioChange() {
   const v = Math.min(100, Math.max(0, Number(document.getElementById('wd_m1MyRatio')?.value) || 0));
@@ -9096,6 +9113,7 @@ function loadWdFormValues() {
   const m1r = document.getElementById('wdM1RatioSection');
   if (m1r) m1r.style.display = appSettings.hasWife ? '' : 'none';
   setWdTargetType(wp.annualTargetType || 'fixed');
+  setWdPctPublicMode(wp.pctPublicMode || 'deduct');
   setWdMethod(wp.method || 0);
 }
 
@@ -9197,6 +9215,7 @@ function applyWdSettings() {
     annualTarget: n('wd_annualTarget') || wdPlan.annualTarget,
     annualTargetType: document.getElementById('wd_targetType_pct')?.classList.contains('active') ? 'pct' : 'fixed',
     withdrawalPct: n('wd_withdrawalPct') || 4,
+    pctPublicMode: document.getElementById('wd_pctPublic_additive')?.classList.contains('active') ? 'additive' : 'deduct',
     inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
     retireTaxRate: wdPlan.retireTaxRate, pensionTaxRate: wdPlan.pensionTaxRate,
     npTaxRate: wdPlan.npTaxRate, excessPensionTaxRate: wdPlan.excessPensionTaxRate,
@@ -9501,7 +9520,9 @@ function computeWithdrawalSim() {
         : wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
       target = targetNet;
       const publicNet = (myPublicInc + wifePublicInc) * (1 - npTR);
-      const privateNetNeeded = Math.max(0, targetNet - publicNet);
+      const privateNetNeeded = (wp.annualTargetType === 'pct' && wp.pctPublicMode === 'additive')
+        ? targetNet
+        : Math.max(0, targetNet - publicNet);
       const privTotalBal = allAccIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
       const anseTotalBal = allAccIds.reduce((s, id) => s + Math.max(0, state[id].anse), 0);
       const dcTotalBal   = allAccIds.reduce((s, id) => s + Math.max(0, state[id].dcPrincipal || 0), 0);
@@ -9539,7 +9560,9 @@ function computeWithdrawalSim() {
       const pubNet       = (myPublicInc + wifePublicInc) * (1 - npTR);
       const basicNet     = basic * (1 - estPrivRate);
       const wifeBasisNet = wifeBasisAmt * (1 - estPrivRate);
-      const extraNetNeeded = Math.max(0, netTarget - pubNet - basicNet - wifeBasisNet);
+      const extraNetNeeded = (wp.annualTargetType === 'pct' && wp.pctPublicMode === 'additive')
+        ? Math.max(0, netTarget - basicNet - wifeBasisNet)
+        : Math.max(0, netTarget - pubNet - basicNet - wifeBasisNet);
       const grossMult = estPrivRate < 1 ? 1 / (1 - estPrivRate) : 1;
       const needExtra = extraNetNeeded * grossMult;
       const wifeActive = yr >= wifeStartYear && yr >= (wp.wifeFixStartYear || wifeStartYear);
