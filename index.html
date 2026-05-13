@@ -2269,37 +2269,37 @@ Chart.register({
     <!-- 인출 계획 차트 -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:14px;flex-shrink:0">
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
-          <h3 id="wdChart1Title" style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
-          <button id="wdChart1PVBtn" onclick="toggleWdChartPV(1)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
+        <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;margin:0 0 6px;min-width:0">
+          <h3 id="wdChart1Title" style="margin:0;font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
+          <button id="wdChart1PVBtn" onclick="toggleWdChartPV(1)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart1"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
-          <h3 id="wdChart2Title" style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 나 / 아내 잔액 추이 (백만원)</h3>
-          <button id="wdChart2PVBtn" onclick="toggleWdChartPV(2)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
+        <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;margin:0 0 6px;min-width:0">
+          <h3 id="wdChart2Title" style="margin:0;font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 나 / 아내 잔액 추이 (백만원)</h3>
+          <button id="wdChart2PVBtn" onclick="toggleWdChartPV(2)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart2"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
-          <h3 style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 세금 누적 추이 (백만원)</h3>
-          <button id="wdChart3PVBtn" onclick="toggleWdChartPV(3)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
+        <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;margin:0 0 6px;min-width:0">
+          <h3 style="margin:0;font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 세금 누적 추이 (백만원)</h3>
+          <button id="wdChart3PVBtn" onclick="toggleWdChartPV(3)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart3"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
-          <h3 style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 계좌별 연간 인출액 (백만원)</h3>
-          <button id="wdChart4PVBtn" onclick="toggleWdChartPV(4)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
+        <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;margin:0 0 6px;min-width:0">
+          <h3 style="margin:0;font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 계좌별 연간 인출액 (백만원)</h3>
+          <button id="wdChart4PVBtn" onclick="toggleWdChartPV(4)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart4"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
-          <h3 style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 계좌별 잔액 추이 (백만원)</h3>
-          <button id="wdChart5PVBtn" onclick="toggleWdChartPV(5)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
+        <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;margin:0 0 6px;min-width:0">
+          <h3 style="margin:0;font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 계좌별 잔액 추이 (백만원)</h3>
+          <button id="wdChart5PVBtn" onclick="toggleWdChartPV(5)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart5"></canvas></div>
       </div>
@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.287';
+const APP_VERSION = 'MyPM v0.288';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
