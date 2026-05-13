@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.292';
+const APP_VERSION = 'MyPM v0.293';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -10070,12 +10070,18 @@ function computeWdMetrics(sim) {
       ? Math.round(pvBalance / (annualTargetPV * 25) * 100) : 0;
   }
 
-  // 세후 월 실수령액: 연도별 순수령(세후)을 오늘 화폐가치로 환산한 평균의 월액 (만원)
+  // 세후 월 실수령액: 연도별 순수령(세후)을 오늘 화폐가치로 환산한 평균/최저의 월액 (만원)
   const totalNetPV = activeYears.reduce((s, yr) => {
     const net = summary[yr].totalInc - summary[yr].totalTax;
     return s + net / Math.pow(1 + inf, yr - todayYear);
   }, 0);
   const monthlyNetManwon = nYears > 0 ? Math.round(totalNetPV / nYears / 12 / 10000) : 0;
+  const minNetPV = activeYears.length > 0
+    ? Math.min(...activeYears.map(yr =>
+        (summary[yr].totalInc - summary[yr].totalTax) / Math.pow(1 + inf, yr - todayYear)
+      ))
+    : 0;
+  const minMonthlyNetManwon = Math.round(minNetPV / 12 / 10000);
 
   // Effective tax rate
   const effectiveTaxRate = totalWithdraw > 0
@@ -10084,7 +10090,7 @@ function computeWdMetrics(sim) {
   return {
     totalWithdraw, totalTax, totalTarget, finalBalance, pvBalance,
     score: totalWithdraw + finalBalance - totalTax,
-    survivabilityScore, monthlyNetManwon,
+    survivabilityScore, monthlyNetManwon, minMonthlyNetManwon,
     effectiveTaxRate, depletedYear,
   };
 }
@@ -10099,9 +10105,9 @@ function renderWdBriefing(sim) {
   bar.style.display = 'flex';
   bar.innerHTML =
     `<span>⭐ 생존점수 <b style="color:${sColor};font-size:13.5px">${fmt(m.survivabilityScore)}</b> <button onclick="openScoreHelp()" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle;margin-left:2px">?</button></span>` +
-    `<span>💴 세후 실수령액 <b>${fmt(m.monthlyNetManwon)}만원/월</b></span>` +
+    `<span>💴 세후 실수령액 <b>${fmt(m.monthlyNetManwon)}만원/월</b><br><span style="font-size:11px;color:#64748b">최저 ${fmt(m.minMonthlyNetManwon)}만원/월</span></span>` +
     `<span>🧾 실효세율 <b style="color:#dc2626">${m.effectiveTaxRate}%</b></span>` +
-    `<span>🏦 95세 잔액(현재가치) <b>${fmt(m.pvBalance)}M</b></span>`;
+    `<span>🏦 95세 잔액(현재가치) <b>${(m.pvBalance / 100).toFixed(1)}억원</b></span>`;
 }
 
 // ===== 테이블 토글 =====
