@@ -2269,36 +2269,36 @@ Chart.register({
     <!-- 인출 계획 차트 -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:14px;flex-shrink:0">
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 6px">
-          <h3 id="wdChart1Title" style="margin:0;font-size:13px;color:#374151">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
+          <h3 id="wdChart1Title" style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 연도별 인출금액 / 누적 / 잔액 (백만원)</h3>
           <button id="wdChart1PVBtn" onclick="toggleWdChartPV(1)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart1"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 6px">
-          <h3 id="wdChart2Title" style="margin:0;font-size:13px;color:#374151">📊 나 / 아내 잔액 추이 (백만원)</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
+          <h3 id="wdChart2Title" style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 나 / 아내 잔액 추이 (백만원)</h3>
           <button id="wdChart2PVBtn" onclick="toggleWdChartPV(2)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart2"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 6px">
-          <h3 style="margin:0;font-size:13px;color:#374151">📊 세금 누적 추이 (백만원)</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
+          <h3 style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 세금 누적 추이 (백만원)</h3>
           <button id="wdChart3PVBtn" onclick="toggleWdChartPV(3)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart3"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 6px">
-          <h3 style="margin:0;font-size:13px;color:#374151">📊 계좌별 연간 인출액 (백만원)</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
+          <h3 style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 계좌별 연간 인출액 (백만원)</h3>
           <button id="wdChart4PVBtn" onclick="toggleWdChartPV(4)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart4"></canvas></div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 6px">
-          <h3 style="margin:0;font-size:13px;color:#374151">📊 계좌별 잔액 추이 (백만원)</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px;flex-wrap:nowrap;min-width:0">
+          <h3 style="margin:0;font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📊 계좌별 잔액 추이 (백만원)</h3>
           <button id="wdChart5PVBtn" onclick="toggleWdChartPV(5)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;flex-shrink:0">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart5"></canvas></div>
@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.286';
+const APP_VERSION = 'MyPM v0.287';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9829,31 +9829,31 @@ function renderQuickPeriodCard(idx, period, hasWife, endYr) {
     ? 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #93c5fd;cursor:pointer;background:#eff6ff;color:#1d4ed8;'
     : 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #fcd34d;cursor:pointer;background:#fffbeb;color:#b45309;';
   const wifeCfgHtml = wc === 'topup'
-    ? `<span style="color:var(--muted);font-size:11px;margin-left:4px">본인 고정 <input id="qwdP${idx}_myAmt" type="number" min="0" step="1" value="${p.myAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`
+    ? `<span style="color:var(--muted);font-size:11px">본인 고정 <input id="qwdP${idx}_myAmt" type="number" min="0" step="1" value="${p.myAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`
     : wc === 'ratio'
-    ? `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 <input id="qwdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}" style="width:40px;${inStyle}" oninput="saveQuickWdPlan()">%</span>`
-    : `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`;
+    ? `<span style="color:var(--muted);font-size:11px">아내 <input id="qwdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}" style="width:40px;${inStyle}" oninput="saveQuickWdPlan()">%</span>`
+    : `<span style="color:var(--muted);font-size:11px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`;
   const wcLabel = wc === 'topup' ? '부족분충당' : wc === 'ratio' ? '일정비율' : '고정금액';
   return `<div style="border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;margin-bottom:5px;background:#fff;font-size:11px">
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <!-- 행1: 구간정보 + 타입 + 공적연금 + 총인출/인출율 + 삭제 -->
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
       <span style="font-weight:600;color:#334155;min-width:34px">구간${idx+1}</span>
       <input id="qwdP${idx}_start" type="number" min="2000" max="2100" step="1" value="${p.startYear||''}"
              style="width:60px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
-             oninput="saveQuickWdPlan()">년
-      <span style="color:var(--muted)">(~${endYr}년)</span>
+             oninput="onQwdStartYearChange(${idx})">년
+      <span id="qwdP${idx}_endYrLbl" style="color:var(--muted)">(~${endYr}년)</span>
       <button id="qwdP${idx}_typeBt" data-type="${isFix?'fixed':'pct'}" onclick="cycleQwdType(${idx})" style="${btnAct}">${isFix?'고정가치':'인출율'}</button>
       <button id="qwdP${idx}_pensionMode" data-mode="${p.publicPensionMode||'include'}" onclick="toggleQwdPensionMode(${idx})" style="${pnStyle}">${(p.publicPensionMode||'include')==='include'?'공적연금포함':'공적연금가산'}</button>
+      <span id="qwdP${idx}_totalAmtSpan" style="display:${isFix?'inline-flex':'none'};align-items:center;gap:2px;color:var(--muted)">총인출 <input id="qwdP${idx}_totalAmt" type="number" min="0" step="1" value="${p.totalAmount||0}" style="width:52px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>
+      <span id="qwdP${idx}_pctSpan" style="display:${isFix?'none':'inline-flex'};align-items:center;gap:2px;color:var(--muted)">인출율 <input id="qwdP${idx}_pct" type="number" min="0" max="20" step="0.1" value="${p.pct||4}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">%</span>
       <button onclick="removeWdPeriod(${idx})" style="margin-left:auto;padding:2px 6px;font-size:11px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;color:#dc2626">삭제</button>
     </div>
-    <div id="qwdP${idx}_fixedCfg" style="margin-top:5px;display:${isFix?'flex':'none'};align-items:center;flex-wrap:wrap;gap:4px">
-      <span style="color:var(--muted)">총인출 <input id="qwdP${idx}_totalAmt" type="number" min="0" step="1" value="${p.totalAmount||0}" style="width:52px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>
-      ${hasWife ? `<span style="color:var(--muted);font-size:11px">배우자 기여방식</span>
+    <!-- 행2: 배우자 기여방식 (고정 모드 + 배우자 있음) -->
+    ${hasWife ? `<div id="qwdP${idx}_wifeRow" style="display:${isFix?'flex':'none'};align-items:center;gap:4px;flex-wrap:wrap;margin-top:4px">
+      <span style="color:var(--muted);font-size:11px">배우자 기여방식</span>
       <button id="qwdP${idx}_wifeContribBt" data-contrib="${wc}" onclick="cycleQwdWifeContrib(${idx})" style="${btnAct}">${wcLabel}</button>
-      <div id="qwdP${idx}_wifeCfg" style="display:inline-flex;align-items:center">${wifeCfgHtml}</div>` : ''}
-    </div>
-    <div id="qwdP${idx}_pctCfg" style="margin-top:5px;display:${isFix?'none':'flex'};align-items:center;gap:4px">
-      <span style="color:var(--muted)">인출율 <input id="qwdP${idx}_pct" type="number" min="0" max="20" step="0.1" value="${p.pct||4}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">%</span>
-    </div>
+      <div id="qwdP${idx}_wifeCfg" style="display:inline-flex;align-items:center">${wifeCfgHtml}</div>
+    </div>` : ''}
   </div>`;
 }
 function setQwdPeriodType(i, type, noSync) {
@@ -9932,10 +9932,12 @@ function cycleQwdType(idx) {
   const next = btn.dataset.type === 'fixed' ? 'pct' : 'fixed';
   btn.dataset.type = next;
   btn.textContent = next === 'fixed' ? '고정가치' : '인출율';
-  const fixCfg = document.getElementById(`qwdP${idx}_fixedCfg`);
-  const pctCfg = document.getElementById(`qwdP${idx}_pctCfg`);
-  if (fixCfg) fixCfg.style.display = next === 'pct' ? 'none' : 'flex';
-  if (pctCfg) pctCfg.style.display = next === 'pct' ? 'flex' : 'none';
+  const totalSpan = document.getElementById(`qwdP${idx}_totalAmtSpan`);
+  const pctSpan   = document.getElementById(`qwdP${idx}_pctSpan`);
+  const wifeRow   = document.getElementById(`qwdP${idx}_wifeRow`);
+  if (totalSpan) totalSpan.style.display = next === 'pct' ? 'none' : 'inline-flex';
+  if (pctSpan)   pctSpan.style.display   = next === 'pct' ? 'inline-flex' : 'none';
+  if (wifeRow)   wifeRow.style.display   = next === 'pct' ? 'none' : 'flex';
   saveQuickWdPlan();
 }
 function cycleQwdWifeContrib(idx) {
@@ -9956,6 +9958,14 @@ function cycleQwdWifeContrib(idx) {
     } else {
       wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${is}" oninput="saveQuickWdPlan()">만/월</span>`;
     }
+  }
+  saveQuickWdPlan();
+}
+function onQwdStartYearChange(idx) {
+  const newStart = Number(document.getElementById(`qwdP${idx}_start`)?.value) || 0;
+  if (idx > 0 && newStart > 0) {
+    const prevLbl = document.getElementById(`qwdP${idx-1}_endYrLbl`);
+    if (prevLbl) prevLbl.textContent = `(~${newStart - 1}년)`;
   }
   saveQuickWdPlan();
 }
@@ -10209,6 +10219,48 @@ function renderWdScenarioTable() {
 }
 
 let _wdChart1 = null, _wdChart2 = null, _wdChart3 = null, _wdChart4 = null, _wdChart5 = null;
+let _wdActiveTooltipChartId = null;
+function _wdGetOrCreateTooltip() {
+  let el = document.getElementById('wdChartSharedTooltip');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'wdChartSharedTooltip';
+    el.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;background:rgba(17,24,39,0.92);color:#fff;border-radius:6px;padding:8px 12px;font-size:11px;line-height:1.7;box-shadow:0 4px 14px rgba(0,0,0,0.35);min-width:140px;max-width:260px;opacity:0;transition:opacity 0.12s';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function _wdExternalTooltip(context) {
+  const { chart, tooltip } = context;
+  const el = _wdGetOrCreateTooltip();
+  if (tooltip.opacity === 0) {
+    if (_wdActiveTooltipChartId === chart.canvas.id) { el.style.opacity = '0'; _wdActiveTooltipChartId = null; }
+    return;
+  }
+  _wdActiveTooltipChartId = chart.canvas.id;
+  const chartN = parseInt((chart.canvas.id || '').replace('wdChart', '')) || 1;
+  const unit = _wdChartPV[chartN] ? '백만원(현재가치)' : '백만원';
+  const title = (tooltip.title || []).join(', ');
+  const rows = (tooltip.dataPoints || []).map(dp => {
+    const bg = dp.dataset.backgroundColor;
+    const bc = dp.dataset.borderColor;
+    const color = typeof bg === 'string' && !bg.includes('transparent') && bg !== 'undefined' ? bg : (bc || '#888');
+    const val = Math.round(dp.parsed.y).toLocaleString('ko-KR');
+    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="display:flex;align-items:center;gap:4px;min-width:0"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dp.dataset.label||''}</span></span><span style="font-weight:600;flex-shrink:0">${val}</span></div>`;
+  }).join('');
+  el.innerHTML = `<div style="font-weight:600;margin-bottom:3px;border-bottom:1px solid rgba(255,255,255,0.18);padding-bottom:3px">${title}년 <span style="font-weight:400;font-size:10px;color:#9ca3af">(${unit})</span></div>${rows}`;
+  const rect = chart.canvas.getBoundingClientRect();
+  const w = 230;
+  let x = rect.right + 10;
+  let y = rect.top + (tooltip.caretY || 0) - 30;
+  if (x + w > window.innerWidth) x = Math.max(4, rect.left - w - 10);
+  const elH = el.offsetHeight || 180;
+  if (y + elH > window.innerHeight) y = window.innerHeight - elH - 8;
+  if (y < 4) y = 4;
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.opacity = '1';
+}
 const _wdChartPV = { 1: false, 2: false, 3: false, 4: false, 5: false };
 function toggleWdChartPV(n) {
   _wdChartPV[n] = !_wdChartPV[n];
@@ -10325,7 +10377,7 @@ function renderWdCharts(sim) {
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString('ko-KR')} ${unitLbl(chartN)}` } }
+      tooltip: { enabled: false, external: _wdExternalTooltip }
     },
     scales: {
       x: { ticks: { font: { size: 11 } } },
