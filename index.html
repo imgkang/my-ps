@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.291';
+const APP_VERSION = 'MyPM v0.292';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9608,9 +9608,16 @@ function computeWithdrawalSim() {
         const myBal   = myWithdrawIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
         const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id));
         const wifeBal = wifeIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
-        myRemaining   = myBal  * (activePeriod.pct || 4) / 100;
-        wifeRemaining = appSettings.hasWife && yr >= wifeStartYear ? wifeBal * (activePeriod.pct || 4) / 100 : 0;
-        target = myRemaining + wifeRemaining;
+        const pctRawMy   = myBal  * (activePeriod.pct || 4) / 100;
+        const pctRawWife = appSettings.hasWife && yr >= wifeStartYear ? wifeBal * (activePeriod.pct || 4) / 100 : 0;
+        if ((activePeriod.publicPensionMode || 'include') === 'include') {
+          myRemaining   = Math.max(0, pctRawMy   - myPublicInc   * (1 - npTR));
+          wifeRemaining = Math.max(0, pctRawWife - wifePublicInc * (1 - npTR));
+        } else {
+          myRemaining   = pctRawMy;
+          wifeRemaining = pctRawWife;
+        }
+        target = pctRawMy + pctRawWife;
       } else {
         // 고정금액 모드
         const inflFactor      = Math.pow(1+inf, yr - todayYear);
