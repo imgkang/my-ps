@@ -2543,27 +2543,41 @@ Chart.register({
         <label>그래프 시작 나이 (세)</label>
         <input id="wd_retireAge" type="number" min="40" max="90" step="1">
       </div>
+      <div class="cfg-section">🎯 인출 목표액 설정</div>
+      <div class="cfg-grid">
+        <label>설정 방식</label>
+        <div class="toggle-row">
+          <button id="wd_targetType_fixed" class="toggle-btn active" onclick="setWdTargetType('fixed')">고정금액</button>
+          <button id="wd_targetType_pct"   class="toggle-btn"        onclick="setWdTargetType('pct')">잔액 %</button>
+        </div>
+      </div>
+      <div id="wdTargetFixed" class="cfg-grid">
+        <label>연간 인출 목표액 (백만원)</label>
+        <input id="wd_annualTarget" type="number" min="0" step="1" oninput="updateWdYearTimeline()">
+      </div>
+      <div id="wdTargetPct" style="display:none">
+        <div class="cfg-grid">
+          <label>연간 인출 비율 (%)</label>
+          <input id="wd_withdrawalPct" type="number" min="0.1" max="20" step="0.1" oninput="updateWdYearTimeline()">
+        </div>
+        <div style="font-size:11px;color:var(--muted);padding:2px 0 6px;line-height:1.5">
+          사적연금(퇴직금 포함) 연초 잔액 기준. 공적연금은 별도 수령액으로 가산됩니다.
+        </div>
+      </div>
       <div style="display:flex;gap:6px;padding:2px 0 6px;align-items:center">
         <button id="wd_method0_btn" class="toggle-btn active" onclick="setWdMethod(0)" style="flex:1;font-size:12px">방식0: 목표인출</button>
         <button id="wd_method1_btn" class="toggle-btn" onclick="setWdMethod(1)" style="flex:1;font-size:12px">방식1: 비율인출</button>
         <button onclick="openWdMethodHelp()" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafc;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0">?</button>
       </div>
-      <div id="wdM0CommonTarget">
-        <div class="cfg-section">🎯 인출 목표</div>
-        <div class="cfg-grid">
-          <label>연간 인출 목표액 (백만원)</label>
-          <input id="wd_annualTarget" type="number" min="0" step="1" oninput="updateWdYearTimeline()">
-          <label>목표액 인출 시작연도</label>
-          <input id="wd_targetStartYear" type="number" min="2020" max="2080" step="1" oninput="updateWdYearTimeline()">
-        </div>
+      <div id="wdM0TargetYear" class="cfg-grid">
+        <label>목표액 인출 시작연도</label>
+        <input id="wd_targetStartYear" type="number" min="2020" max="2080" step="1" oninput="updateWdYearTimeline()">
       </div>
       <div id="wdM1CommonSection" style="display:none">
-        <div class="cfg-section">📅 은퇴연도 · 목표</div>
+        <div class="cfg-section">📅 은퇴연도</div>
         <div class="cfg-grid">
           <label>은퇴연도 (본인·배우자 공통)</label>
           <input id="wd_m1StartYear" type="number" min="2020" max="2080" step="1" oninput="updateWdYearTimeline()">
-          <label>연간 목표 인출액 (백만원)</label>
-          <input id="wd_m1AnnualTarget" type="number" min="0" step="1">
         </div>
         <div id="wdM1RatioSection">
           <div class="cfg-section">⚖️ 사적재원 인출 비율 (공적연금 제외)</div>
@@ -2773,7 +2787,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.274';
+const APP_VERSION = 'MyPM v0.275';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -7622,6 +7636,7 @@ function getWdDefaults() {
     targetStartYear: cy + 7, wifeFixWithdraw: 0, wifeFixStartYear: cy + 4,
     myBirthYear: 0, myBirthMonth: 1, wifeBirthYear: 0, wifeBirthMonth: 1,
     method: 0, method1StartYear: 0, method1MyRatio: 50,
+    annualTargetType: 'fixed', withdrawalPct: 4,
   };
 }
 function loadWdPlan() {
@@ -9038,11 +9053,23 @@ function setWdMethod(m) {
   document.getElementById('wd_method0_btn')?.classList.toggle('active', m === 0);
   document.getElementById('wd_method1_btn')?.classList.toggle('active', m === 1);
   const isM1 = m === 1;
+  const isPct = document.getElementById('wd_targetType_pct')?.classList.contains('active');
   const d = (id, hide) => { const el = document.getElementById(id); if (el) el.style.display = hide ? 'none' : ''; };
-  d('wdM0CommonTarget', isM1);
+  d('wdM0TargetYear', isM1 || isPct);
   d('wdM1CommonSection', !isM1);
   d('wdM0MyRows', isM1);
   d('wdM0WifeRows', isM1);
+  updateWdYearTimeline();
+}
+function setWdTargetType(type) {
+  const isPct = type === 'pct';
+  document.getElementById('wd_targetType_fixed')?.classList.toggle('active', !isPct);
+  document.getElementById('wd_targetType_pct')?.classList.toggle('active', isPct);
+  document.getElementById('wdTargetFixed').style.display = isPct ? 'none' : '';
+  document.getElementById('wdTargetPct').style.display   = isPct ? '' : 'none';
+  const isM1 = wdPlan.method === 1;
+  const d = (id, hide) => { const el = document.getElementById(id); if (el) el.style.display = hide ? 'none' : ''; };
+  d('wdM0TargetYear', isM1 || isPct);
   updateWdYearTimeline();
 }
 function onM1RatioChange() {
@@ -9063,11 +9090,12 @@ function loadWdFormValues() {
   setWdAutoConsolidate('my',   !!wp.myAutoConsolidate);
   setWdAutoConsolidate('wife', !!wp.wifeAutoConsolidate);
   s('wd_m1StartYear',        wp.method1StartYear || wp.startYear);
-  s('wd_m1AnnualTarget',     wp.annualTarget);
   s('wd_m1MyRatio',          wp.method1MyRatio ?? 50);
+  s('wd_withdrawalPct',      wp.withdrawalPct ?? 4);
   onM1RatioChange();
   const m1r = document.getElementById('wdM1RatioSection');
   if (m1r) m1r.style.display = appSettings.hasWife ? '' : 'none';
+  setWdTargetType(wp.annualTargetType || 'fixed');
   setWdMethod(wp.method || 0);
 }
 
@@ -9091,19 +9119,22 @@ function updateWdYearTimeline() {
   if (wifeLabel) wifeLabel.textContent = '👩 ' + getWifeTitle();
   // 방식1: 단순 타임라인
   const method = wdPlan?.method || 0;
+  const isPct = document.getElementById('wd_targetType_pct')?.classList.contains('active')
+                || wdPlan?.annualTargetType === 'pct';
+  const pctVal = nf('wd_withdrawalPct') || wdPlan?.withdrawalPct || 4;
   if (method === 1) {
     const m1sy = ni('wd_m1StartYear') || wdPlan?.method1StartYear;
     const myR  = ni('wd_m1MyRatio')   || wdPlan?.method1MyRatio || 50;
     el('wdYL_myRetire',   '은퇴(공통) ' + fmt(m1sy, myBy));
-    el('wdYL_target',     '비율인출');
+    el('wdYL_target',     isPct ? `잔액 ${pctVal}% 비율인출` : '비율인출');
     el('wdYL_wifeRetire', '동일연도 '  + fmt(m1sy, wifeBy));
     el('wdYL_wifeFix',    '');
-    amt('wdYL_myAmt',     0, ''); amt('wdYL_targetAmt', myR, '나 ');
-    amt('wdYL_wifeAmt',   0, ''); amt('wdYL_wifeFixAmt', 100 - myR, '배우자 ');
+    amt('wdYL_myAmt',     0, ''); amt('wdYL_targetAmt', isPct ? 0 : myR, isPct ? '' : '나 ');
+    amt('wdYL_wifeAmt',   0, ''); amt('wdYL_wifeFixAmt', isPct ? 0 : 100 - myR, isPct ? '' : '배우자 ');
     if (wifeRow) wifeRow.style.display = as.hasWife ? 'flex' : 'none';
     return;
   }
-  // 방식0 기존 로직
+  // 방식0
   const sy  = ni('wd_startYear')       || wdPlan?.startYear;
   const ty  = ni('wd_targetStartYear') || wdPlan?.targetStartYear;
   const wry = ni('wd_wifeRetireYear')  || wdPlan?.wifeRetireYear;
@@ -9112,12 +9143,17 @@ function updateWdYearTimeline() {
   const at  = nf('wd_annualTarget')       || wdPlan?.annualTarget       || 0;
   const wbw = nf('wd_wifeBasicWithdraw')  || wdPlan?.wifeBasicWithdraw  || 0;
   const wfw = nf('wd_wifeFixWithdraw')    || wdPlan?.wifeFixWithdraw    || 0;
-  el('wdYL_myRetire',  '은퇴 '    + fmt(sy,  myBy));
-  el('wdYL_target',    '목표인출 ' + fmt(ty,  myBy));
+  el('wdYL_myRetire',  '은퇴 ' + fmt(sy, myBy));
+  if (isPct) {
+    el('wdYL_target',    `잔액 ${pctVal}% 인출`);
+    amt('wdYL_targetAmt', 0, '');
+  } else {
+    el('wdYL_target',    '목표인출 ' + fmt(ty, myBy));
+    amt('wdYL_targetAmt', at, '');
+  }
   el('wdYL_wifeRetire','은퇴 '    + fmt(wry, wifeBy));
   el('wdYL_wifeFix',   '최대인출 ' + fmt(wfy, wifeBy));
   amt('wdYL_myAmt',      bw,  '기본 ');
-  amt('wdYL_targetAmt',  at,  '');
   amt('wdYL_wifeAmt',    wbw, '기본 ');
   amt('wdYL_wifeFixAmt', wfw, '');
   if (wifeRow) wifeRow.style.display = as.hasWife ? 'flex' : 'none';
@@ -9158,7 +9194,9 @@ function applyWdSettings() {
   wdPlan = {
     startYear,
     retireAge: n('wd_retireAge') || 60,
-    annualTarget: method === 1 ? (n('wd_m1AnnualTarget') || wdPlan.annualTarget) : n('wd_annualTarget'),
+    annualTarget: n('wd_annualTarget') || wdPlan.annualTarget,
+    annualTargetType: document.getElementById('wd_targetType_pct')?.classList.contains('active') ? 'pct' : 'fixed',
+    withdrawalPct: n('wd_withdrawalPct') || 4,
     inflation: n('wd_inflation'), returnRate: n('wd_returnRate'),
     retireTaxRate: wdPlan.retireTaxRate, pensionTaxRate: wdPlan.pensionTaxRate,
     npTaxRate: wdPlan.npTaxRate, excessPensionTaxRate: wdPlan.excessPensionTaxRate,
@@ -9458,7 +9496,9 @@ function computeWithdrawalSim() {
       myRemaining = 0; wifeRemaining = 0; target = 0;
     } else if (wp.method === 1) {
       // 방식1: 공적연금 제외 나머지를 비율로 사적계좌에서 인출
-      const targetNet = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
+      const targetNet = wp.annualTargetType === 'pct'
+        ? allAccIds.reduce((s, id) => s + Math.max(0, state[id].total), 0) * (wp.withdrawalPct || 4) / 100
+        : wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
       target = targetNet;
       const publicNet = (myPublicInc + wifePublicInc) * (1 - npTR);
       const privateNetNeeded = Math.max(0, targetNet - publicNet);
@@ -9481,8 +9521,10 @@ function computeWithdrawalSim() {
       target = myRemaining + wifeRemaining;
     } else {
       const wifeBasisAmt = yr >= wifeStartYear ? wifeBasic : 0;
-      // netTarget: 세후 실수령액이 현재가치 기준 annualTarget이 되도록 설정
-      const netTarget = wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
+      // netTarget: 고정금액(현재가치 기준) 또는 잔액 % 방식
+      const netTarget = wp.annualTargetType === 'pct'
+        ? allAccIds.reduce((s, id) => s + Math.max(0, state[id].total), 0) * (wp.withdrawalPct || 4) / 100
+        : wp.annualTarget * 1_000_000 * Math.pow(1+inf, yr - todayYear);
       target = netTarget;
       // 계좌 잔액 기준 추정 사적소득 실효세율
       const privTotalBal    = allAccIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
