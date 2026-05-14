@@ -2658,7 +2658,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.303';
+const APP_VERSION = 'MyPM v0.304';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3918,10 +3918,14 @@ function renderCashAdjHistory() {
   listEl.innerHTML = records.map(r => {
     const sign = r.type === 'add' ? '+' : '−';
     const color = r.type === 'add' ? 'var(--accent)' : 'var(--plus)';
-    return `<div style="display:grid;grid-template-columns:80px 1fr auto;gap:4px 8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+    return `<div style="display:grid;grid-template-columns:76px 1fr auto auto;gap:4px 6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
       <span style="color:var(--muted)">${r.date}</span>
       <span>${getAccName(r.accId)}${r.note ? ' · ' + r.note : ''}</span>
       <span style="font-weight:600;color:${color};white-space:nowrap">${sign}${r.amount.toLocaleString('ko-KR')} 원</span>
+      <span style="white-space:nowrap">
+        <button class="tbl-icon-btn" onclick="editCashAdj('${r.id}')" title="편집">✏️</button>
+        <button class="tbl-icon-btn" onclick="deleteCashAdj('${r.id}')" title="삭제">🗑️</button>
+      </span>
     </div>`;
   }).join('');
 }
@@ -3952,6 +3956,7 @@ function exportToFile() {
       wdPlan: wdPlan,
       wdConsolidated: wdConsolidated,
       wdScenarios: loadWdScenarios(),
+      cashAdjRecords: cashAdjRecords,
     },
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
@@ -4145,6 +4150,7 @@ function importFromFile(event) {
       localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
       if (newWdPlan) localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan));
       if (newWdScenarios) localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(newWdScenarios));
+      if (Array.isArray(src.cashAdjRecords)) { cashAdjRecords = src.cashAdjRecords; saveCashAdjRecords(); }
       render();
       renderPortfolioChart();
       setTimeout(() => refreshPricesSilent(), 100);
@@ -5747,6 +5753,41 @@ function saveCashAdjRecords() {
   localStorage.setItem(CASH_ADJ_KEY, JSON.stringify(cashAdjRecords));
 }
 
+let _editingCashAdjId = null;
+
+function editCashAdj(id) {
+  const r = cashAdjRecords.find(x => x.id === id);
+  if (!r) return;
+  _editingCashAdjId = id;
+  document.getElementById('cashAdjAccount').value = r.accId;
+  document.getElementById('cashAdjType').value = r.type;
+  document.getElementById('cashAdjDate').value = r.date;
+  document.getElementById('cashAdjAmount').value = r.amount.toLocaleString('ko-KR');
+  document.getElementById('cashAdjNote').value = r.note || '';
+  updateCashAdjPreview();
+  const btn = document.querySelector('#cashAccountModal .btn-primary[onclick="saveCashAdj()"]');
+  if (btn) btn.textContent = '수정';
+  const listEl = document.getElementById('cashAdjHistoryList');
+  const arrowEl = document.getElementById('cashAdjHistoryArrow');
+  if (listEl) listEl.style.display = 'block';
+  if (arrowEl) arrowEl.textContent = '▼';
+}
+
+function deleteCashAdj(id) {
+  const r = cashAdjRecords.find(x => x.id === id);
+  if (!r) return;
+  const sign = r.type === 'add' ? '+' : '−';
+  if (!confirm(`다음 조정 내역을 삭제할까요?\n\n${getAccName(r.accId)} · ${r.date} · ${sign}${r.amount.toLocaleString('ko-KR')} 원${r.note ? ' · ' + r.note : ''}`)) return;
+  const delta = r.type === 'add' ? -r.amount : r.amount;
+  cashAccounts[r.accId] = (Number(cashAccounts[r.accId]) || 0) + delta;
+  cashAdjRecords = cashAdjRecords.filter(x => x.id !== id);
+  saveCashAdjRecords();
+  persistCashAccounts();
+  render();
+  _renderCashAccountDisplays();
+  renderCashAdjHistory();
+}
+
 function updateCashAdjPreview() {
   const accId = document.getElementById('cashAdjAccount').value;
   const type = document.getElementById('cashAdjType').value;
@@ -5770,10 +5811,23 @@ function saveCashAdj() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('날짜를 입력해 주세요.'); return; }
   if (!amt || amt <= 0) { alert('금액을 입력해 주세요.'); return; }
 
+  if (_editingCashAdjId) {
+    const old = cashAdjRecords.find(x => x.id === _editingCashAdjId);
+    if (old) {
+      const oldDelta = old.type === 'add' ? old.amount : -old.amount;
+      cashAccounts[old.accId] = (Number(cashAccounts[old.accId]) || 0) - oldDelta;
+      const idx = cashAdjRecords.findIndex(x => x.id === _editingCashAdjId);
+      cashAdjRecords[idx] = { id: _editingCashAdjId, date, accId, type, amount: amt, note };
+    }
+    _editingCashAdjId = null;
+    const btn = document.querySelector('#cashAccountModal .btn-primary[onclick="saveCashAdj()"]');
+    if (btn) btn.textContent = '저장';
+  } else {
+    cashAdjRecords.push({ id: generateTxnId(), date, accId, type, amount: amt, note });
+  }
+
   const delta = type === 'add' ? amt : -amt;
   cashAccounts[accId] = (Number(cashAccounts[accId]) || 0) + delta;
-
-  cashAdjRecords.push({ id: generateTxnId(), date, accId, type, amount: amt, note });
   saveCashAdjRecords();
   persistCashAccounts();
   render();

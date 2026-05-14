@@ -902,7 +902,12 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <h2 style="margin:0">👁 관심종목</h2>
-      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenWatchModal()">+ 추가</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-secondary" style="font-size:11px;padding:4px 8px" onclick="nkExportWatchlist()" title="관심종목 저장">💾</button>
+        <button class="btn-secondary" style="font-size:11px;padding:4px 8px" onclick="document.getElementById('nkWatchImportInput').click()" title="관심종목 불러오기">📂</button>
+        <input type="file" id="nkWatchImportInput" accept=".json" style="display:none" onchange="nkImportWatchlist(event)">
+        <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenWatchModal()">+ 추가</button>
+      </div>
     </div>
     <div id="nkWatchContainer"><div class="nkw-empty">관심종목이 없습니다.</div></div>
   </div>
@@ -1253,7 +1258,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.303';
+const APP_VERSION = 'NonK v0.304';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2578,6 +2583,36 @@ function nkRenderDividendLists() {
   }
 }
 
+// --- Watchlist 전용 저장/열기 ---
+function nkExportWatchlist() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}`;
+  const blob = new Blob([JSON.stringify({ watchlist: nkWatchlist }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `NonK_관심종목_${stamp}.json`;
+  a.click();
+}
+function nkImportWatchlist(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const list = data.watchlist || (data.nonk && data.nonk.watchlist) || (Array.isArray(data) ? data : null);
+      if (!Array.isArray(list)) { alert('관심종목 데이터를 찾을 수 없습니다.'); return; }
+      if (!confirm(`관심종목 ${list.length}개를 불러옵니다. 현재 목록을 덮어쓸까요?`)) return;
+      nkWatchlist = list;
+      nkSaveWatchlist();
+      nkRenderWatchlist();
+    } catch(err) { alert('파일 형식 오류: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
 // --- Export / Import ---
 function nkExportToFile() {
   const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
@@ -2596,7 +2631,8 @@ function nkExportToFile() {
       cash:      nkCashAccounts,
       deposits:  nkDepositData,
       monthly:   nkMonthlyRecords,
-      dividends: nkDividendRecords
+      dividends: nkDividendRecords,
+      watchlist: nkWatchlist
     }
   };
   const now = new Date();
@@ -2622,6 +2658,7 @@ function nkImportFromFile(event) {
       if (src.deposits)  { nkDepositData      = src.deposits;  nkSaveDeposits(); }
       if (src.monthly)   { nkMonthlyRecords   = src.monthly;   nkSaveMonthly(); }
       if (src.dividends) { nkDividendRecords  = src.dividends; nkSaveDividends(); }
+      if (src.watchlist) { nkWatchlist        = src.watchlist; nkSaveWatchlist(); }
       if (data.mypm) {
         const mp = data.mypm;
         if (mp.holdings)        localStorage.setItem('pension_portfolio_v1',       JSON.stringify(mp.holdings));
