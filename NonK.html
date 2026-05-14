@@ -1253,7 +1253,7 @@
   </div>
 </div>
 <script>
-const APP_VERSION = 'NonK v0.303';
+const APP_VERSION = 'NonK v0.305';
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2596,7 +2596,8 @@ function nkExportToFile() {
       cash:      nkCashAccounts,
       deposits:  nkDepositData,
       monthly:   nkMonthlyRecords,
-      dividends: nkDividendRecords
+      dividends: nkDividendRecords,
+      watchlist: nkWatchlist
     }
   };
   const now = new Date();
@@ -2622,6 +2623,7 @@ function nkImportFromFile(event) {
       if (src.deposits)  { nkDepositData      = src.deposits;  nkSaveDeposits(); }
       if (src.monthly)   { nkMonthlyRecords   = src.monthly;   nkSaveMonthly(); }
       if (src.dividends) { nkDividendRecords  = src.dividends; nkSaveDividends(); }
+      if (src.watchlist) { nkWatchlist        = src.watchlist; nkSaveWatchlist(); }
       if (data.mypm) {
         const mp = data.mypm;
         if (mp.holdings)        localStorage.setItem('pension_portfolio_v1',       JSON.stringify(mp.holdings));
