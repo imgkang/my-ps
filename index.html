@@ -2658,7 +2658,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.306';
+const APP_VERSION = 'MyPM v0.307';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4307,21 +4307,23 @@ async function fetchStockAutocomplete(query) {
     .slice(0, 8)
     .map(([code, name]) => ({ code, name }));
 
-  if (local.length >= 4) return local;
-
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`;
     const text = await fetchViaProxy(url);
     const d = JSON.parse(text);
     const yahoo = (d.quotes || [])
       .filter(it => it.symbol && (it.symbol.endsWith('.KS') || it.symbol.endsWith('.KQ')))
-      .slice(0, 8 - local.length)
       .map(it => ({
         name: it.shortname || it.longname || it.symbol,
         code: it.symbol.replace(/\.(KS|KQ)$/, '')
       }));
-    const seen = new Set(local.map(r => r.code));
-    return [...local, ...yahoo.filter(y => !seen.has(y.code))].slice(0, 8);
+    const norm = s => s.toLowerCase().replace(/\s+/g, '');
+    // 이름이 일치하는 항목은 코드만 API 값으로 교정, 한글명 보존
+    const corrected = local.map(loc => {
+      const match = yahoo.find(y => norm(y.name) === norm(loc.name));
+      return match ? { code: match.code, name: loc.name } : loc;
+    });
+    return corrected.length ? corrected : yahoo.slice(0, 8);
   } catch(_) {}
 
   return local;

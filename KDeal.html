@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.306';
+const APP_VERSION = 'KDeal v0.307';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1355,8 +1355,6 @@ async function kdFetchAutocompleteKR(query) {
     .slice(0, 8)
     .map(([code, name]) => ({ ticker: code, name }));
 
-  if (local.length >= 4) return local;
-
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`;
     const text = await fetchViaProxy(url);
@@ -1367,11 +1365,14 @@ async function kdFetchAutocompleteKR(query) {
         ticker: it.symbol.replace(/\.(KS|KQ)$/, ''),
         name: it.shortname || it.longname || it.symbol
       }));
-    const merged = [...local];
-    for (const r of remote) {
-      if (!merged.find(l => l.ticker === r.ticker)) merged.push(r);
-    }
-    return merged.slice(0, 8);
+    const norm = s => s.toLowerCase().replace(/\s+/g, '');
+    // 이름이 일치하는 항목은 코드(ticker)만 API 값으로 교정, 한글명 보존
+    const corrected = local.map(loc => {
+      const match = remote.find(r => norm(r.name) === norm(loc.name));
+      return match ? { ticker: match.ticker, name: loc.name } : loc;
+    });
+    // API 결과는 코드 교정 용도로만 사용, 새 항목 추가 없음 (영문명 노출 방지)
+    return corrected.length ? corrected : remote.slice(0, 8);
   } catch(_) { return local; }
 }
 
