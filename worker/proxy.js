@@ -6,6 +6,7 @@ const ALLOWED_HOSTS = [
   'query2.finance.yahoo.com',
   'm.stock.naver.com',
   'polling.finance.naver.com',
+  'ac.stock.naver.com',
 ];
 
 // Worker 내부에서 30초간 캐시 (같은 종목 연속 요청 시 서버 부하 감소)
