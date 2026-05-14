@@ -1260,7 +1260,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.313';
+const APP_VERSION = 'KDeal v0.314';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1349,26 +1349,37 @@ async function fetchKdPrice(code) {
   throw new Error('가격 조회 실패: ' + code);
 }
 
-async function kdFetchAutocompleteKR(query) {
+function kdLocalAutocomplete(query) {
   if (!query || !query.trim()) return [];
-  const q = query.trim();
-  const ql = q.toLowerCase();
-
-  const local = (typeof STOCK_DB !== 'undefined' ? STOCK_DB : [])
+  const ql = query.trim().toLowerCase();
+  return (typeof STOCK_DB !== 'undefined' ? STOCK_DB : [])
     .filter(([code, name]) => name.toLowerCase().includes(ql) || code.toLowerCase().startsWith(ql))
     .slice(0, 8)
     .map(([code, name]) => ({ ticker: code, name }));
+}
 
-  // 1순위: Naver Finance 자동완성 (한글명, 정확한 코드, 전종목 커버)
+async function kdNetworkAutocomplete(query) {
+  if (!query || !query.trim()) return [];
+  const q = query.trim();
+  const local = kdLocalAutocomplete(q);
+  const naverUrl = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock,index,etf`;
+
+  // 직접 fetch 먼저 시도 (CORS 허용 시 프록시 오버헤드 없음)
   try {
-    const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock,index,etf`;
-    const d = JSON.parse(await fetchViaProxy(url));
-    if (d.items && d.items.length) {
-      return d.items.slice(0, 8).map(([name, code]) => ({ ticker: code, name }));
+    const res = await fetchWithTimeout(naverUrl, 2000);
+    if (res.ok) {
+      const d = JSON.parse(await res.text());
+      if (d.items && d.items.length) return d.items.slice(0, 8).map(([name, code]) => ({ ticker: code, name }));
     }
   } catch(_) {}
 
-  // 2순위: Yahoo Finance (코드 교정 로직 유지)
+  // 프록시 경유
+  try {
+    const d = JSON.parse(await fetchViaProxy(naverUrl));
+    if (d.items && d.items.length) return d.items.slice(0, 8).map(([name, code]) => ({ ticker: code, name }));
+  } catch(_) {}
+
+  // Yahoo Finance 폴백
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`;
     const d = JSON.parse(await fetchViaProxy(url));
@@ -1384,8 +1395,13 @@ async function kdFetchAutocompleteKR(query) {
     if (remote.length) return remote.slice(0, 8);
   } catch(_) {}
 
-  // 3순위: 로컬 DB fallback (오프라인)
-  return local;
+  return [];
+}
+
+async function kdFetchAutocompleteKR(query) {
+  const local = kdLocalAutocomplete(query);
+  const net = await kdNetworkAutocomplete(query);
+  return net.length ? net : local;
 }
 
 const KD_ACC_KEY   = 'kd_accounts_v1';
@@ -1932,8 +1948,7 @@ function kdOnAddSearchInput(val) {
   document.getElementById('kdAddPreview').style.display = 'none';
   const listEl = document.getElementById('kdAddAcList');
   if (!val.trim()) { listEl.classList.remove('open'); return; }
-  _kdAddAcTimer = setTimeout(async () => {
-    const items = await kdFetchAutocompleteKR(val.trim());
+  const renderAdd = items => {
     listEl.innerHTML = '';
     if (!items.length) { listEl.classList.remove('open'); return; }
     items.forEach(item => {
@@ -1953,6 +1968,11 @@ function kdOnAddSearchInput(val) {
       listEl.appendChild(div);
     });
     listEl.classList.add('open');
+  };
+  _kdAddAcTimer = setTimeout(async () => {
+    renderAdd(kdLocalAutocomplete(val.trim()));
+    const net = await kdNetworkAutocomplete(val.trim());
+    if (net.length && !_kdAddPending) renderAdd(net);
   }, 300);
 }
 
@@ -2934,8 +2954,7 @@ function kdOnWatchSearchInput(val) {
   document.getElementById('kdWatchPreview').style.display = 'none';
   const listEl = document.getElementById('kdWatchAcList');
   if (!val.trim()) { listEl.classList.remove('open'); return; }
-  _kdWatchAcTimer = setTimeout(async () => {
-    const items = await kdWatchFetchAutocomplete(val.trim());
+  const renderWatch = items => {
     listEl.innerHTML = '';
     if (!items.length) { listEl.classList.remove('open'); return; }
     items.forEach(item => {
@@ -2955,6 +2974,11 @@ function kdOnWatchSearchInput(val) {
       listEl.appendChild(div);
     });
     listEl.classList.add('open');
+  };
+  _kdWatchAcTimer = setTimeout(async () => {
+    renderWatch(kdLocalAutocomplete(val.trim()));
+    const net = await kdNetworkAutocomplete(val.trim());
+    if (net.length && !_kdWatchPending) renderWatch(net);
   }, 300);
 }
 
@@ -3416,12 +3440,14 @@ function kdtOnNameInput(val) {
   const listEl = document.getElementById('kdtNameAcList');
   if (!val) { if (listEl) listEl.classList.remove('open'); return; }
   _kdtNameAcTimer = setTimeout(async () => {
-    const items = await kdtFetchAutocomplete(val);
-    if (listEl) kdtShowAcList(listEl, items, item => {
+    const onSelect = item => {
       document.getElementById('kdtTradeName').value  = item.name;
       document.getElementById('kdtTradeTicker').value = item.ticker;
-      listEl.classList.remove('open');
-    });
+      if (listEl) listEl.classList.remove('open');
+    };
+    if (listEl) kdtShowAcList(listEl, kdLocalAutocomplete(val), onSelect);
+    const net = await kdNetworkAutocomplete(val);
+    if (net.length && listEl && listEl.classList.contains('open')) kdtShowAcList(listEl, net, onSelect);
   }, 300);
 }
 
