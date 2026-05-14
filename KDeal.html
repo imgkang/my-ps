@@ -1055,14 +1055,20 @@
 <div class="modal-backdrop" id="kdAddStockModal" onclick="if(event.target===this)kdCloseAddModal()">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
-      <div><h2>🇺🇸 US 종목 추가</h2></div>
+      <div><h2>🇰🇷 한국 종목 추가</h2></div>
       <button class="close-btn" onclick="kdCloseAddModal()" aria-label="닫기">×</button>
     </div>
-    <div class="add-form" style="grid-template-columns:1fr 1fr;gap:12px">
-      <input type="text" id="kdTicker" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off" style="grid-column:1/-1" oninput="this.value=this.value.replace(/[^0-9A-Za-z]/g,'').toUpperCase()">
-      <input type="text" id="kdName" placeholder="종목명 (자동입력)" autocomplete="off" style="grid-column:1/-1">
-      <button class="btn-secondary" onclick="kdFetchInfo()" style="grid-column:1/-1">🔍 조회</button>
-      <div id="kdFetchResult" style="grid-column:1/-1;font-size:13px;color:var(--muted)"></div>
+    <div style="padding:4px 0 12px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">종목 검색 (이름 또는 종목코드)</label>
+      <div class="kdw-ac-wrap">
+        <input type="text" id="kdAddSearch" class="form-input" placeholder="예: 삼성전자 또는 005930"
+          oninput="kdOnAddSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+        <div class="kdw-ac-list" id="kdAddAcList"></div>
+      </div>
+      <div id="kdAddPreview" style="display:none;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:13px">
+        <span id="kdAddPreviewName" style="font-weight:600"></span>
+        <span id="kdAddPreviewTicker" style="color:var(--muted);margin-left:8px"></span>
+      </div>
     </div>
     <div class="account-head" style="margin-top:12px">
       <div>계좌</div><div>수량</div><div>매입단가 (원)</div><div>매입총액 (원)</div>
@@ -1256,7 +1262,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.311';
+const APP_VERSION = 'KDeal v0.312';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1894,11 +1900,16 @@ function kdRenderChart() {
 }
 
 // --- Add stock modal ---
+let _kdAddPending = null;
+let _kdAddAcTimer = null;
+
 function kdOpenAddModal() {
   kdEditingTicker = null;
-  document.getElementById('kdTicker').value = '';
-  document.getElementById('kdName').value = '';
-  document.getElementById('kdFetchResult').textContent = '';
+  _kdAddPending = null;
+  document.getElementById('kdAddSearch').value = '';
+  document.getElementById('kdAddPreview').style.display = 'none';
+  const listEl = document.getElementById('kdAddAcList');
+  if (listEl) listEl.classList.remove('open');
   // Render account inputs
   const grid = document.getElementById('kdAddAccountInputs');
   const activeAccs = KD_ACCOUNTS.filter(a => a.active !== false);
@@ -1914,7 +1925,37 @@ function kdOpenAddModal() {
     document.getElementById(`kdAddAvg_${a.id}`).addEventListener('input', kdUpdateAddTotals);
   });
   document.getElementById('kdAddStockModal').classList.add('open');
-  setTimeout(() => document.getElementById('kdTicker').focus(), 50);
+  setTimeout(() => document.getElementById('kdAddSearch').focus(), 50);
+}
+
+function kdOnAddSearchInput(val) {
+  clearTimeout(_kdAddAcTimer);
+  _kdAddPending = null;
+  document.getElementById('kdAddPreview').style.display = 'none';
+  const listEl = document.getElementById('kdAddAcList');
+  if (!val.trim()) { listEl.classList.remove('open'); return; }
+  _kdAddAcTimer = setTimeout(async () => {
+    const items = await kdFetchAutocompleteKR(val.trim());
+    listEl.innerHTML = '';
+    if (!items.length) { listEl.classList.remove('open'); return; }
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'kdw-ac-item';
+      div.innerHTML = `<span class="kdw-ac-name">${item.name}</span><span class="kdw-ac-ticker">${item.ticker}</span>`;
+      div.addEventListener('mousedown', e => {
+        e.preventDefault();
+        _kdAddPending = item;
+        document.getElementById('kdAddSearch').value = item.name;
+        listEl.classList.remove('open');
+        const prev = document.getElementById('kdAddPreview');
+        prev.style.display = '';
+        document.getElementById('kdAddPreviewName').textContent = item.name;
+        document.getElementById('kdAddPreviewTicker').textContent = item.ticker;
+      });
+      listEl.appendChild(div);
+    });
+    listEl.classList.add('open');
+  }, 300);
 }
 
 function kdUpdateAddTotals() {
@@ -1928,28 +1969,16 @@ function kdUpdateAddTotals() {
 
 function kdCloseAddModal() {
   document.getElementById('kdAddStockModal').classList.remove('open');
-}
-
-async function kdFetchInfo() {
-  const ticker = document.getElementById('kdTicker').value.trim().toUpperCase();
-  if (!ticker) { alert('종목코드를 입력하세요'); return; }
-  const resultEl = document.getElementById('kdFetchResult');
-  resultEl.textContent = '조회 중...';
-  try {
-    const info = await fetchKdPrice(ticker);
-    document.getElementById('kdName').value = info.name;
-    resultEl.textContent = `현재가: ${fmtKRW(info.price)} (${info.changeRate >= 0 ? '+' : ''}${info.changeRate.toFixed(2)}%)`;
-    resultEl.style.color = info.changeRate >= 0 ? 'var(--pos)' : 'var(--neg)';
-  } catch(e) {
-    resultEl.textContent = '조회 실패: ' + e.message;
-    resultEl.style.color = 'var(--neg)';
-  }
+  _kdAddPending = null;
 }
 
 function kdAddStock() {
-  const ticker = document.getElementById('kdTicker').value.trim().toUpperCase();
-  const name   = document.getElementById('kdName').value.trim();
-  if (!ticker) { alert('종목코드를 입력하세요'); return; }
+  if (!_kdAddPending) {
+    const val = document.getElementById('kdAddSearch').value.trim().toUpperCase();
+    if (!val) { alert('종목을 선택해 주세요.'); return; }
+    _kdAddPending = { ticker: val, name: val };
+  }
+  const { ticker, name } = _kdAddPending;
   if (kdHoldings.some(h => h.ticker === ticker)) { alert('이미 추가된 종목입니다'); return; }
 
   const accounts = {};
