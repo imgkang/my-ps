@@ -2658,7 +2658,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.308';
+const APP_VERSION = 'MyPM v0.309';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4307,25 +4307,32 @@ async function fetchStockAutocomplete(query) {
     .slice(0, 8)
     .map(([code, name]) => ({ code, name }));
 
+  // 1순위: Naver Finance 자동완성 (한글명, 정확한 코드, 전종목 커버)
+  try {
+    const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock,index,etf`;
+    const d = JSON.parse(await fetchViaProxy(url));
+    if (d.items && d.items.length) {
+      return d.items.slice(0, 8).map(([code, name]) => ({ code, name }));
+    }
+  } catch(_) {}
+
+  // 2순위: Yahoo Finance (코드 교정 로직 유지)
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`;
-    const text = await fetchViaProxy(url);
-    const d = JSON.parse(text);
+    const d = JSON.parse(await fetchViaProxy(url));
     const yahoo = (d.quotes || [])
       .filter(it => it.symbol && (it.symbol.endsWith('.KS') || it.symbol.endsWith('.KQ')))
-      .map(it => ({
-        name: it.shortname || it.longname || it.symbol,
-        code: it.symbol.replace(/\.(KS|KQ)$/, '')
-      }));
+      .map(it => ({ name: it.shortname || it.longname || it.symbol, code: it.symbol.replace(/\.(KS|KQ)$/, '') }));
     const norm = s => s.toLowerCase().replace(/\s+/g, '');
-    // 이름이 일치하는 항목은 코드만 API 값으로 교정, 한글명 보존
     const corrected = local.map(loc => {
       const match = yahoo.find(y => norm(y.name) === norm(loc.name));
       return match ? { code: match.code, name: loc.name } : loc;
     });
-    return corrected.length ? corrected : yahoo.slice(0, 8);
+    if (corrected.length) return corrected;
+    if (yahoo.length) return yahoo.slice(0, 8);
   } catch(_) {}
 
+  // 3순위: 로컬 DB fallback (오프라인)
   return local;
 }
 
