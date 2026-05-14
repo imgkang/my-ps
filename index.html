@@ -2665,7 +2665,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.301';
+const APP_VERSION = 'MyPM v0.302';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -2901,7 +2901,8 @@ function loadDeposits() {
           date: String(t.date || ''),
           amount: Number(t.amount) || 0,
           ...(Number(t.anse) ? { anse: Number(t.anse) } : {}),
-          ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {})
+          ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {}),
+          ...(t.autoFromPlan ? { autoFromPlan: t.autoFromPlan } : {})
         }))
         .filter(t => t.accId && t.date && (t.amount !== 0 || t.anse) && ACCOUNTS.find(a => a.id === t.accId));
       return { transactions: txns };
