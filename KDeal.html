@@ -1256,7 +1256,7 @@
 </div>
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.309';
+const APP_VERSION = 'KDeal v0.310';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1360,7 +1360,7 @@ async function kdFetchAutocompleteKR(query) {
     const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock,index,etf`;
     const d = JSON.parse(await fetchViaProxy(url));
     if (d.items && d.items.length) {
-      return d.items.slice(0, 8).map(([code, name]) => ({ ticker: code, name }));
+      return d.items.slice(0, 8).map(([name, code]) => ({ ticker: code, name }));
     }
   } catch(_) {}
 
