@@ -1787,19 +1787,61 @@ Chart.register({
     <div class="modal-header">
       <div>
         <h2>💵 현금 (예수금)</h2>
-        <div class="modal-subtitle">계좌별 보유 현금을 입력하세요</div>
       </div>
       <button class="close-btn" onclick="closeCashAccountModal()" aria-label="닫기">×</button>
     </div>
-    <div id="cashModalHint"></div>
-    <div class="account-grid" id="cashAccountInputs"></div>
-    <div class="modal-total">
+    <!-- 계좌별 현금 표시 -->
+    <div id="cashAccountDisplays" style="margin-bottom:12px"></div>
+    <div class="modal-total" style="margin-bottom:16px">
       <span>계좌별 현금 합계</span>
       <strong id="cashModalTotal">0 원</strong>
     </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeCashAccountModal()">취소</button>
-      <button class="btn-primary" onclick="saveCashAccounts()">저장</button>
+    <!-- 현금 조정 폼 -->
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px">🔧 현금 조정</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
+          계좌
+          <select id="cashAdjAccount" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)" onchange="updateCashAdjPreview()"></select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
+          구분
+          <select id="cashAdjType" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)" onchange="updateCashAdjPreview()">
+            <option value="add">증가 (+)</option>
+            <option value="sub">감소 (−)</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
+          날짜
+          <input type="date" id="cashAdjDate" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
+          금액 (원)
+          <input type="text" id="cashAdjAmount" inputmode="numeric" placeholder="예: 5,000" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)" oninput="updateCashAdjPreview()">
+        </label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);margin-bottom:8px">
+        메모
+        <input type="text" id="cashAdjNote" placeholder="예: 수수료, 환전차이" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
+      </label>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:13px">
+        <span style="color:var(--muted)">조정 후 현금</span>
+        <span id="cashAdjAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn-primary" style="min-width:80px" onclick="saveCashAdj()">저장</button>
+      </div>
+    </div>
+    <!-- 조정 이력 -->
+    <div style="border-top:1px solid var(--border);padding-top:10px">
+      <button id="cashAdjHistoryToggle" onclick="toggleCashAdjHistory()" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);padding:0;display:flex;align-items:center;gap:4px;width:100%;text-align:left">
+        <span id="cashAdjHistoryArrow">▶</span> 조정 이력 <span id="cashAdjHistoryCount" style="color:var(--muted)"></span>
+      </button>
+      <div id="cashAdjHistoryList" style="display:none;margin-top:8px;max-height:180px;overflow-y:auto"></div>
+    </div>
+    <!-- 닫기 -->
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeCashAccountModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -1883,7 +1925,6 @@ Chart.register({
     <div class="deposit-toolbar">
       <button class="btn-primary" onclick="openTxnEditor()">➕ 입출금 추가</button>
       <button class="btn-secondary" onclick="openTransferEditor()">🔁 계좌이전</button>
-      <button class="btn-secondary" onclick="openCashAdjModal()">🔧 현금 조정</button>
     </div>
     <div class="deposit-list-header">
       <span>입출금일</span><span>계좌</span><span>금액</span><span></span>
@@ -2394,54 +2435,6 @@ Chart.register({
   </div>
 </div>
 
-<!-- 현금조정 모달 -->
-<div class="modal-backdrop" id="cashAdjModal" onclick="handleCashAdjBackdropClick(event)">
-  <div class="modal" style="max-width:360px">
-    <div class="modal-header">
-      <div>
-        <h2>현금 조정</h2>
-        <div class="modal-subtitle">수수료·환전차이 등 현금 직접 조정</div>
-      </div>
-      <button class="close-btn" onclick="closeCashAdjModal()">×</button>
-    </div>
-    <div class="txn-form">
-      <label>
-        <span>계좌</span>
-        <select id="cashAdjAccount"></select>
-      </label>
-      <label>
-        <span>구분</span>
-        <select id="cashAdjType">
-          <option value="add">증가 (+)</option>
-          <option value="sub">감소 (−)</option>
-        </select>
-      </label>
-      <label>
-        <span>날짜</span>
-        <input type="date" id="cashAdjDate">
-      </label>
-      <label>
-        <span>금액 (원)</span>
-        <input type="text" id="cashAdjAmount" inputmode="numeric" placeholder="예: 5,000">
-      </label>
-      <label>
-        <span>메모</span>
-        <input type="text" id="cashAdjNote" placeholder="예: 수수료, 환전차이">
-      </label>
-    </div>
-    <div id="cashAdjPreview" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)">조정 후 현금</span>
-        <span id="cashAdjAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeCashAdjModal()">취소</button>
-      <button class="btn-primary" onclick="saveCashAdj()">저장</button>
-    </div>
-  </div>
-</div>
-
 <!-- 인출계획 설정 모달 -->
 <div class="modal-backdrop" id="wdSettingsModal" onclick="handleWdSettingsBackdropClick(event)">
   <div class="modal" style="max-width:420px;height:90vh;display:flex;flex-direction:column">
@@ -2665,7 +2658,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.302';
+const APP_VERSION = 'MyPM v0.303';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3867,27 +3860,41 @@ function handleDetailBackdropClick(e) {
   if (e.target.id === 'accountDetailModal') closeAccountDetail();
 }
 
-// ===== 계좌별 현금 입력 모달 =====
+// ===== 계좌별 현금 모달 =====
 function openCashAccountModal() {
-  const container = document.getElementById('cashAccountInputs');
+  _renderCashAccountDisplays();
+  _initCashAdjForm();
+  renderCashAdjHistory();
+  document.getElementById('cashAccountModal').classList.add('open');
+}
+
+function _renderCashAccountDisplays() {
+  const accs = getActiveAccounts();
+  let total = 0;
   let html = '';
-  for (const acc of getActiveAccounts()) {
+  for (const acc of accs) {
     const val = Number(cashAccounts[acc.id]) || 0;
-    html += `
-      <div class="account-row cash-row-modal">
-        <label for="cash_${acc.id}">${acc.name}</label>
-        <input type="number" id="cash_${acc.id}" data-acc="${acc.id}" value="${val ? val : ''}" placeholder="0" min="0" step="1" inputmode="numeric" oninput="updateCashModalTotal()">
-      </div>
-    `;
+    total += val;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:14px;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text)">${acc.name}</span>
+      <span style="font-variant-numeric:tabular-nums;font-weight:500">${val.toLocaleString('ko-KR')} 원</span>
+    </div>`;
   }
-  container.innerHTML = html;
-  document.getElementById('cashModalHint').innerHTML = '';
-  updateCashModalTotal();
-  const backdrop = document.getElementById('cashAccountModal');
-  backdrop.classList.add('open');
-  setTimeout(() => {
-    const first = container.querySelector('input'); if (first) first.focus();
-  }, 30);
+  document.getElementById('cashAccountDisplays').innerHTML = html;
+  document.getElementById('cashModalTotal').textContent = Math.round(total).toLocaleString('ko-KR') + ' 원';
+}
+
+function _initCashAdjForm() {
+  const accs = getActiveAccounts();
+  const sel = document.getElementById('cashAdjAccount');
+  sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  document.getElementById('cashAdjType').value = 'sub';
+  const now = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  document.getElementById('cashAdjDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('cashAdjAmount').value = '';
+  document.getElementById('cashAdjNote').value = '';
+  updateCashAdjPreview();
 }
 
 function closeCashAccountModal() {
@@ -3898,25 +3905,34 @@ function handleCashBackdropClick(e) {
   if (e.target.id === 'cashAccountModal') closeCashAccountModal();
 }
 
-function updateCashModalTotal() {
-  let total = 0;
-  for (const acc of getActiveAccounts()) {
-    const el = document.getElementById('cash_' + acc.id);
-    if (el) total += Number(el.value) || 0;
+function renderCashAdjHistory() {
+  const records = [...cashAdjRecords].sort((a, b) => b.date.localeCompare(a.date));
+  const countEl = document.getElementById('cashAdjHistoryCount');
+  if (countEl) countEl.textContent = records.length ? `(${records.length}건)` : '';
+  const listEl = document.getElementById('cashAdjHistoryList');
+  if (!listEl) return;
+  if (!records.length) {
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">조정 내역이 없습니다.</div>';
+    return;
   }
-  document.getElementById('cashModalTotal').textContent = Math.round(total).toLocaleString('ko-KR') + ' 원';
+  listEl.innerHTML = records.map(r => {
+    const sign = r.type === 'add' ? '+' : '−';
+    const color = r.type === 'add' ? 'var(--accent)' : 'var(--plus)';
+    return `<div style="display:grid;grid-template-columns:80px 1fr auto;gap:4px 8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span style="color:var(--muted)">${r.date}</span>
+      <span>${getAccName(r.accId)}${r.note ? ' · ' + r.note : ''}</span>
+      <span style="font-weight:600;color:${color};white-space:nowrap">${sign}${r.amount.toLocaleString('ko-KR')} 원</span>
+    </div>`;
+  }).join('');
 }
 
-function saveCashAccounts() {
-  const next = { ...cashAccounts };
-  for (const acc of getActiveAccounts()) {
-    const el = document.getElementById('cash_' + acc.id);
-    next[acc.id] = el ? (Number(el.value) || 0) : 0;
-  }
-  cashAccounts = next;
-  persistCashAccounts();
-  closeCashAccountModal();
-  render();
+function toggleCashAdjHistory() {
+  const listEl = document.getElementById('cashAdjHistoryList');
+  const arrowEl = document.getElementById('cashAdjHistoryArrow');
+  if (!listEl) return;
+  const open = listEl.style.display !== 'none';
+  listEl.style.display = open ? 'none' : 'block';
+  if (arrowEl) arrowEl.textContent = open ? '▶' : '▼';
 }
 
 // ===== 파일 저장 / 불러오기 =====
@@ -5731,28 +5747,6 @@ function saveCashAdjRecords() {
   localStorage.setItem(CASH_ADJ_KEY, JSON.stringify(cashAdjRecords));
 }
 
-function openCashAdjModal() {
-  const accs = getActiveAccounts();
-  const sel = document.getElementById('cashAdjAccount');
-  sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
-  document.getElementById('cashAdjType').value = 'sub';
-  const now = new Date();
-  const pad = x => String(x).padStart(2, '0');
-  document.getElementById('cashAdjDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  document.getElementById('cashAdjAmount').value = '';
-  document.getElementById('cashAdjNote').value = '';
-  sel.onchange = updateCashAdjPreview;
-  document.getElementById('cashAdjType').onchange = updateCashAdjPreview;
-  document.getElementById('cashAdjAmount').oninput = updateCashAdjPreview;
-  updateCashAdjPreview();
-  document.getElementById('cashAdjModal').classList.add('open');
-}
-function closeCashAdjModal() {
-  document.getElementById('cashAdjModal').classList.remove('open');
-}
-function handleCashAdjBackdropClick(e) {
-  if (e.target.id === 'cashAdjModal') closeCashAdjModal();
-}
 function updateCashAdjPreview() {
   const accId = document.getElementById('cashAdjAccount').value;
   const type = document.getElementById('cashAdjType').value;
@@ -5782,8 +5776,16 @@ function saveCashAdj() {
   cashAdjRecords.push({ id: generateTxnId(), date, accId, type, amount: amt, note });
   saveCashAdjRecords();
   persistCashAccounts();
-  closeCashAdjModal();
   render();
+  _renderCashAccountDisplays();
+  document.getElementById('cashAdjAmount').value = '';
+  document.getElementById('cashAdjNote').value = '';
+  updateCashAdjPreview();
+  renderCashAdjHistory();
+  const listEl = document.getElementById('cashAdjHistoryList');
+  const arrowEl = document.getElementById('cashAdjHistoryArrow');
+  if (listEl) { listEl.style.display = 'block'; }
+  if (arrowEl) arrowEl.textContent = '▼';
 }
 
 // ===== 초기 렌더 및 실행 제어 =====
