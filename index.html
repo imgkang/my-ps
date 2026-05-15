@@ -983,6 +983,17 @@ Chart.register({
   .wd-scenario-best { color:#059669 !important; font-weight:700 !important; }
   .wd-scenario-table tr.wd-sc-active td { background:#dbeafe !important; }
   .wd-scenario-table tr.wd-sc-active td:first-child { border-left:3px solid #2563eb; color:#1d4ed8; }
+  @media (max-width: 640px) {
+    .wd-scenario-table th:first-child,
+    .wd-scenario-table td:first-child {
+      max-width: 30vw;
+      min-width: 0;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      vertical-align: top;
+    }
+  }
   #wd-cell-info {
     position: fixed; bottom: 80px; left: 0; right: 0; z-index: 600;
     background: #1e293b; color: #f1f5f9; padding: 9px 14px 11px; font-size: 12px;
@@ -2651,7 +2662,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.319';
+const APP_VERSION = 'MyPM v0.320';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
