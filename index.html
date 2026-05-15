@@ -2099,11 +2099,9 @@ Chart.register({
         </select>
         <input type="number" id="mplanAmt" placeholder="적립금액(만원)" min="0" step="1" style="flex:1.4;min-width:80px">
         <input type="number" id="mplanAnse" placeholder="안세공(만원)" min="0" step="1" style="flex:1.2;min-width:70px">
-        <input type="number" id="mplanStartY" placeholder="시작년" min="2020" max="2060" step="1" value="2026" style="flex:1;min-width:60px">
-        <input type="number" id="mplanStartM" placeholder="시작월" min="1" max="12" step="1" value="1" style="flex:.8;min-width:44px">
+        <input type="date" id="mplanStart" title="시작일" style="flex:1.6;min-width:120px">
         <span style="align-self:center;color:var(--muted);font-size:12px">~</span>
-        <input type="number" id="mplanEndY" placeholder="종료년" min="2020" max="2070" step="1" value="2056" style="flex:1;min-width:60px">
-        <input type="number" id="mplanEndM" placeholder="종료월" min="1" max="12" step="1" value="12" style="flex:.8;min-width:44px">
+        <input type="date" id="mplanEnd" title="종료일" style="flex:1.6;min-width:120px">
         <button id="mplanSaveBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
         <button id="mplanCancelBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;flex-shrink:0;display:none" onclick="cancelEditMonthlyPlan()">취소</button>
       </div>
@@ -2653,7 +2651,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.316';
+const APP_VERSION = 'MyPM v0.317';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -3137,30 +3135,35 @@ function applyAutoDeposits() {
   let anyAdded = false;
   const affectedYM = new Set();
 
+  const todayT = new Date(curY, curM-1, today.getDate()).getTime();
   for (const plan of plans) {
-    const startY = plan.startYear || curY, startM = plan.startMonth || 1;
-    const endY = plan.endYear || curY + 30, endM = plan.endMonth || 12;
-    const amt = (plan.monthlyAmt || 0) * 10000;  // 만원 → 원
-    const anse = (plan.monthlyAnse || 0) * 10000;
+    const startY = plan.startYear || curY, startM = plan.startMonth || 1, startD = plan.startDay || 1;
+    const endY   = plan.endYear   || curY + 30, endM = plan.endMonth   || 12, endD   = plan.endDay   || 1;
+    const amt    = (plan.monthlyAmt  || 0) * 10000;  // 만원 → 원
+    const anse   = (plan.monthlyAnse || 0) * 10000;
     if (amt <= 0) continue;
-    let y = startY, m = startM;
-    while (true) {
-      if (y > endY || (y === endY && m > endM)) break;
-      if (y > curY || (y === curY && m > curM)) break;
-      const dateStr = `${y}-${String(m).padStart(2,'0')}-01`;
-      const exists = depositData.transactions.some(
-        t => t.autoFromPlan === plan.id && t.date === dateStr
-      );
-      if (!exists) {
-        const entry = { id: generateTxnId(), accId: plan.accId, date: dateStr, amount: amt, autoFromPlan: plan.id };
-        if (anse > 0) entry.anse = anse;
-        depositData.transactions.push(entry);
-        cashAccounts[plan.accId] = (cashAccounts[plan.accId] || 0) + amt;
-        anyAdded = true;
-        affectedYM.add(`${y}-${m}`);
+    const startT = new Date(startY, startM-1, startD).getTime();
+    const endT   = new Date(endY,   endM-1,   endD).getTime();
+    // 입금은 매월 1일 (사용자 결정). 각 (y, m, 1) 이 [startDate, endDate] 안에 있고 오늘까지인지 체크.
+    const lastY = Math.min(endY, curY); // 오늘 이후는 생성 안 함
+    outer: for (let y = startY; y <= lastY; y++) {
+      const monthRange = plan.frequency === 'annual' ? [startM] : [1,2,3,4,5,6,7,8,9,10,11,12];
+      for (const m of monthRange) {
+        const t = new Date(y, m-1, 1).getTime();
+        if (t < startT) continue;
+        if (t > endT)   break outer;
+        if (t > todayT) break outer;
+        const dateStr = `${y}-${String(m).padStart(2,'0')}-01`;
+        const exists = depositData.transactions.some(t2 => t2.autoFromPlan === plan.id && t2.date === dateStr);
+        if (!exists) {
+          const entry = { id: generateTxnId(), accId: plan.accId, date: dateStr, amount: amt, autoFromPlan: plan.id };
+          if (anse > 0) entry.anse = anse;
+          depositData.transactions.push(entry);
+          cashAccounts[plan.accId] = (cashAccounts[plan.accId] || 0) + amt;
+          anyAdded = true;
+          affectedYM.add(`${y}-${m}`);
+        }
       }
-      if (plan.frequency === 'annual') { y++; }
-      else { m++; if (m > 12) { m = 1; y++; } }
     }
   }
 
@@ -5913,14 +5916,17 @@ function getActiveWifeAccIds() {
 function loadAnnualPlan() {
   try {
     const raw = localStorage.getItem(ANNUAL_PLAN_KEY);
-    if (!raw) return { format: 2, projRate: 7, monthlyPlans: [] };
+    if (!raw) return { format: 3, projRate: 7, monthlyPlans: [] };
     const p = JSON.parse(raw);
-    const monthlyPlans = Array.isArray(p.monthlyPlans) ? p.monthlyPlans : [];
-    const plan = { format: 2, projRate: Number(p.projRate) || 7, monthlyPlans };
-    // Clear legacy deposits (manual edits no longer used)
+    const monthlyPlans = (Array.isArray(p.monthlyPlans) ? p.monthlyPlans : []).map(mp => ({
+      ...mp,
+      startDay: Number(mp.startDay) || 1,
+      endDay:   Number(mp.endDay)   || 1,
+    }));
+    const plan = { format: 3, projRate: Number(p.projRate) || 7, monthlyPlans };
     localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(plan));
     return plan;
-  } catch (_) { return { format: 2, projRate: 7, monthlyPlans: [] }; }
+  } catch (_) { return { format: 3, projRate: 7, monthlyPlans: [] }; }
 }
 
 function toggleAptSection(bodyId, btn) {
@@ -5949,6 +5955,14 @@ function openAnnualPlanModal() {
   if (sel) {
     const accs = getActiveAccounts();
     sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  }
+  // 적립계획 시작/종료일 기본값 = 오늘
+  if (!_editingMplanId) {
+    const today = _todayDateStr();
+    const s = document.getElementById('mplanStart');
+    const e = document.getElementById('mplanEnd');
+    if (s && !s.value) s.value = today;
+    if (e && !e.value) e.value = today;
   }
   // 계좌적립 계획만 접힘, 원금·평가 표는 펼침 유지
   const mplanEl = document.getElementById('mplanBody');
@@ -6076,19 +6090,55 @@ function getActualAnseManwon(accIds, year) {
   return Math.round(won / 1000000); // 원 → 백만원 (정수)
 }
 
-// Count contribution periods for a plan in a given year
+// Count contribution periods for a plan in a given year.
+// 월간 입금은 매월 1일에 발생한다는 모델. (year, M, 1) 이 [startDate, endDate] 범위에 있는 월의 개수.
 function _planPeriodsInYear(p, year) {
-  const sy = p.startYear, sm = p.startMonth || 1;
-  const ey = p.endYear,   em = p.endMonth   || 12;
+  const sy = p.startYear, sm = p.startMonth || 1, sd = p.startDay || 1;
+  const ey = p.endYear,   em = p.endMonth   || 12, ed = p.endDay  || 1;
   if (year < sy || year > ey) return 0;
-  if (p.frequency === 'annual') return 1;
+  const startT = new Date(sy, sm - 1, sd).getTime();
+  const endT   = new Date(ey, em - 1, ed).getTime();
+  if (p.frequency === 'annual') {
+    const t = new Date(year, sm - 1, 1).getTime();
+    return (t >= startT && t <= endT) ? 1 : 0;
+  }
   let cnt = 0;
   for (let m = 1; m <= 12; m++) {
-    if (year === sy && m < sm) continue;
-    if (year === ey && m > em) continue;
-    cnt++;
+    const t = new Date(year, m - 1, 1).getTime();
+    if (t >= startT && t <= endT) cnt++;
   }
   return cnt;
+}
+
+// 해당 연도에 입금된 모든 금액이 연말까지 성장한 후의 총합 (원).
+// 모델: 매월 1일에 입금된 금액이 그 해 12월 31일까지 (1+r)^((13-M)/12) 배 성장.
+// 1월 입금 → (1+r), 12월 입금 → (1+r)^(1/12). projRate=0 이면 단순 합산.
+function getMonthlyPlanYearEndValueWon(accId, year, projRate) {
+  const r = projRate;
+  let total = 0;
+  for (const p of (annualPlan.monthlyPlans || []).filter(p => p.accId === accId)) {
+    const sy = p.startYear, sm = p.startMonth || 1, sd = p.startDay || 1;
+    const ey = p.endYear,   em = p.endMonth   || 12, ed = p.endDay  || 1;
+    if (year < sy || year > ey) continue;
+    const amt = (p.monthlyAmt || 0) * 10000; // 만원 → 원
+    if (amt <= 0) continue;
+    const startT = new Date(sy, sm - 1, sd).getTime();
+    const endT   = new Date(ey, em - 1, ed).getTime();
+    if (p.frequency === 'annual') {
+      const M = sm;
+      const t = new Date(year, M - 1, 1).getTime();
+      if (t >= startT && t <= endT) {
+        total += amt * Math.pow(1 + r, (13 - M) / 12);
+      }
+    } else {
+      for (let M = 1; M <= 12; M++) {
+        const t = new Date(year, M - 1, 1).getTime();
+        if (t < startT || t > endT) continue;
+        total += amt * Math.pow(1 + r, (13 - M) / 12);
+      }
+    }
+  }
+  return total;
 }
 
 // Monthly/annual plan principal increment for accId in a specific year (만원)
@@ -6329,12 +6379,10 @@ function renderEvalTable() {
       } else if (yr === currentYear) {
         vals[yr] = base; // current year: show latest available record, not a projection
       } else {
-        // Incremental planned deposit this year: (cumulative yr) - (cumulative yr-1), in 백만원
-        const prevMil = getGroupCumMil(accIds, yr - 1);
-        const currMil = getGroupCumMil(accIds, yr);
-        const newDepositWon = Math.max(0, currMil - prevMil) * 1_000_000;
-        // Deposits arrive Jan 1 → earn the full year's return
-        base = (base + newDepositWon) * (1 + projRate);
+        // base 는 1년 전체 성장. 한 해 입금은 각 월(1일)부터 연말까지의 부분 성장만 적용.
+        let yearEndDep = 0;
+        for (const id of accIds) yearEndDep += getMonthlyPlanYearEndValueWon(id, yr, projRate);
+        base = base * (1 + projRate) + yearEndDep;
         vals[yr] = base;
       }
     }
@@ -6567,8 +6615,8 @@ function renderMonthlyPlanList() {
       <td style="text-align:center">${freq}적립</td>
       <td style="text-align:right">${(p.monthlyAmt||0).toLocaleString('ko-KR')} 만원/${freq}</td>
       <td style="text-align:right">${(p.monthlyAnse||0) > 0 ? (p.monthlyAnse).toLocaleString('ko-KR')+'만원' : '-'}</td>
-      <td>${p.startYear}년 ${p.startMonth}월</td>
-      <td>${p.endYear}년 ${p.endMonth}월</td>
+      <td>${p.startYear}년 ${p.startMonth}월 ${p.startDay || 1}일</td>
+      <td>${p.endYear}년 ${p.endMonth}월 ${p.endDay || 1}일</td>
       <td style="white-space:nowrap">
         <button class="tbl-icon-btn" onclick="startEditMonthlyPlan('${p.id}')" title="편집">✏️</button>
         <button class="tbl-icon-btn" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑️</button>
@@ -6585,10 +6633,9 @@ function startEditMonthlyPlan(id) {
   document.getElementById('mplanFreq').value = p.frequency || 'monthly';
   document.getElementById('mplanAmt').value = p.monthlyAmt || 0;
   document.getElementById('mplanAnse').value = p.monthlyAnse || 0;
-  document.getElementById('mplanStartY').value = p.startYear;
-  document.getElementById('mplanStartM').value = p.startMonth;
-  document.getElementById('mplanEndY').value = p.endYear;
-  document.getElementById('mplanEndM').value = p.endMonth;
+  const _fmtDt = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  document.getElementById('mplanStart').value = _fmtDt(p.startYear, p.startMonth, p.startDay || 1);
+  document.getElementById('mplanEnd').value   = _fmtDt(p.endYear,   p.endMonth,   p.endDay   || 1);
   document.getElementById('mplanSaveBtn').textContent = '저장';
   document.getElementById('mplanCancelBtn').style.display = '';
   renderMonthlyPlanList();
@@ -6598,30 +6645,46 @@ function startEditMonthlyPlan(id) {
   if (body && body.style.display === 'none') toggleAptSection('mplanBody', btn);
 }
 
+function _todayDateStr() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+}
 function cancelEditMonthlyPlan() {
   _editingMplanId = null;
   document.getElementById('mplanAmt').value = '';
   document.getElementById('mplanAnse').value = '';
+  const today = _todayDateStr();
+  document.getElementById('mplanStart').value = today;
+  document.getElementById('mplanEnd').value   = today;
   document.getElementById('mplanSaveBtn').textContent = '+ 추가';
   document.getElementById('mplanCancelBtn').style.display = 'none';
   renderMonthlyPlanList();
 }
 
+function _parseDateInput(value) {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return { y, m, d };
+}
 function addMonthlyPlan() {
   const accId = document.getElementById('mplanAcc').value;
   const frequency = document.getElementById('mplanFreq').value || 'monthly';
   const monthlyAmt = Number(document.getElementById('mplanAmt').value) || 0;
   const monthlyAnse = Number(document.getElementById('mplanAnse').value) || 0;
-  const startYear = Number(document.getElementById('mplanStartY').value) || 2026;
-  const startMonth = Number(document.getElementById('mplanStartM').value) || 1;
-  const endYear = Number(document.getElementById('mplanEndY').value) || 2056;
-  const endMonth = Number(document.getElementById('mplanEndM').value) || 12;
+  const startDt = _parseDateInput(document.getElementById('mplanStart').value);
+  const endDt   = _parseDateInput(document.getElementById('mplanEnd').value);
   if (!accId) { alert('계좌를 선택해 주세요.'); return; }
   if (monthlyAmt <= 0) { alert('적립금액을 입력해 주세요.'); return; }
-  if (startYear > endYear || (startYear === endYear && startMonth > endMonth)) { alert('종료 시점이 시작 시점보다 빨리 설정되었습니다.'); return; }
+  if (!startDt || !endDt) { alert('시작일과 종료일을 입력해 주세요.'); return; }
+  const startYear = startDt.y, startMonth = startDt.m, startDay = startDt.d;
+  const endYear   = endDt.y,   endMonth   = endDt.m,   endDay   = endDt.d;
+  if (new Date(startYear, startMonth-1, startDay).getTime() > new Date(endYear, endMonth-1, endDay).getTime()) {
+    alert('종료일이 시작일보다 빨리 설정되었습니다.'); return;
+  }
   if (!annualPlan.monthlyPlans) annualPlan.monthlyPlans = [];
   if (_editingMplanId) {
-    const newPlanData = { id: _editingMplanId, accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth };
+    const newPlanData = { id: _editingMplanId, accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, startDay, endYear, endMonth, endDay };
     const hasRecords = depositData.transactions.some(t => t.autoFromPlan === _editingMplanId);
     if (hasRecords) {
       _pendingEditPlanData = newPlanData;
@@ -6630,7 +6693,7 @@ function addMonthlyPlan() {
     }
     applyEditPlan(newPlanData, false);
   } else {
-    annualPlan.monthlyPlans.push({ id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, endYear, endMonth });
+    annualPlan.monthlyPlans.push({ id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, startDay, endYear, endMonth, endDay });
     localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
     document.getElementById('mplanAmt').value = '';
     document.getElementById('mplanAnse').value = '';
@@ -9370,10 +9433,7 @@ function computeAccStartBal(accId, startYear) {
   const projR = (annualPlan.projRate || 7) / 100;
   for (let yr = lastRecYear + 1; yr <= startYear; yr++) {
     if (yr === currentYear) continue; // 연간계획과 동일하게 현재연도는 투영 skip
-    const prevMil = getCellManwon(accId, yr - 1);
-    const currMil = getCellManwon(accId, yr);
-    const dep = Math.max(0, currMil - prevMil) * 1_000_000;
-    base = (base + dep) * (1 + projR);
+    base = base * (1 + projR) + getMonthlyPlanYearEndValueWon(accId, yr, projR);
   }
   return base;
 }
