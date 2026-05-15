@@ -2653,7 +2653,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.314';
+const APP_VERSION = 'MyPM v0.315';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9489,22 +9489,71 @@ function computeWithdrawalSim() {
   autoConsolidateLog = null;
   const state = {};
   if (wdConsolidated && wdConsolidated.startYear === startYear) {
+    // wdConsolidated 는 사용자의 pp1 배정 선택만 유효. 절대 금액은 매번 fresh 재계산.
     const c = wdConsolidated;
-    const myPP2Anse    = Math.max(0, c.totalMyAnse    - c.myPP1Anse);
-    const myPP2Regular = Math.max(0, c.totalMyRegular - c.myPP1Regular);
-    const wifePP2Anse    = Math.max(0, c.totalWifeAnse    - c.wifePP1Anse);
-    const wifePP2Regular = Math.max(0, c.totalWifeRegular - c.wifePP1Regular);
-    const zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
-    for (const accId of allAccIds) state[accId] = { ...zero };
-    state['dc']            = { anse: 0, dcPrincipal: c.myDCPrincipal, regular: c.myDCRegular,          total: c.myDCPrincipal + c.myDCRegular };
-    state['pension1']      = { anse: c.myPP1Anse, dcPrincipal: 0, regular: c.myPP1Regular,             total: c.myPP1Anse + c.myPP1Regular };
-    state['pension2']      = { anse: myPP2Anse, dcPrincipal: 0, regular: myPP2Regular,                 total: myPP2Anse + myPP2Regular };
-    if (allAccIds.includes('wife_dc')) {
-      const wDCP = c.wifeDCPrincipal || 0, wDCR = c.wifeDCRegular || 0;
-      state['wife_dc'] = { anse: 0, dcPrincipal: wDCP, regular: wDCR, total: wDCP + wDCR };
+    const _zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+    const refYear = startYear - 1;
+    const currentYear = new Date().getFullYear();
+
+    // 1) per-account components fresh 계산 (openConsolidateModal 과 동일)
+    const comps = {};
+    for (const accId of MY_ACC_IDS) comps[accId] = computeAccComponents(accId, refYear);
+    if (appSettings.hasWife)
+      for (const accId of WIFE_ACC_IDS) comps[accId] = computeAccComponents(accId, refYear);
+    if (!comps['pension1'])      comps['pension1']      = { ..._zero };
+    if (!comps['wife_pension1']) comps['wife_pension1'] = { ..._zero };
+
+    // 2) 미래 연도면 anse 를 적립계획 값으로 override (openConsolidateModal 과 동일)
+    if (refYear > currentYear) {
+      const overrideAnse = (ids) => {
+        for (const id of ids) {
+          if (!comps[id]) continue;
+          const anseMv = getCellAnseManwon(id, refYear);
+          if (!anseMv) continue;
+          const newAnse = Math.min(anseMv * 1_000_000, comps[id].total);
+          comps[id] = { ...comps[id], anse: newAnse, regular: Math.max(0, comps[id].total - newAnse) };
+        }
+      };
+      overrideAnse(MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)));
+      if (appSettings.hasWife) overrideAnse(WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)));
     }
-    state['wife_pension1'] = { anse: c.wifePP1Anse, dcPrincipal: 0, regular: c.wifePP1Regular,         total: c.wifePP1Anse + c.wifePP1Regular };
-    state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,             total: wifePP2Anse + wifePP2Regular };
+
+    // 3) fresh nonDC 총합
+    const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
+    const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
+    const totalMyAnse      = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
+    const totalMyRegular   = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
+    const totalWifeAnse    = wifeNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
+    const totalWifeRegular = wifeNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
+
+    // 4) 사용자의 pp1 배정 선택 (현재 총합 한도로 cap)
+    const myPP1A = Math.min(Math.max(0, c.myPP1Anse    || 0), totalMyAnse);
+    const myPP1R = Math.min(Math.max(0, c.myPP1Regular || 0), totalMyRegular);
+    const wPP1A  = Math.min(Math.max(0, c.wifePP1Anse    || 0), totalWifeAnse);
+    const wPP1R  = Math.min(Math.max(0, c.wifePP1Regular || 0), totalWifeRegular);
+    const myPP2Anse    = totalMyAnse    - myPP1A;
+    const myPP2Regular = totalMyRegular - myPP1R;
+    const wifePP2Anse    = totalWifeAnse    - wPP1A;
+    const wifePP2Regular = totalWifeRegular - wPP1R;
+
+    // 5) state 빌드
+    for (const accId of allAccIds) state[accId] = { ..._zero };
+    const dcC = comps['dc'] || _zero;
+    state['dc'] = { anse: 0, dcPrincipal: dcC.dcPrincipal, regular: dcC.regular,
+                    total: dcC.dcPrincipal + dcC.regular };
+    state['pension1'] = { anse: myPP1A, dcPrincipal: 0, regular: myPP1R, total: myPP1A + myPP1R };
+    state['pension2'] = { anse: myPP2Anse, dcPrincipal: 0, regular: myPP2Regular,
+                          total: myPP2Anse + myPP2Regular };
+    if (appSettings.hasWife) {
+      if (allAccIds.includes('wife_dc')) {
+        const wdcC = comps['wife_dc'] || _zero;
+        state['wife_dc'] = { anse: 0, dcPrincipal: wdcC.dcPrincipal, regular: wdcC.regular,
+                             total: wdcC.dcPrincipal + wdcC.regular };
+      }
+      state['wife_pension1'] = { anse: wPP1A, dcPrincipal: 0, regular: wPP1R, total: wPP1A + wPP1R };
+      state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,
+                                  total: wifePP2Anse + wifePP2Regular };
+    }
   } else {
     const currentYear = new Date().getFullYear();
     for (const accId of allAccIds) {
