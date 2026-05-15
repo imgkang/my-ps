@@ -2670,7 +2670,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.325';
+const APP_VERSION = 'MyPM v0.326';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9497,17 +9497,39 @@ function computeAccStartBal(accId, startYear) {
   const currentYear = new Date().getFullYear();
   const recYears = [...new Set(monthlyRecords.map(r => r.year))].sort((a, b) => b - a);
   const lastRecYear = recYears[0] ?? (currentYear - 1);
+  const projR = (annualPlan.projRate || 7) / 100;
+
+  // 최신 record 날짜 (timestamp). currentYear 의 post-record 입금만 base 에 추가하기 위함.
+  let lastRecDateT = -Infinity;
+  if (monthlyRecords.length) {
+    const sorted = [...monthlyRecords].sort((a, b) => {
+      if (b.year !== a.year) return b.year - a.year;
+      if (b.month !== a.month) return b.month - a.month;
+      return (b.day || 0) - (a.day || 0);
+    });
+    const r = sorted[0];
+    lastRecDateT = new Date(r.year, r.month - 1, r.day || 1).getTime();
+  }
 
   // 실적이 startYear 이하면 그 연도의 실제값 사용 (연간계획 getGroupYearEndWon 과 동일 정렬)
   if (startYear <= lastRecYear) {
     return (getGroupYearEndWon([accId], startYear) || 0);
   }
-  // base = lastRecYear 내 latest record (연간계획과 동일)
+
   let base = getGroupYearEndWon([accId], lastRecYear) || 0;
-  const projR = (annualPlan.projRate || 7) / 100;
+
+  // lastRecYear === currentYear: 최신 record 이후 currentYear 입금분을 base 에 추가
+  if (currentYear === lastRecYear) {
+    base += getMonthlyPlanYearEndValueWon(accId, currentYear, projR, lastRecDateT);
+  }
+
   for (let yr = lastRecYear + 1; yr <= startYear; yr++) {
-    if (yr === currentYear) continue; // 연간계획과 동일하게 현재연도는 투영 skip
-    base = base * (1 + projR) + getMonthlyPlanYearEndValueWon(accId, yr, projR);
+    if (yr === currentYear) {
+      // currentYear (lastRecYear 보다 큰 경우): 성장 X, 입금만 누적 (스냅샷 모델)
+      base = base + getMonthlyPlanYearEndValueWon(accId, yr, projR);
+    } else {
+      base = base * (1 + projR) + getMonthlyPlanYearEndValueWon(accId, yr, projR);
+    }
   }
   return base;
 }
