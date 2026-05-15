@@ -2664,7 +2664,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.322';
+const APP_VERSION = 'MyPM v0.323';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6114,12 +6114,13 @@ function _planPeriodsInYear(p, year) {
   const startT = new Date(sy, sm - 1, sd).getTime();
   const endT   = new Date(ey, em - 1, ed).getTime();
   if (p.frequency === 'annual') {
-    const t = new Date(year, sm - 1, 1).getTime();
+    const t = new Date(year, sm - 1, sd).getTime();
     return (t >= startT && t <= endT) ? 1 : 0;
   }
   let cnt = 0;
   for (let m = 1; m <= 12; m++) {
-    const t = new Date(year, m - 1, 1).getTime();
+    const d = (m === sm && year === sy) ? sd : (m === em && year === ey) ? ed : 1;
+    const t = new Date(year, m - 1, d).getTime();
     if (t >= startT && t <= endT) cnt++;
   }
   return cnt;
@@ -6131,6 +6132,8 @@ function _planPeriodsInYear(p, year) {
 function getMonthlyPlanYearEndValueWon(accId, year, projRate) {
   const r = projRate;
   let total = 0;
+  const yrEndT = new Date(year, 11, 31).getTime();
+  const yearsRemaining = depT => Math.max(0, (yrEndT - depT) / (365 * 86400000));
   for (const p of (annualPlan.monthlyPlans || []).filter(p => p.accId === accId)) {
     const sy = p.startYear, sm = p.startMonth || 1, sd = p.startDay || 1;
     const ey = p.endYear,   em = p.endMonth   || 12, ed = p.endDay  || 1;
@@ -6140,16 +6143,16 @@ function getMonthlyPlanYearEndValueWon(accId, year, projRate) {
     const startT = new Date(sy, sm - 1, sd).getTime();
     const endT   = new Date(ey, em - 1, ed).getTime();
     if (p.frequency === 'annual') {
-      const M = sm;
-      const t = new Date(year, M - 1, 1).getTime();
-      if (t >= startT && t <= endT) {
-        total += amt * Math.pow(1 + r, (13 - M) / 12);
+      const tDeposit = new Date(year, sm - 1, sd).getTime();
+      if (tDeposit >= startT && tDeposit <= endT) {
+        total += amt * Math.pow(1 + r, yearsRemaining(tDeposit));
       }
     } else {
       for (let M = 1; M <= 12; M++) {
-        const t = new Date(year, M - 1, 1).getTime();
-        if (t < startT || t > endT) continue;
-        total += amt * Math.pow(1 + r, (13 - M) / 12);
+        const d = (M === sm && year === sy) ? sd : (M === em && year === ey) ? ed : 1;
+        const tDeposit = new Date(year, M - 1, d).getTime();
+        if (tDeposit < startT || tDeposit > endT) continue;
+        total += amt * Math.pow(1 + r, yearsRemaining(tDeposit));
       }
     }
   }
@@ -6392,7 +6395,11 @@ function renderEvalTable() {
         vals[yr] = actual;
         if (actual !== null) base = actual; // update base to latest actual
       } else if (yr === currentYear) {
-        vals[yr] = base; // current year: show latest available record, not a projection
+        vals[yr] = base; // 현재값 표시 (예측 아님)
+        // 단, 올해 계획된 입금은 base 에 누적해 내년 projection 의 시작점이 되도록 함
+        let curYearDep = 0;
+        for (const id of accIds) curYearDep += getMonthlyPlanYearEndValueWon(id, yr, projRate);
+        base = base + curYearDep;
       } else {
         // base 는 1년 전체 성장. 한 해 입금은 각 월(1일)부터 연말까지의 부분 성장만 적용.
         let yearEndDep = 0;
@@ -10964,6 +10971,8 @@ function evalShowCellInfo(event, td) {
 
 function _evalAccDeposits(accIds, yr, projRate) {
   const out = [];
+  const yrEndT = new Date(yr, 11, 31).getTime();
+  const yrFrac = depT => Math.max(0, (yrEndT - depT) / (365 * 86400000));
   for (const p of (annualPlan.monthlyPlans || [])) {
     if (!accIds.includes(p.accId)) continue;
     const sy = p.startYear, sm = p.startMonth || 1, sd = p.startDay || 1;
@@ -10974,30 +10983,33 @@ function _evalAccDeposits(accIds, yr, projRate) {
     const startT = new Date(sy, sm - 1, sd).getTime();
     const endT   = new Date(ey, em - 1, ed).getTime();
     if (p.frequency === 'annual') {
-      const M = sm;
-      const t = new Date(yr, M - 1, 1).getTime();
-      if (t >= startT && t <= endT) {
-        const factor = Math.pow(1 + projRate, (13 - M) / 12);
+      const tDeposit = new Date(yr, sm - 1, sd).getTime();
+      if (tDeposit >= startT && tDeposit <= endT) {
+        const yf = yrFrac(tDeposit);
         out.push({
           accId: p.accId, freq: 'annual', monthlyAmtWon: amt,
-          months: [M], factorRange: `(1+${(projRate*100).toFixed(2)}%)^(${13-M}/12)`,
-          sumWon: amt * factor
+          dateLabel: `${sm}월 ${sd}일`,
+          factorRange: `(1+${(projRate*100).toFixed(2)}%)^${yf.toFixed(3)}`,
+          sumWon: amt * Math.pow(1 + projRate, yf),
+          count: 1
         });
       }
     } else {
       const monthsArr = []; let sumWon = 0;
       for (let M = 1; M <= 12; M++) {
-        const t = new Date(yr, M - 1, 1).getTime();
-        if (t < startT || t > endT) continue;
+        const d = (M === sm && yr === sy) ? sd : (M === em && yr === ey) ? ed : 1;
+        const tDeposit = new Date(yr, M - 1, d).getTime();
+        if (tDeposit < startT || tDeposit > endT) continue;
         monthsArr.push(M);
-        sumWon += amt * Math.pow(1 + projRate, (13 - M) / 12);
+        sumWon += amt * Math.pow(1 + projRate, yrFrac(tDeposit));
       }
       if (monthsArr.length) {
         out.push({
           accId: p.accId, freq: 'monthly', monthlyAmtWon: amt,
-          months: monthsArr,
-          factorRange: `Σ (1+${(projRate*100).toFixed(2)}%)^((13−M)/12)`,
-          sumWon
+          dateLabel: `${monthsArr[0]}~${monthsArr[monthsArr.length-1]}월 (${monthsArr.length}회)`,
+          factorRange: `Σ (1+${(projRate*100).toFixed(2)}%)^((연말까지 일수)/365)`,
+          sumWon,
+          count: monthsArr.length
         });
       }
     }
@@ -11007,35 +11019,47 @@ function _evalAccDeposits(accIds, yr, projRate) {
 
 function _evalProjBlock(accIds, yr, label) {
   if (!_lastEvalSnapshot) return '';
-  const { lastRecYear, projRate, computeGroupVals } = _lastEvalSnapshot;
+  const { lastRecYear, projRate, currentYear, computeGroupVals } = _lastEvalSnapshot;
   const wr = v => Math.round(v).toLocaleString('ko-KR') + '원';
   const mw = v => Math.round(v / 1_000_000).toLocaleString('ko-KR');
   const rPct = (projRate * 100).toFixed(2);
   const vals = computeGroupVals(accIds);
-  const cur = vals[yr] || 0;
-  const prev = vals[yr - 1];
+  const prevDisplay = vals[yr - 1] || 0;
   const prevKnownActual = (yr - 1) <= lastRecYear;
   const prevLabel = `${yr - 1}년 ${prevKnownActual ? '실적' : '예상'}`;
-  const grown = (prev || 0) * (1 + projRate);
+  // 전년이 currentYear 인 경우, vals[currentYear] 는 현재 스냅샷 (입금 누적 전).
+  // 실제 projection 에 쓰이는 base 는 currentYear 의 입금까지 누적된 값.
+  let prevDep = 0;
+  let prevBase = prevDisplay;
+  if ((yr - 1) === currentYear) {
+    prevDep = _evalAccDeposits(accIds, currentYear, projRate).reduce((s, d) => s + d.sumWon, 0);
+    prevBase = prevDisplay + prevDep;
+  }
+  const grown = prevBase * (1 + projRate);
   const deps = _evalAccDeposits(accIds, yr, projRate);
   const depSum = deps.reduce((s, d) => s + d.sumWon, 0);
   let depLines = '';
   if (deps.length) {
-    depLines = `<div style="margin-top:4px">+ 적립계획:</div>`
+    depLines = `<div style="margin-top:4px">+ ${yr}년 적립계획:</div>`
       + deps.map(d => {
         const accNm = getAccName(d.accId);
         const amtMan = Math.round(d.monthlyAmtWon / 10000).toLocaleString('ko-KR');
         const freqLbl = d.freq === 'annual'
-          ? `${amtMan}만원/연 (${d.months[0]}월 1회)`
-          : `${amtMan}만원/월 (${d.months[0]}~${d.months[d.months.length-1]}월, ${d.months.length}회)`;
+          ? `${amtMan}만원/연 (${d.dateLabel})`
+          : `${amtMan}만원/월 (${d.dateLabel})`;
         return `<div style="padding-left:8px">· [${accNm}] ${freqLbl} × ${d.factorRange} = <b>${wr(d.sumWon)}</b></div>`;
       }).join('');
   } else {
-    depLines = `<div style="margin-top:4px">+ 적립계획: 없음</div>`;
+    depLines = `<div style="margin-top:4px">+ ${yr}년 적립계획: 없음</div>`;
+  }
+  let prevSection = `<div>전년 (${prevLabel}): ${wr(prevDisplay)}</div>`;
+  if ((yr - 1) === currentYear && prevDep > 0) {
+    prevSection += `<div>+ ${currentYear}년 적립 (연말 누적): ${wr(prevDep)}</div>`
+      + `<div>= ${currentYear}년 말 기준: <b>${wr(prevBase)}</b></div>`;
   }
   return `<div class="wci-title">${label} <span style="color:#94a3b8;font-size:10px">${yr}년 (예상)</span></div>`
     + `<div class="wci-formula">`
-    +   `<div>전년 (${prevLabel}): ${wr(prev || 0)}</div>`
+    +   prevSection
     +   `<div>× (1 + ${rPct}%) = ${wr(grown)}</div>`
     +   depLines
     +   `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= 합계 = <b>${wr(grown + depSum)}</b> (${mw(grown + depSum)} 백만원)</div>`
@@ -11077,7 +11101,7 @@ function buildEvalCellInfoLines(type, yr, accId) {
         ? deps.map(d => {
             const accNm = getAccName(d.accId);
             const amtMan = Math.round(d.monthlyAmtWon / 10000).toLocaleString('ko-KR');
-            const cnt = d.months.length;
+            const cnt = d.count || 1;
             const totalMan = (d.monthlyAmtWon * cnt / 10000).toLocaleString('ko-KR');
             return `<div style="padding-left:8px">· [${accNm}] ${amtMan}만원 × ${cnt}회 = ${totalMan}만원</div>`;
           }).join('')
@@ -11097,7 +11121,7 @@ function buildEvalCellInfoLines(type, yr, accId) {
         ? deps.map(d => {
             const accNm = getAccName(d.accId);
             const amtMan = Math.round(d.monthlyAmtWon / 10000).toLocaleString('ko-KR');
-            const cnt = d.months.length;
+            const cnt = d.count || 1;
             const totalMan = (d.monthlyAmtWon * cnt / 10000).toLocaleString('ko-KR');
             return `<div style="padding-left:8px">· [${accNm}] ${amtMan}만원 × ${cnt}회 = ${totalMan}만원</div>`;
           }).join('')
