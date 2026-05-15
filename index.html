@@ -2664,7 +2664,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.321';
+const APP_VERSION = 'MyPM v0.322';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6415,6 +6415,16 @@ function renderEvalTable() {
   const myVals   = computeGroupVals(_evalMyIds);
   const wifeVals = _evalWifeIds.length ? computeGroupVals(_evalWifeIds) : {};
 
+  const isProj = yr => yr > lastRecYear && yr !== currentYear;
+  const _projAttrs = (type, yr, accId='') => {
+    if (!isProj(yr) || !type) return '';
+    return ` data-cell-type="${type}" data-yr="${yr}"${accId ? ` data-acc="${accId}"` : ''} ontouchstart="evalShowCellInfo(event,this)" onmousedown="evalShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()"`;
+  };
+  const _withCursor = (st, type, yr) => {
+    if (!type || !isProj(yr)) return st;
+    return (st ? st + ';' : '') + 'cursor:pointer';
+  };
+
   // header
   let h = '<thead><tr><th>계좌</th>';
   for (const yr of years) {
@@ -6438,8 +6448,9 @@ function renderEvalTable() {
       const base = yr < currentYear  ? 'background:#f3f4f6;color:#6b7280'
                  : yr === currentYear ? 'background:#d1fae5'
                  : 'background:#f0fdf4;color:#6d28d9';
-      const st = retireCellStyle(yr, _eMyRetireYr, base);
-      body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
+      let st = retireCellStyle(yr, _eMyRetireYr, base);
+      st = _withCursor(st, 'eval-acc', yr);
+      body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-acc', yr, id)}>${mw ? fmt(mw) : '-'}</td>`;
     }
     body += '</tr>';
   }
@@ -6450,8 +6461,9 @@ function renderEvalTable() {
     const v = myVals[yr];
     const mw = v != null ? Math.round(v / 1000000) : null;
     const base = yr === currentYear ? 'background:#d1fae5' : '';
-    const st = retireCellStyle(yr, _eMyRetireYr, base);
-    body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
+    let st = retireCellStyle(yr, _eMyRetireYr, base);
+    st = _withCursor(st, 'eval-sub-my', yr);
+    body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-sub-my', yr)}>${mw ? fmt(mw) : '-'}</td>`;
   }
   body += '</tr>';
 
@@ -6466,8 +6478,9 @@ function renderEvalTable() {
         const base = yr < currentYear  ? 'background:#f3f4f6;color:#6b7280'
                    : yr === currentYear ? 'background:#d1fae5'
                    : 'background:#f0fdf4;color:#6d28d9';
-        const st = retireCellStyle(yr, _eWifeRetireYr, base);
-        body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
+        let st = retireCellStyle(yr, _eWifeRetireYr, base);
+        st = _withCursor(st, 'eval-acc', yr);
+        body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-acc', yr, id)}>${mw ? fmt(mw) : '-'}</td>`;
       }
       body += '</tr>';
     }
@@ -6478,8 +6491,9 @@ function renderEvalTable() {
       const v = wifeVals[yr];
       const mw = v != null ? Math.round(v / 1000000) : null;
       const base = yr === currentYear ? 'background:#d1fae5' : '';
-      const st = retireCellStyle(yr, _eWifeRetireYr, base);
-      body += `<td${st ? ` style="${st}"` : ''}>${mw ? fmt(mw) : '-'}</td>`;
+      let st = retireCellStyle(yr, _eWifeRetireYr, base);
+      st = _withCursor(st, 'eval-sub-wife', yr);
+      body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-sub-wife', yr)}>${mw ? fmt(mw) : '-'}</td>`;
     }
     body += '</tr>';
   }
@@ -6509,11 +6523,12 @@ function renderEvalTable() {
   const getTotalWonPrev = (i) => i === 0 ? prevTotalWon : totalWon[years[i - 1]];
   const getPrincMilPrev = (i) => i === 0 ? 0 : (princMil[years[i - 1]] || 0);
 
-  const _eTd = (yr, content, extraBase = '') => {
+  const _eTd = (yr, content, extraBase = '', type = '') => {
     const cyBg = yr === currentYear ? 'background:#d1fae5' : '';
     const base = [cyBg, extraBase].filter(Boolean).join(';');
-    const st = retireCellStyle(yr, _eBothRetireYr, base);
-    return `<td${st ? ` style="${st}"` : ''}>${content}</td>`;
+    let st = retireCellStyle(yr, _eBothRetireYr, base);
+    st = _withCursor(st, type, yr);
+    return `<td${st ? ` style="${st}"` : ''}${_projAttrs(type, yr)}>${content}</td>`;
   };
 
   // 연금총합 (평가)
@@ -6521,14 +6536,14 @@ function renderEvalTable() {
   for (const yr of years) {
     const tw = totalWon[yr];
     if (tw == null) { body += _eTd(yr, '-'); continue; }
-    const isProj = yr > lastRecYear;
-    body += _eTd(yr, fmt(Math.round(tw / 1_000_000)), isProj ? 'color:#6d28d9' : '');
+    const isProjYr = yr > lastRecYear;
+    body += _eTd(yr, fmt(Math.round(tw / 1_000_000)), isProjYr ? 'color:#6d28d9' : '', 'eval-total');
   }
   body += '</tr>';
 
   // 원금
   body += '<tr class="r-princ"><td>원금</td>';
-  for (const yr of years) body += _eTd(yr, fmt(princMil[yr]));
+  for (const yr of years) body += _eTd(yr, fmt(princMil[yr]), '', 'eval-princ');
   body += '</tr>';
 
   // 원금증가액
@@ -6537,7 +6552,7 @@ function renderEvalTable() {
     const yr = years[i];
     if (i === 0) { body += _eTd(yr, '-'); continue; }
     const inc = princMil[yr] - getPrincMilPrev(i);
-    body += _eTd(yr, fmtDiff(inc));
+    body += _eTd(yr, fmtDiff(inc), '', 'eval-princ-inc');
   }
   body += '</tr>';
 
@@ -6552,7 +6567,7 @@ function renderEvalTable() {
     if (yr === currentYear && yr > lastRecYear) { body += _eTd(yr, '-'); continue; }
     const princIncWon = (princMil[yr] - getPrincMilPrev(i)) * 1_000_000;
     const profit = Math.round((tw - prevWon - princIncWon) / 1_000_000);
-    body += _eTd(yr, fmtDiff(profit));
+    body += _eTd(yr, fmtDiff(profit), '', 'eval-profit');
   }
   body += '</tr>';
 
@@ -6568,7 +6583,7 @@ function renderEvalTable() {
     const base = prevWon + princIncWon;
     const profit = tw - prevWon - princIncWon;
     const rate = base > 0 ? profit / base * 100 : 0;
-    body += _eTd(yr, fmtRate(rate));
+    body += _eTd(yr, fmtRate(rate), '', 'eval-profit-rate');
   }
   body += '</tr>';
 
@@ -6578,7 +6593,7 @@ function renderEvalTable() {
     const tw = totalWon[yr];
     if (tw == null) { body += _eTd(yr, '-'); continue; }
     const cumProfit = Math.round((tw - princMil[yr] * 1_000_000) / 1_000_000);
-    body += _eTd(yr, fmtDiff(cumProfit));
+    body += _eTd(yr, fmtDiff(cumProfit), '', 'eval-cum-profit');
   }
   body += '</tr>';
 
@@ -6589,7 +6604,7 @@ function renderEvalTable() {
     if (tw == null) { body += _eTd(yr, '-'); continue; }
     const princWon = princMil[yr] * 1_000_000;
     const rate = princWon > 0 ? (tw - princWon) / princWon * 100 : 0;
-    body += _eTd(yr, fmtRate(rate));
+    body += _eTd(yr, fmtRate(rate), '', 'eval-cum-rate');
   }
   body += '</tr>';
 
@@ -6602,13 +6617,20 @@ function renderEvalTable() {
     const prevWon = getTotalWonPrev(i);
     if (prevWon == null) { body += _eTd(yr, '-'); continue; }
     const inc = Math.round((tw - prevWon) / 1_000_000);
-    body += _eTd(yr, fmtDiff(inc));
+    body += _eTd(yr, fmtDiff(inc), '', 'eval-inc');
   }
   body += '</tr>';
 
   body += '</tbody>';
   const cg = buildColgroup(years);
   wrap.innerHTML = `<table class="apt" style="width:${108 + years.length * 88}px">${cg}${h}${body}</table>`;
+
+  _lastEvalSnapshot = {
+    years, lastRecYear, projRate, currentYear,
+    myVals, wifeVals, totalWon, princMil,
+    prevTotalWon, computeGroupVals,
+    _evalMyIds, _evalWifeIds, _evalAllIds,
+  };
 }
 
 // ===== 계좌적립 계획 =====
@@ -10338,6 +10360,7 @@ function deleteWdScenario(idx) {
 
 let _wdSelectedScenIdx = null;
 let _lastWdSim = null;
+let _lastEvalSnapshot = null;
 let _wdDismissTimer = null;
 function loadWdScenario(idx) {
   const list = loadWdScenarios();
@@ -10923,6 +10946,221 @@ function wdStartDismiss() {
 
 function wdDismissPanel() {
   document.getElementById('wd-cell-info')?.classList.remove('visible');
+}
+
+function evalShowCellInfo(event, td) {
+  event.stopPropagation();
+  clearTimeout(_wdDismissTimer);
+  const yr = +td.dataset.yr;
+  const accId = td.dataset.acc || '';
+  const type = td.dataset.cellType;
+  const panel = document.getElementById('wd-cell-info');
+  if (!panel) return;
+  panel.innerHTML = buildEvalCellInfoLines(type, yr, accId);
+  const navH = document.querySelector('.tab-nav')?.offsetHeight || 80;
+  panel.style.bottom = navH + 'px';
+  panel.classList.add('visible');
+}
+
+function _evalAccDeposits(accIds, yr, projRate) {
+  const out = [];
+  for (const p of (annualPlan.monthlyPlans || [])) {
+    if (!accIds.includes(p.accId)) continue;
+    const sy = p.startYear, sm = p.startMonth || 1, sd = p.startDay || 1;
+    const ey = p.endYear,   em = p.endMonth   || 12, ed = p.endDay  || 1;
+    if (yr < sy || yr > ey) continue;
+    const amt = (p.monthlyAmt || 0) * 10000;
+    if (amt <= 0) continue;
+    const startT = new Date(sy, sm - 1, sd).getTime();
+    const endT   = new Date(ey, em - 1, ed).getTime();
+    if (p.frequency === 'annual') {
+      const M = sm;
+      const t = new Date(yr, M - 1, 1).getTime();
+      if (t >= startT && t <= endT) {
+        const factor = Math.pow(1 + projRate, (13 - M) / 12);
+        out.push({
+          accId: p.accId, freq: 'annual', monthlyAmtWon: amt,
+          months: [M], factorRange: `(1+${(projRate*100).toFixed(2)}%)^(${13-M}/12)`,
+          sumWon: amt * factor
+        });
+      }
+    } else {
+      const monthsArr = []; let sumWon = 0;
+      for (let M = 1; M <= 12; M++) {
+        const t = new Date(yr, M - 1, 1).getTime();
+        if (t < startT || t > endT) continue;
+        monthsArr.push(M);
+        sumWon += amt * Math.pow(1 + projRate, (13 - M) / 12);
+      }
+      if (monthsArr.length) {
+        out.push({
+          accId: p.accId, freq: 'monthly', monthlyAmtWon: amt,
+          months: monthsArr,
+          factorRange: `Σ (1+${(projRate*100).toFixed(2)}%)^((13−M)/12)`,
+          sumWon
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function _evalProjBlock(accIds, yr, label) {
+  if (!_lastEvalSnapshot) return '';
+  const { lastRecYear, projRate, computeGroupVals } = _lastEvalSnapshot;
+  const wr = v => Math.round(v).toLocaleString('ko-KR') + '원';
+  const mw = v => Math.round(v / 1_000_000).toLocaleString('ko-KR');
+  const rPct = (projRate * 100).toFixed(2);
+  const vals = computeGroupVals(accIds);
+  const cur = vals[yr] || 0;
+  const prev = vals[yr - 1];
+  const prevKnownActual = (yr - 1) <= lastRecYear;
+  const prevLabel = `${yr - 1}년 ${prevKnownActual ? '실적' : '예상'}`;
+  const grown = (prev || 0) * (1 + projRate);
+  const deps = _evalAccDeposits(accIds, yr, projRate);
+  const depSum = deps.reduce((s, d) => s + d.sumWon, 0);
+  let depLines = '';
+  if (deps.length) {
+    depLines = `<div style="margin-top:4px">+ 적립계획:</div>`
+      + deps.map(d => {
+        const accNm = getAccName(d.accId);
+        const amtMan = Math.round(d.monthlyAmtWon / 10000).toLocaleString('ko-KR');
+        const freqLbl = d.freq === 'annual'
+          ? `${amtMan}만원/연 (${d.months[0]}월 1회)`
+          : `${amtMan}만원/월 (${d.months[0]}~${d.months[d.months.length-1]}월, ${d.months.length}회)`;
+        return `<div style="padding-left:8px">· [${accNm}] ${freqLbl} × ${d.factorRange} = <b>${wr(d.sumWon)}</b></div>`;
+      }).join('');
+  } else {
+    depLines = `<div style="margin-top:4px">+ 적립계획: 없음</div>`;
+  }
+  return `<div class="wci-title">${label} <span style="color:#94a3b8;font-size:10px">${yr}년 (예상)</span></div>`
+    + `<div class="wci-formula">`
+    +   `<div>전년 (${prevLabel}): ${wr(prev || 0)}</div>`
+    +   `<div>× (1 + ${rPct}%) = ${wr(grown)}</div>`
+    +   depLines
+    +   `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= 합계 = <b>${wr(grown + depSum)}</b> (${mw(grown + depSum)} 백만원)</div>`
+    + `</div>`;
+}
+
+function buildEvalCellInfoLines(type, yr, accId) {
+  if (!_lastEvalSnapshot) return '';
+  const snap = _lastEvalSnapshot;
+  const { years, lastRecYear, projRate, totalWon, princMil, _evalMyIds, _evalWifeIds, _evalAllIds } = snap;
+  const wr = v => Math.round(v).toLocaleString('ko-KR') + '원';
+  const mw = v => v.toLocaleString('ko-KR');
+  const tag = `${yr}년 (예상)`;
+  const idx = years.indexOf(yr);
+  const prevYr = yr - 1;
+  const getTwPrev = () => {
+    if (idx <= 0) return snap.prevTotalWon;
+    return totalWon[years[idx - 1]];
+  };
+  const getPrincPrev = () => {
+    if (idx <= 0) return 0;
+    return princMil[years[idx - 1]] || 0;
+  };
+  const row = (title, formula) =>
+    `<div class="wci-title">${title} <span style="color:#94a3b8;font-size:10px">${tag}</span></div>`
+    + `<div class="wci-formula">${formula}</div>`;
+
+  switch (type) {
+    case 'eval-acc':       return _evalProjBlock([accId], yr, getAccName(accId));
+    case 'eval-sub-my':    return _evalProjBlock(_evalMyIds, yr, '나-연금총합');
+    case 'eval-sub-wife':  return _evalProjBlock(_evalWifeIds, yr, `${getWifeTitle()}-연금총합`);
+    case 'eval-total':     return _evalProjBlock(_evalAllIds, yr, '연금총합');
+    case 'eval-princ': {
+      const prev = getPrincPrev();
+      const cur  = princMil[yr] || 0;
+      const inc  = cur - prev;
+      const deps = _evalAccDeposits(_evalAllIds, yr, 0);
+      const lines = deps.length
+        ? deps.map(d => {
+            const accNm = getAccName(d.accId);
+            const amtMan = Math.round(d.monthlyAmtWon / 10000).toLocaleString('ko-KR');
+            const cnt = d.months.length;
+            const totalMan = (d.monthlyAmtWon * cnt / 10000).toLocaleString('ko-KR');
+            return `<div style="padding-left:8px">· [${accNm}] ${amtMan}만원 × ${cnt}회 = ${totalMan}만원</div>`;
+          }).join('')
+        : '<div style="padding-left:8px">· 적립계획 없음</div>';
+      return row('원금',
+        `<div>${prevYr}년 원금: ${mw(prev)} 백만원</div>`
+        + `<div>+ ${yr}년 적립합계: ${mw(inc)} 백만원</div>`
+        + lines
+        + `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= <b>${mw(cur)} 백만원</b></div>`);
+    }
+    case 'eval-princ-inc': {
+      const prev = getPrincPrev();
+      const cur  = princMil[yr] || 0;
+      const inc  = cur - prev;
+      const deps = _evalAccDeposits(_evalAllIds, yr, 0);
+      const lines = deps.length
+        ? deps.map(d => {
+            const accNm = getAccName(d.accId);
+            const amtMan = Math.round(d.monthlyAmtWon / 10000).toLocaleString('ko-KR');
+            const cnt = d.months.length;
+            const totalMan = (d.monthlyAmtWon * cnt / 10000).toLocaleString('ko-KR');
+            return `<div style="padding-left:8px">· [${accNm}] ${amtMan}만원 × ${cnt}회 = ${totalMan}만원</div>`;
+          }).join('')
+        : '<div style="padding-left:8px">· 적립계획 없음</div>';
+      return row('원금증가액',
+        `<div>${yr}년 적립계획:</div>` + lines
+        + `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= <b>${mw(inc)} 백만원</b></div>`);
+    }
+    case 'eval-profit': {
+      const tw   = totalWon[yr];
+      const prev = getTwPrev();
+      const princInc = ((princMil[yr] || 0) - getPrincPrev()) * 1_000_000;
+      const profit = tw - prev - princInc;
+      return row('당해년도이익',
+        `<div>${yr}년 평가금: ${mw(Math.round(tw / 1_000_000))} 백만원</div>`
+        + `<div>− 전년 평가금: ${mw(Math.round(prev / 1_000_000))} 백만원</div>`
+        + `<div>− 원금증가액: ${mw(Math.round(princInc / 1_000_000))} 백만원</div>`
+        + `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= <b>${mw(Math.round(profit / 1_000_000))} 백만원</b></div>`);
+    }
+    case 'eval-profit-rate': {
+      const tw   = totalWon[yr];
+      const prev = getTwPrev();
+      const princInc = ((princMil[yr] || 0) - getPrincPrev()) * 1_000_000;
+      const base = prev + princInc;
+      const profit = tw - prev - princInc;
+      const rate = base > 0 ? profit / base * 100 : 0;
+      return row('당해년도이익률',
+        `<div>분자: ${yr}년 평가금 − 전년 평가금 − 원금증가액</div>`
+        + `<div style="padding-left:8px">= ${mw(Math.round(profit / 1_000_000))} 백만원</div>`
+        + `<div>분모: 전년 평가금 + 원금증가액</div>`
+        + `<div style="padding-left:8px">= ${mw(Math.round(base / 1_000_000))} 백만원</div>`
+        + `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= <b>${rate.toFixed(2)}%</b></div>`);
+    }
+    case 'eval-cum-profit': {
+      const tw = totalWon[yr];
+      const princWon = (princMil[yr] || 0) * 1_000_000;
+      const cum = tw - princWon;
+      return row('누적이익',
+        `<div>${yr}년 평가금: ${mw(Math.round(tw / 1_000_000))} 백만원</div>`
+        + `<div>− 원금: ${mw(princMil[yr] || 0)} 백만원</div>`
+        + `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= <b>${mw(Math.round(cum / 1_000_000))} 백만원</b></div>`);
+    }
+    case 'eval-cum-rate': {
+      const tw = totalWon[yr];
+      const princWon = (princMil[yr] || 0) * 1_000_000;
+      const cum = tw - princWon;
+      const rate = princWon > 0 ? cum / princWon * 100 : 0;
+      return row('누적이익률',
+        `<div>(평가금 − 원금) / 원금 × 100</div>`
+        + `<div style="padding-left:8px">= ${mw(Math.round(cum / 1_000_000))} / ${mw(princMil[yr] || 0)} × 100</div>`
+        + `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= <b>${rate.toFixed(2)}%</b></div>`);
+    }
+    case 'eval-inc': {
+      const tw = totalWon[yr];
+      const prev = getTwPrev();
+      const inc = tw - prev;
+      return row('증가액',
+        `<div>${yr}년 평가금: ${mw(Math.round(tw / 1_000_000))} 백만원</div>`
+        + `<div>− 전년 평가금: ${mw(Math.round(prev / 1_000_000))} 백만원</div>`
+        + `<div style="margin-top:4px;border-top:1px dashed #475569;padding-top:4px">= <b>${mw(Math.round(inc / 1_000_000))} 백만원</b></div>`);
+    }
+  }
+  return '';
 }
 
 function _publicPensionFormula(cfg, valueWon, yr, inf, label, cy, kind) {
