@@ -2117,11 +2117,6 @@ Chart.register({
                style="width:62px;padding:2px 5px;border:1px solid #bfdbfe;border-radius:4px;font-size:12px;background:#eff6ff;margin:0 2px"
                oninput="saveAnnualRetireYears()">년
       </label>
-      <span id="ayr_wifeWrap" style="display:flex;align-items:center;gap:3px"><span id="ayr_wifeLabel" style="color:#be185d;font-weight:600">👩 배우자 은퇴</span>
-        <input type="number" id="ayr_wifeRetire" min="2020" max="2080" step="1"
-               style="width:62px;padding:2px 5px;border:1px solid #fbcfe8;border-radius:4px;font-size:12px;background:#fdf2f8;margin:0 2px"
-               oninput="saveAnnualRetireYears()">년
-      </span>
       <label style="display:flex;align-items:center;gap:3px">예상수익률
         <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
                style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;margin:0 2px"
@@ -2658,7 +2653,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.313';
+const APP_VERSION = 'MyPM v0.314';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -5963,12 +5958,6 @@ function openAnnualPlanModal() {
   // 은퇴연도 입력 동기화
   const ayrMy = document.getElementById('ayr_myRetire');
   if (ayrMy) ayrMy.value = wdPlan?.startYear || '';
-  const ayrWife = document.getElementById('ayr_wifeRetire');
-  if (ayrWife) ayrWife.value = wdPlan?.wifeRetireYear || wdPlan?.startYear || '';
-  const ayrWifeWrap = document.getElementById('ayr_wifeWrap');
-  if (ayrWifeWrap) ayrWifeWrap.style.display = appSettings.hasWife ? 'flex' : 'none';
-  const ayrWifeLabel = document.getElementById('ayr_wifeLabel');
-  if (ayrWifeLabel) ayrWifeLabel.textContent = '👩 ' + getWifeTitle() + ' 은퇴';
   renderMonthlyPlanList();
   updateMplanCountBadge();
   renderPrincipalTable();
@@ -6011,9 +6000,7 @@ function scrollAnnualToCurrentYear() {
 function saveAnnualRetireYears() {
   const ni = id => parseInt(document.getElementById(id)?.value) || 0;
   const sy = ni('ayr_myRetire');
-  const wy = ni('ayr_wifeRetire');
   if (sy >= 2020) wdPlan.startYear = sy;
-  if (wy >= 2020) wdPlan.wifeRetireYear = wy;
   saveWdPlan();
   loadQuickWdValues();
   if (document.getElementById('wdSettingsModal')?.classList.contains('open')) loadWdFormValues();
@@ -6051,8 +6038,7 @@ function getPlanYearRange() {
     const mpEnd = Math.max(...annualPlan.monthlyPlans.map(p => p.endYear || currentYear));
     endYear = Math.max(endYear, mpEnd);
   }
-  if (wdPlan?.startYear > 2020)      endYear = Math.max(endYear, wdPlan.startYear);
-  if (wdPlan?.wifeRetireYear > 2020) endYear = Math.max(endYear, wdPlan.wifeRetireYear);
+  if (wdPlan?.startYear > 2020) endYear = Math.max(endYear, wdPlan.startYear);
   return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
 }
 
@@ -6181,18 +6167,17 @@ function renderPrincipalTable() {
   const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
   const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
 
-  const myRetireYr   = (wdPlan && wdPlan.startYear)      ? wdPlan.startYear      : 9999;
-  const wifeRetireYr = (wdPlan && wdPlan.wifeRetireYear) ? wdPlan.wifeRetireYear : 9999;
-  const bothRetireYr = _activeWifeIds.length ? Math.max(myRetireYr, wifeRetireYr) : myRetireYr;
+  const myRetireYr   = (wdPlan && wdPlan.startYear) ? wdPlan.startYear : 9999;
+  const wifeRetireYr = myRetireYr;
+  const bothRetireYr = myRetireYr;
   // 은퇴연도까지만 표시 (미설정이면 전체)
   const years = bothRetireYr < 9999 ? allYears.filter(yr => yr < bothRetireYr) : allYears;
 
   // header — retire flag 표시
   const retireFlags = (yr) => {
     let f = '';
-    if (yr === currentYear)             f += '<span class="retire-flag">📅</span>';
-    if (yr === myRetireYr - 1)          f += '<span class="retire-flag">🏁</span>';
-    if (_activeWifeIds.length && yr === wifeRetireYr - 1) f += '<span class="retire-flag">👩</span>';
+    if (yr === currentYear)    f += '<span class="retire-flag">📅</span>';
+    if (yr === myRetireYr - 1) f += '<span class="retire-flag">🏁</span>';
     return f;
   };
   let h = '<thead><tr><th>계좌</th>';
@@ -6310,9 +6295,9 @@ function renderEvalTable() {
   const recYears = [...new Set(monthlyRecords.map(r => r.year))].sort((a, b) => b - a);
   const lastRecYear = recYears[0] || (currentYear - 1);
 
-  // 은퇴연도
-  const _eMyRetireYr   = (wdPlan && wdPlan.startYear)      ? wdPlan.startYear      : 9999;
-  const _eWifeRetireYr = (wdPlan && wdPlan.wifeRetireYear) ? wdPlan.wifeRetireYear : 9999;
+  // 은퇴연도 (나/아내 통합)
+  const _eMyRetireYr   = (wdPlan && wdPlan.startYear) ? wdPlan.startYear : 9999;
+  const _eWifeRetireYr = _eMyRetireYr;
 
   // Last known eval values for projection base
   const getLastKnown = (accIds) => {
@@ -6372,9 +6357,8 @@ function renderEvalTable() {
   for (const yr of years) {
     const cls = yr > currentYear ? 'yr-future' : yr === currentYear ? 'yr-current' : '';
     let flags = '';
-    if (yr === currentYear)                flags += '<span class="retire-flag">📅</span>';
-    if (yr === _eMyRetireYr - 1)           flags += '<span class="retire-flag">🏁</span>';
-    if (_evalWifeIds.length && yr === _eWifeRetireYr - 1) flags += '<span class="retire-flag">👩</span>';
+    if (yr === currentYear)      flags += '<span class="retire-flag">📅</span>';
+    if (yr === _eMyRetireYr - 1) flags += '<span class="retire-flag">🏁</span>';
     h += `<th class="${cls}">${yr}${yr > lastRecYear && yr !== currentYear ? '(예상)' : ''}${flags}</th>`;
   }
   h += '</tr></thead>';
@@ -6832,10 +6816,8 @@ function renderAnnualCharts() {
       const { ctx: c, chartArea, scales } = chart;
       if (!chartArea || !scales.x) return;
       const markers = [
-        { yr: currentYear,               color: '#6366f1', lbl: '📅' },
-        { yr: wdPlan?.startYear,         color: '#f59e0b', lbl: '🏁' },
-        ...(appSettings.hasWife && wdPlan?.wifeRetireYear
-            ? [{ yr: wdPlan.wifeRetireYear, color: '#ec4899', lbl: '👩' }] : [])
+        { yr: currentYear,       color: '#6366f1', lbl: '📅' },
+        { yr: wdPlan?.startYear, color: '#f59e0b', lbl: '🏁' }
       ];
       c.save();
       for (const m of markers) {
@@ -7580,8 +7562,8 @@ function getWdDefaults() {
     pensionBenefit10y: 70, pensionBenefit20y: 60, pensionBenefit30y: 50,
     myNPStartYear: cy + 7, myNPStartMonth: 1, myNPMonthly: 100, myNPDelay: 0,
     wifeNPStartYear: cy + 9, wifeNPStartMonth: 1, wifeNPMonthly: 100, wifeNPDelay: 0,
-    basicWithdraw: 15, wifeRetireYear: cy + 2,
-    targetStartYear: cy + 7, wifeFixWithdraw: 0, wifeFixStartYear: cy + 2,
+    basicWithdraw: 15,
+    targetStartYear: cy + 7, wifeFixWithdraw: 0,
     myBirthYear: 0, myBirthMonth: 1, wifeBirthYear: 0, wifeBirthMonth: 1,
     method: 0, method1StartYear: 0, method1MyRatio: 50,
     annualTargetType: 'fixed', withdrawalPct: 4, pctPublicMode: 'deduct',
@@ -7656,7 +7638,7 @@ function openOnboardingModal() {
     retireAge: 60,
     wifeRetireAge: 60,
     startYear: wdPlan.startYear || (cy + 10),
-    wifeStartYear: wdPlan.wifeRetireYear || (cy + 10),
+    wifeStartYear: wdPlan.startYear || (cy + 10),
     annualTarget: (appSettings.hasWife ? 80 : 40),
     returnRate: 7,
     inflationRate: wdPlan.inflation || 2.2,
@@ -7676,7 +7658,7 @@ function openOnboardingModal() {
     contribStartMonth: cm,
     contribEndYear: wdPlan.startYear || (cy + 10),
     contribEndMonth: appSettings.myBirthMonth || 1,
-    wifeContribEndYear: wdPlan.wifeRetireYear || (cy + 10),
+    wifeContribEndYear: wdPlan.startYear || (cy + 10),
     wifeContribEndMonth: appSettings.wifeBirthMonth || 1,
     savedDepositIds: {},
     savedMonthlyRecordId: null,
@@ -8626,8 +8608,6 @@ function finishOnboarding() {
   if (_obData.hasWife) {
     wdPlan.wifeBirthYear    = _obData.wifeBirthYear;
     wdPlan.wifeBirthMonth   = _obData.wifeBirthMonth;
-    wdPlan.wifeRetireYear   = _obData.wifeStartYear || (_obData.wifeBirthYear + (_obData.wifeRetireAge||60));
-    wdPlan.wifeFixStartYear = wdPlan.wifeRetireYear;
   }
   saveWdPlan();
 
@@ -9353,7 +9333,6 @@ function applyWdSettings() {
   wdPlan = {
     ...wdPlan,
     startYear,
-    wifeRetireYear: startYear,
     retireAge:         n('wd_retireAge') || 60,
     inflation:         n('wd_inflation'),
     returnRate:        n('wd_returnRate'),
@@ -9374,25 +9353,27 @@ function applyWdSettings() {
 }
 
 // 특정 계좌의 인출 시작연도 기준 예상 잔액 (원) 계산
+// 연간계획(computeGroupVals)과 동일한 룰: currentYear 는 성장/입금 미적용
 function computeAccStartBal(accId, startYear) {
-  const sorted = [...monthlyRecords].sort((a, b) =>
-    b.year !== a.year ? b.year - a.year : b.month - a.month);
-  const lastRec = sorted[0];
-  const lastRecYear = lastRec ? lastRec.year : new Date().getFullYear() - 1;
+  const currentYear = new Date().getFullYear();
+  const recYears = [...new Set(monthlyRecords.map(r => r.year))].sort((a, b) => b - a);
+  const lastRecYear = recYears[0] ?? (currentYear - 1);
 
   // 실적이 startYear 이하면 그 연도의 실제값 사용
   if (startYear <= lastRecYear) {
     const recs = monthlyRecords.filter(r => r.year === startYear);
-    if (recs.length) {
-      const last = recs.sort((a, b) => b.month - a.month)[0];
-      return Number(last.accounts[accId]) || 0;
-    }
-    return 0;
+    if (!recs.length) return 0;
+    const last = recs.sort((a, b) => b.month - a.month)[0];
+    return Number(last.accounts[accId]) || 0;
   }
   // 마지막 실적값에서 annualPlan 예상수익률로 복리 추정
+  const sorted = [...monthlyRecords].sort((a, b) =>
+    b.year !== a.year ? b.year - a.year : b.month - a.month);
+  const lastRec = sorted[0];
   let base = lastRec ? (Number(lastRec.accounts[accId]) || 0) : 0;
   const projR = (annualPlan.projRate || 7) / 100;
   for (let yr = lastRecYear + 1; yr <= startYear; yr++) {
+    if (yr === currentYear) continue; // 연간계획과 동일하게 현재연도는 투영 skip
     const prevMil = getCellManwon(accId, yr - 1);
     const currMil = getCellManwon(accId, yr);
     const dep = Math.max(0, currMil - prevMil) * 1_000_000;
@@ -9503,8 +9484,6 @@ function computeWithdrawalSim() {
   // 통합 후 생성된 pension2도 인출 대상에 포함 (activeMyIds에는 없을 수 있음)
   const myWithdrawIds = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
   const endDate = `${startYear - 1}-12-31`;
-  const wifeStartYear = wp.wifeRetireYear || startYear;
-  const wifeEndDate   = `${wifeStartYear - 1}-12-31`;
 
   // 초기 잔액 계산 (통합 모드 or 개별 계산)
   autoConsolidateLog = null;
@@ -9529,9 +9508,8 @@ function computeWithdrawalSim() {
   } else {
     const currentYear = new Date().getFullYear();
     for (const accId of allAccIds) {
-      const isWife  = WIFE_ACC_IDS.includes(accId);
-      const initEnd = isWife ? wifeEndDate : endDate;
-      const initYr  = isWife ? wifeStartYear - 1 : startYear - 1;
+      const initEnd = endDate;
+      const initYr  = startYear - 1;
       const total = computeAccStartBal(accId, initYr);
       let anse;
       if (DC_ACC_IDS.has(accId)) {
@@ -9595,9 +9573,9 @@ function computeWithdrawalSim() {
       continue;
     }
 
-    // 1. 수익률 적용 (아내 계좌는 wifeStartYear부터)
+    // 1. 수익률 적용
     for (const accId of allAccIds) {
-      if (WIFE_ACC_IDS.includes(accId) && yr < wifeStartYear) continue;
+      if (WIFE_ACC_IDS.includes(accId) && yr < startYear) continue;
       const s = state[accId];
       const gain = s.total * r;
       s.regular += gain; s.total += gain;
@@ -9675,7 +9653,7 @@ function computeWithdrawalSim() {
       if (!activePeriod) {
         // 구간 없는 연도: 기본인출액만
         myRemaining   = basic;
-        wifeRemaining = yr >= wifeStartYear ? wifeBasic : 0;
+        wifeRemaining = yr >= startYear ? wifeBasic : 0;
         target = myRemaining + wifeRemaining;
       } else if (activePeriod.type === 'pct') {
         // 인출율 모드: 각자 자기 계좌에서 %만큼
@@ -9683,7 +9661,7 @@ function computeWithdrawalSim() {
         const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id));
         const wifeBal = wifeIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
         const pctRawMy   = myBal  * (activePeriod.pct || 4) / 100;
-        const pctRawWife = appSettings.hasWife && yr >= wifeStartYear ? wifeBal * (activePeriod.pct || 4) / 100 : 0;
+        const pctRawWife = appSettings.hasWife && yr >= startYear ? wifeBal * (activePeriod.pct || 4) / 100 : 0;
         if ((activePeriod.publicPensionMode || 'include') === 'include') {
           myRemaining   = Math.max(0, pctRawMy   - myPublicInc   * (1 - npTR));
           wifeRemaining = Math.max(0, pctRawWife - wifePublicInc * (1 - npTR));
@@ -9696,7 +9674,7 @@ function computeWithdrawalSim() {
         // 고정금액 모드
         const inflFactor      = Math.pow(1+inf, yr - todayYear);
         const totalNetTarget  = (activePeriod.totalAmount || 0) * 120_000 * inflFactor;
-        const wifeBasisAmt    = yr >= wifeStartYear ? wifeBasic : 0;
+        const wifeBasisAmt    = yr >= startYear ? wifeBasic : 0;
         const wifeContribMode = activePeriod.wifeContrib || 'fixed';
         target = totalNetTarget;
         // 추정 사적소득 실효세율
@@ -9723,7 +9701,7 @@ function computeWithdrawalSim() {
         } else {
           // 고정금액(fixed) 또는 본인 부족분 충당(topup): topup 계산 공통
           let wifeNetTarget;
-          if (appSettings.hasWife && yr >= wifeStartYear) {
+          if (appSettings.hasWife && yr >= startYear) {
             if (wifeContribMode === 'topup') {
               // 본인 고정금액 입력 → 아내 = total - 본인
               const myNetFixed = (activePeriod.myAmount || 0) * 120_000;
@@ -9874,7 +9852,7 @@ function computeWithdrawalSim() {
     balances[yr] = {};
     for (const accId of allAccIds) balances[yr][accId] = { ...state[accId] };
   }
-  return { years, withdrawals, balances, summary, initState, allAccIds, startYear, wifeStartYear };
+  return { years, withdrawals, balances, summary, initState, allAccIds, startYear };
 }
 
 function loadQuickWdValues() {
@@ -10079,7 +10057,7 @@ function saveQuickWdPlan() {
   }
   wdPlan.periods = qPeriods;
   const newStart = qPeriods[0]?.startYear || wdPlan.startYear;
-  if (newStart) { wdPlan.startYear = newStart; wdPlan.wifeRetireYear = newStart; }
+  if (newStart) { wdPlan.startYear = newStart; }
   saveWdPlan();
   if (document.getElementById('panel-withdrawal')?.classList.contains('active')) {
     _wdSelectedScenIdx = null;
@@ -10672,7 +10650,7 @@ function renderWdWithdrawTable(sim) {
 }
 
 function renderWdBalanceTable(sim) {
-  const { years, balances, initState, allAccIds, startYear, wifeStartYear } = sim;
+  const { years, balances, initState, allAccIds, startYear } = sim;
   const wp = wdPlan;
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
   const _wt = getWifeTitle();
@@ -10692,7 +10670,7 @@ function renderWdBalanceTable(sim) {
   const cell = (yr, content) => balances[yr] === null ? blankTd : `<td>${content}</td>`;
   const tapBalCell = (yr, type, accId, content, isWife) => {
     if (balances[yr] === null) return blankTd;
-    if (isWife && yr < wifeStartYear) return `<td style="color:#e5e7eb">—</td>`;
+    if (isWife && yr < startYear) return `<td style="color:#e5e7eb">—</td>`;
     return `<td data-cell-type="${type}" data-yr="${yr}" data-acc="${accId}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${content}</td>`;
   };
 
@@ -10737,7 +10715,7 @@ function renderWdBalanceTable(sim) {
   for (const yr of years) {
     if (balances[yr] === null) { h += blankTd; continue; }
     const myTotal   = myAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
-    const wifeTotal = yr >= wifeStartYear
+    const wifeTotal = yr >= startYear
       ? dispAccIds.filter(id => WIFE_ACC_IDS.includes(id)).reduce((s, id) => s + balances[yr][id].total, 0) : 0;
     h += `<td data-cell-type="bal-total" data-yr="${yr}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${mc(myTotal + wifeTotal)}</td>`;
   }
@@ -10774,7 +10752,7 @@ function wdDismissPanel() {
 
 function buildCellInfoLines(type, yr, accId) {
   if (!_lastWdSim) return '';
-  const { summary, withdrawals, balances, allAccIds, startYear, wifeStartYear } = _lastWdSim;
+  const { summary, withdrawals, balances, allAccIds, startYear } = _lastWdSim;
   const s = summary[yr];
   if (!s) return '';
   const wp = wdPlan;
@@ -10924,7 +10902,7 @@ function buildCellInfoLines(type, yr, accId) {
       const myAcc = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
       const myTotal = myAcc.reduce((a, id) => a + (balances[yr]?.[id]?.total||0), 0);
       const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id));
-      const wifeTotal = yr >= wifeStartYear ? wifeIds.reduce((a, id) => a + (balances[yr]?.[id]?.total||0), 0) : 0;
+      const wifeTotal = yr >= startYear ? wifeIds.reduce((a, id) => a + (balances[yr]?.[id]?.total||0), 0) : 0;
       return row('전체 잔액',
         `나 ${wr(myTotal)}${wifeTotal > 0 ? ` + 배우자 ${wr(wifeTotal)}` : ''} = <b>${wr(myTotal + wifeTotal)}</b>`);
     }
@@ -10960,12 +10938,9 @@ function openConsolidateModal() {
   const wp = wdPlan;
   if (!wp.startYear) { alert('먼저 인출 계획의 본인 은퇴연도를 설정해 주세요.'); return; }
   const baseYear         = wp.startYear - 1;
-  const wifeActualStart  = wp.wifeRetireYear || wp.wifeFixStartYear || wp.startYear;
-  const wifeBaseYear     = wifeActualStart > wp.startYear ? wifeActualStart - 1 : baseYear;
+  const wifeBaseYear     = baseYear;
   document.getElementById('consSubtitle').textContent =
-    wifeBaseYear !== baseYear
-      ? `내 계좌: ${baseYear}년말 기준 / ${getWifeTitle()} 계좌: ${wifeBaseYear}년말 기준`
-      : `${baseYear}년말 예상 잔액 기준 → ${wp.startYear}년 인출 시작`;
+    `${baseYear}년말 예상 잔액 기준 → ${wp.startYear}년 인출 시작`;
 
   const _consMyIds   = [...MY_ACC_IDS];
   const _consWifeIds = appSettings.hasWife ? [...WIFE_ACC_IDS] : [];
