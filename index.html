@@ -986,12 +986,14 @@ Chart.register({
   @media (max-width: 640px) {
     .wd-scenario-table th:first-child,
     .wd-scenario-table td:first-child {
-      max-width: 30vw;
-      min-width: 0;
+      width: 32vw;
+      min-width: 32vw;
+      max-width: 32vw;
       white-space: normal;
-      word-break: break-word;
-      overflow-wrap: anywhere;
+      word-break: keep-all;
+      overflow-wrap: break-word;
       vertical-align: top;
+      line-height: 1.35;
     }
   }
   #wd-cell-info {
@@ -2662,7 +2664,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.320';
+const APP_VERSION = 'MyPM v0.321';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
