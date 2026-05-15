@@ -2670,7 +2670,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.324';
+const APP_VERSION = 'MyPM v0.325';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -6451,7 +6451,7 @@ function renderEvalTable() {
   const isProj = yr => yr > lastRecYear && yr !== currentYear;
   const _projAttrs = (type, yr, accId='') => {
     if (!isProj(yr) || !type) return '';
-    return ` data-cell-type="${type}" data-yr="${yr}"${accId ? ` data-acc="${accId}"` : ''} ontouchstart="evalShowCellInfo(event,this)" onmousedown="evalShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()"`;
+    return ` data-cell-type="${type}" data-yr="${yr}"${accId ? ` data-acc="${accId}"` : ''} onclick="evalShowCellInfo(event,this)"`;
   };
   const _withCursor = (st, type, yr) => {
     if (!type || !isProj(yr)) return st;
@@ -10797,7 +10797,7 @@ function renderWdWithdrawTable(sim) {
     if (yr < startYear) return blankTd;
     if (content === '' || content == null) return `<td></td>`;
     const acc = accId ? ` data-acc="${accId}"` : '';
-    return `<td data-cell-type="${type}" data-yr="${yr}"${acc} ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${content}</td>`;
+    return `<td data-cell-type="${type}" data-yr="${yr}"${acc} onclick="wdShowCellInfo(event,this)" style="cursor:pointer">${content}</td>`;
   };
 
   let h = `<table class="wd-table"><colgroup>
@@ -10901,7 +10901,7 @@ function renderWdBalanceTable(sim) {
     if (balances[yr] === null) return blankTd;
     if (isWife && yr < startYear) return `<td style="color:#e5e7eb">—</td>`;
     if (typeof content === 'string' && content.includes('color:#9ca3af')) return `<td>${content}</td>`;
-    return `<td data-cell-type="${type}" data-yr="${yr}" data-acc="${accId}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${content}</td>`;
+    return `<td data-cell-type="${type}" data-yr="${yr}" data-acc="${accId}" onclick="wdShowCellInfo(event,this)" style="cursor:pointer">${content}</td>`;
   };
 
   let h = `<table class="wd-table"><colgroup>
@@ -10951,7 +10951,7 @@ function renderWdBalanceTable(sim) {
     if (typeof totalContent === 'string' && totalContent.includes('color:#9ca3af')) {
       h += `<td>${totalContent}</td>`;
     } else {
-      h += `<td data-cell-type="bal-total" data-yr="${yr}" ontouchstart="wdShowCellInfo(event,this)" onmousedown="wdShowCellInfo(event,this)" ontouchend="wdStartDismiss()" onmouseup="wdStartDismiss()" style="cursor:pointer">${totalContent}</td>`;
+      h += `<td data-cell-type="bal-total" data-yr="${yr}" onclick="wdShowCellInfo(event,this)" style="cursor:pointer">${totalContent}</td>`;
     }
   }
   h += '</tr></tbody></table>';
@@ -10981,6 +10981,7 @@ function wdShowCellInfo(event, td) {
   const navH = document.querySelector('.tab-nav')?.offsetHeight || 80;
   panel.style.bottom = navH + 'px';
   panel.classList.add('visible');
+  wdStartDismiss();
 }
 
 function wdStartDismiss() {
@@ -11013,6 +11014,7 @@ function evalShowCellInfo(event, td) {
   const navH = document.querySelector('.tab-nav')?.offsetHeight || 80;
   panel.style.bottom = navH + 'px';
   panel.classList.add('visible');
+  wdStartDismiss();
 }
 
 function _evalAccDeposits(accIds, yr, projRate, sinceT = -Infinity) {
