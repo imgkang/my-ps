@@ -2311,7 +2311,7 @@ Chart.register({
       </div>
       <div>
         <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;margin:0 0 6px;min-width:0">
-          <h3 id="wdChart2Title" style="margin:0;font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 나 / 아내 잔액 추이 (백만원)</h3>
+          <h3 id="wdChart2Title" style="margin:0;font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 잔액 추이 (백만원)</h3>
           <button id="wdChart2PVBtn" onclick="toggleWdChartPV(2)" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer">명목금액</button>
         </div>
         <div style="position:relative;height:200px"><canvas id="wdChart2"></canvas></div>
@@ -2651,7 +2651,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.318';
+const APP_VERSION = 'MyPM v0.319';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -10421,8 +10421,8 @@ function _wdShowChartInfo(chart, dataIndex) {
     const v = Math.round(ds.data[dataIndex] || 0).toLocaleString('ko-KR');
     const bg = ds.backgroundColor, bc = ds.borderColor;
     const color = typeof bg === 'string' && !bg.includes('transparent') && bg !== 'undefined' ? bg : (bc || '#888');
-    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin:2px 0">
-      <span style="display:flex;align-items:center;gap:4px;min-width:0"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ds.label||''}</span></span>
+    return `<div style="display:flex;justify-content:flex-end;gap:6px;align-items:center;margin:2px 0">
+      <span style="display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ds.label||''}</span></span>
       <b style="flex-shrink:0">${v}</b></div>`;
   }).join('');
   const panel = document.getElementById('wd-cell-info');
@@ -10502,7 +10502,7 @@ function renderWdCharts(sim) {
   const ch2Container = ch2TitleEl?.parentElement?.parentElement;
   if (appSettings.hasWife) {
     if (ch2Container) ch2Container.style.display = '';
-    if (ch2TitleEl) ch2TitleEl.textContent = `📊 나 / ${_wTitle} 잔액 추이 (${unitLbl(2)})`;
+    if (ch2TitleEl) ch2TitleEl.textContent = `📊 잔액 추이 (${unitLbl(2)})`;
   } else {
     if (ch2Container) ch2Container.style.display = 'none';
   }
@@ -10559,6 +10559,20 @@ function renderWdCharts(sim) {
   if (wifePubData.some(v => v > 0))
     chart4Datasets.push({ label: '공적연금(아내)', data: wifePubData,
       backgroundColor: 'rgba(20,184,166,0.55)', borderColor: '#14b8a6', borderWidth: 1 });
+  // 인출액 합계 라인 (스택 막대 위에 overlay)
+  chart4Datasets.push({
+    type: 'line',
+    label: '인출액 합계',
+    data: years.map(yr => round(summary[yr].totalInc)),
+    borderColor: '#7c3aed',
+    backgroundColor: 'transparent',
+    fill: false,
+    tension: 0.3,
+    pointRadius: 2,
+    borderWidth: 2.5,
+    stack: 'line',
+    order: 0,
+  });
 
   // Chart 5 데이터: 계좌별 잔액 (스택 에어리어)
   const chart5Datasets = activeAccIds.map(id => ({
@@ -10627,8 +10641,9 @@ function renderWdCharts(sim) {
       data: {
         labels: years,
         datasets: [
-          { label: '나 총잔액',              data: pvAdj(2, myBals),   borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)',  fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 },
-          { label: `${_wTitle} 총잔액`, data: pvAdj(2, wifeBals), borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.12)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 }
+          { label: '나 총잔액',              data: pvAdj(2, myBals),    borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)', fill: true,  tension: 0.3, pointRadius: 2, borderWidth: 2 },
+          { label: `${_wTitle} 총잔액`,      data: pvAdj(2, wifeBals),  borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.12)', fill: true,  tension: 0.3, pointRadius: 2, borderWidth: 2 },
+          { label: '총잔액',                 data: pvAdj(2, totalBals), borderColor: '#10b981', backgroundColor: 'transparent',          fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2.5 }
         ]
       },
       options: makeOpts(2)
@@ -10641,7 +10656,6 @@ function renderWdCharts(sim) {
       data: {
         labels: years,
         datasets: [
-          { label: '총 잔액',         data: pvAdj(3, totalBals),  borderColor: '#10b981', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2.5 },
           { label: '퇴직소득세 누적', data: pvAdj(3, cumRetire),  borderColor: '#ef4444', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
           { label: '연금소득세 누적', data: pvAdj(3, cumPension), borderColor: '#f97316', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
           { label: '국민연금세 누적', data: pvAdj(3, cumNPTax),   borderColor: '#eab308', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
