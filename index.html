@@ -2653,7 +2653,7 @@ Chart.register({
 
 <script src="stock-db.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.315';
+const APP_VERSION = 'MyPM v0.316';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -9353,24 +9353,20 @@ function applyWdSettings() {
 }
 
 // 특정 계좌의 인출 시작연도 기준 예상 잔액 (원) 계산
-// 연간계획(computeGroupVals)과 동일한 룰: currentYear 는 성장/입금 미적용
+// 연간계획(computeGroupVals)과 동일한 룰:
+//  - base record 정렬은 (year, month, day, id) — getGroupYearEndWon 과 일치
+//  - currentYear 는 성장/입금 미적용
 function computeAccStartBal(accId, startYear) {
   const currentYear = new Date().getFullYear();
   const recYears = [...new Set(monthlyRecords.map(r => r.year))].sort((a, b) => b - a);
   const lastRecYear = recYears[0] ?? (currentYear - 1);
 
-  // 실적이 startYear 이하면 그 연도의 실제값 사용
+  // 실적이 startYear 이하면 그 연도의 실제값 사용 (연간계획 getGroupYearEndWon 과 동일 정렬)
   if (startYear <= lastRecYear) {
-    const recs = monthlyRecords.filter(r => r.year === startYear);
-    if (!recs.length) return 0;
-    const last = recs.sort((a, b) => b.month - a.month)[0];
-    return Number(last.accounts[accId]) || 0;
+    return (getGroupYearEndWon([accId], startYear) || 0);
   }
-  // 마지막 실적값에서 annualPlan 예상수익률로 복리 추정
-  const sorted = [...monthlyRecords].sort((a, b) =>
-    b.year !== a.year ? b.year - a.year : b.month - a.month);
-  const lastRec = sorted[0];
-  let base = lastRec ? (Number(lastRec.accounts[accId]) || 0) : 0;
+  // base = lastRecYear 내 latest record (연간계획과 동일)
+  let base = getGroupYearEndWon([accId], lastRecYear) || 0;
   const projR = (annualPlan.projRate || 7) / 100;
   for (let yr = lastRecYear + 1; yr <= startYear; yr++) {
     if (yr === currentYear) continue; // 연간계획과 동일하게 현재연도는 투영 skip
