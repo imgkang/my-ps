@@ -1260,7 +1260,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.334';
+const APP_VERSION = 'NonK v0.335';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1420,6 +1420,19 @@ function nkLoadDividends() {
   } catch(e) { return []; }
 }
 function nkSaveDividends() { localStorage.setItem(NK_DIV_KEY, JSON.stringify(nkDividendRecords)); }
+
+function nkDivRecAmount(rec, code) {
+  const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
+  const sh = Number(rec.stocksShares   && rec.stocksShares[code])   || 0;
+  if (ps > 0 && sh > 0) return Math.round(ps * sh * 100) / 100;
+  return Number(rec.stocks && rec.stocks[code]) || 0;
+}
+function nkDivRecCodes(rec) {
+  const set = new Set();
+  if (rec.stocks)         for (const k of Object.keys(rec.stocks))         set.add(k);
+  if (rec.stocksPerShare) for (const k of Object.keys(rec.stocksPerShare)) set.add(k);
+  return [...set];
+}
 
 function fmtUSD(n) {
   if (!n && n !== 0) return '$0';
@@ -2549,14 +2562,17 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
     const ps = perShareMap && perShareMap[h.ticker] != null ? perShareMap[h.ticker] : '';
     const qty = (sharesOverride && sharesOverride[h.ticker] != null)
       ? Number(sharesOverride[h.ticker]) : h.activeQty;
-    const totalStr = ps !== '' && Number(ps) > 0 ? fmtUSD(Math.round(Number(ps) * qty * 100) / 100) : '-';
-    return `<tr>
+    const totalStr = ps !== '' && Number(ps) > 0 && qty > 0 ? fmtUSD(Math.round(Number(ps) * qty * 100) / 100) : '-';
+    return `<tr data-code="${h.ticker}">
       <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
-      <td><input type="number" min="0" step="0.01" data-code="${h.ticker}" data-qty="${qty}"
+      <td><input class="div-ps" type="number" min="0" step="0.01"
         value="${ps}" placeholder="0"
         oninput="nkUpdateDivTotal()"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
-      <td style="text-align:right">${qty.toLocaleString('en-US')}</td>
+      <td><input class="div-qty" type="number" min="0" step="1"
+        value="${qty}"
+        oninput="nkUpdateDivTotal()"
+        style="width:80px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
       <td id="nkDivTotal_${h.ticker}" style="text-align:right">${totalStr}</td>
     </tr>`;
   }).join('');
@@ -2565,20 +2581,21 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
 
 function nkUpdateDivTotal() {
   let grand = 0;
-  document.querySelectorAll('#nkDivStockInputs input[data-code]').forEach(inp => {
-    const ps = Number(inp.value) || 0;
-    const qty = Number(inp.getAttribute('data-qty')) || 0;
+  document.querySelectorAll('#nkDivStockInputs tr[data-code]').forEach(tr => {
+    const code = tr.dataset.code;
+    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
     const total = Math.round(ps * qty * 100) / 100;
     grand += total;
-    const cell = document.getElementById('nkDivTotal_' + inp.getAttribute('data-code'));
-    if (cell) cell.textContent = ps > 0 ? fmtUSD(total) : '-';
+    const cell = document.getElementById('nkDivTotal_' + code);
+    if (cell) cell.textContent = (ps > 0 && qty > 0) ? fmtUSD(total) : '-';
   });
   const el = document.getElementById('nkDivGrandTotal');
   if (el) el.textContent = fmtUSD(Math.round(grand * 100) / 100);
 }
 
 function nkClearDividendInputs() {
-  document.querySelectorAll('#nkDivStockInputs input[data-code]').forEach(inp => { inp.value = ''; });
+  document.querySelectorAll('#nkDivStockInputs .div-ps').forEach(inp => { inp.value = ''; });
   nkUpdateDivTotal();
 }
 
@@ -2587,23 +2604,23 @@ function nkAddDividendRecord() {
   const month = Number(document.getElementById('nkDivMonth').value);
   if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
 
-  const stocks = {};
   const stocksPerShare = {};
   const stocksShares = {};
-  document.querySelectorAll('#nkDivStockInputs input[data-code]').forEach(inp => {
-    const code = inp.getAttribute('data-code');
-    const qty = Number(inp.getAttribute('data-qty')) || 0;
-    const ps = Number(inp.value) || 0;
-    if (ps > 0) {
-      stocks[code] = Math.round(ps * qty * 100) / 100;
+  let hasAny = false;
+  document.querySelectorAll('#nkDivStockInputs tr[data-code]').forEach(tr => {
+    const code = tr.dataset.code;
+    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
+    if (ps > 0 && qty > 0) {
       stocksPerShare[code] = ps;
       stocksShares[code] = qty;
+      hasAny = true;
     }
   });
 
-  if (!Object.keys(stocks).length && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
+  if (!hasAny && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
 
-  // 계좌별 분배: 각 계좌의 주식수 × 주당 배당금
+  // 계좌별 분배: 각 계좌의 현재 주식수 × 주당 배당금 (사용자 편집 qty와 다를 수 있음)
   const accounts = {};
   NK_ACCOUNTS.forEach(a => {
     const total = nkHoldings.reduce((s, h) => {
@@ -2617,7 +2634,7 @@ function nkAddDividendRecord() {
   if (nkEditingDivId) {
     const idx = nkDividendRecords.findIndex(r => r.id === nkEditingDivId);
     if (idx >= 0) {
-      nkDividendRecords[idx] = { id: nkEditingDivId, year, month, stocks, stocksPerShare, stocksShares, accounts };
+      nkDividendRecords[idx] = { id: nkEditingDivId, year, month, stocksPerShare, stocksShares, accounts };
     }
     nkEditingDivId = null;
     const saveBtn = document.getElementById('nkDivSaveBtn');
@@ -2627,7 +2644,7 @@ function nkAddDividendRecord() {
   } else {
     nkDividendRecords.push({
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
-      year, month, stocks, stocksPerShare, stocksShares, accounts
+      year, month, stocksPerShare, stocksShares, accounts
     });
   }
 
@@ -2686,14 +2703,14 @@ function nkRenderDividendLists() {
     if (!nkDividendRecords.length) {
       sHeader.innerHTML = ''; sList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
     } else {
-      const allTickers = [...new Set(nkDividendRecords.flatMap(r => Object.keys(r.stocks)))];
+      const allTickers = [...new Set(nkDividendRecords.flatMap(r => nkDivRecCodes(r)))];
       const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 110px`;
       sHeader.style.gridTemplateColumns = cols;
       sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
       const sorted = [...nkDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       sList.innerHTML = sorted.map(rec => {
-        const total = Object.values(rec.stocks).reduce((s,v)=>s+(Number(v)||0),0);
-        const cells = allTickers.map(t=>`<span class="amount">${Number(rec.stocks[t])||0 ? fmtUSD(Number(rec.stocks[t])) : '-'}</span>`).join('');
+        const total = allTickers.reduce((s,t) => s + nkDivRecAmount(rec, t), 0);
+        const cells = allTickers.map(t => { const v = nkDivRecAmount(rec, t); return `<span class="amount">${v ? fmtUSD(v) : '-'}</span>`; }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
           <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
           <span class="total">${fmtUSD(total)}</span>

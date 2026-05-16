@@ -1267,7 +1267,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.334';
+const APP_VERSION = 'KDeal v0.335';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1464,6 +1464,19 @@ function kdLoadDividends() {
   } catch(e) { return []; }
 }
 function kdSaveDividends() { localStorage.setItem(KD_DIV_KEY, JSON.stringify(kdDividendRecords)); }
+
+function kdDivRecAmount(rec, code) {
+  const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
+  const sh = Number(rec.stocksShares   && rec.stocksShares[code])   || 0;
+  if (ps > 0 && sh > 0) return Math.round(ps * sh);
+  return Number(rec.stocks && rec.stocks[code]) || 0;
+}
+function kdDivRecCodes(rec) {
+  const set = new Set();
+  if (rec.stocks)         for (const k of Object.keys(rec.stocks))         set.add(k);
+  if (rec.stocksPerShare) for (const k of Object.keys(rec.stocksPerShare)) set.add(k);
+  return [...set];
+}
 
 function fmtKRW(n) {
   if (!n && n !== 0) return '0원';
@@ -2652,14 +2665,17 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
     const ps = perShareMap && perShareMap[h.ticker] != null ? perShareMap[h.ticker] : '';
     const qty = (sharesOverride && sharesOverride[h.ticker] != null)
       ? Number(sharesOverride[h.ticker]) : h.activeQty;
-    const totalStr = ps !== '' && Number(ps) > 0 ? fmtKRW(Math.round(Number(ps) * qty)) : '-';
-    return `<tr>
+    const totalStr = ps !== '' && Number(ps) > 0 && qty > 0 ? fmtKRW(Math.round(Number(ps) * qty)) : '-';
+    return `<tr data-code="${h.ticker}">
       <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
-      <td><input type="number" min="0" step="1" data-code="${h.ticker}" data-qty="${qty}"
+      <td><input class="div-ps" type="number" min="0" step="1"
         value="${ps}" placeholder="0"
         oninput="kdUpdateDivTotal()"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
-      <td style="text-align:right">${qty.toLocaleString('ko-KR')}</td>
+      <td><input class="div-qty" type="number" min="0" step="1"
+        value="${qty}"
+        oninput="kdUpdateDivTotal()"
+        style="width:80px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
       <td id="kdDivTotal_${h.ticker}" style="text-align:right">${totalStr}</td>
     </tr>`;
   }).join('');
@@ -2668,20 +2684,21 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
 
 function kdUpdateDivTotal() {
   let grand = 0;
-  document.querySelectorAll('#kdDivStockInputs input[data-code]').forEach(inp => {
-    const ps = Number(inp.value) || 0;
-    const qty = Number(inp.getAttribute('data-qty')) || 0;
+  document.querySelectorAll('#kdDivStockInputs tr[data-code]').forEach(tr => {
+    const code = tr.dataset.code;
+    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
     const total = Math.round(ps * qty);
     grand += total;
-    const cell = document.getElementById('kdDivTotal_' + inp.getAttribute('data-code'));
-    if (cell) cell.textContent = ps > 0 ? fmtKRW(total) : '-';
+    const cell = document.getElementById('kdDivTotal_' + code);
+    if (cell) cell.textContent = (ps > 0 && qty > 0) ? fmtKRW(total) : '-';
   });
   const el = document.getElementById('kdDivGrandTotal');
   if (el) el.textContent = fmtKRW(grand);
 }
 
 function kdClearDividendInputs() {
-  document.querySelectorAll('#kdDivStockInputs input[data-code]').forEach(inp => { inp.value = ''; });
+  document.querySelectorAll('#kdDivStockInputs .div-ps').forEach(inp => { inp.value = ''; });
   kdUpdateDivTotal();
 }
 
@@ -2690,23 +2707,23 @@ function kdAddDividendRecord() {
   const month = Number(document.getElementById('kdDivMonth').value);
   if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
 
-  const stocks = {};
   const stocksPerShare = {};
   const stocksShares = {};
-  document.querySelectorAll('#kdDivStockInputs input[data-code]').forEach(inp => {
-    const code = inp.getAttribute('data-code');
-    const qty = Number(inp.getAttribute('data-qty')) || 0;
-    const ps = Number(inp.value) || 0;
-    if (ps > 0) {
-      stocks[code] = Math.round(ps * qty);
+  let hasAny = false;
+  document.querySelectorAll('#kdDivStockInputs tr[data-code]').forEach(tr => {
+    const code = tr.dataset.code;
+    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
+    if (ps > 0 && qty > 0) {
       stocksPerShare[code] = ps;
       stocksShares[code] = qty;
+      hasAny = true;
     }
   });
 
-  if (!Object.keys(stocks).length && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
+  if (!hasAny && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
 
-  // 계좌별 분배: 각 계좌의 주식수 × 주당 배당금
+  // 계좌별 분배: 각 계좌의 현재 주식수 × 주당 배당금 (사용자 편집 qty와 다를 수 있음)
   const accounts = {};
   KD_ACCOUNTS.forEach(a => {
     const total = kdHoldings.reduce((s, h) => {
@@ -2720,7 +2737,7 @@ function kdAddDividendRecord() {
   if (kdEditingDivId) {
     const idx = kdDividendRecords.findIndex(r => r.id === kdEditingDivId);
     if (idx >= 0) {
-      kdDividendRecords[idx] = { id: kdEditingDivId, year, month, stocks, stocksPerShare, stocksShares, accounts };
+      kdDividendRecords[idx] = { id: kdEditingDivId, year, month, stocksPerShare, stocksShares, accounts };
     }
     kdEditingDivId = null;
     const saveBtn = document.getElementById('kdDivSaveBtn');
@@ -2730,7 +2747,7 @@ function kdAddDividendRecord() {
   } else {
     kdDividendRecords.push({
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
-      year, month, stocks, stocksPerShare, stocksShares, accounts
+      year, month, stocksPerShare, stocksShares, accounts
     });
   }
 
@@ -2789,14 +2806,14 @@ function kdRenderDividendLists() {
     if (!kdDividendRecords.length) {
       sHeader.innerHTML = ''; sList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
     } else {
-      const allTickers = [...new Set(kdDividendRecords.flatMap(r => Object.keys(r.stocks)))];
+      const allTickers = [...new Set(kdDividendRecords.flatMap(r => kdDivRecCodes(r)))];
       const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 110px`;
       sHeader.style.gridTemplateColumns = cols;
       sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
       const sorted = [...kdDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       sList.innerHTML = sorted.map(rec => {
-        const total = Object.values(rec.stocks).reduce((s,v)=>s+(Number(v)||0),0);
-        const cells = allTickers.map(t=>`<span class="amount">${Number(rec.stocks[t])||0 ? fmtKRW(Number(rec.stocks[t])) : '-'}</span>`).join('');
+        const total = allTickers.reduce((s,t) => s + kdDivRecAmount(rec, t), 0);
+        const cells = allTickers.map(t => { const v = kdDivRecAmount(rec, t); return `<span class="amount">${v ? fmtKRW(v) : '-'}</span>`; }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
           <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
