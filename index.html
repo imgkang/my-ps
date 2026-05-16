@@ -2672,7 +2672,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.338';
+const APP_VERSION = 'MyPM v0.339';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7565,6 +7565,25 @@ async function loadDividendData() {
   }
 }
 
+function formatDividendCashImpact(accounts, sign) {
+  // sign: +1 추가, -1 차감. 0인 계좌는 생략.
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  const lines = [];
+  let total = 0;
+  for (const [accId, amount] of Object.entries(accounts || {})) {
+    if (!activeIds.has(accId)) continue;
+    const amt = (Number(amount) || 0) * sign;
+    if (!amt) continue;
+    total += amt;
+    const sym = amt > 0 ? '+' : '−';
+    lines.push(`  ${getAccName(accId)}: ${sym}${Math.abs(amt).toLocaleString('ko-KR')}원`);
+  }
+  if (!lines.length) return '';
+  const totalSym = total > 0 ? '+' : (total < 0 ? '−' : '');
+  lines.push(`  합계: ${totalSym}${Math.abs(total).toLocaleString('ko-KR')}원`);
+  return lines.join('\n');
+}
+
 function pushDividendCashAdj(divId, dateStr, accounts) {
   const activeIds = new Set(getActiveAccounts().map(a => a.id));
   for (const [accId, amount] of Object.entries(accounts || {})) {
@@ -7661,6 +7680,26 @@ function addDividendRecord() {
     }
   }
 
+  // 현금(예수금) 변경 확인 메시지
+  if (_divEditingId) {
+    const oldAccounts = (dividendRecords.find(r => r.id === _divEditingId) || {}).accounts || {};
+    const netAccounts = {};
+    const allIds = new Set([...Object.keys(oldAccounts), ...Object.keys(accounts)]);
+    for (const accId of allIds) {
+      const diff = (Number(accounts[accId]) || 0) - (Number(oldAccounts[accId]) || 0);
+      if (diff) netAccounts[accId] = diff;
+    }
+    const impact = formatDividendCashImpact(netAccounts, +1);
+    if (impact) {
+      if (!confirm(`이 배당 기록을 수정하면 계좌별 현금(예수금)이 다음과 같이 자동 변경됩니다:\n\n${impact}\n\n계속 진행할까요?`)) return;
+    }
+  } else if (totalDiv > 0) {
+    const impact = formatDividendCashImpact(accounts, +1);
+    if (impact) {
+      if (!confirm(`이 배당을 추가하면 계좌별 현금(예수금)에 다음과 같이 자동 반영됩니다:\n\n${impact}\n\n계속 진행할까요?`)) return;
+    }
+  }
+
   if (_divEditingId) {
     const idx = dividendRecords.findIndex(r => r.id === _divEditingId);
     if (idx >= 0) {
@@ -7698,7 +7737,11 @@ function deleteDividendRecord(id) {
   const rec = dividendRecords.find(r => r.id === id);
   if (!rec) return;
   const dayStr = rec.day ? ` ${rec.day}일` : '';
-  if (!confirm(`${rec.year}년 ${rec.month}월${dayStr} 배당 기록을 삭제하시겠습니까?`)) return;
+  const impact = formatDividendCashImpact(rec.accounts || {}, -1);
+  const msg = impact
+    ? `${rec.year}년 ${rec.month}월${dayStr} 배당 기록을 삭제하면 계좌별 현금(예수금)이 다음과 같이 자동 차감됩니다:\n\n${impact}\n\n삭제할까요?`
+    : `${rec.year}년 ${rec.month}월${dayStr} 배당 기록을 삭제하시겠습니까?`;
+  if (!confirm(msg)) return;
   dividendRecords = dividendRecords.filter(r => r.id !== id);
   saveDividendRecords();
   // 배당 기록 삭제 → 계좌별 현금 차감 + 자동 현금조정이력 항목 제거
