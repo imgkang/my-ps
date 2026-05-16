@@ -2674,7 +2674,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.335';
+const APP_VERSION = 'MyPM v0.336';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7217,11 +7217,20 @@ function saveDividendRecords() {
   try { localStorage.setItem(DIVIDEND_KEY, JSON.stringify(dividendRecords)); } catch (_) {}
 }
 
-// 신규 레코드는 stocksPerShare × stocksShares로 derive, 구 레코드는 stocks fallback
+// 신규 레코드는 stocksPerShare × stocksShares로 derive, 구 레코드는 stocks fallback.
+// stocksShares[code]는 v0.336+에선 {accId: qty} 객체, v0.335에선 number.
 function divRecAmount(rec, code) {
   const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
-  const sh = Number(rec.stocksShares   && rec.stocksShares[code])   || 0;
-  if (ps > 0 && sh > 0) return Math.round(ps * sh);
+  const sh = rec.stocksShares && rec.stocksShares[code];
+  if (ps > 0 && sh != null) {
+    let total = 0;
+    if (typeof sh === 'object') {
+      for (const v of Object.values(sh)) total += Number(v) || 0;
+    } else {
+      total = Number(sh) || 0;
+    }
+    if (total > 0) return Math.round(ps * total);
+  }
   return Number(rec.stocks && rec.stocks[code]) || 0;
 }
 function divRecCodes(rec) {
@@ -7253,6 +7262,7 @@ function toggleDivForm(forceOpen) {
 
 let _divStockChart = null, _divAccChart = null;
 let _divEditingId = null;
+let _divFormShares = {}; // { code: { accId: qty } } — 폼 상태
 const _DIV_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
 
 function divShortName(name, max = 8) {
@@ -7378,7 +7388,8 @@ function closeDividendModal() {
 function renderDivStockInputs(perShareMap, sharesOverride) {
   const tbody = document.getElementById('divStockInputs');
   if (!tbody) return;
-  const activeAccIds = new Set(getActiveAccounts().map(a => a.id));
+  const activeAccs = getActiveAccounts();
+  const activeAccIds = new Set(activeAccs.map(a => a.id));
   const active = holdings.map(h => {
     let qty = 0;
     if (h.accounts && Object.keys(h.accounts).length > 0) {
@@ -7396,13 +7407,29 @@ function renderDivStockInputs(perShareMap, sharesOverride) {
     for (const code of Object.keys(sharesOverride)) {
       if (!presentCodes.has(code)) {
         const orig = holdings.find(x => x.code === code);
-        active.push({
-          code,
-          name: orig ? orig.name : code,
-          activeQty: Number(sharesOverride[code]) || 0
-        });
+        active.push({ code, name: orig ? orig.name : code, activeQty: 0 });
       }
     }
+  }
+  // _divFormShares 초기화: 기본은 현재 holdings의 계좌별 수량
+  _divFormShares = {};
+  for (const h of active) {
+    _divFormShares[h.code] = {};
+    const orig = holdings.find(x => x.code === h.code);
+    if (orig && orig.accounts) {
+      for (const acc of activeAccs) {
+        const a = orig.accounts[acc.id];
+        _divFormShares[h.code][acc.id] = a ? Number(a.qty) || 0 : 0;
+      }
+    } else {
+      for (const acc of activeAccs) _divFormShares[h.code][acc.id] = 0;
+    }
+    // override: 저장된 분배가 객체면 그대로 사용. 비활성 계좌 값도 보존.
+    const stored = sharesOverride && sharesOverride[h.code];
+    if (stored && typeof stored === 'object') {
+      _divFormShares[h.code] = { ...stored };
+    }
+    // number(구 v0.335)는 무시 → 현재 holdings 자동 채움 그대로
   }
   if (!active.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">보유 종목이 없습니다.</td></tr>';
@@ -7411,31 +7438,73 @@ function renderDivStockInputs(perShareMap, sharesOverride) {
   }
   tbody.innerHTML = active.map(h => {
     const ps = perShareMap && perShareMap[h.code] != null ? perShareMap[h.code] : '';
-    const qty = (sharesOverride && sharesOverride[h.code] != null)
-      ? Number(sharesOverride[h.code]) : h.activeQty;
-    const totalStr = ps !== '' && Number(ps) > 0 && qty > 0 ? Math.round(Number(ps) * qty).toLocaleString('ko-KR') + ' 원' : '-';
+    const byAcc = _divFormShares[h.code] || {};
+    const qtyTotal = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+    const totalStr = ps !== '' && Number(ps) > 0 && qtyTotal > 0 ? Math.round(Number(ps) * qtyTotal).toLocaleString('ko-KR') + ' 원' : '-';
+    const accInputs = activeAccs.map(a => `
+      <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;background:white;padding:3px 6px;border-radius:4px;border:1px solid var(--border)">
+        <span style="color:var(--muted)">${a.name}</span>
+        <input type="number" min="0" step="1" class="div-acc-qty"
+          value="${Number(byAcc[a.id]) || 0}"
+          oninput="updateAccQty('${h.code}','${a.id}', this.value)"
+          style="width:70px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;text-align:right">
+      </label>
+    `).join('');
     return `
       <tr data-code="${h.code}">
         <td>
-          <div style="font-size:13px;font-weight:600">${h.name}</div>
-          <div style="font-size:11px;color:var(--muted)">${h.code}</div>
+          <button type="button" class="div-toggle" onclick="toggleDivRow('${h.code}')"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:0 4px 0 0;vertical-align:middle">▶</button>
+          <span style="display:inline-block;vertical-align:middle">
+            <div style="font-size:13px;font-weight:600">${h.name}</div>
+            <div style="font-size:11px;color:var(--muted)">${h.code}</div>
+          </span>
         </td>
         <td>
           <input class="div-ps" type="number" min="0" step="1"
             value="${ps}" placeholder="0"
-            oninput="updateDivGrandTotal()"
+            oninput="updateDivRow('${h.code}')"
             style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right">
         </td>
-        <td>
-          <input class="div-qty" type="number" min="0" step="1"
-            value="${qty}"
-            oninput="updateDivGrandTotal()"
-            style="width:80px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right">
+        <td style="text-align:right">
+          <span class="div-qty-sum" id="divQtySum_${h.code}">${qtyTotal.toLocaleString('ko-KR')}</span>
         </td>
-        <td id="divTotal_${h.code}">${totalStr}</td>
+        <td id="divTotal_${h.code}" style="text-align:right">${totalStr}</td>
+      </tr>
+      <tr class="div-account-row" data-code-for="${h.code}" style="display:none;background:#f9fafb">
+        <td colspan="4" style="padding:8px 12px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${accInputs}</div>
+        </td>
       </tr>
     `;
   }).join('');
+  updateDivGrandTotal();
+}
+
+function toggleDivRow(code) {
+  const row = document.querySelector(`tr.div-account-row[data-code-for="${code}"]`);
+  if (!row) return;
+  const btn = document.querySelector(`tr[data-code="${code}"] .div-toggle`);
+  const open = row.style.display === 'none';
+  row.style.display = open ? 'table-row' : 'none';
+  if (btn) btn.textContent = open ? '▼' : '▶';
+}
+
+function updateAccQty(code, accId, val) {
+  _divFormShares[code] = _divFormShares[code] || {};
+  _divFormShares[code][accId] = Number(val) || 0;
+  updateDivRow(code);
+}
+
+function updateDivRow(code) {
+  const byAcc = _divFormShares[code] || {};
+  const total = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+  const sumEl = document.getElementById('divQtySum_' + code);
+  if (sumEl) sumEl.textContent = total.toLocaleString('ko-KR');
+  const psInp = document.querySelector(`tr[data-code="${code}"] .div-ps`);
+  const ps = Number(psInp?.value) || 0;
+  const cell = document.getElementById('divTotal_' + code);
+  if (cell) cell.textContent = (ps > 0 && total > 0) ? Math.round(ps * total).toLocaleString('ko-KR') + ' 원' : '-';
   updateDivGrandTotal();
 }
 
@@ -7444,11 +7513,9 @@ function updateDivGrandTotal() {
   document.querySelectorAll('#divStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
-    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
-    const total = Math.round(ps * qty);
-    grand += total;
-    const cell = document.getElementById('divTotal_' + code);
-    if (cell) cell.textContent = (ps > 0 && qty > 0) ? total.toLocaleString('ko-KR') + ' 원' : '-';
+    const byAcc = _divFormShares[code] || {};
+    const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+    if (ps > 0 && totalQty > 0) grand += Math.round(ps * totalQty);
   });
   const el = document.getElementById('divGrandTotal');
   if (el) el.textContent = grand.toLocaleString('ko-KR') + ' 원';
@@ -7537,23 +7604,32 @@ function addDividendRecord() {
 
   const stocksPerShare = {};
   const stocksShares = {};
-  const stockPerShareData = {};
   let totalDiv = 0;
   document.querySelectorAll('#divStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
-    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
-    if (ps > 0 && qty > 0) {
+    const byAcc = _divFormShares[code] || {};
+    const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+    if (ps > 0 && totalQty > 0) {
       stocksPerShare[code] = ps;
-      stocksShares[code] = qty;
-      stockPerShareData[code] = ps;
-      totalDiv += Math.round(ps * qty);
+      stocksShares[code] = { ...byAcc };
+      totalDiv += Math.round(ps * totalQty);
     }
   });
 
   if (totalDiv === 0 && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
 
-  const accounts = calcDivAccounts(stockPerShareData);
+  // 계좌별 분배: 저장된 스냅샷에서 derive (현재 holdings 무관)
+  const accounts = {};
+  for (const acc of getActiveAccounts()) accounts[acc.id] = 0;
+  for (const code of Object.keys(stocksShares)) {
+    const ps = Number(stocksPerShare[code]) || 0;
+    for (const [accId, qty] of Object.entries(stocksShares[code])) {
+      const amt = Math.round(ps * (Number(qty) || 0));
+      if (accounts[accId] != null) accounts[accId] += amt;
+      else accounts[accId] = amt; // 비활성 계좌의 분배도 보존
+    }
+  }
 
   if (_divEditingId) {
     const idx = dividendRecords.findIndex(r => r.id === _divEditingId);
