@@ -2611,12 +2611,8 @@ Chart.register({
     <div id="divFormPanel" style="display:none">
       <div class="records-input-card">
         <div class="rec-date-row">
-          <label>연도</label>
-          <input type="number" id="divYear" min="2000" max="2100" step="1" placeholder="YYYY"
-            style="width:80px;padding:8px 10px;font-size:14px;border:1px solid var(--border);border-radius:6px">
-          <label>월</label>
-          <input type="number" id="divMonth" min="1" max="12" step="1" placeholder="M"
-            style="width:60px;padding:8px 10px;font-size:14px;border:1px solid var(--border);border-radius:6px">
+          <label>기록일</label>
+          <input type="date" id="divDate">
           <button class="btn-secondary" onclick="loadDividendData()">📥 배당내역 불러오기</button>
         </div>
         <div style="overflow-x:auto">
@@ -2676,7 +2672,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.337';
+const APP_VERSION = 'MyPM v0.338';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3944,14 +3940,17 @@ function renderCashAdjHistory() {
   listEl.innerHTML = records.map(r => {
     const sign = r.type === 'add' ? '+' : '−';
     const color = r.type === 'add' ? 'var(--accent)' : 'var(--plus)';
+    const actions = r.divId
+      ? `<span style="font-size:11px;color:var(--muted);white-space:nowrap" title="배당 탭에서 수정 가능">배당 자동</span>`
+      : `<span style="white-space:nowrap">
+          <button class="tbl-icon-btn" onclick="editCashAdj('${r.id}')" title="편집">✏️</button>
+          <button class="tbl-icon-btn" onclick="deleteCashAdj('${r.id}')" title="삭제">🗑️</button>
+        </span>`;
     return `<div style="display:grid;grid-template-columns:76px 1fr auto auto;gap:4px 6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
       <span style="color:var(--muted)">${r.date}</span>
       <span>${getAccName(r.accId)}${r.note ? ' · ' + r.note : ''}</span>
       <span style="font-weight:600;color:${color};white-space:nowrap">${sign}${r.amount.toLocaleString('ko-KR')} 원</span>
-      <span style="white-space:nowrap">
-        <button class="tbl-icon-btn" onclick="editCashAdj('${r.id}')" title="편집">✏️</button>
-        <button class="tbl-icon-btn" onclick="deleteCashAdj('${r.id}')" title="삭제">🗑️</button>
-      </span>
+      ${actions}
     </div>`;
   }).join('');
 }
@@ -4113,6 +4112,7 @@ function importFromFile(event) {
             id: String(r.id || (Date.now() + Math.random())),
             year: parseInt(r.year, 10) || 0,
             month: parseInt(r.month, 10) || 0,
+            day: parseInt(r.day, 10) || 0,
             stocks: (r.stocks && typeof r.stocks === 'object') ? r.stocks : {},
             stocksPerShare: (r.stocksPerShare && typeof r.stocksPerShare === 'object') ? r.stocksPerShare : {},
             stocksShares: (r.stocksShares && typeof r.stocksShares === 'object') ? r.stocksShares : {},
@@ -7374,8 +7374,8 @@ function renderDivCharts() {
 
 function openDividendModal() {
   const now = new Date();
-  document.getElementById('divYear').value = now.getFullYear();
-  document.getElementById('divMonth').value = now.getMonth() + 1;
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('divDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   renderDivStockInputs({});
   toggleDivForm(false);
   renderDividendLists();
@@ -7528,9 +7528,10 @@ function clearDividendInputs() {
 }
 
 async function loadDividendData() {
-  const year = parseInt(document.getElementById('divYear').value, 10);
-  const month = parseInt(document.getElementById('divMonth').value, 10);
-  if (!year || !month) { alert('연도와 월을 먼저 입력해 주세요.'); return; }
+  const dateVal = document.getElementById('divDate').value;
+  if (!dateVal || !/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) { alert('기록일을 먼저 선택해 주세요.'); return; }
+  const [year, month] = dateVal.split('-').map(Number);
+  if (!year || !month) { alert('유효한 날짜를 선택해 주세요.'); return; }
 
   const btn = document.querySelector('button[onclick="loadDividendData()"]');
   const origText = btn ? btn.textContent : '';
@@ -7562,6 +7563,32 @@ async function loadDividendData() {
   if (Object.keys(perShareMap).length === 0) {
     alert(`${year}년 ${month}월 배당 데이터를 찾지 못했습니다.\n직접 주당 배당금을 입력해 주세요.`);
   }
+}
+
+function pushDividendCashAdj(divId, dateStr, accounts) {
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  for (const [accId, amount] of Object.entries(accounts || {})) {
+    if (!activeIds.has(accId)) continue;
+    const amt = Number(amount) || 0;
+    if (amt <= 0) continue;
+    cashAdjRecords.push({
+      id: generateTxnId(),
+      date: dateStr,
+      accId,
+      type: 'add',
+      amount: amt,
+      note: '배당입력(자동)',
+      divId
+    });
+  }
+  saveCashAdjRecords();
+}
+
+function removeDividendCashAdj(divId) {
+  if (!divId) return;
+  const before = cashAdjRecords.length;
+  cashAdjRecords = cashAdjRecords.filter(r => r.divId !== divId);
+  if (cashAdjRecords.length !== before) saveCashAdjRecords();
 }
 
 function applyDividendCashDelta(accounts, sign) {
@@ -7598,10 +7625,12 @@ function calcDivAccounts(stockPerShareData) {
 }
 
 function addDividendRecord() {
-  const year = parseInt(document.getElementById('divYear').value, 10);
-  const month = parseInt(document.getElementById('divMonth').value, 10);
+  const dateVal = document.getElementById('divDate').value;
+  if (!dateVal || !/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) { alert('유효한 날짜를 선택해 주세요.'); return; }
+  const [year, month, day] = dateVal.split('-').map(Number);
   if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
   if (!month || month < 1 || month > 12) { alert('월을 1~12 사이로 입력해 주세요.'); return; }
+  if (!day || day < 1 || day > 31) { alert('일을 올바르게 입력해 주세요.'); return; }
 
   const stocksPerShare = {};
   const stocksShares = {};
@@ -7637,8 +7666,10 @@ function addDividendRecord() {
     if (idx >= 0) {
       // 기존 배당금 현금 차감 후 새 배당금 현금 추가
       applyDividendCashDelta(dividendRecords[idx].accounts || {}, -1);
-      dividendRecords[idx] = { id: _divEditingId, year, month, stocksPerShare, stocksShares, accounts };
+      removeDividendCashAdj(_divEditingId);
+      dividendRecords[idx] = { id: _divEditingId, year, month, day, stocksPerShare, stocksShares, accounts };
       const negAccs = applyDividendCashDelta(accounts, +1);
+      pushDividendCashAdj(_divEditingId, dateVal, accounts);
       if (negAccs.length) alert(`⚠️ 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
     }
     _divEditingId = null;
@@ -7647,38 +7678,45 @@ function addDividendRecord() {
     const cancelBtn = document.getElementById('divCancelBtn');
     if (cancelBtn) cancelBtn.style.display = 'none';
   } else {
+    const newId = String(Date.now()) + Math.floor(Math.random() * 1000);
     dividendRecords.push({
-      id: String(Date.now()) + Math.floor(Math.random() * 1000),
-      year, month, stocksPerShare, stocksShares, accounts
+      id: newId,
+      year, month, day, stocksPerShare, stocksShares, accounts
     });
-    // 신규 배당 기록 → 계좌별 현금 추가
+    // 신규 배당 기록 → 계좌별 현금 추가 + 현금조정이력 자동 기록
     applyDividendCashDelta(accounts, +1);
+    pushDividendCashAdj(newId, dateVal, accounts);
   }
   saveDividendRecords();
   renderDividendLists();
   renderDivCharts();
+  if (typeof renderCashAdjHistory === 'function') renderCashAdjHistory();
   toggleDivForm(false);
 }
 
 function deleteDividendRecord(id) {
   const rec = dividendRecords.find(r => r.id === id);
   if (!rec) return;
-  if (!confirm(`${rec.year}년 ${rec.month}월 배당 기록을 삭제하시겠습니까?`)) return;
+  const dayStr = rec.day ? ` ${rec.day}일` : '';
+  if (!confirm(`${rec.year}년 ${rec.month}월${dayStr} 배당 기록을 삭제하시겠습니까?`)) return;
   dividendRecords = dividendRecords.filter(r => r.id !== id);
   saveDividendRecords();
-  // 배당 기록 삭제 → 계좌별 현금 차감
+  // 배당 기록 삭제 → 계좌별 현금 차감 + 자동 현금조정이력 항목 제거
   const negAccs = applyDividendCashDelta(rec.accounts || {}, -1);
+  removeDividendCashAdj(id);
   if (negAccs.length) alert(`⚠️ 배당금 차감 후 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
   renderDividendLists();
   renderDivCharts();
+  if (typeof renderCashAdjHistory === 'function') renderCashAdjHistory();
 }
 
 function editDividendRecord(id) {
   const rec = dividendRecords.find(r => r.id === id);
   if (!rec) return;
   _divEditingId = id;
-  document.getElementById('divYear').value = rec.year;
-  document.getElementById('divMonth').value = rec.month;
+  const pad = n => String(n).padStart(2, '0');
+  const d = rec.day || 1;
+  document.getElementById('divDate').value = `${rec.year}-${pad(rec.month)}-${pad(d)}`;
 
   const perShareMap = {};
   if (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) {
@@ -7750,25 +7788,32 @@ function renderDivStockRecordsList() {
     }
   }
 
-  const cols = `80px ${allCodes.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 72px`;
+  const cols = `90px ${allCodes.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 72px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
-    <span>연/월</span>
+    <span>기록일</span>
     ${allCodes.map(c => `<span style="text-align:right">${divShortName(codeNames[c])}<br><small>${c}</small></span>`).join('')}
     <span style="text-align:right">합계</span>
     <span></span>
   `;
 
-  const sorted = [...dividendRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+  const sorted = [...dividendRecords].sort((a, b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    if (b.month !== a.month) return b.month - a.month;
+    return (b.day || 0) - (a.day || 0);
+  });
   list.innerHTML = sorted.map(rec => {
     const total = allCodes.reduce((s, c) => s + divRecAmount(rec, c), 0);
     const cells = allCodes.map(c => {
       const v = divRecAmount(rec, c);
       return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
     }).join('');
+    const dateStr = rec.day
+      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
+      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
     return `
       <div class="div-record-row" style="grid-template-columns:${cols}">
-        <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
+        <span>${dateStr}</span>
         ${cells}
         <span class="total">${total.toLocaleString('ko-KR')}</span>
         <span>
@@ -7793,24 +7838,31 @@ function renderDivAccRecordsList() {
   }
 
   const activeAccs = getActiveAccounts();
-  const cols = `80px ${activeAccs.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
+  const cols = `90px ${activeAccs.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
-    <span>연/월</span>
+    <span>기록일</span>
     ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}</span>`).join('')}
     <span style="text-align:right">합계</span>
   `;
 
-  const sorted = [...dividendRecords].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+  const sorted = [...dividendRecords].sort((a, b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    if (b.month !== a.month) return b.month - a.month;
+    return (b.day || 0) - (a.day || 0);
+  });
   list.innerHTML = sorted.map(rec => {
     const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
     const cells = activeAccs.map(a => {
       const v = Number(rec.accounts[a.id]) || 0;
       return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
     }).join('');
+    const dateStr = rec.day
+      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
+      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
     return `
       <div class="div-record-row" style="grid-template-columns:${cols}">
-        <span>${rec.year}.${String(rec.month).padStart(2, '0')}</span>
+        <span>${dateStr}</span>
         ${cells}
         <span class="total">${total.toLocaleString('ko-KR')}</span>
       </div>
