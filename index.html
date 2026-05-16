@@ -2674,7 +2674,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.331';
+const APP_VERSION = 'MyPM v0.332';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6145,6 +6145,28 @@ function _planPeriodsInYear(p, year) {
   return cnt;
 }
 
+// "오늘 이후" 에 발생할 plan 회수만 카운트. _planPeriodsInYear 와 동일 모델이지만
+// startT 를 max(startT, todayT) 로 끌어올림. annual = 시작일이 오늘 이후이면 1 else 0.
+function _planPeriodsAfter(p, year, today) {
+  const sy = p.startYear, sm = p.startMonth || 1, sd = p.startDay || 1;
+  const ey = p.endYear,   em = p.endMonth   || 12, ed = p.endDay  || 1;
+  if (year < sy || year > ey) return 0;
+  const startT = new Date(sy, sm - 1, sd).getTime();
+  const endT   = new Date(ey, em - 1, ed).getTime();
+  const minT   = Math.max(startT, today.getTime());
+  if (p.frequency === 'annual') {
+    const t = new Date(year, sm - 1, sd).getTime();
+    return (t >= minT && t <= endT) ? 1 : 0;
+  }
+  let cnt = 0;
+  for (let m = 1; m <= 12; m++) {
+    const d = (m === sm && year === sy) ? sd : (m === em && year === ey) ? ed : 1;
+    const t = new Date(year, m - 1, d).getTime();
+    if (t >= minT && t <= endT) cnt++;
+  }
+  return cnt;
+}
+
 // 해당 연도에 입금된 모든 금액이 연말까지 성장한 후의 총합 (원).
 // 모델: 매월 1일에 입금된 금액이 그 해 12월 31일까지 (1+r)^((13-M)/12) 배 성장.
 // 1월 입금 → (1+r), 12월 입금 → (1+r)^(1/12). projRate=0 이면 단순 합산.
@@ -6193,6 +6215,22 @@ function getMonthlyPlanAnseIncrManwon(accId, year) {
     .reduce((s, p) => s + _planPeriodsInYear(p, year) * (p.monthlyAnse || 0), 0);
 }
 
+// "오늘 이후" 발생할 plan 원금 합계 (만원). currentYear 셀의 +남은계획 표시용.
+function getRemainingPlanIncrManwon(accId, year) {
+  const today = new Date();
+  return (annualPlan.monthlyPlans || [])
+    .filter(p => p.accId === accId)
+    .reduce((s, p) => s + _planPeriodsAfter(p, year, today) * (p.monthlyAmt || 0), 0);
+}
+
+// "오늘 이후" 발생할 plan 안세공 합계 (만원). currentYear 안세공 sub 의 +남은계획 표시용.
+function getRemainingPlanAnseManwon(accId, year) {
+  const today = new Date();
+  return (annualPlan.monthlyPlans || [])
+    .filter(p => p.accId === accId)
+    .reduce((s, p) => s + _planPeriodsAfter(p, year, today) * (p.monthlyAnse || 0), 0);
+}
+
 // Get the display value (백만원) for an account cell (actual or plan)
 function getCellManwon(accId, year) {
   if (isActualCell(accId, year)) return getActualCumManwon(accId, year);
@@ -6235,17 +6273,27 @@ function fmt(v) {
   return Math.round(v).toLocaleString('ko-KR');
 }
 // 올해 셀에 "현재값 +남은계획" 병기. 개별 셀은 [id], 그룹 합계는 id 배열.
-// formatter 로 fmt/fmtDiff 등 선택 가능. actual=0 인 셀도 planRem 있으면 표시.
+// formatter 로 fmt/fmtDiff 등 선택 가능. planRem = "오늘 이후" 발생할 plan 합계.
 function fmtCellWithPlanRem(curManwon, accIds, yr, formatter = fmt) {
   const head = formatter(curManwon);
   const currentYear = new Date().getFullYear();
   if (yr !== currentYear) return head;
   let planRem = 0;
   for (const id of accIds) {
-    const prevCum     = getCellManwon(id, yr - 1);
-    const fullPlanCum = prevCum + getMonthlyPlanIncrManwon(id, yr) / 100;
-    const curCum      = getCellManwon(id, yr);
-    planRem += Math.max(0, fullPlanCum - curCum);
+    planRem += getRemainingPlanIncrManwon(id, yr) / 100; // 만원 → 백만원
+  }
+  if (planRem < 0.5) return head;
+  return `${head}<span class="plan-add"> +${fmt(planRem)}</span>`;
+}
+
+// 안세공 sub 셀용. 본값 head 는 anse 원시값 또는 '-' (기존 동작 유지).
+function fmtAnseCellWithPlanRem(anseManwon, accIds, yr) {
+  const head = anseManwon || '-';
+  const currentYear = new Date().getFullYear();
+  if (yr !== currentYear) return head;
+  let planRem = 0;
+  for (const id of accIds) {
+    planRem += getRemainingPlanAnseManwon(id, yr) / 100;
   }
   if (planRem < 0.5) return head;
   return `${head}<span class="plan-add"> +${fmt(planRem)}</span>`;
@@ -6315,7 +6363,7 @@ function renderPrincipalTable() {
     const st = retireCellStyle(yr, retireYr, base);
     const cum = getCellManwon(id, yr);
     const anse = showAnse ? getCellAnseManwon(id, yr) : null;
-    const ansePart = anse != null ? `<div class="anse-sub"><span class="anse-val">${anse || '-'}</span></div>` : '';
+    const ansePart = anse != null ? `<div class="anse-sub"><span class="anse-val">${fmtAnseCellWithPlanRem(anse, [id], yr)}</span></div>` : '';
     return `<td${st ? ` style="${st}"` : ''}>${fmtCellWithPlanRem(cum, [id], yr)}${ansePart}</td>`;
   };
   const mkTd = (yr, retireYr, content) => {
