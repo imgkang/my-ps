@@ -2674,7 +2674,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.333';
+const APP_VERSION = 'MyPM v0.334';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7204,6 +7204,8 @@ function loadDividendRecords() {
       month: parseInt(r.month, 10) || 0,
       day: parseInt(r.day, 10) || null,
       stocks: (r.stocks && typeof r.stocks === 'object') ? r.stocks : {},
+      stocksPerShare: (r.stocksPerShare && typeof r.stocksPerShare === 'object') ? r.stocksPerShare : {},
+      stocksShares: (r.stocksShares && typeof r.stocksShares === 'object') ? r.stocksShares : {},
       accounts: (r.accounts && typeof r.accounts === 'object') ? r.accounts : {}
     })).filter(r => r.year > 0 && r.month >= 1 && r.month <= 12);
   } catch (_) { return []; }
@@ -7357,7 +7359,7 @@ function closeDividendModal() {
   switchTab('portfolio');
 }
 
-function renderDivStockInputs(perShareMap) {
+function renderDivStockInputs(perShareMap, sharesOverride) {
   const tbody = document.getElementById('divStockInputs');
   if (!tbody) return;
   const activeAccIds = new Set(getActiveAccounts().map(a => a.id));
@@ -7372,6 +7374,20 @@ function renderDivStockInputs(perShareMap) {
     }
     return { ...h, activeQty: qty };
   }).filter(h => h.activeQty > 0);
+  // ghost row: 편집 대상 레코드에 있지만 현재 보유에서 사라진 종목도 행으로 추가
+  if (sharesOverride && typeof sharesOverride === 'object') {
+    const presentCodes = new Set(active.map(h => h.code));
+    for (const code of Object.keys(sharesOverride)) {
+      if (!presentCodes.has(code)) {
+        const orig = holdings.find(x => x.code === code);
+        active.push({
+          code,
+          name: orig ? orig.name : code,
+          activeQty: Number(sharesOverride[code]) || 0
+        });
+      }
+    }
+  }
   if (!active.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">보유 종목이 없습니다.</td></tr>';
     updateDivGrandTotal();
@@ -7379,7 +7395,8 @@ function renderDivStockInputs(perShareMap) {
   }
   tbody.innerHTML = active.map(h => {
     const ps = perShareMap && perShareMap[h.code] != null ? perShareMap[h.code] : '';
-    const qty = h.activeQty;
+    const qty = (sharesOverride && sharesOverride[h.code] != null)
+      ? Number(sharesOverride[h.code]) : h.activeQty;
     const totalStr = ps !== '' && Number(ps) > 0 ? Math.round(Number(ps) * qty).toLocaleString('ko-KR') + ' 원' : '-';
     return `
       <tr>
@@ -7498,6 +7515,7 @@ function addDividendRecord() {
 
   const stocks = {};
   const stocksPerShare = {};
+  const stocksShares = {};
   const stockPerShareData = {};
   document.querySelectorAll('#divStockInputs input[data-code]').forEach(inp => {
     const code = inp.getAttribute('data-code');
@@ -7506,6 +7524,7 @@ function addDividendRecord() {
     if (ps > 0) {
       stocks[code] = Math.round(ps * qty);
       stocksPerShare[code] = ps;
+      stocksShares[code] = qty;
       stockPerShareData[code] = ps;
     }
   });
@@ -7520,7 +7539,7 @@ function addDividendRecord() {
     if (idx >= 0) {
       // 기존 배당금 현금 차감 후 새 배당금 현금 추가
       applyDividendCashDelta(dividendRecords[idx].accounts || {}, -1);
-      dividendRecords[idx] = { id: _divEditingId, year, month, stocks, stocksPerShare, accounts };
+      dividendRecords[idx] = { id: _divEditingId, year, month, stocks, stocksPerShare, stocksShares, accounts };
       const negAccs = applyDividendCashDelta(accounts, +1);
       if (negAccs.length) alert(`⚠️ 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
     }
@@ -7532,7 +7551,7 @@ function addDividendRecord() {
   } else {
     dividendRecords.push({
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
-      year, month, stocks, stocksPerShare, accounts
+      year, month, stocks, stocksPerShare, stocksShares, accounts
     });
     // 신규 배당 기록 → 계좌별 현금 추가
     applyDividendCashDelta(accounts, +1);
@@ -7564,10 +7583,10 @@ function editDividendRecord(id) {
   document.getElementById('divMonth').value = rec.month;
 
   const perShareMap = {};
-  if (rec.stocksPerShare) {
+  if (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) {
     Object.assign(perShareMap, rec.stocksPerShare);
   } else {
-    // 기존 레코드: 총배당금 ÷ 현재수량으로 추정
+    // 구버전 레코드(stocksPerShare 없음): 총배당금 ÷ 현재수량으로 추정 (fallback)
     const activeAccIds = new Set(getActiveAccounts().map(a => a.id));
     for (const [code, total] of Object.entries(rec.stocks)) {
       const h = holdings.find(x => x.code === code);
@@ -7584,7 +7603,9 @@ function editDividendRecord(id) {
     }
   }
 
-  renderDivStockInputs(perShareMap);
+  const sharesOverride = (rec.stocksShares && Object.keys(rec.stocksShares).length > 0)
+    ? rec.stocksShares : null;
+  renderDivStockInputs(perShareMap, sharesOverride);
   const saveBtn = document.getElementById('divSaveBtn');
   if (saveBtn) saveBtn.textContent = '수정 저장';
   const cancelBtn = document.getElementById('divCancelBtn');
