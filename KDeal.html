@@ -621,6 +621,8 @@
   .div-stock-table td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; text-align: right; }
   .div-stock-table td:first-child { text-align: left; }
   .div-stock-table tr:last-child td { border-bottom: none; }
+  .div-stock-table .div-qty-cell { transition: background 0.1s; }
+  .div-stock-table .div-qty-cell:hover { background: #eef2ff; }
   .div-grand-total {
     display: flex; justify-content: space-between; align-items: center;
     background: #eff6ff; padding: 8px 12px; border-radius: 6px;
@@ -1267,7 +1269,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.336';
+const APP_VERSION = 'KDeal v0.337';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2700,17 +2702,16 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
       </label>
     `).join('');
     return `<tr data-code="${h.ticker}">
-      <td>
-        <button type="button" class="div-toggle" onclick="kdToggleDivRow('${h.ticker}')"
-          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:0 4px 0 0">▶</button>
-        ${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}
-      </td>
+      <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
       <td><input class="div-ps" type="number" min="0" step="1"
         value="${ps}" placeholder="0"
         oninput="kdUpdateDivRow('${h.ticker}')"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
-      <td style="text-align:right">
+      <td class="div-qty-cell" onclick="kdToggleDivRow('${h.ticker}')"
+          style="text-align:right;cursor:pointer;user-select:none">
         <span class="div-qty-sum" id="kdDivQtySum_${h.ticker}">${qtyTotal.toLocaleString('ko-KR')}</span>
+        <span class="div-toggle" id="kdDivToggle_${h.ticker}"
+              style="color:var(--muted);font-size:11px;margin-left:4px">▶</span>
       </td>
       <td id="kdDivTotal_${h.ticker}" style="text-align:right">${totalStr}</td>
     </tr>
@@ -2726,10 +2727,10 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
 function kdToggleDivRow(code) {
   const row = document.querySelector(`#kdDivStockInputs tr.div-account-row[data-code-for="${code}"]`);
   if (!row) return;
-  const btn = document.querySelector(`#kdDivStockInputs tr[data-code="${code}"] .div-toggle`);
+  const ind = document.getElementById('kdDivToggle_' + code);
   const open = row.style.display === 'none';
   row.style.display = open ? 'table-row' : 'none';
-  if (btn) btn.textContent = open ? '▼' : '▶';
+  if (ind) ind.textContent = open ? '▼' : '▶';
 }
 
 function kdUpdateAccQty(code, accId, val) {
