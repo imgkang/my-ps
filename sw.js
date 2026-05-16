@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.326';
+const CACHE_NAME = 'mypm-v0.327';
 
 const BASE = '/my-ps/';
 
@@ -7,16 +7,20 @@ const ASSETS = [
   BASE,
   BASE + 'index.html',
   BASE + 'stock-db.js',
+  BASE + 'js/ticker-search.js',
+  BASE + 'tickers.json',
   BASE + 'manifest.json',
   BASE + 'icon.svg',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
 ];
 
-// 설치: 핵심 파일을 캐시에 저장
+// 설치: 핵심 파일을 캐시에 저장 (개별 add로 일부 누락 허용 — tickers.json 등이 아직 없을 수 있음)
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
+      .then(cache => Promise.all(
+        ASSETS.map(url => cache.add(url).catch(() => null))
+      ))
       .then(() => self.skipWaiting())
   );
 });

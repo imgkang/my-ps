@@ -1,0 +1,40 @@
+name: Update tickers.json
+
+on:
+  schedule:
+    - cron: '0 21 * * *'  # daily 06:00 KST (21:00 UTC previous day)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-tickers
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate tickers.json
+        run: python3 scripts/update_tickers.py
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet tickers.json 2>/dev/null && [ -f tickers.json ]; then
+            echo "tickers.json unchanged — skipping commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tickers.json
+          git commit -m "chore(data): update tickers.json $(date -u +%Y-%m-%d)"
+          git push

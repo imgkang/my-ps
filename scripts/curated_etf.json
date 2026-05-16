@@ -1,0 +1,21 @@
+[
+  {"t": "^GSPC", "n": "S&P 500 Index", "k": "S&P 500 지수", "e": "INDEX", "c": "US", "y": "IDX"},
+  {"t": "^IXIC", "n": "NASDAQ Composite", "k": "나스닥 종합지수", "e": "INDEX", "c": "US", "y": "IDX"},
+  {"t": "^DJI",  "n": "Dow Jones Industrial Average", "k": "다우존스 산업평균지수", "e": "INDEX", "c": "US", "y": "IDX"},
+  {"t": "^RUT",  "n": "Russell 2000", "k": "러셀 2000 지수", "e": "INDEX", "c": "US", "y": "IDX"},
+  {"t": "^VIX",  "n": "CBOE Volatility Index", "k": "VIX 변동성지수", "e": "INDEX", "c": "US", "y": "IDX"},
+  {"t": "^TNX",  "n": "10-Year Treasury Yield", "k": "미국 10년 국채금리", "e": "INDEX", "c": "US", "y": "IDX"},
+  {"t": "^KS11", "n": "KOSPI Composite Index", "k": "코스피", "e": "INDEX", "c": "KR", "y": "IDX"},
+  {"t": "^KQ11", "n": "KOSDAQ Composite Index", "k": "코스닥", "e": "INDEX", "c": "KR", "y": "IDX"},
+  {"t": "^N225", "n": "Nikkei 225", "k": "닛케이 225", "e": "INDEX", "c": "JP", "y": "IDX"},
+  {"t": "^HSI",  "n": "Hang Seng Index", "k": "항셍지수", "e": "INDEX", "c": "HK", "y": "IDX"},
+  {"t": "^STOXX50E", "n": "Euro Stoxx 50", "k": "유로스톡스 50", "e": "INDEX", "c": "EU", "y": "IDX"},
+  {"t": "GC=F", "n": "Gold Futures", "k": "금 선물", "e": "COMEX", "c": "US", "y": "FUT"},
+  {"t": "SI=F", "n": "Silver Futures", "k": "은 선물", "e": "COMEX", "c": "US", "y": "FUT"},
+  {"t": "CL=F", "n": "Crude Oil WTI Futures", "k": "WTI 원유 선물", "e": "NYMEX", "c": "US", "y": "FUT"},
+  {"t": "BTC-USD", "n": "Bitcoin USD", "k": "비트코인", "e": "CRYPTO", "c": "US", "y": "CRY"},
+  {"t": "ETH-USD", "n": "Ethereum USD", "k": "이더리움", "e": "CRYPTO", "c": "US", "y": "CRY"},
+  {"t": "KRW=X", "n": "USD/KRW", "k": "원/달러 환율", "e": "FX", "c": "KR", "y": "FX"},
+  {"t": "JPY=X", "n": "USD/JPY", "k": "엔/달러 환율", "e": "FX", "c": "JP", "y": "FX"},
+  {"t": "EURUSD=X", "n": "EUR/USD", "k": "유로/달러 환율", "e": "FX", "c": "EU", "y": "FX"}
+]

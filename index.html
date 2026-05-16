@@ -2669,8 +2669,10 @@ Chart.register({
 </div><!-- /panel-dividend -->
 
 <script src="stock-db.js"></script>
+<script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.326';
+const APP_VERSION = 'MyPM v0.327';
+if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -4321,12 +4323,20 @@ async function fetchStockAutocomplete(query) {
   const q = query.trim();
   const ql = q.toLowerCase();
 
+  // 1순위: 로컬 마스터 DB (IndexedDB, tickers.json 기반). 즉시 응답, 외부 API 호출 0.
+  if (window.TickerSearch && window.TickerSearch.isReady()) {
+    const hits = window.TickerSearch.search(q, { country: 'KR', limit: 8 });
+    if (hits.length) {
+      return hits.map(it => ({ code: it.t, name: it.k || it.n || it.t }));
+    }
+  }
+
   const local = STOCK_DB
     .filter(([code, name]) => name.toLowerCase().includes(ql) || code.toLowerCase().startsWith(ql))
     .slice(0, 8)
     .map(([code, name]) => ({ code, name }));
 
-  // 1순위: Naver Finance 자동완성 (한글명, 정확한 코드, 전종목 커버)
+  // 2순위: Naver Finance 자동완성 (한글명, 정확한 코드, 전종목 커버)
   try {
     const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock,index,etf`;
     const d = JSON.parse(await fetchViaProxy(url));
@@ -4335,7 +4345,7 @@ async function fetchStockAutocomplete(query) {
     }
   } catch(_) {}
 
-  // 2순위: Yahoo Finance (코드 교정 로직 유지)
+  // 3순위: Yahoo Finance (코드 교정 로직 유지)
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&lang=ko-KR&region=KR&quotesCount=10&newsCount=0`;
     const d = JSON.parse(await fetchViaProxy(url));
@@ -4351,7 +4361,7 @@ async function fetchStockAutocomplete(query) {
     if (yahoo.length) return yahoo.slice(0, 8);
   } catch(_) {}
 
-  // 3순위: 로컬 DB fallback (오프라인)
+  // 4순위: 로컬 DB fallback (오프라인)
   return local;
 }
 

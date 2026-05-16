@@ -1252,8 +1252,10 @@
     <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseAccountSettings()">닫기</button></div>
   </div>
 </div>
+<script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.326';
+const APP_VERSION = 'NonK v0.327';
+if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2837,6 +2839,14 @@ function nkOnWatchSearchInput(val) {
 }
 
 async function nkWatchFetchAutocomplete(query) {
+  // 1순위: 로컬 마스터 DB (IndexedDB, tickers.json 기반)
+  if (window.TickerSearch && window.TickerSearch.isReady()) {
+    const hits = window.TickerSearch.search(query, { country: 'US', limit: 8 });
+    if (hits.length) {
+      return hits.map(it => ({ ticker: it.t, name: it.n || it.k || it.t }));
+    }
+  }
+  // 2순위: Yahoo Finance (로컬 0건 시 폴백)
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&lang=en-US&region=US&quotesCount=8&newsCount=0`;
     const text = await fetchViaProxy(url);
