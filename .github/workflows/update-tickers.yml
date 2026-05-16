@@ -34,12 +34,16 @@ jobs:
 
       - name: Commit if changed
         run: |
-          if git diff --quiet tickers.json 2>/dev/null && [ -f tickers.json ]; then
-            echo "tickers.json unchanged — skipping commit."
-            exit 0
+          if [ ! -f tickers.json ]; then
+            echo "tickers.json missing — generator failed."
+            exit 1
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tickers.json
+          if git diff --cached --quiet -- tickers.json; then
+            echo "tickers.json unchanged — skipping commit."
+            exit 0
+          fi
           git commit -m "chore(data): update tickers.json $(date -u +%Y-%m-%d)"
           git push
