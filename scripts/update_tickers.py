@@ -3,7 +3,7 @@
 Generate tickers.json: master ticker DB for MyPM/NonK/KDeal client-side search.
 
 Sources:
-  - KRX (kind.krx.co.kr): KOSPI + KOSDAQ via corpList.do download endpoint
+  - FinanceDataReader: KRX listings (KOSPI + KOSDAQ) — single bulk call
   - SEC EDGAR (sec.gov): US tickers (CIK + ticker + name)
   - NASDAQ Trader (nasdaqtrader.com): exchange classification (NYSE/NASDAQ/AMEX)
   - scripts/curated_etf.json: hand-curated indices, FX, futures, crypto
@@ -19,7 +19,9 @@ Output schema:
     ]
   }
 
-Stdlib only, no third-party deps — keeps the GitHub Actions workflow light.
+Per-market minimum-count guards prevent partially-empty data from being
+committed: if any source returns suspiciously few rows, the script fails and
+GitHub Actions skips the commit.
 """
 import json
 import re
@@ -40,6 +42,12 @@ UA = (
 SEC_UA = "my-ps tickers updater (https://github.com/imgkang/my-ps)"
 TIMEOUT = 60
 
+# Per-source sanity thresholds. Below these, abort without committing —
+# the data is almost certainly partial (IP block, format change, etc.).
+THRESHOLD_KOSPI = 700
+THRESHOLD_KOSDAQ = 1200
+THRESHOLD_US = 5000
+
 
 def fetch(url, decode="utf-8", extra_headers=None):
     headers = {
@@ -57,35 +65,45 @@ def fetch(url, decode="utf-8", extra_headers=None):
     return data.decode(decode, errors="replace")
 
 
-def parse_krx_html(html):
-    """Extract (code, name) from KRX corpList.do HTML table."""
-    items = []
-    for m in re.finditer(r"<tr[^>]*>(.*?)</tr>", html, re.DOTALL | re.IGNORECASE):
-        row = m.group(1)
-        cells = re.findall(r"<td[^>]*>(.*?)</td>", row, re.DOTALL | re.IGNORECASE)
-        if len(cells) < 2:
-            continue
-        name = re.sub(r"<[^>]+>", "", cells[0]).strip()
-        name = re.sub(r"\s+", " ", name)
-        code = re.sub(r"<[^>]+>", "", cells[1]).strip()
-        if re.fullmatch(r"\d{6}", code) and name:
-            items.append((code, name))
-    return items
+def fetch_krx_all():
+    """KOSPI + KOSDAQ from FinanceDataReader in one shot.
 
+    Returns (items, counts_per_market). KONEX is excluded (out of scope).
+    """
+    import FinanceDataReader as fdr  # heavy dep, import lazily
 
-def fetch_krx(market_type):
-    """market_type: 'stockMkt' (KOSPI) or 'kosdaqMkt' (KOSDAQ)."""
-    url = (
-        "https://kind.krx.co.kr/corpgeneral/corpList.do"
-        f"?method=download&searchType=13&marketType={market_type}"
+    df = fdr.StockListing("KRX")
+
+    # Column names have shifted across versions; pick whichever exists.
+    code_col = "Code" if "Code" in df.columns else (
+        "Symbol" if "Symbol" in df.columns else None
     )
-    html = fetch(url, decode="euc-kr")
-    rows = parse_krx_html(html)
-    exchange = "KOSPI" if market_type == "stockMkt" else "KOSDAQ"
-    return [
-        {"t": code, "k": name, "e": exchange, "c": "KR", "y": "EQ"}
-        for code, name in rows
-    ]
+    name_col = "Name" if "Name" in df.columns else None
+    market_col = "Market" if "Market" in df.columns else None
+    if not (code_col and name_col and market_col):
+        raise RuntimeError(
+            f"FinanceDataReader columns unexpected: {list(df.columns)}"
+        )
+
+    items = []
+    counts = {"KOSPI": 0, "KOSDAQ": 0}
+    for _, row in df.iterrows():
+        code = str(row[code_col]).strip()
+        name = str(row[name_col]).strip()
+        market = str(row[market_col]).strip().upper()
+        if not code or not name or not market:
+            continue
+        # Normalize 6-digit KR codes (pad if needed, reject non-numeric)
+        if not code.isdigit() or len(code) > 6:
+            continue
+        code = code.zfill(6)
+        if market not in ("KOSPI", "KOSDAQ"):
+            continue
+        items.append(
+            {"t": code, "k": name, "e": market, "c": "KR", "y": "EQ"}
+        )
+        counts[market] += 1
+    return items, counts
 
 
 def fetch_sec_us():
@@ -149,13 +167,12 @@ def load_curated():
 
 
 def main():
-    print("Fetching KRX KOSPI ...", file=sys.stderr)
-    kospi = fetch_krx("stockMkt")
-    print(f"  → {len(kospi)} items", file=sys.stderr)
-
-    print("Fetching KRX KOSDAQ ...", file=sys.stderr)
-    kosdaq = fetch_krx("kosdaqMkt")
-    print(f"  → {len(kosdaq)} items", file=sys.stderr)
+    print("Fetching KRX (FinanceDataReader, single call) ...", file=sys.stderr)
+    kr_items, kr_counts = fetch_krx_all()
+    print(
+        f"  → KOSPI: {kr_counts['KOSPI']}, KOSDAQ: {kr_counts['KOSDAQ']}",
+        file=sys.stderr,
+    )
 
     print("Fetching SEC EDGAR US tickers ...", file=sys.stderr)
     us = fetch_sec_us()
@@ -172,7 +189,31 @@ def main():
     curated = load_curated()
     print(f"  → {len(curated)} items", file=sys.stderr)
 
-    all_items = kospi + kosdaq + us + curated
+    # Per-source thresholds — fail loudly if any source under-delivered.
+    errors = []
+    if kr_counts["KOSPI"] < THRESHOLD_KOSPI:
+        errors.append(
+            f"KOSPI count {kr_counts['KOSPI']} < {THRESHOLD_KOSPI} (expected ~850)"
+        )
+    if kr_counts["KOSDAQ"] < THRESHOLD_KOSDAQ:
+        errors.append(
+            f"KOSDAQ count {kr_counts['KOSDAQ']} < {THRESHOLD_KOSDAQ} (expected ~1700)"
+        )
+    if len(us) < THRESHOLD_US:
+        errors.append(
+            f"US count {len(us)} < {THRESHOLD_US} (expected ~10,000)"
+        )
+    if errors:
+        print("\nFAIL — per-source sanity thresholds:", file=sys.stderr)
+        for e in errors:
+            print(f"  ✗ {e}", file=sys.stderr)
+        print(
+            "Refusing to write tickers.json so a bad commit is not pushed.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    all_items = kr_items + us + curated
     seen = set()
     deduped = []
     for it in all_items:
@@ -201,12 +242,6 @@ def main():
         f"({OUTPUT_PATH.stat().st_size:,} bytes, {len(deduped):,} items)",
         file=sys.stderr,
     )
-    if len(deduped) < 5000:
-        print(
-            "  ! WARNING: total items < 5000 — a data source may have failed.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
 
 
 if __name__ == "__main__":
