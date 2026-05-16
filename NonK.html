@@ -1260,7 +1260,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.335';
+const APP_VERSION = 'NonK v0.336';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1384,6 +1384,7 @@ let nkEditingTicker   = null;
 let nkEditingTxnId    = null;
 let nkEditingRecordId = null;
 let nkEditingDivId    = null;
+let nkDivFormShares   = {}; // { ticker: { accId: qty } }
 let nkLastRefreshTime = null;
 
 function nkLoadAccounts() {
@@ -1423,8 +1424,16 @@ function nkSaveDividends() { localStorage.setItem(NK_DIV_KEY, JSON.stringify(nkD
 
 function nkDivRecAmount(rec, code) {
   const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
-  const sh = Number(rec.stocksShares   && rec.stocksShares[code])   || 0;
-  if (ps > 0 && sh > 0) return Math.round(ps * sh * 100) / 100;
+  const sh = rec.stocksShares && rec.stocksShares[code];
+  if (ps > 0 && sh != null) {
+    let total = 0;
+    if (typeof sh === 'object') {
+      for (const v of Object.values(sh)) total += Number(v) || 0;
+    } else {
+      total = Number(sh) || 0;
+    }
+    if (total > 0) return Math.round(ps * total * 100) / 100;
+  }
   return Number(rec.stocks && rec.stocks[code]) || 0;
 }
 function nkDivRecCodes(rec) {
@@ -2527,7 +2536,8 @@ function nkCloseDividendModal() {
 function nkRenderDivStockInputs(perShareMap, sharesOverride) {
   const tbody = document.getElementById('nkDivStockInputs');
   if (!tbody) return;
-  const activeAccIds = new Set(NK_ACCOUNTS.filter(a => a.active !== false).map(a => a.id));
+  const activeAccs = NK_ACCOUNTS.filter(a => a.active !== false);
+  const activeAccIds = new Set(activeAccs.map(a => a.id));
   const active = nkHoldings.map(h => {
     let qty = 0;
     if (h.accounts && Object.keys(h.accounts).length > 0) {
@@ -2539,18 +2549,32 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
     }
     return { ...h, activeQty: qty };
   }).filter(h => h.activeQty > 0);
-  // ghost row: 편집 대상 레코드에 있지만 현재 보유에서 사라진 종목도 행으로 추가
+  // ghost row
   if (sharesOverride && typeof sharesOverride === 'object') {
     const presentCodes = new Set(active.map(h => h.ticker));
     for (const code of Object.keys(sharesOverride)) {
       if (!presentCodes.has(code)) {
         const orig = nkHoldings.find(x => x.ticker === code);
-        active.push({
-          ticker: code,
-          name: orig ? orig.name : '',
-          activeQty: Number(sharesOverride[code]) || 0
-        });
+        active.push({ ticker: code, name: orig ? orig.name : '', activeQty: 0 });
       }
+    }
+  }
+  // 폼 상태 초기화: 현재 보유 자동 채움, 객체 override는 그대로 복원
+  nkDivFormShares = {};
+  for (const h of active) {
+    nkDivFormShares[h.ticker] = {};
+    const orig = nkHoldings.find(x => x.ticker === h.ticker);
+    if (orig && orig.accounts) {
+      for (const acc of activeAccs) {
+        const a = orig.accounts[acc.id];
+        nkDivFormShares[h.ticker][acc.id] = a ? Number(a.qty) || 0 : 0;
+      }
+    } else {
+      for (const acc of activeAccs) nkDivFormShares[h.ticker][acc.id] = 0;
+    }
+    const stored = sharesOverride && sharesOverride[h.ticker];
+    if (stored && typeof stored === 'object') {
+      nkDivFormShares[h.ticker] = { ...stored };
     }
   }
   if (!active.length) {
@@ -2560,22 +2584,66 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
   }
   tbody.innerHTML = active.map(h => {
     const ps = perShareMap && perShareMap[h.ticker] != null ? perShareMap[h.ticker] : '';
-    const qty = (sharesOverride && sharesOverride[h.ticker] != null)
-      ? Number(sharesOverride[h.ticker]) : h.activeQty;
-    const totalStr = ps !== '' && Number(ps) > 0 && qty > 0 ? fmtUSD(Math.round(Number(ps) * qty * 100) / 100) : '-';
+    const byAcc = nkDivFormShares[h.ticker] || {};
+    const qtyTotal = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+    const totalStr = ps !== '' && Number(ps) > 0 && qtyTotal > 0 ? fmtUSD(Math.round(Number(ps) * qtyTotal * 100) / 100) : '-';
+    const accInputs = activeAccs.map(a => `
+      <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;background:white;padding:3px 6px;border-radius:4px;border:1px solid var(--border)">
+        <span style="color:var(--muted)">${a.name}</span>
+        <input type="number" min="0" step="1" class="div-acc-qty"
+          value="${Number(byAcc[a.id]) || 0}"
+          oninput="nkUpdateAccQty('${h.ticker}','${a.id}', this.value)"
+          style="width:70px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;text-align:right">
+      </label>
+    `).join('');
     return `<tr data-code="${h.ticker}">
-      <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
+      <td>
+        <button type="button" class="div-toggle" onclick="nkToggleDivRow('${h.ticker}')"
+          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:0 4px 0 0">▶</button>
+        ${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}
+      </td>
       <td><input class="div-ps" type="number" min="0" step="0.01"
         value="${ps}" placeholder="0"
-        oninput="nkUpdateDivTotal()"
+        oninput="nkUpdateDivRow('${h.ticker}')"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
-      <td><input class="div-qty" type="number" min="0" step="1"
-        value="${qty}"
-        oninput="nkUpdateDivTotal()"
-        style="width:80px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
+      <td style="text-align:right">
+        <span class="div-qty-sum" id="nkDivQtySum_${h.ticker}">${qtyTotal.toLocaleString('en-US')}</span>
+      </td>
       <td id="nkDivTotal_${h.ticker}" style="text-align:right">${totalStr}</td>
+    </tr>
+    <tr class="div-account-row" data-code-for="${h.ticker}" style="display:none;background:#f9fafb">
+      <td colspan="4" style="padding:8px 12px">
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${accInputs}</div>
+      </td>
     </tr>`;
   }).join('');
+  nkUpdateDivTotal();
+}
+
+function nkToggleDivRow(code) {
+  const row = document.querySelector(`#nkDivStockInputs tr.div-account-row[data-code-for="${code}"]`);
+  if (!row) return;
+  const btn = document.querySelector(`#nkDivStockInputs tr[data-code="${code}"] .div-toggle`);
+  const open = row.style.display === 'none';
+  row.style.display = open ? 'table-row' : 'none';
+  if (btn) btn.textContent = open ? '▼' : '▶';
+}
+
+function nkUpdateAccQty(code, accId, val) {
+  nkDivFormShares[code] = nkDivFormShares[code] || {};
+  nkDivFormShares[code][accId] = Number(val) || 0;
+  nkUpdateDivRow(code);
+}
+
+function nkUpdateDivRow(code) {
+  const byAcc = nkDivFormShares[code] || {};
+  const total = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+  const sumEl = document.getElementById('nkDivQtySum_' + code);
+  if (sumEl) sumEl.textContent = total.toLocaleString('en-US');
+  const psInp = document.querySelector(`#nkDivStockInputs tr[data-code="${code}"] .div-ps`);
+  const ps = Number(psInp?.value) || 0;
+  const cell = document.getElementById('nkDivTotal_' + code);
+  if (cell) cell.textContent = (ps > 0 && total > 0) ? fmtUSD(Math.round(ps * total * 100) / 100) : '-';
   nkUpdateDivTotal();
 }
 
@@ -2584,11 +2652,9 @@ function nkUpdateDivTotal() {
   document.querySelectorAll('#nkDivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
-    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
-    const total = Math.round(ps * qty * 100) / 100;
-    grand += total;
-    const cell = document.getElementById('nkDivTotal_' + code);
-    if (cell) cell.textContent = (ps > 0 && qty > 0) ? fmtUSD(total) : '-';
+    const byAcc = nkDivFormShares[code] || {};
+    const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+    if (ps > 0 && totalQty > 0) grand += Math.round(ps * totalQty * 100) / 100;
   });
   const el = document.getElementById('nkDivGrandTotal');
   if (el) el.textContent = fmtUSD(Math.round(grand * 100) / 100);
@@ -2610,26 +2676,29 @@ function nkAddDividendRecord() {
   document.querySelectorAll('#nkDivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
-    const qty = Number(tr.querySelector('.div-qty')?.value) || 0;
-    if (ps > 0 && qty > 0) {
+    const byAcc = nkDivFormShares[code] || {};
+    const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
+    if (ps > 0 && totalQty > 0) {
       stocksPerShare[code] = ps;
-      stocksShares[code] = qty;
+      stocksShares[code] = { ...byAcc };
       hasAny = true;
     }
   });
 
   if (!hasAny && !confirm('모든 배당금이 0입니다. 그래도 추가하시겠습니까?')) return;
 
-  // 계좌별 분배: 각 계좌의 현재 주식수 × 주당 배당금 (사용자 편집 qty와 다를 수 있음)
+  // 계좌별 분배: 저장된 스냅샷에서 derive
   const accounts = {};
-  NK_ACCOUNTS.forEach(a => {
-    const total = nkHoldings.reduce((s, h) => {
-      const acc = h.accounts && h.accounts[a.id];
-      const qty = acc ? Number(acc.qty) || 0 : 0;
-      return s + qty * (Number(stocksPerShare[h.ticker]) || 0);
-    }, 0);
-    accounts[a.id] = Math.round(total * 100) / 100;
-  });
+  NK_ACCOUNTS.forEach(a => { accounts[a.id] = 0; });
+  for (const code of Object.keys(stocksShares)) {
+    const ps = Number(stocksPerShare[code]) || 0;
+    for (const [accId, qty] of Object.entries(stocksShares[code])) {
+      const amt = Math.round(ps * (Number(qty) || 0) * 100) / 100;
+      if (accounts[accId] != null) accounts[accId] += amt;
+      else accounts[accId] = amt;
+    }
+  }
+  for (const accId of Object.keys(accounts)) accounts[accId] = Math.round(accounts[accId] * 100) / 100;
 
   if (nkEditingDivId) {
     const idx = nkDividendRecords.findIndex(r => r.id === nkEditingDivId);
