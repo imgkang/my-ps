@@ -2674,7 +2674,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.329';
+const APP_VERSION = 'MyPM v0.330';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6198,9 +6198,18 @@ function getCellManwon(accId, year) {
   if (isActualCell(accId, year)) return getActualCumManwon(accId, year);
   const currentYear = new Date().getFullYear();
   if (year === currentYear) return getActualCumManwon(accId, year);
-  // Future year: cumulative = prev year cumulative + 적립계획 증분만
-  const prev = getCellManwon(accId, year - 1);
-  const mpInc = getMonthlyPlanIncrManwon(accId, year) / 100; // 만원 → 백만원
+  // Future year: 전년도 연말 누적 + 올해 계획 증분
+  let prev;
+  if (year - 1 === currentYear) {
+    // 전년도가 currentYear: 연말 예상치 사용 (actual + 남은계획)
+    const actualPrev   = getActualCumManwon(accId, year - 1);
+    const planFullPrev = getActualCumManwon(accId, year - 2)
+                       + getMonthlyPlanIncrManwon(accId, year - 1) / 100;
+    prev = Math.max(actualPrev, planFullPrev);
+  } else {
+    prev = getCellManwon(accId, year - 1);
+  }
+  const mpInc = getMonthlyPlanIncrManwon(accId, year) / 100;
   return prev + mpInc;
 }
 
@@ -6208,9 +6217,16 @@ function getCellManwon(accId, year) {
 function getCellAnseManwon(accId, year) {
   const currentYear = new Date().getFullYear();
   if (year <= currentYear) return getActualAnseManwon([accId], year);
-  // Future year: cumulative = prev year cumulative + 적립계획 증분만
-  const prev = getCellAnseManwon(accId, year - 1);
-  const mpAnse = getMonthlyPlanAnseIncrManwon(accId, year) / 100; // 만원 → 백만원
+  let prev;
+  if (year - 1 === currentYear) {
+    const actualPrev   = getActualAnseManwon([accId], year - 1);
+    const planFullPrev = getActualAnseManwon([accId], year - 2)
+                       + getMonthlyPlanAnseIncrManwon(accId, year - 1) / 100;
+    prev = Math.max(actualPrev, planFullPrev);
+  } else {
+    prev = getCellAnseManwon(accId, year - 1);
+  }
+  const mpAnse = getMonthlyPlanAnseIncrManwon(accId, year) / 100;
   return prev + mpAnse;
 }
 
