@@ -912,6 +912,9 @@ Chart.register({
   .anse-sub > .anse-val {
     font-size: 10px; color: #92400e;
   }
+  .plan-add {
+    color: #9333ea; font-size: 0.82em; font-weight: 500; margin-left: 1px; white-space: nowrap;
+  }
   .plan-section-title {
     font-weight: 700; font-size: 14px;
     margin: 14px 0 8px; padding-bottom: 5px;
@@ -2671,7 +2674,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.327';
+const APP_VERSION = 'MyPM v0.328';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6215,6 +6218,21 @@ function fmt(v) {
   if (!v) return '-';
   return Math.round(v).toLocaleString('ko-KR');
 }
+// 올해 셀에 "현재값 +남은계획" 병기. 개별 셀은 [id], 그룹 합계는 id 배열.
+// yr !== currentYear, curManwon falsy, planRem 0 이하면 fmt 와 동일.
+function fmtCellWithPlanRem(curManwon, accIds, yr) {
+  const currentYear = new Date().getFullYear();
+  if (yr !== currentYear || !curManwon) return fmt(curManwon);
+  let planRem = 0;
+  for (const id of accIds) {
+    const prevCum     = getCellManwon(id, yr - 1);
+    const fullPlanCum = prevCum + getMonthlyPlanIncrManwon(id, yr) / 100;
+    const curCum      = getCellManwon(id, yr);
+    planRem += Math.max(0, fullPlanCum - curCum);
+  }
+  if (planRem <= 0) return fmt(curManwon);
+  return `${fmt(curManwon)}<span class="plan-add"> +${fmt(planRem)}</span>`;
+}
 function fmtDiff(v) {
   if (v == null || isNaN(v)) return '-';
   const r = Math.round(v);
@@ -6281,7 +6299,7 @@ function renderPrincipalTable() {
     const cum = getCellManwon(id, yr);
     const anse = showAnse ? getCellAnseManwon(id, yr) : null;
     const ansePart = anse != null ? `<div class="anse-sub"><span class="anse-val">${anse || '-'}</span></div>` : '';
-    return `<td${st ? ` style="${st}"` : ''}>${fmt(cum)}${ansePart}</td>`;
+    return `<td${st ? ` style="${st}"` : ''}>${fmtCellWithPlanRem(cum, [id], yr)}${ansePart}</td>`;
   };
   const mkTd = (yr, retireYr, content) => {
     const base = yr === currentYear ? 'background:#d1fae5' : '';
@@ -6306,7 +6324,7 @@ function renderPrincipalTable() {
   body += '<tr class="r-sub"><td>나-연금총합</td>';
   for (const yr of years) {
     const total = _activeMyIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
-    body += mkTd(yr, myRetireYr, fmt(total));
+    body += mkTd(yr, myRetireYr, fmtCellWithPlanRem(total, _activeMyIds, yr));
   }
   body += '</tr>';
 
@@ -6326,7 +6344,7 @@ function renderPrincipalTable() {
     body += `<tr class="r-sub"><td>${getWifeTitle()}-연금총합</td>`;
     for (const yr of years) {
       const total = _activeWifeIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
-      body += mkTd(yr, wifeRetireYr, fmt(total));
+      body += mkTd(yr, wifeRetireYr, fmtCellWithPlanRem(total, _activeWifeIds, yr));
     }
     body += '</tr>';
   }
@@ -6338,7 +6356,7 @@ function renderPrincipalTable() {
   for (const yr of years) {
     const total = _allActiveIds.reduce((s, id) => s + getCellManwon(id, yr), 0);
     grandTotals[yr] = total;
-    body += mkTd(yr, bothRetireYr, fmt(total));
+    body += mkTd(yr, bothRetireYr, fmtCellWithPlanRem(total, _allActiveIds, yr));
   }
   body += '</tr>';
 
@@ -6493,7 +6511,7 @@ function renderEvalTable() {
                  : 'background:#f0fdf4;color:#6d28d9';
       let st = retireCellStyle(yr, _eMyRetireYr, base);
       st = _withCursor(st, 'eval-acc', yr);
-      body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-acc', yr, id)}>${mw ? fmt(mw) : '-'}</td>`;
+      body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-acc', yr, id)}>${mw ? fmtCellWithPlanRem(mw, [id], yr) : '-'}</td>`;
     }
     body += '</tr>';
   }
@@ -6506,7 +6524,7 @@ function renderEvalTable() {
     const base = yr === currentYear ? 'background:#d1fae5' : '';
     let st = retireCellStyle(yr, _eMyRetireYr, base);
     st = _withCursor(st, 'eval-sub-my', yr);
-    body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-sub-my', yr)}>${mw ? fmt(mw) : '-'}</td>`;
+    body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-sub-my', yr)}>${mw ? fmtCellWithPlanRem(mw, _evalMyIds, yr) : '-'}</td>`;
   }
   body += '</tr>';
 
@@ -6523,7 +6541,7 @@ function renderEvalTable() {
                    : 'background:#f0fdf4;color:#6d28d9';
         let st = retireCellStyle(yr, _eWifeRetireYr, base);
         st = _withCursor(st, 'eval-acc', yr);
-        body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-acc', yr, id)}>${mw ? fmt(mw) : '-'}</td>`;
+        body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-acc', yr, id)}>${mw ? fmtCellWithPlanRem(mw, [id], yr) : '-'}</td>`;
       }
       body += '</tr>';
     }
@@ -6536,7 +6554,7 @@ function renderEvalTable() {
       const base = yr === currentYear ? 'background:#d1fae5' : '';
       let st = retireCellStyle(yr, _eWifeRetireYr, base);
       st = _withCursor(st, 'eval-sub-wife', yr);
-      body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-sub-wife', yr)}>${mw ? fmt(mw) : '-'}</td>`;
+      body += `<td${st ? ` style="${st}"` : ''}${_projAttrs('eval-sub-wife', yr)}>${mw ? fmtCellWithPlanRem(mw, _evalWifeIds, yr) : '-'}</td>`;
     }
     body += '</tr>';
   }
@@ -6580,7 +6598,8 @@ function renderEvalTable() {
     const tw = totalWon[yr];
     if (tw == null) { body += _eTd(yr, '-'); continue; }
     const isProjYr = yr > lastRecYear;
-    body += _eTd(yr, fmt(Math.round(tw / 1_000_000)), isProjYr ? 'color:#6d28d9' : '', 'eval-total');
+    const mw = Math.round(tw / 1_000_000);
+    body += _eTd(yr, fmtCellWithPlanRem(mw, _evalAllIds, yr), isProjYr ? 'color:#6d28d9' : '', 'eval-total');
   }
   body += '</tr>';
 
