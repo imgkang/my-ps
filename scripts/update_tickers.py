@@ -4,8 +4,9 @@ Generate tickers.json: master ticker DB for MyPM/NonK/KDeal client-side search.
 
 Sources:
   - FinanceDataReader: KRX listings (KOSPI + KOSDAQ) — single bulk call
-  - SEC EDGAR (sec.gov): US tickers (CIK + ticker + name)
-  - NASDAQ Trader (nasdaqtrader.com): exchange classification (NYSE/NASDAQ/AMEX)
+  - NASDAQ Trader (nasdaqtrader.com): nasdaqlisted.txt + otherlisted.txt
+    contain US ticker + name + exchange + ETF flag in one shot. SEC EDGAR
+    avoided because it returns 403 to GitHub Actions cloud IPs.
   - scripts/curated_etf.json: hand-curated indices, FX, futures, crypto
 
 Output schema:
@@ -39,7 +40,6 @@ UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
-SEC_UA = "imgkang my-ps tickers updater imgkang@users.noreply.github.com"
 TIMEOUT = 60
 
 # Per-source sanity thresholds. Below these, abort without committing —
@@ -106,58 +106,83 @@ def fetch_krx_all():
     return items, counts
 
 
-def fetch_sec_us():
-    """SEC EDGAR company_tickers.json → US listed companies."""
-    raw = fetch(
-        "https://www.sec.gov/files/company_tickers.json",
-        extra_headers={"User-Agent": SEC_UA},
-    )
-    data = json.loads(raw)
+def _clean_us_name(raw):
+    """Strip trailing "- Common Stock" / "Common Stock" boilerplate."""
+    name = raw.strip()
+    for suffix in (
+        " - Common Stock",
+        " Common Stock",
+        " - Class A Common Stock",
+        " Class A Common Stock",
+        " - Class B Common Stock",
+        " Class B Common Stock",
+    ):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+            break
+    return name.strip()
+
+
+def fetch_us_listed():
+    """NASDAQ Trader symbol directory → US listed equities + ETFs.
+
+    Uses nasdaqlisted.txt (NASDAQ) + otherlisted.txt (NYSE/AMEX/ARCA/BATS).
+    Both files contain Symbol + Security Name + ETF flag — no SEC EDGAR
+    call needed (SEC tends to 403 cloud-IP traffic).
+    """
     items = []
-    for _, row in data.items():
-        ticker = str(row.get("ticker", "")).strip().upper()
-        name = str(row.get("title", "")).strip()
-        if ticker and name and re.fullmatch(r"[A-Z0-9.\-]+", ticker):
-            items.append(
-                {"t": ticker, "n": name, "e": "US", "c": "US", "y": "EQ"}
-            )
+
+    # nasdaqlisted.txt columns:
+    #   Symbol|Security Name|Market Category|Test Issue|Financial Status|
+    #   Round Lot Size|ETF|NextShares
+    txt = fetch("https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt")
+    for line in txt.splitlines()[1:]:
+        if line.startswith("File Creation Time"):
+            continue
+        parts = line.split("|")
+        if len(parts) < 7:
+            continue
+        sym = parts[0].strip().upper()
+        name = _clean_us_name(parts[1])
+        test_issue = parts[3].strip().upper()
+        is_etf = parts[6].strip().upper() == "Y"
+        if not sym or not name or test_issue == "Y":
+            continue
+        if not re.fullmatch(r"[A-Z0-9.\-]+", sym):
+            continue
+        items.append({
+            "t": sym, "n": name,
+            "e": "NASDAQ", "c": "US",
+            "y": "ETF" if is_etf else "EQ",
+        })
+
+    # otherlisted.txt columns:
+    #   ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|
+    #   Test Issue|NASDAQ Symbol
+    ex_map = {"A": "AMEX", "N": "NYSE", "P": "NYSE_ARCA", "Z": "BATS"}
+    txt = fetch("https://www.nasdaqtrader.com/dynamic/symdir/otherlisted.txt")
+    for line in txt.splitlines()[1:]:
+        if line.startswith("File Creation Time"):
+            continue
+        parts = line.split("|")
+        if len(parts) < 7:
+            continue
+        sym = parts[0].strip().upper()
+        name = _clean_us_name(parts[1])
+        ex_code = parts[2].strip().upper()
+        is_etf = parts[4].strip().upper() == "Y"
+        test_issue = parts[6].strip().upper()
+        if not sym or not name or test_issue == "Y":
+            continue
+        if not re.fullmatch(r"[A-Z0-9.\-]+", sym):
+            continue
+        items.append({
+            "t": sym, "n": name,
+            "e": ex_map.get(ex_code, "NYSE"), "c": "US",
+            "y": "ETF" if is_etf else "EQ",
+        })
+
     return items
-
-
-def fetch_nasdaq_exchange_map():
-    """nasdaqlisted.txt + otherlisted.txt → {ticker: exchange}."""
-    em = {}
-    try:
-        txt = fetch("https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt")
-        for line in txt.splitlines()[1:]:
-            if line.startswith("File Creation Time"):
-                continue
-            parts = line.split("|")
-            if len(parts) < 2:
-                continue
-            sym = parts[0].strip().upper()
-            if sym:
-                em[sym] = "NASDAQ"
-    except Exception as e:
-        print(f"  ! nasdaqlisted fetch failed: {e}", file=sys.stderr)
-    try:
-        txt = fetch("https://www.nasdaqtrader.com/dynamic/symdir/otherlisted.txt")
-        # Column layout: ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|...
-        # Exchange codes: A=AMEX, N=NYSE, P=NYSE ARCA, Z=BATS
-        ex_map = {"A": "AMEX", "N": "NYSE", "P": "NYSE_ARCA", "Z": "BATS"}
-        for line in txt.splitlines()[1:]:
-            if line.startswith("File Creation Time"):
-                continue
-            parts = line.split("|")
-            if len(parts) < 3:
-                continue
-            sym = parts[0].strip().upper()
-            ex_code = parts[2].strip().upper()
-            if sym:
-                em[sym] = ex_map.get(ex_code, "NYSE")
-    except Exception as e:
-        print(f"  ! otherlisted fetch failed: {e}", file=sys.stderr)
-    return em
 
 
 def load_curated():
@@ -174,16 +199,9 @@ def main():
         file=sys.stderr,
     )
 
-    print("Fetching SEC EDGAR US tickers ...", file=sys.stderr)
-    us = fetch_sec_us()
+    print("Fetching NASDAQ Trader US listings (single source) ...", file=sys.stderr)
+    us = fetch_us_listed()
     print(f"  → {len(us)} items", file=sys.stderr)
-
-    print("Fetching NASDAQ Trader exchange map ...", file=sys.stderr)
-    ex_map = fetch_nasdaq_exchange_map()
-    print(f"  → {len(ex_map)} symbols mapped", file=sys.stderr)
-
-    for item in us:
-        item["e"] = ex_map.get(item["t"], item["e"])
 
     print("Loading curated list ...", file=sys.stderr)
     curated = load_curated()
