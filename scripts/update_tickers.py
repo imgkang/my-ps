@@ -39,7 +39,7 @@ UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
-SEC_UA = "my-ps tickers updater (https://github.com/imgkang/my-ps)"
+SEC_UA = "imgkang my-ps tickers updater imgkang@users.noreply.github.com"
 TIMEOUT = 60
 
 # Per-source sanity thresholds. Below these, abort without committing —
