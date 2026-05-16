@@ -2674,7 +2674,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.332';
+const APP_VERSION = 'MyPM v0.333';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6430,7 +6430,14 @@ function renderPrincipalTable() {
   for (let i = 0; i < years.length; i++) {
     const yr = years[i];
     if (i === 0) { body += mkTd(yr, bothRetireYr, '-'); continue; }
-    const diff = (grandTotals[yr] || 0) - (grandTotals[years[i - 1]] || 0);
+    const prevYr = years[i - 1];
+    let prevTotal = grandTotals[prevYr] || 0;
+    if (prevYr === currentYear) {
+      for (const id of _allActiveIds) {
+        prevTotal += getRemainingPlanIncrManwon(id, prevYr) / 100;
+      }
+    }
+    const diff = (grandTotals[yr] || 0) - prevTotal;
     body += mkTd(yr, bothRetireYr, diff ? fmtCellWithPlanRem(diff, _allActiveIds, yr) : '-');
   }
   body += '</tr>';
@@ -6678,7 +6685,14 @@ function renderEvalTable() {
   for (let i = 0; i < years.length; i++) {
     const yr = years[i];
     if (i === 0) { body += _eTd(yr, '-'); continue; }
-    const inc = princMil[yr] - getPrincMilPrev(i);
+    const prevYr = years[i - 1];
+    let prevPrinc = getPrincMilPrev(i);
+    if (prevYr === currentYear) {
+      for (const id of _evalAllIds) {
+        prevPrinc += getRemainingPlanIncrManwon(id, prevYr) / 100;
+      }
+    }
+    const inc = princMil[yr] - prevPrinc;
     body += _eTd(yr, fmtCellWithPlanRem(inc, _evalAllIds, yr, fmtDiff));
   }
   body += '</tr>';
