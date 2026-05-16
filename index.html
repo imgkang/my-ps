@@ -785,6 +785,8 @@ Chart.register({
   .div-stock-table td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; text-align: right; }
   .div-stock-table td:first-child { text-align: left; }
   .div-stock-table tr:last-child td { border-bottom: none; }
+  .div-stock-table .div-qty-cell { transition: background 0.1s; }
+  .div-stock-table .div-qty-cell:hover { background: #eef2ff; }
   .div-grand-total {
     display: flex; justify-content: space-between; align-items: center;
     background: #eff6ff; padding: 8px 12px; border-radius: 6px;
@@ -2674,7 +2676,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.336';
+const APP_VERSION = 'MyPM v0.337';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7453,12 +7455,8 @@ function renderDivStockInputs(perShareMap, sharesOverride) {
     return `
       <tr data-code="${h.code}">
         <td>
-          <button type="button" class="div-toggle" onclick="toggleDivRow('${h.code}')"
-            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:0 4px 0 0;vertical-align:middle">▶</button>
-          <span style="display:inline-block;vertical-align:middle">
-            <div style="font-size:13px;font-weight:600">${h.name}</div>
-            <div style="font-size:11px;color:var(--muted)">${h.code}</div>
-          </span>
+          <div style="font-size:13px;font-weight:600">${h.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${h.code}</div>
         </td>
         <td>
           <input class="div-ps" type="number" min="0" step="1"
@@ -7466,8 +7464,11 @@ function renderDivStockInputs(perShareMap, sharesOverride) {
             oninput="updateDivRow('${h.code}')"
             style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right">
         </td>
-        <td style="text-align:right">
+        <td class="div-qty-cell" onclick="toggleDivRow('${h.code}')"
+            style="text-align:right;cursor:pointer;user-select:none">
           <span class="div-qty-sum" id="divQtySum_${h.code}">${qtyTotal.toLocaleString('ko-KR')}</span>
+          <span class="div-toggle" id="divToggle_${h.code}"
+                style="color:var(--muted);font-size:11px;margin-left:4px">▶</span>
         </td>
         <td id="divTotal_${h.code}" style="text-align:right">${totalStr}</td>
       </tr>
@@ -7484,10 +7485,10 @@ function renderDivStockInputs(perShareMap, sharesOverride) {
 function toggleDivRow(code) {
   const row = document.querySelector(`tr.div-account-row[data-code-for="${code}"]`);
   if (!row) return;
-  const btn = document.querySelector(`tr[data-code="${code}"] .div-toggle`);
+  const ind = document.getElementById('divToggle_' + code);
   const open = row.style.display === 'none';
   row.style.display = open ? 'table-row' : 'none';
-  if (btn) btn.textContent = open ? '▼' : '▶';
+  if (ind) ind.textContent = open ? '▼' : '▶';
 }
 
 function updateAccQty(code, accId, val) {
