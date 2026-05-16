@@ -2674,7 +2674,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.330';
+const APP_VERSION = 'MyPM v0.331';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6235,11 +6235,11 @@ function fmt(v) {
   return Math.round(v).toLocaleString('ko-KR');
 }
 // 올해 셀에 "현재값 +남은계획" 병기. 개별 셀은 [id], 그룹 합계는 id 배열.
-// formatter 로 fmt/fmtDiff 등 선택 가능. yr !== currentYear, curManwon falsy, planRem 0 이하면 head 만.
+// formatter 로 fmt/fmtDiff 등 선택 가능. actual=0 인 셀도 planRem 있으면 표시.
 function fmtCellWithPlanRem(curManwon, accIds, yr, formatter = fmt) {
-  if (!curManwon) return formatter(curManwon);
+  const head = formatter(curManwon);
   const currentYear = new Date().getFullYear();
-  if (yr !== currentYear) return formatter(curManwon);
+  if (yr !== currentYear) return head;
   let planRem = 0;
   for (const id of accIds) {
     const prevCum     = getCellManwon(id, yr - 1);
@@ -6247,8 +6247,8 @@ function fmtCellWithPlanRem(curManwon, accIds, yr, formatter = fmt) {
     const curCum      = getCellManwon(id, yr);
     planRem += Math.max(0, fullPlanCum - curCum);
   }
-  if (planRem <= 0) return formatter(curManwon);
-  return `${formatter(curManwon)}<span class="plan-add"> +${fmt(planRem)}</span>`;
+  if (planRem < 0.5) return head;
+  return `${head}<span class="plan-add"> +${fmt(planRem)}</span>`;
 }
 function fmtDiff(v) {
   if (v == null || isNaN(v)) return '-';
