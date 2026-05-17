@@ -2745,7 +2745,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.357';
+const APP_VERSION = 'MyPM v0.358';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -5450,7 +5450,7 @@ function render() {
       hasAccounts,
       accountCount: hasAccounts ? Object.keys(h.accounts).length : 0
     };
-  }).filter(it => it.qty > 0 || it.hasCost).sort((a, b) => b.currentValue - a.currentValue);
+  }).filter(it => it.qty > 0 || it.hasCost || !it.hasAccounts).sort((a, b) => b.currentValue - a.currentValue);
 
    // 전체 합계
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
