@@ -1303,11 +1303,13 @@ Chart.register({
         </div>
         <div style="font-size:12px;color:var(--muted)" id="tradeListSummary"></div>
       </div>
-      <div class="deposit-list-header" style="grid-template-columns:100px 90px 1fr 90px 80px 80px 80px 60px">
-        <span>날짜</span><span>계좌</span><span>종목</span><span style="text-align:right">수량</span><span style="text-align:right">단가</span><span style="text-align:right">거래금액</span><span>구분</span><span></span>
-      </div>
-      <div class="deposit-list-wrap" style="max-height:none">
-        <div id="tradeList"></div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <div class="deposit-list-header" style="grid-template-columns:100px 90px 1fr 90px 80px 80px 80px 60px;min-width:600px">
+          <span>날짜</span><span>계좌</span><span>종목</span><span style="text-align:right">수량</span><span style="text-align:right">단가</span><span style="text-align:right">거래금액</span><span>구분</span><span></span>
+        </div>
+        <div class="deposit-list-wrap" style="max-height:none;min-width:600px">
+          <div id="tradeList"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -2690,7 +2692,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.349';
+const APP_VERSION = 'MyPM v0.350';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
