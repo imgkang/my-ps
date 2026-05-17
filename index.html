@@ -2745,7 +2745,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.360';
+const APP_VERSION = 'MyPM v0.361';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -9414,7 +9414,7 @@ function doReset(andOnboard) {
     DEPOSITS_KEY, AUTO_REFRESH_KEY, MONTHLY_RECORDS_KEY,
     ANNUAL_PLAN_KEY, DIVIDEND_KEY, WITHDRAWAL_KEY,
     WD_SCENARIO_KEY, DRIVE_SETTINGS_KEY,
-    TRADES_KEY,
+    TRADES_KEY, CASH_ADJ_KEY,
     'pension_trans_logs', 'drive_token_v2', 'drive_user_hint',
     'nonk_holdings_v1', 'nonk_cash_v1', 'nonk_deposits_v1',
     'nonk_monthly_v1', 'nonk_dividends_v1',
@@ -12562,6 +12562,7 @@ function buildDriveBundle() {
       wdConsolidated: wdConsolidated,
       wdScenarios: loadWdScenarios(),
       trades: tradeRecords,
+      cashAdjRecords: cashAdjRecords,
     },
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
@@ -12674,6 +12675,8 @@ function _applyImportData(data) {
                           localStorage.setItem(APP_SETTINGS_KEY,   JSON.stringify(src.appSettings));
   if (src.trades && Array.isArray(src.trades))
                           localStorage.setItem(TRADES_KEY,         JSON.stringify(src.trades));
+  if (src.cashAdjRecords && Array.isArray(src.cashAdjRecords))
+                          localStorage.setItem(CASH_ADJ_KEY,       JSON.stringify(src.cashAdjRecords));
   if (data.nonk) {
     if (data.nonk.holdings)  localStorage.setItem('nonk_holdings_v1',  JSON.stringify(data.nonk.holdings));
     if (data.nonk.cash)      localStorage.setItem('nonk_cash_v1',      JSON.stringify(data.nonk.cash));
