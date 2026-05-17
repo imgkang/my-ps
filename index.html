@@ -2745,7 +2745,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.359';
+const APP_VERSION = 'MyPM v0.360';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -9408,6 +9408,7 @@ function closeResetConfirmModal() {
   document.getElementById('resetConfirmModal').classList.remove('open');
 }
 function doReset(andOnboard) {
+  const savedClientId = driveClientId;
   [
     APP_SETTINGS_KEY, STORAGE_KEY, CASH_KEY, CASH_ACCOUNTS_KEY,
     DEPOSITS_KEY, AUTO_REFRESH_KEY, MONTHLY_RECORDS_KEY,
@@ -9423,6 +9424,9 @@ function doReset(andOnboard) {
     'kd_dividends_v1', 'kd_watchlist_v1', 'kd_migration_done_v1',
     'setup_skipped',
   ].forEach(k => localStorage.removeItem(k));
+  if (savedClientId) {
+    localStorage.setItem(DRIVE_SETTINGS_KEY, JSON.stringify({ clientId: savedClientId, fileId: null, lastSync: null }));
+  }
   closeResetConfirmModal();
   if (andOnboard) sessionStorage.setItem('open_onboarding', '1');
   location.reload();
@@ -12378,8 +12382,29 @@ updateDriveUI();
 
 function openDriveModal() {
   document.getElementById('driveClientIdInput').value = driveClientId;
-  updateDriveUI();
   document.getElementById('driveModal').classList.add('open');
+  if (driveClientId && !driveAccessToken) {
+    setDriveStatus('idle', '🔄 재연결 중...');
+    _driveSilentReauth();
+  } else {
+    updateDriveUI();
+  }
+}
+
+function _driveSilentReauth() {
+  if (window._gisClient) {
+    window._gisClient.requestAccessToken({ prompt: 'none' });
+    return;
+  }
+  if (!document.querySelector('script[src*="gsi/client"]')) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = () => initGIS();
+    document.head.appendChild(s);
+  } else {
+    initGIS();
+  }
 }
 function closeDriveModal() {
   document.getElementById('driveModal').classList.remove('open');
