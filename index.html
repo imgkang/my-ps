@@ -502,7 +502,7 @@ Chart.register({
     position: sticky; left: 0; z-index: 1; background: #fff;
   }
   .records-row:last-child { border-bottom: none; }
-  .records-row .amount { text-align: right; }
+  .records-row .amount, .records-year-summary .amount { text-align: right; }
   .records-row .total { text-align: right; font-weight: 700; color: #1e40af; }
   .records-year-summary {
     display: grid; gap: 6px; padding: 8px 10px; font-size: 12px;
@@ -2690,7 +2690,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.346';
+const APP_VERSION = 'MyPM v0.347';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
