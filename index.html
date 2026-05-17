@@ -695,9 +695,9 @@ Chart.register({
   /* 거래내역 탭 */
   #tradeList .txn-row {
     display: grid;
-    grid-template-columns: 100px 90px 1fr 90px 80px 80px 80px 60px;
-    gap: 8px;
-    padding: 8px 12px;
+    grid-template-columns: 90px 70px 1fr 60px 70px 90px 55px 36px;
+    gap: 6px;
+    padding: 8px 10px;
     align-items: center;
     font-size: 12px;
     border-bottom: 1px solid var(--border);
@@ -705,6 +705,13 @@ Chart.register({
   #tradeList .txn-row:last-child { border-bottom: none; }
   #tradeList .txn-row:hover { background: #fafafa; }
   #tradeList .txn-row .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+  #tradeList .txn-row > span:first-child {
+    position: sticky; left: 0; z-index: 1; background: #fff;
+  }
+  #tradeList .txn-row:hover > span:first-child { background: #fafafa; }
+  .deposit-list-header > span:first-child {
+    position: sticky; left: 0; background: #f9fafb; z-index: 2;
+  }
   .trade-buy-badge  { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#fee2e2;color:#b91c1c; }
   .trade-sell-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#dbeafe;color:#1d4ed8; }
   .trade-cashin-badge  { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#dcfce7;color:#15803d; }
@@ -1306,10 +1313,10 @@ Chart.register({
         <div style="font-size:12px;color:var(--muted)" id="tradeListSummary"></div>
       </div>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <div class="deposit-list-header" style="grid-template-columns:100px 90px 1fr 90px 80px 80px 80px 60px;min-width:600px">
+        <div class="deposit-list-header" style="grid-template-columns:90px 70px 1fr 60px 70px 90px 55px 36px;min-width:530px">
           <span>날짜</span><span>계좌</span><span>종목</span><span style="text-align:right">수량</span><span style="text-align:right">단가</span><span style="text-align:right">거래금액</span><span>구분</span><span></span>
         </div>
-        <div class="deposit-list-wrap" style="max-height:none;min-width:600px">
+        <div class="deposit-list-wrap" style="max-height:none;min-width:530px">
           <div id="tradeList"></div>
         </div>
       </div>
@@ -2687,7 +2694,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.351';
+const APP_VERSION = 'MyPM v0.352';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3155,7 +3162,9 @@ function deleteTxn(id) {
   }
   cashAccounts[t.accId] = (cashAccounts[t.accId] || 0) - amt;
   depositData.transactions = depositData.transactions.filter(x => x.id !== id);
+  cashAdjRecords = cashAdjRecords.filter(r => r.txnId !== id);
   saveDeposits();
+  saveCashAdjRecords();
   persistCashAccounts();
   renderDepositTotals();
   renderDepositList();
@@ -3303,6 +3312,14 @@ function saveTxn() {
       // 현금 역방향 반영 (구 계좌 원래 금액 차감, 신 계좌 새 금액 가산)
       cashAccounts[oldAccId] = (cashAccounts[oldAccId] || 0) - oldAmount;
       cashAccounts[accId]    = (cashAccounts[accId]    || 0) + signedAmount;
+      // 연동 cashAdj 업데이트
+      const linkedAdj = cashAdjRecords.find(r => r.txnId === editingTxnId);
+      if (linkedAdj) {
+        linkedAdj.date = date; linkedAdj.accId = accId;
+        linkedAdj.type = signedAmount > 0 ? 'add' : 'sub';
+        linkedAdj.amount = Math.abs(signedAmount);
+        saveCashAdjRecords();
+      }
     }
   } else {
     const entry = { id: generateTxnId(), accId, date, amount: signedAmount };
@@ -3310,6 +3327,15 @@ function saveTxn() {
     depositData.transactions.push(entry);
     // 입금/출금 금액을 해당 계좌 현금에 즉시 반영
     cashAccounts[accId] = (cashAccounts[accId] || 0) + signedAmount;
+    // 거래내역 자동 연동
+    cashAdjRecords.push({
+      id: generateTxnId(), date, accId,
+      type: signedAmount > 0 ? 'add' : 'sub',
+      amount: Math.abs(signedAmount),
+      note: signedAmount > 0 ? '납입' : '출금',
+      txnId: entry.id
+    });
+    saveCashAdjRecords();
   }
   saveDeposits();
   persistCashAccounts();
@@ -5646,6 +5672,24 @@ function renderTradeList() {
   const codeFilter = (document.getElementById('tradeFilterCode') || {}).value || '';
   const activeIds  = new Set(getActiveAccounts().map(a => a.id));
 
+  // 잔액 계산: cashAdjRecords 전체(tradeId 포함) 기반 계좌별 누적잔액
+  const balanceMap = new Map();
+  const byAcc = {};
+  for (const r of (cashAdjRecords || [])) {
+    (byAcc[r.accId] = byAcc[r.accId] || []).push(r);
+  }
+  for (const recs of Object.values(byAcc)) {
+    let bal = 0;
+    for (const r of recs.slice().sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))) {
+      bal += r.type === 'add' ? r.amount : -r.amount;
+      balanceMap.set(r.id, bal);
+    }
+  }
+  const tradeAdjId = new Map();
+  for (const r of (cashAdjRecords || [])) {
+    if (r.tradeId) tradeAdjId.set(r.tradeId, r.id);
+  }
+
   const tradeRows = (codeFilter === '__cashadj__') ? [] :
     tradeRecords.slice()
       .filter(r => activeIds.has(r.accId))
@@ -5655,6 +5699,7 @@ function renderTradeList() {
 
   const adjRows = (codeFilter && codeFilter !== '__cashadj__') ? [] :
     (cashAdjRecords || []).slice()
+      .filter(r => !r.tradeId)
       .filter(r => activeIds.has(r.accId))
       .filter(r => !accFilter || r.accId === accFilter)
       .map(r => ({ ...r, _kind: 'cashadj' }));
@@ -5664,9 +5709,11 @@ function renderTradeList() {
 
   const sumEl = document.getElementById('tradeListSummary');
   if (sumEl) {
+    const tradeCnt = tradeRows.length;
+    const adjCnt   = adjRows.filter(r => !r.tradeId).length;
     const parts = [];
-    if (tradeRows.length) parts.push(`매매 ${tradeRows.length}건`);
-    if (adjRows.length)   parts.push(`현금조정 ${adjRows.length}건`);
+    if (tradeCnt) parts.push(`매매 ${tradeCnt}건`);
+    if (adjCnt)   parts.push(`현금조정 ${adjCnt}건`);
     sumEl.textContent = parts.length ? parts.join(' / ') : '0건';
   }
 
@@ -5684,34 +5731,41 @@ function renderTradeList() {
         ? '<span class="trade-buy-badge">매수</span>'
         : '<span class="trade-sell-badge">매도</span>';
       const total = Number(r.qty) * Number(r.price);
+      const adjId = tradeAdjId.get(r.id);
+      const bal   = adjId !== undefined ? balanceMap.get(adjId) : undefined;
+      const balStr = bal !== undefined ? bal.toLocaleString('ko-KR') : '-';
       return `<div class="txn-row">
         <span class="txn-date">${r.date}</span>
         <span class="txn-acc">${accName}</span>
         <span>${escapeHtml(stockName)}<br><span style="font-size:10px;color:var(--muted)">${r.code}</span></span>
         <span class="num-cell">${Number(r.qty).toLocaleString('ko-KR')}</span>
         <span class="num-cell">${Number(r.price).toLocaleString('ko-KR')}</span>
-        <span class="num-cell">${total.toLocaleString('ko-KR')}</span>
+        <span class="num-cell">${total.toLocaleString('ko-KR')}<br><span style="font-size:10px;color:var(--muted)">잔액 ${balStr}</span></span>
         <span>${badge}</span>
         <span style="display:flex;align-items:center;gap:2px">
           <button class="tbl-icon-btn" onclick="deleteTrade('${r.id}')" title="삭제">🗑️</button>
         </span>
       </div>`;
     } else {
-      const accName = getAccName(r.accId) || r.accId;
-      const label   = r.note ? escapeHtml(r.note) : '현금조정';
-      const badge   = r.type === 'add'
+      const accName   = getAccName(r.accId) || r.accId;
+      const label     = r.divId ? '배당 자동'
+        : r.txnId ? (r.note || (r.type === 'add' ? '납입' : '출금'))
+        : (r.note ? escapeHtml(r.note) : '현금조정');
+      const badge     = r.type === 'add'
         ? '<span class="trade-cashin-badge">입금</span>'
         : '<span class="trade-cashout-badge">출금</span>';
-      const actionBtn = r.divId
-        ? `<span style="font-size:11px;color:var(--muted)" title="배당 탭에서 수정">배당 자동</span>`
+      const actionBtn = (r.divId || r.txnId)
+        ? ''
         : `<button class="tbl-icon-btn" onclick="deleteCashAdj('${r.id}')" title="삭제">🗑️</button>`;
+      const bal    = balanceMap.get(r.id);
+      const balStr = bal !== undefined ? bal.toLocaleString('ko-KR') : '-';
       return `<div class="txn-row">
         <span class="txn-date">${r.date}</span>
         <span class="txn-acc">${accName}</span>
         <span style="color:var(--muted)">${label}</span>
         <span class="num-cell" style="color:var(--muted)">-</span>
         <span class="num-cell" style="color:var(--muted)">-</span>
-        <span class="num-cell">${r.amount.toLocaleString('ko-KR')}</span>
+        <span class="num-cell">${r.amount.toLocaleString('ko-KR')}<br><span style="font-size:10px;color:var(--muted)">잔액 ${balStr}</span></span>
         <span>${badge}</span>
         <span style="display:flex;align-items:center;gap:2px">${actionBtn}</span>
       </div>`;
@@ -5854,8 +5908,17 @@ function saveTrade() {
     qty, price, total
   };
   tradeRecords.push(record);
+  // 거래내역 잔액 계산을 위한 cashAdj 자동 연동
+  cashAdjRecords.push({
+    id: generateTxnId(), date, accId,
+    type: type === 'buy' ? 'sub' : 'add',
+    amount: total,
+    note: type === 'buy' ? '매수' : '매도',
+    tradeId: record.id
+  });
 
   saveTradeRecords();
+  saveCashAdjRecords();
   saveHoldings();
   persistCashAccounts();
   closeTradeModal();
@@ -5895,7 +5958,9 @@ function deleteTrade(id) {
   }
 
   tradeRecords = tradeRecords.filter(x => x.id !== id);
+  cashAdjRecords = cashAdjRecords.filter(r => r.tradeId !== id);
   saveTradeRecords();
+  saveCashAdjRecords();
   saveHoldings();
   persistCashAccounts();
   renderTradeFilterOptions();
