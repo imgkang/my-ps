@@ -2681,7 +2681,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.341';
+const APP_VERSION = 'MyPM v0.342';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4964,12 +4964,14 @@ function renderRecordsTableHeader() {
   const header = document.getElementById('recordsTableHeader');
   if (!header) return;
   const activeAccs = getActiveAccounts();
-  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 60px`;
+  const cols = `80px minmax(90px,1fr) minmax(75px,1fr) 60px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} 60px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>기록일</span>
-    ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}</span>`).join('')}
     <span style="text-align:right">총합 (백만원)</span>
+    <span style="text-align:right">수익금 (백만)</span>
+    <span style="text-align:right">수익률</span>
+    ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}</span>`).join('')}
     <span></span>
   `;
 }
@@ -4992,10 +4994,17 @@ function renderRecordsList() {
   });
 
   const activeAccs = getActiveAccounts();
-  const cols = `80px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} minmax(90px, 1fr) 60px`;
+  const cols = `80px minmax(90px,1fr) minmax(75px,1fr) 60px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} 60px`;
 
-  list.innerHTML = sorted.map(rec => {
+  list.innerHTML = sorted.map((rec, i) => {
     const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const prevRec = sorted[i + 1];
+    const prevTotal = prevRec ? activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0) : null;
+    const profit = prevTotal !== null ? total - prevTotal : null;
+    const profitRate = (prevTotal !== null && prevTotal !== 0) ? (profit / prevTotal * 100) : null;
+    const profitColor = profit !== null ? (profit >= 0 ? '#16a34a' : '#dc2626') : '';
+    const profitStr = profit !== null ? `${profit >= 0 ? '+' : ''}${formatMil(profit)}` : '-';
+    const rateStr = profitRate !== null ? `${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(1)}%` : '-';
     const accCells = activeAccs.map(a => {
       const v = Number(rec.accounts[a.id]) || 0;
       return `<span class="amount">${v ? formatMil(v) : '-'}</span>`;
@@ -5006,8 +5015,10 @@ function renderRecordsList() {
     return `
       <div class="records-row" style="grid-template-columns:${cols}">
         <span>${dateStr}</span>
-        ${accCells}
         <span class="total">${formatMil(total)}</span>
+        <span style="text-align:right;font-weight:600;color:${profitColor}">${profitStr}</span>
+        <span style="text-align:right;font-weight:600;color:${profitColor}">${rateStr}</span>
+        ${accCells}
         <span style="display:flex;align-items:center;gap:2px">
           <button class="tbl-icon-btn" onclick="editMonthlyRecord('${rec.id}')" title="편집">✏️</button>
           <button class="tbl-icon-btn" onclick="deleteMonthlyRecord('${rec.id}')" title="삭제">🗑️</button>
