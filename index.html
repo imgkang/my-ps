@@ -695,7 +695,7 @@ Chart.register({
   /* 거래내역 탭 */
   #tradeList .txn-row {
     display: grid;
-    grid-template-columns: 90px 70px 1fr 90px 55px 36px;
+    grid-template-columns: 85px 60px 46px 1fr 90px 52px 62px 32px;
     gap: 4px;
     padding: 8px 10px;
     align-items: center;
@@ -705,7 +705,7 @@ Chart.register({
   #tradeList .txn-row:last-child { border-bottom: none; }
   #tradeList .txn-row:hover { background: #fafafa; }
   #tradeList .txn-row .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
-  #tradeList .txn-row > span:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  #tradeList .txn-row > span:nth-child(4) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
   #tradeList .txn-row > span:first-child {
     position: sticky; left: 0; z-index: 1; background: #fff;
   }
@@ -1314,10 +1314,10 @@ Chart.register({
         <div style="font-size:12px;color:var(--muted)" id="tradeListSummary"></div>
       </div>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <div class="deposit-list-header" style="grid-template-columns:90px 70px 1fr 90px 55px 36px;min-width:440px">
-          <span>날짜</span><span>계좌</span><span>종목</span><span style="text-align:right">거래금액</span><span>구분</span><span></span>
+        <div class="deposit-list-header" style="grid-template-columns:85px 60px 46px 1fr 90px 52px 62px 32px;min-width:560px">
+          <span>날짜</span><span>계좌</span><span>구분</span><span>종목</span><span style="text-align:right">거래금액</span><span style="text-align:right">수량</span><span style="text-align:right">단가</span><span></span>
         </div>
-        <div class="deposit-list-wrap" style="max-height:none;min-width:440px">
+        <div class="deposit-list-wrap" style="max-height:none;min-width:560px">
           <div id="tradeList"></div>
         </div>
       </div>
@@ -2695,7 +2695,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.354';
+const APP_VERSION = 'MyPM v0.355';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -5741,9 +5741,11 @@ function renderTradeList() {
       return `<div class="txn-row">
         <span class="txn-date">${r.date}</span>
         <span class="txn-acc">${accName}</span>
+        <span>${badge}</span>
         <span>${escapeHtml(stockName)}</span>
         <span class="num-cell">${total.toLocaleString('ko-KR')}<br><span style="font-size:10px;color:var(--muted)">잔액 ${balStr}</span></span>
-        <span>${badge}</span>
+        <span class="num-cell">${Number(r.qty).toLocaleString('ko-KR')}</span>
+        <span class="num-cell">${Number(r.price).toLocaleString('ko-KR')}</span>
         <span style="display:flex;align-items:center;gap:2px">
           <button class="tbl-icon-btn" onclick="deleteTrade('${r.id}')" title="삭제">🗑️</button>
         </span>
@@ -5764,9 +5766,11 @@ function renderTradeList() {
       return `<div class="txn-row">
         <span class="txn-date">${r.date}</span>
         <span class="txn-acc">${accName}</span>
+        <span>${badge}</span>
         <span style="color:var(--muted)">${label}</span>
         <span class="num-cell">${r.amount.toLocaleString('ko-KR')}<br><span style="font-size:10px;color:var(--muted)">잔액 ${balStr}</span></span>
-        <span>${badge}</span>
+        <span class="num-cell" style="color:var(--muted)">-</span>
+        <span class="num-cell" style="color:var(--muted)">-</span>
         <span style="display:flex;align-items:center;gap:2px">${actionBtn}</span>
       </div>`;
     }
@@ -5922,6 +5926,8 @@ function saveTrade() {
   saveHoldings();
   persistCashAccounts();
   closeTradeModal();
+  renderTradeFilterOptions();
+  renderTradeList();
   render();
 }
 
