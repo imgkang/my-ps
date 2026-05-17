@@ -175,6 +175,11 @@
 
   .row-cash td { background: #fafaf9; }
   .row-cash .stock-name { color: #6b7280; }
+  .cash-edit-cell { cursor: pointer; transition: background 0.15s; }
+  .cash-edit-cell:hover { background: #ecfdf5 !important; }
+  .cash-edit-cell:hover .stock-name { color: var(--primary); }
+  .cash-edit-cell:hover .cash-edit-icon { opacity: 1; }
+  .cash-edit-icon { font-size: 11px; opacity: 0.55; margin-left: 2px; }
 
   .btn-accounts {
     background: #eff6ff; color: #2563eb;
@@ -1262,7 +1267,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.340';
+const APP_VERSION = 'NonK v0.341';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1787,8 +1792,8 @@ function nkRender() {
   const cashAccCount = _activeAccs.filter(a => (Number(nkCashAccounts[a.id]) || 0) > 0).length;
   tableHtml += `
     <tr class="row-cash">
-      <td onclick="nkOpenCashModal()" style="cursor:pointer" title="계좌별 현금 입력 (클릭)">
-        <div class="stock-name">💵 현금 (예수금)${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
+      <td onclick="nkOpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)">
+        <div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
         <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
       </td>
       <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>

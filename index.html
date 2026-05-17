@@ -243,6 +243,11 @@ Chart.register({
 
   .row-cash td { background: #fafaf9; }
   .row-cash .stock-name { color: #6b7280; }
+  .cash-edit-cell { cursor: pointer; transition: background 0.15s; }
+  .cash-edit-cell:hover { background: #ecfdf5 !important; }
+  .cash-edit-cell:hover .stock-name { color: var(--primary); }
+  .cash-edit-cell:hover .cash-edit-icon { opacity: 1; }
+  .cash-edit-icon { font-size: 11px; opacity: 0.55; margin-left: 2px; }
 
   .account-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563eb; margin-left: 4px; vertical-align: middle; }
 
@@ -1822,7 +1827,10 @@ Chart.register({
     </div>
     <!-- 현금 조정 폼 -->
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px">🔧 현금 조정</div>
+      <button id="cashAdjFormToggle" onclick="toggleCashAdjForm()" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);padding:0;display:flex;align-items:center;gap:4px;width:100%;text-align:left">
+        <span id="cashAdjFormArrow">▶</span> 🔧 현금 조정
+      </button>
+      <div id="cashAdjFormBody" style="display:none;margin-top:10px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
           계좌
@@ -1854,6 +1862,7 @@ Chart.register({
       </div>
       <div style="display:flex;justify-content:flex-end">
         <button class="btn-primary" style="min-width:80px" onclick="saveCashAdj()">저장</button>
+      </div>
       </div>
     </div>
     <!-- 조정 이력 -->
@@ -2672,7 +2681,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.340';
+const APP_VERSION = 'MyPM v0.341';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3887,11 +3896,16 @@ function openCashAccountModal() {
   _renderCashAccountDisplays();
   _initCashAdjForm();
   renderCashAdjHistory();
-  const listEl = document.getElementById('cashAdjHistoryList');
-  const arrowEl = document.getElementById('cashAdjHistoryArrow');
-  if (listEl) listEl.style.display = 'block';
-  if (arrowEl) arrowEl.textContent = '▼';
   document.getElementById('cashAccountModal').classList.add('open');
+}
+
+function toggleCashAdjForm() {
+  const body = document.getElementById('cashAdjFormBody');
+  const arrow = document.getElementById('cashAdjFormArrow');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▶' : '▼';
 }
 
 function _renderCashAccountDisplays() {
@@ -5461,8 +5475,8 @@ function render() {
     const cashAccountCount = Object.entries(cashAccounts).filter(([id, v]) => _activeAccIdSet.has(id) && (Number(v) || 0) > 0).length;
     html += `
       <tr class="row-cash">
-        <td onclick="openCashAccountModal()" style="cursor:pointer" title="계좌별 현금 입력 (클릭)">
-          <div class="stock-name">💵 현금 (예수금)${cashAccountCount > 0 ? `<span class="account-dot" title="${cashAccountCount}개 계좌에 분산"></span>` : ''}</div>
+        <td onclick="openCashAccountModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)">
+          <div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${cashAccountCount > 0 ? `<span class="account-dot" title="${cashAccountCount}개 계좌에 분산"></span>` : ''}</div>
           <div class="stock-code">CASH${cashAccountCount ? ` · ${cashAccountCount}개 계좌` : ''}</div>
         </td>
         <td>-</td>
@@ -5818,6 +5832,10 @@ function editCashAdj(id) {
   updateCashAdjPreview();
   const btn = document.querySelector('#cashAccountModal .btn-primary[onclick="saveCashAdj()"]');
   if (btn) btn.textContent = '수정';
+  const formBody = document.getElementById('cashAdjFormBody');
+  const formArrow = document.getElementById('cashAdjFormArrow');
+  if (formBody) formBody.style.display = 'block';
+  if (formArrow) formArrow.textContent = '▼';
   const listEl = document.getElementById('cashAdjHistoryList');
   const arrowEl = document.getElementById('cashAdjHistoryArrow');
   if (listEl) listEl.style.display = 'block';
