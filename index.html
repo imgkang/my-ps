@@ -2690,7 +2690,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.347';
+const APP_VERSION = 'MyPM v0.348';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4778,6 +4778,7 @@ async function loadHistoricalValues() {
 // ===== 계좌 기록 (월별 평가금액) =====
 const MONTHLY_RECORDS_KEY = 'pension_monthly_records_v1';
 let monthlyRecords = loadMonthlyRecords();
+const _collapsedYears = new Set();
 
 function loadMonthlyRecords() {
   try {
@@ -4970,6 +4971,15 @@ function deleteMonthlyRecord(id) {
 }
 
 // 특정 기록 시점까지의 활성 계좌 전체 누적 순입금(원금)
+function toggleYearRows(year) {
+  if (_collapsedYears.has(year)) _collapsedYears.delete(year);
+  else _collapsedYears.add(year);
+  const rows = document.getElementById(`year-rows-${year}`);
+  if (rows) rows.style.display = _collapsedYears.has(year) ? 'none' : '';
+  const btn = document.getElementById(`year-toggle-${year}`);
+  if (btn) btn.textContent = _collapsedYears.has(year) ? '▶' : '▼';
+}
+
 function getTotalPrincipalAtRec(rec) {
   if (!depositData || !Array.isArray(depositData.transactions)) return 0;
   const d = rec.day || new Date(rec.year, rec.month, 0).getDate();
@@ -5088,9 +5098,14 @@ function renderRecordsList() {
       return `<span class="amount">${v ? formatMil(v) : '-'}</span>`;
     }).join('');
 
+    const isCollapsed = _collapsedYears.has(year);
     const yearSummaryRow = `
       <div class="records-year-summary" style="grid-template-columns:${cols}">
-        <span>${year}년</span>
+        <span style="display:flex;align-items:center;gap:4px">
+          <button id="year-toggle-${year}" onclick="toggleYearRows(${year})"
+            style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);padding:0 2px;line-height:1;flex-shrink:0">${isCollapsed ? '▶' : '▼'}</button>
+          ${year}년
+        </span>
         <span style="text-align:right">${formatMil(lastPrincipal)}${annualPrincipalDiffStr}</span>
         <span style="text-align:right;color:#1e40af">${formatMil(lastTotal)}</span>
         <span style="text-align:right;color:${annualProfitColor}">${annualProfitStr}</span>
@@ -5101,7 +5116,7 @@ function renderRecordsList() {
     `;
 
     const monthRows = recs.map(rec => makeMonthRow(rec, sorted.indexOf(rec))).join('');
-    return yearSummaryRow + monthRows;
+    return yearSummaryRow + `<div id="year-rows-${year}" style="${isCollapsed ? 'display:none' : ''}">${monthRows}</div>`;
   }).join('');
 }
 
