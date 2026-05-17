@@ -2672,7 +2672,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.339';
+const APP_VERSION = 'MyPM v0.340';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3887,6 +3887,10 @@ function openCashAccountModal() {
   _renderCashAccountDisplays();
   _initCashAdjForm();
   renderCashAdjHistory();
+  const listEl = document.getElementById('cashAdjHistoryList');
+  const arrowEl = document.getElementById('cashAdjHistoryArrow');
+  if (listEl) listEl.style.display = 'block';
+  if (arrowEl) arrowEl.textContent = '▼';
   document.getElementById('cashAccountModal').classList.add('open');
 }
 
@@ -5457,7 +5461,7 @@ function render() {
     const cashAccountCount = Object.entries(cashAccounts).filter(([id, v]) => _activeAccIdSet.has(id) && (Number(v) || 0) > 0).length;
     html += `
       <tr class="row-cash">
-        <td>
+        <td onclick="openCashAccountModal()" style="cursor:pointer" title="계좌별 현금 입력 (클릭)">
           <div class="stock-name">💵 현금 (예수금)${cashAccountCount > 0 ? `<span class="account-dot" title="${cashAccountCount}개 계좌에 분산"></span>` : ''}</div>
           <div class="stock-code">CASH${cashAccountCount ? ` · ${cashAccountCount}개 계좌` : ''}</div>
         </td>
@@ -5473,7 +5477,7 @@ function render() {
         <td>${cashWeight.toFixed(1)}%</td>
         <td>-</td>
         <td></td>
-        <td><button class="tbl-icon-btn" onclick="openCashAccountModal()" title="계좌별 현금 입력">✏️</button></td>
+        <td></td>
       </tr>
     `;
   }

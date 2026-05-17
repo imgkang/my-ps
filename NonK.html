@@ -1262,7 +1262,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.339';
+const APP_VERSION = 'NonK v0.340';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1787,7 +1787,7 @@ function nkRender() {
   const cashAccCount = _activeAccs.filter(a => (Number(nkCashAccounts[a.id]) || 0) > 0).length;
   tableHtml += `
     <tr class="row-cash">
-      <td>
+      <td onclick="nkOpenCashModal()" style="cursor:pointer" title="계좌별 현금 입력 (클릭)">
         <div class="stock-name">💵 현금 (예수금)${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
         <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
       </td>
@@ -1796,7 +1796,7 @@ function nkRender() {
       <td>-</td><td>-</td>
       <td>${cashWeight.toFixed(1)}%</td>
       <td>-</td>
-      <td><button class="btn-accounts" onclick="nkOpenCashModal()" title="계좌별 현금 입력">📂</button></td>
+      <td></td>
     </tr>`;
 
   // 합계 행
