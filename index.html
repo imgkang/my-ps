@@ -294,6 +294,16 @@ Chart.register({
     align-items: center; justify-content: flex-end;
   }
   .account-row .total-display.zero { color: #9ca3af; }
+  .acc-toggle-btn {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; cursor: pointer; font-size: 13px; font-weight: 600;
+    color: var(--text); margin-bottom: 8px; transition: background 0.15s;
+  }
+  .acc-toggle-btn:hover { background: var(--hover, #f3f4f6); }
+  .acc-toggle-btn .acc-toggle-arrow { font-size: 10px; transition: transform 0.2s; }
+  .acc-toggle-btn.open .acc-toggle-arrow { transform: rotate(90deg); }
+  .acc-toggle-body { overflow: hidden; }
   .account-head {
     display: grid;
     grid-template-columns: 1.2fr 1fr 1.2fr 1.4fr;
@@ -1810,13 +1820,20 @@ Chart.register({
       <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off"
         oninput="onStockCodeInput(this.value)" onblur="autoFetchStockName()">
     </div>
-    <div class="account-head">
-      <div>계좌</div>
-      <div>주식수</div>
-      <div>매입단가 (원)</div>
-      <div>매입총액 (원)</div>
+    <button class="acc-toggle-btn" id="accToggleBtn" onclick="toggleAddStockAccInputs()">
+      <span class="acc-toggle-arrow">▶</span>
+      <span>계좌별 입력</span>
+      <span id="accToggleSummary" style="margin-left:auto;font-weight:400;font-size:12px;color:var(--muted)"></span>
+    </button>
+    <div class="acc-toggle-body" id="accToggleBody" style="display:none">
+      <div class="account-head">
+        <div>계좌</div>
+        <div>주식수</div>
+        <div>매입단가 (원)</div>
+        <div>매입총액 (원)</div>
+      </div>
+      <div class="account-grid" id="addStockAccountInputs"></div>
     </div>
-    <div class="account-grid" id="addStockAccountInputs"></div>
     <div class="modal-total">
       <span>합계</span>
       <span>
@@ -2695,7 +2712,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.355';
+const APP_VERSION = 'MyPM v0.356';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4471,13 +4488,26 @@ function openAddStockModal() {
       <input type="number" id="addAvg_${a.id}" min="0" step="1" value="" placeholder="0" inputmode="numeric" oninput="updateAddStockTotal()">
       <div class="total-display zero" id="addTotal_${a.id}">0 원</div>
     </div>`).join('');
+  // 계좌 입력 영역 접힌 상태로 초기화
+  const body = document.getElementById('accToggleBody');
+  const btn = document.getElementById('accToggleBtn');
+  body.style.display = 'none';
+  btn.classList.remove('open');
   updateAddStockTotal();
   document.getElementById('addStockModal').classList.add('open');
   setTimeout(() => document.getElementById('stockName').focus(), 50);
 }
 
+function toggleAddStockAccInputs() {
+  const body = document.getElementById('accToggleBody');
+  const btn = document.getElementById('accToggleBtn');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  btn.classList.toggle('open', !isOpen);
+}
+
 function updateAddStockTotal() {
-  let totalQty = 0, totalCost = 0;
+  let totalQty = 0, totalCost = 0, filledAccs = 0;
   for (const acc of getActiveAccounts()) {
     const qty = Number(document.getElementById('addQty_' + acc.id)?.value) || 0;
     const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
@@ -4487,11 +4517,14 @@ function updateAddStockTotal() {
       el.textContent = rowTotal > 0 ? Math.round(rowTotal).toLocaleString('ko-KR') + ' 원' : '0 원';
       el.classList.toggle('zero', rowTotal === 0);
     }
+    if (qty > 0) filledAccs++;
     totalQty += qty;
     totalCost += rowTotal;
   }
   document.getElementById('addStockTotalQty').textContent = totalQty.toLocaleString('ko-KR') + ' 주';
   document.getElementById('addStockTotalCost').textContent = Math.round(totalCost).toLocaleString('ko-KR') + ' 원';
+  const summary = document.getElementById('accToggleSummary');
+  if (summary) summary.textContent = filledAccs > 0 ? `${filledAccs}개 계좌 입력됨` : '';
 }
 function closeAddStockModal() {
   document.getElementById('addStockModal').classList.remove('open');
