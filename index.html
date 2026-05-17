@@ -2681,7 +2681,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.342';
+const APP_VERSION = 'MyPM v0.343';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4960,14 +4960,26 @@ function deleteMonthlyRecord(id) {
   setTimeout(renderAnnualCharts, 50);
 }
 
+// 특정 기록 시점까지의 활성 계좌 전체 누적 순입금(원금)
+function getTotalPrincipalAtRec(rec) {
+  if (!depositData || !Array.isArray(depositData.transactions)) return 0;
+  const d = rec.day || new Date(rec.year, rec.month, 0).getDate();
+  const endStr = `${rec.year}-${String(rec.month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  return depositData.transactions
+    .filter(t => activeIds.has(t.accId) && typeof t.date === 'string' && t.date <= endStr)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+}
+
 function renderRecordsTableHeader() {
   const header = document.getElementById('recordsTableHeader');
   if (!header) return;
   const activeAccs = getActiveAccounts();
-  const cols = `80px minmax(90px,1fr) minmax(75px,1fr) 60px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} 60px`;
+  const cols = `80px minmax(80px,1fr) minmax(90px,1fr) minmax(75px,1fr) 60px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} 60px`;
   header.style.gridTemplateColumns = cols;
   header.innerHTML = `
     <span>기록일</span>
+    <span style="text-align:right">원금 (백만)</span>
     <span style="text-align:right">총합 (백만원)</span>
     <span style="text-align:right">수익금 (백만)</span>
     <span style="text-align:right">수익률</span>
@@ -4994,13 +5006,16 @@ function renderRecordsList() {
   });
 
   const activeAccs = getActiveAccounts();
-  const cols = `80px minmax(90px,1fr) minmax(75px,1fr) 60px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} 60px`;
+  const cols = `80px minmax(80px,1fr) minmax(90px,1fr) minmax(75px,1fr) 60px ${activeAccs.map(() => 'minmax(80px, 1fr)').join(' ')} 60px`;
 
   list.innerHTML = sorted.map((rec, i) => {
     const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const principal = getTotalPrincipalAtRec(rec);
     const prevRec = sorted[i + 1];
     const prevTotal = prevRec ? activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0) : null;
-    const profit = prevTotal !== null ? total - prevTotal : null;
+    const prevPrincipal = prevRec ? getTotalPrincipalAtRec(prevRec) : null;
+    // 수익금 = 총합 변화분 - 원금 증가분(신규 입금액)
+    const profit = prevTotal !== null ? (total - prevTotal) - (principal - prevPrincipal) : null;
     const profitRate = (prevTotal !== null && prevTotal !== 0) ? (profit / prevTotal * 100) : null;
     const profitColor = profit !== null ? (profit >= 0 ? '#16a34a' : '#dc2626') : '';
     const profitStr = profit !== null ? `${profit >= 0 ? '+' : ''}${formatMil(profit)}` : '-';
@@ -5015,6 +5030,7 @@ function renderRecordsList() {
     return `
       <div class="records-row" style="grid-template-columns:${cols}">
         <span>${dateStr}</span>
+        <span style="text-align:right;color:var(--muted)">${formatMil(principal)}</span>
         <span class="total">${formatMil(total)}</span>
         <span style="text-align:right;font-weight:600;color:${profitColor}">${profitStr}</span>
         <span style="text-align:right;font-weight:600;color:${profitColor}">${rateStr}</span>
