@@ -707,6 +707,8 @@ Chart.register({
   #tradeList .txn-row .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
   .trade-buy-badge  { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#fee2e2;color:#b91c1c; }
   .trade-sell-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#dbeafe;color:#1d4ed8; }
+  .trade-cashin-badge  { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#dcfce7;color:#15803d; }
+  .trade-cashout-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#fef9c3;color:#854d0e; }
 
   /* 매수/매도 인라인 버튼 */
   .tbl-trade-btn {
@@ -1876,13 +1878,6 @@ Chart.register({
       </div>
       </div>
     </div>
-    <!-- 조정 이력 -->
-    <div style="border-top:1px solid var(--border);padding-top:10px">
-      <button id="cashAdjHistoryToggle" onclick="toggleCashAdjHistory()" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--muted);padding:0;display:flex;align-items:center;gap:4px;width:100%;text-align:left">
-        <span id="cashAdjHistoryArrow">▶</span> 조정 이력 <span id="cashAdjHistoryCount" style="color:var(--muted)"></span>
-      </button>
-      <div id="cashAdjHistoryList" style="display:none;margin-top:8px;max-height:180px;overflow-y:auto"></div>
-    </div>
     <!-- 닫기 -->
     <div class="modal-actions" style="margin-top:14px">
       <button class="btn-secondary" onclick="closeCashAccountModal()">닫기</button>
@@ -2692,7 +2687,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.350';
+const APP_VERSION = 'MyPM v0.351';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3906,7 +3901,6 @@ function handleDetailBackdropClick(e) {
 function openCashAccountModal() {
   _renderCashAccountDisplays();
   _initCashAdjForm();
-  renderCashAdjHistory();
   document.getElementById('cashAccountModal').classList.add('open');
 }
 
@@ -3954,43 +3948,6 @@ function closeCashAccountModal() {
 
 function handleCashBackdropClick(e) {
   if (e.target.id === 'cashAccountModal') closeCashAccountModal();
-}
-
-function renderCashAdjHistory() {
-  const records = [...cashAdjRecords].sort((a, b) => b.date.localeCompare(a.date));
-  const countEl = document.getElementById('cashAdjHistoryCount');
-  if (countEl) countEl.textContent = records.length ? `(${records.length}건)` : '';
-  const listEl = document.getElementById('cashAdjHistoryList');
-  if (!listEl) return;
-  if (!records.length) {
-    listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">조정 내역이 없습니다.</div>';
-    return;
-  }
-  listEl.innerHTML = records.map(r => {
-    const sign = r.type === 'add' ? '+' : '−';
-    const color = r.type === 'add' ? 'var(--accent)' : 'var(--plus)';
-    const actions = r.divId
-      ? `<span style="font-size:11px;color:var(--muted);white-space:nowrap" title="배당 탭에서 수정 가능">배당 자동</span>`
-      : `<span style="white-space:nowrap">
-          <button class="tbl-icon-btn" onclick="editCashAdj('${r.id}')" title="편집">✏️</button>
-          <button class="tbl-icon-btn" onclick="deleteCashAdj('${r.id}')" title="삭제">🗑️</button>
-        </span>`;
-    return `<div style="display:grid;grid-template-columns:76px 1fr auto auto;gap:4px 6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
-      <span style="color:var(--muted)">${r.date}</span>
-      <span>${getAccName(r.accId)}${r.note ? ' · ' + r.note : ''}</span>
-      <span style="font-weight:600;color:${color};white-space:nowrap">${sign}${r.amount.toLocaleString('ko-KR')} 원</span>
-      ${actions}
-    </div>`;
-  }).join('');
-}
-
-function toggleCashAdjHistory() {
-  const listEl = document.getElementById('cashAdjHistoryList');
-  const arrowEl = document.getElementById('cashAdjHistoryArrow');
-  if (!listEl) return;
-  const open = listEl.style.display !== 'none';
-  listEl.style.display = open ? 'none' : 'block';
-  if (arrowEl) arrowEl.textContent = open ? '▶' : '▼';
 }
 
 // ===== 파일 저장 / 불러오기 =====
@@ -5674,6 +5631,7 @@ function renderTradeFilterOptions() {
   accSel.value = curAcc;
   const codes = [...new Set(tradeRecords.map(r => r.code))].sort();
   codeSel.innerHTML = '<option value="">전체 종목</option>' +
+    '<option value="__cashadj__">현금 조정</option>' +
     codes.map(c => {
       const h = holdings.find(x => x.code === c);
       return `<option value="${c}">${h ? escapeHtml(h.name) : c} (${c})</option>`;
@@ -5684,43 +5642,80 @@ function renderTradeFilterOptions() {
 function renderTradeList() {
   const list = document.getElementById('tradeList');
   if (!list) return;
-  const accFilter = (document.getElementById('tradeFilterAcc') || {}).value || '';
+  const accFilter  = (document.getElementById('tradeFilterAcc')  || {}).value || '';
   const codeFilter = (document.getElementById('tradeFilterCode') || {}).value || '';
-  const activeIds = new Set(getActiveAccounts().map(a => a.id));
-  let rows = tradeRecords.slice()
-    .filter(r => activeIds.has(r.accId))
-    .filter(r => !accFilter || r.accId === accFilter)
-    .filter(r => !codeFilter || r.code === codeFilter)
+  const activeIds  = new Set(getActiveAccounts().map(a => a.id));
+
+  const tradeRows = (codeFilter === '__cashadj__') ? [] :
+    tradeRecords.slice()
+      .filter(r => activeIds.has(r.accId))
+      .filter(r => !accFilter  || r.accId === accFilter)
+      .filter(r => !codeFilter || r.code  === codeFilter)
+      .map(r => ({ ...r, _kind: 'trade' }));
+
+  const adjRows = (codeFilter && codeFilter !== '__cashadj__') ? [] :
+    (cashAdjRecords || []).slice()
+      .filter(r => activeIds.has(r.accId))
+      .filter(r => !accFilter || r.accId === accFilter)
+      .map(r => ({ ...r, _kind: 'cashadj' }));
+
+  const rows = [...tradeRows, ...adjRows]
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   const sumEl = document.getElementById('tradeListSummary');
-  if (sumEl) sumEl.textContent = `총 ${rows.length}건`;
+  if (sumEl) {
+    const parts = [];
+    if (tradeRows.length) parts.push(`매매 ${tradeRows.length}건`);
+    if (adjRows.length)   parts.push(`현금조정 ${adjRows.length}건`);
+    sumEl.textContent = parts.length ? parts.join(' / ') : '0건';
+  }
 
   if (!rows.length) {
-    list.innerHTML = '<div class="deposit-empty">거래 내역이 없습니다. 종목 행의 매수/매도 버튼을 눌러 기록하세요.</div>';
+    list.innerHTML = '<div class="deposit-empty">내역이 없습니다.</div>';
     return;
   }
 
   list.innerHTML = rows.map(r => {
-    const accName = getAccName(r.accId) || r.accId;
-    const h = holdings.find(x => x.code === r.code);
-    const stockName = r.name || (h ? h.name : r.code);
-    const badge = r.type === 'buy'
-      ? '<span class="trade-buy-badge">매수</span>'
-      : '<span class="trade-sell-badge">매도</span>';
-    const total = (Number(r.qty) * Number(r.price));
-    return `<div class="txn-row">
-      <span class="txn-date">${r.date}</span>
-      <span class="txn-acc">${accName}</span>
-      <span>${escapeHtml(stockName)}<br><span style="font-size:10px;color:var(--muted)">${r.code}</span></span>
-      <span class="num-cell">${Number(r.qty).toLocaleString('ko-KR')}</span>
-      <span class="num-cell">${Number(r.price).toLocaleString('ko-KR')}</span>
-      <span class="num-cell">${total.toLocaleString('ko-KR')}</span>
-      <span>${badge}</span>
-      <span style="display:flex;align-items:center;gap:2px">
-        <button class="tbl-icon-btn" onclick="deleteTrade('${r.id}')" title="삭제">🗑️</button>
-      </span>
-    </div>`;
+    if (r._kind === 'trade') {
+      const accName   = getAccName(r.accId) || r.accId;
+      const h         = holdings.find(x => x.code === r.code);
+      const stockName = r.name || (h ? h.name : r.code);
+      const badge     = r.type === 'buy'
+        ? '<span class="trade-buy-badge">매수</span>'
+        : '<span class="trade-sell-badge">매도</span>';
+      const total = Number(r.qty) * Number(r.price);
+      return `<div class="txn-row">
+        <span class="txn-date">${r.date}</span>
+        <span class="txn-acc">${accName}</span>
+        <span>${escapeHtml(stockName)}<br><span style="font-size:10px;color:var(--muted)">${r.code}</span></span>
+        <span class="num-cell">${Number(r.qty).toLocaleString('ko-KR')}</span>
+        <span class="num-cell">${Number(r.price).toLocaleString('ko-KR')}</span>
+        <span class="num-cell">${total.toLocaleString('ko-KR')}</span>
+        <span>${badge}</span>
+        <span style="display:flex;align-items:center;gap:2px">
+          <button class="tbl-icon-btn" onclick="deleteTrade('${r.id}')" title="삭제">🗑️</button>
+        </span>
+      </div>`;
+    } else {
+      const accName = getAccName(r.accId) || r.accId;
+      const label   = r.note ? escapeHtml(r.note) : '현금조정';
+      const badge   = r.type === 'add'
+        ? '<span class="trade-cashin-badge">입금</span>'
+        : '<span class="trade-cashout-badge">출금</span>';
+      const actionBtn = r.divId
+        ? `<span style="font-size:11px;color:var(--muted)" title="배당 탭에서 수정">배당 자동</span>`
+        : `<button class="tbl-icon-btn" onclick="deleteCashAdj('${r.id}')" title="삭제">🗑️</button>`;
+      return `<div class="txn-row">
+        <span class="txn-date">${r.date}</span>
+        <span class="txn-acc">${accName}</span>
+        <span style="color:var(--muted)">${label}</span>
+        <span class="num-cell" style="color:var(--muted)">-</span>
+        <span class="num-cell" style="color:var(--muted)">-</span>
+        <span class="num-cell">${r.amount.toLocaleString('ko-KR')}</span>
+        <span>${badge}</span>
+        <span style="display:flex;align-items:center;gap:2px">${actionBtn}</span>
+      </div>`;
+    }
   }).join('');
 }
 
@@ -5940,10 +5935,6 @@ function editCashAdj(id) {
   const formArrow = document.getElementById('cashAdjFormArrow');
   if (formBody) formBody.style.display = 'block';
   if (formArrow) formArrow.textContent = '▼';
-  const listEl = document.getElementById('cashAdjHistoryList');
-  const arrowEl = document.getElementById('cashAdjHistoryArrow');
-  if (listEl) listEl.style.display = 'block';
-  if (arrowEl) arrowEl.textContent = '▼';
 }
 
 function deleteCashAdj(id) {
@@ -5959,7 +5950,7 @@ function deleteCashAdj(id) {
   render();
   _renderCashAccountDisplays();
   updateCashAdjPreview();
-  renderCashAdjHistory();
+  renderTradeList();
 }
 
 function updateCashAdjPreview() {
@@ -6009,11 +6000,7 @@ function saveCashAdj() {
   document.getElementById('cashAdjAmount').value = '';
   document.getElementById('cashAdjNote').value = '';
   updateCashAdjPreview();
-  renderCashAdjHistory();
-  const listEl = document.getElementById('cashAdjHistoryList');
-  const arrowEl = document.getElementById('cashAdjHistoryArrow');
-  if (listEl) { listEl.style.display = 'block'; }
-  if (arrowEl) arrowEl.textContent = '▼';
+  renderTradeList();
 }
 
 // ===== 초기 렌더 및 실행 제어 =====
@@ -7855,7 +7842,7 @@ function addDividendRecord() {
   saveDividendRecords();
   renderDividendLists();
   renderDivCharts();
-  if (typeof renderCashAdjHistory === 'function') renderCashAdjHistory();
+  renderTradeList();
   toggleDivForm(false);
 }
 
@@ -7876,7 +7863,7 @@ function deleteDividendRecord(id) {
   if (negAccs.length) alert(`⚠️ 배당금 차감 후 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
   renderDividendLists();
   renderDivCharts();
-  if (typeof renderCashAdjHistory === 'function') renderCashAdjHistory();
+  renderTradeList();
 }
 
 function editDividendRecord(id) {
