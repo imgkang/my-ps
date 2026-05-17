@@ -2745,7 +2745,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.362';
+const APP_VERSION = 'MyPM v0.363';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6613,14 +6613,13 @@ function renderPrincipalTable() {
   const myRetireYr   = wdPlan?.periods?.[0]?.startYear || 9999;
   const wifeRetireYr = myRetireYr;
   const bothRetireYr = myRetireYr;
-  // 은퇴연도까지만 표시 (미설정이면 전체)
-  const years = bothRetireYr < 9999 ? allYears.filter(yr => yr < bothRetireYr) : allYears;
+  const years = allYears;
 
   // header — retire flag 표시
   const retireFlags = (yr) => {
     let f = '';
     if (yr === currentYear)    f += '<span class="retire-flag">📅</span>';
-    if (yr === myRetireYr - 1) f += '<span class="retire-flag">🏁</span>';
+    if (yr === myRetireYr) f += '<span class="retire-flag">🏁</span>';
     return f;
   };
   let h = '<thead><tr><th>계좌</th>';
@@ -6817,8 +6816,7 @@ function renderEvalTable() {
   const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
   const _evalAllIds     = [..._evalMyIds, ..._evalWifeIds];
   const _eBothRetireYr  = _evalWifeIds.length ? Math.max(_eMyRetireYr, _eWifeRetireYr) : _eMyRetireYr;
-  // 더 나중 은퇴연도 전년도까지만 표시
-  const years = _eBothRetireYr < 9999 ? allYears.filter(yr => yr < _eBothRetireYr) : allYears;
+  const years = allYears;
 
   const myVals   = computeGroupVals(_evalMyIds);
   const wifeVals = _evalWifeIds.length ? computeGroupVals(_evalWifeIds) : {};
@@ -6839,7 +6837,7 @@ function renderEvalTable() {
     const cls = yr > currentYear ? 'yr-future' : yr === currentYear ? 'yr-current' : '';
     let flags = '';
     if (yr === currentYear)      flags += '<span class="retire-flag">📅</span>';
-    if (yr === _eMyRetireYr - 1) flags += '<span class="retire-flag">🏁</span>';
+    if (yr === _eMyRetireYr) flags += '<span class="retire-flag">🏁</span>';
     h += `<th class="${cls}">${yr}${yr > lastRecYear && yr !== currentYear ? '(예상)' : ''}${flags}</th>`;
   }
   h += '</tr></thead>';
