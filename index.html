@@ -2681,7 +2681,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.344';
+const APP_VERSION = 'MyPM v0.345';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -5022,7 +5022,7 @@ function renderRecordsList() {
     const profitStr = profit !== null ? `${profit >= 0 ? '+' : ''}${formatMil(profit)}` : '-';
     const rateStr = profitRate !== null ? `${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(1)}%` : '-';
     const principalDiffStr = (prevPrincipal !== null && Math.abs(principalDiff) >= 100)
-      ? ` <span style="font-size:11px;color:${principalDiff > 0 ? '#dc2626' : '#2563eb'}">${principalDiff > 0 ? '+' : ''}${formatMil(principalDiff)}</span>`
+      ? ` <span style="font-size:11px;color:${principalDiff > 0 ? '#dc2626' : '#2563eb'}">(${principalDiff > 0 ? '+' : ''}${formatMil(principalDiff)})</span>`
       : '';
     const accCells = activeAccs.map(a => {
       const v = Number(rec.accounts[a.id]) || 0;
