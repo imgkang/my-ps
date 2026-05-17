@@ -737,6 +737,31 @@ Chart.register({
   .tbl-trade-btn.buy  { background:#fee2e2;color:#b91c1c;border-color:#fca5a5; }
   .tbl-trade-btn.sell { background:#dbeafe;color:#1d4ed8;border-color:#93c5fd; }
   .tbl-trade-btn:hover { opacity: 0.75; }
+  /* 매수/매도 토글 버튼 */
+  .trade-type-toggle { display:flex; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+  .trade-type-btn {
+    flex:1; padding:8px 10px; font-size:13px; font-weight:600; border:none; cursor:pointer;
+    background:#f3f4f6; color:var(--muted); transition:background 0.15s,color 0.15s;
+  }
+  .trade-type-btn.buy.active  { background:#fee2e2; color:#b91c1c; }
+  .trade-type-btn.sell.active { background:#dbeafe; color:#1d4ed8; }
+  .trade-type-btn:not(.active):hover { background:#e5e7eb; }
+  /* ? 도움말 아이콘 */
+  .acc-help-icon {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:18px; border-radius:50%; border:1px solid var(--border);
+    font-size:11px; font-weight:700; color:var(--muted); cursor:pointer;
+    margin-left:6px; flex-shrink:0; line-height:1;
+  }
+  .acc-help-icon:hover { background:var(--border); }
+  .acc-help-tooltip {
+    font-size:12px; color:var(--text); line-height:1.6;
+    background:#fffbeb; border:1px solid #fde68a; border-radius:8px;
+    padding:10px 12px; margin-bottom:8px;
+  }
+  /* 종목명 컬럼 클릭 가능 */
+  .stock-name-cell { cursor:pointer; }
+  .stock-name-cell:hover .stock-name { color:var(--primary); }
 
   /* 입출금 편집 서브 모달 */
   .txn-form {
@@ -1820,12 +1845,19 @@ Chart.register({
       <input type="text" id="stockCode" placeholder="종목코드 (예: 005930)" maxlength="6" autocomplete="off"
         oninput="onStockCodeInput(this.value)" onblur="autoFetchStockName()">
     </div>
-    <button class="acc-toggle-btn" id="accToggleBtn" onclick="toggleAddStockAccInputs()">
-      <span class="acc-toggle-arrow">▶</span>
-      <span>계좌별 입력</span>
-      <span id="accToggleSummary" style="margin-left:auto;font-weight:400;font-size:12px;color:var(--muted)"></span>
-    </button>
-    <div class="acc-toggle-body" id="accToggleBody" style="display:none">
+    <div style="display:flex;align-items:center">
+      <button class="acc-toggle-btn" id="accToggleBtn" onclick="toggleAddStockAccInputs()" style="flex:1;margin-bottom:0">
+        <span class="acc-toggle-arrow">▶</span>
+        <span>계좌별 입력</span>
+        <span id="accToggleSummary" style="margin-left:auto;font-weight:400;font-size:12px;color:var(--muted)"></span>
+      </button>
+      <span class="acc-help-icon" onclick="toggleAccHelp(event)" title="도움말">?</span>
+    </div>
+    <div class="acc-help-tooltip" id="accHelpTooltip" style="display:none;margin-top:6px">
+      계좌의 예수금을 이용한 거래(매수/매도)는 종목 등록 후 <strong>거래내역</strong>에서 입력 가능합니다.<br>
+      여기서는 거래기록 없이 <strong>초기 보유수량만 저장</strong>할 때 사용하세요.
+    </div>
+    <div class="acc-toggle-body" id="accToggleBody" style="display:none;margin-top:6px">
       <div class="account-head">
         <div>계좌</div>
         <div>주식수</div>
@@ -1833,13 +1865,13 @@ Chart.register({
         <div>매입총액 (원)</div>
       </div>
       <div class="account-grid" id="addStockAccountInputs"></div>
-    </div>
-    <div class="modal-total">
-      <span>합계</span>
-      <span>
-        <span id="addStockTotalQty" style="margin-right:16px;color:var(--text);font-weight:600;">0 주</span>
-        <strong id="addStockTotalCost">0 원</strong>
-      </span>
+      <div class="modal-total">
+        <span>합계</span>
+        <span>
+          <span id="addStockTotalQty" style="margin-right:16px;color:var(--text);font-weight:600;">0 주</span>
+          <strong id="addStockTotalCost">0 원</strong>
+        </span>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeAddStockModal()">취소</button>
@@ -2442,12 +2474,13 @@ Chart.register({
       <button class="close-btn" onclick="closeTradeModal()">×</button>
     </div>
     <div class="txn-form">
+      <input type="hidden" id="tradeType" value="buy">
       <label>
         <span>구분</span>
-        <select id="tradeType" onchange="onTradeTypeChange()">
-          <option value="buy">매수</option>
-          <option value="sell">매도</option>
-        </select>
+        <div class="trade-type-toggle">
+          <button class="trade-type-btn buy active" id="tradeBuyBtn" onclick="setTradeType('buy')">매수</button>
+          <button class="trade-type-btn sell" id="tradeSellBtn" onclick="setTradeType('sell')">매도</button>
+        </div>
       </label>
       <label>
         <span>계좌</span>
@@ -2712,7 +2745,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.356';
+const APP_VERSION = 'MyPM v0.357';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4506,6 +4539,12 @@ function toggleAddStockAccInputs() {
   btn.classList.toggle('open', !isOpen);
 }
 
+function toggleAccHelp(e) {
+  e.stopPropagation();
+  const tip = document.getElementById('accHelpTooltip');
+  tip.style.display = tip.style.display === 'none' ? '' : 'none';
+}
+
 function updateAddStockTotal() {
   let totalQty = 0, totalCost = 0, filledAccs = 0;
   for (const acc of getActiveAccounts()) {
@@ -4551,8 +4590,6 @@ async function addStock() {
     const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
     if (qty > 0) { accounts[acc.id] = { qty, avgPrice: avg }; totalQty += qty; }
   }
-  if (totalQty <= 0) { alert('최소 한 계좌에 수량을 입력해 주세요'); return; }
-
   // 이름이 비어있으면 조회로 자동 입력
   let stockName = name;
   let price = 0, change = 0, changeRate = 0, suffix = null;
@@ -5562,7 +5599,7 @@ function render() {
 
     html += `
       <tr>
-        <td>
+        <td class="stock-name-cell" onclick="openTradeModal('${it.code}','buy')" title="클릭하여 매수/매도">
           <div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? `<span class="account-dot" title="${it.accountCount}개 계좌에 분산"></span>` : ''}</div>
           <div class="stock-code">${it.code}</div>
         </td>
@@ -5813,9 +5850,6 @@ function renderTradeList() {
 // ===== 매수/매도 모달 =====
 function openTradeModal(code, type) {
   editingTradeId = null;
-  const accs = getActiveAccounts();
-  const accSel = document.getElementById('tradeAccount');
-  accSel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
 
   const codeSel = document.getElementById('tradeCode');
   codeSel.innerHTML = holdings.map(h =>
@@ -5825,7 +5859,11 @@ function openTradeModal(code, type) {
     codeSel.innerHTML = '<option value="">보유 종목 없음</option>';
   }
 
-  document.getElementById('tradeType').value = type || 'buy';
+  const t = type || 'buy';
+  document.getElementById('tradeType').value = t;
+  document.getElementById('tradeBuyBtn').classList.toggle('active', t === 'buy');
+  document.getElementById('tradeSellBtn').classList.toggle('active', t === 'sell');
+
   const now = new Date();
   const pad = x => String(x).padStart(2, '0');
   document.getElementById('tradeDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
@@ -5834,7 +5872,6 @@ function openTradeModal(code, type) {
   document.getElementById('tradeWarnBox').style.display = 'none';
 
   onTradeTypeChange();
-  updateTradeTotal();
   document.getElementById('tradeModal').classList.add('open');
 }
 
@@ -5846,16 +5883,36 @@ function handleTradeModalBackdropClick(e) {
   if (e.target.id === 'tradeModal') closeTradeModal();
 }
 
+function setTradeType(type) {
+  document.getElementById('tradeType').value = type;
+  document.getElementById('tradeBuyBtn').classList.toggle('active', type === 'buy');
+  document.getElementById('tradeSellBtn').classList.toggle('active', type === 'sell');
+  onTradeTypeChange();
+}
+
 function onTradeTypeChange() {
   const type = document.getElementById('tradeType').value;
   document.getElementById('tradeModalTitle').textContent = type === 'buy' ? '매수 입력' : '매도 입력';
   document.getElementById('tradeCashLabel').textContent = type === 'buy' ? '거래 후 현금 (감소)' : '거래 후 현금 (증가)';
-  document.getElementById('tradeQtyAfterRow').style.display = type === 'sell' ? '' : '';
+
+  const accSel = document.getElementById('tradeAccount');
+  const prevVal = accSel.value;
+  if (type === 'sell') {
+    const code = document.getElementById('tradeCode').value;
+    const h = holdings.find(x => x.code === code);
+    const accs = getActiveAccounts().filter(a => h && h.accounts && (Number(h.accounts[a.id]?.qty) || 0) > 0);
+    accSel.innerHTML = accs.length
+      ? accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('')
+      : `<option value="">보유 계좌 없음</option>`;
+  } else {
+    accSel.innerHTML = getActiveAccounts().map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  }
+  if (prevVal) accSel.value = prevVal;
   updateTradeTotal();
 }
 
 function onTradeAccountChange() { updateTradeTotal(); }
-function onTradeCodeChange() { updateTradeTotal(); }
+function onTradeCodeChange() { onTradeTypeChange(); }
 
 function updateTradeTotal() {
   const type = document.getElementById('tradeType').value;
