@@ -2206,10 +2206,10 @@ Chart.register({
 
     <!-- 은퇴연도 / 수익률 입력 바 -->
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px;font-size:12px;color:var(--muted)">
-      <label style="display:flex;align-items:center;gap:3px"><span style="color:#1d4ed8;font-weight:600">👤 본인 은퇴</span>
-        <input type="number" id="ayr_myRetire" min="2020" max="2080" step="1"
+      <label style="display:flex;align-items:center;gap:3px"><span style="color:#1d4ed8;font-weight:600">📅 적립예상</span>
+        <input type="number" id="ayr_simEndYear" min="2025" max="2100" step="1"
                style="width:62px;padding:2px 5px;border:1px solid #bfdbfe;border-radius:4px;font-size:12px;background:#eff6ff;margin:0 2px"
-               oninput="saveAnnualRetireYears()">년
+               oninput="saveAnnualSimEndYear()">년까지
       </label>
       <label style="display:flex;align-items:center;gap:3px">예상수익률
         <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
@@ -2745,7 +2745,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.361';
+const APP_VERSION = 'MyPM v0.362';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6235,7 +6235,7 @@ function loadAnnualPlan() {
       startDay: Number(mp.startDay) || 1,
       endDay:   Number(mp.endDay)   || 1,
     }));
-    const plan = { format: 3, projRate: Number(p.projRate) || 7, monthlyPlans };
+    const plan = { format: 3, projRate: Number(p.projRate) || 7, monthlyPlans, simEndYear: Number(p.simEndYear) || 0 };
     localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(plan));
     return plan;
   } catch (_) { return { format: 3, projRate: 7, monthlyPlans: [] }; }
@@ -6281,9 +6281,9 @@ function openAnnualPlanModal() {
   if (mplanEl) mplanEl.style.display = 'none';
   const mplanBtn = document.getElementById('mplanToggleBtn');
   if (mplanBtn) { mplanBtn.classList.remove('open'); const ch = mplanBtn.querySelector('.apt-chevron'); if (ch) ch.style.transform = ''; }
-  // 은퇴연도 입력 동기화
-  const ayrMy = document.getElementById('ayr_myRetire');
-  if (ayrMy) ayrMy.value = wdPlan?.startYear || '';
+  // 적립예상 시뮬레이션 종료연도 동기화
+  const simEndEl = document.getElementById('ayr_simEndYear');
+  if (simEndEl) simEndEl.value = annualPlan?.simEndYear || (new Date().getFullYear() + 10);
   renderMonthlyPlanList();
   updateMplanCountBadge();
   renderPrincipalTable();
@@ -6323,17 +6323,11 @@ function scrollAnnualToCurrentYear() {
   }
 }
 
-function saveAnnualRetireYears() {
-  const ni = id => parseInt(document.getElementById(id)?.value) || 0;
-  const sy = ni('ayr_myRetire');
-  if (sy >= 2020) wdPlan.startYear = sy;
-  saveWdPlan();
-  loadQuickWdValues();
-  if (document.getElementById('wdSettingsModal')?.classList.contains('open')) loadWdFormValues();
-  if (document.getElementById('panel-withdrawal')?.classList.contains('active')) {
-    _wdSelectedScenIdx = null;
-    renderWithdrawalPlan();
-  }
+function saveAnnualSimEndYear() {
+  const yr = parseInt(document.getElementById('ayr_simEndYear')?.value) || 0;
+  if (yr >= 2025) annualPlan.simEndYear = yr;
+  else annualPlan.simEndYear = 0;
+  localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderPrincipalTable();
   renderEvalTable();
   renderAnnualCharts();
@@ -6341,7 +6335,7 @@ function saveAnnualRetireYears() {
 
 function saveAnnualPlan() {
   const projRate = Number(document.getElementById('projRate').value) || 7;
-  annualPlan = { format: 2, projRate, monthlyPlans: annualPlan.monthlyPlans || [] };
+  annualPlan = { format: 2, projRate, monthlyPlans: annualPlan.monthlyPlans || [], simEndYear: annualPlan.simEndYear || 0 };
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
   renderEvalTable();
   renderAnnualCharts();
@@ -6364,7 +6358,10 @@ function getPlanYearRange() {
     const mpEnd = Math.max(...annualPlan.monthlyPlans.map(p => p.endYear || currentYear));
     endYear = Math.max(endYear, mpEnd);
   }
-  if (wdPlan?.startYear > 2020) endYear = Math.max(endYear, wdPlan.startYear);
+  const retireYr = wdPlan?.periods?.[0]?.startYear;
+  if (retireYr > 2020) endYear = Math.max(endYear, retireYr);
+  const simEnd = annualPlan?.simEndYear;
+  if (simEnd > 2020) endYear = Math.max(endYear, simEnd);
   return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
 }
 
@@ -6613,7 +6610,7 @@ function renderPrincipalTable() {
   const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
   const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
 
-  const myRetireYr   = (wdPlan && wdPlan.startYear) ? wdPlan.startYear : 9999;
+  const myRetireYr   = wdPlan?.periods?.[0]?.startYear || 9999;
   const wifeRetireYr = myRetireYr;
   const bothRetireYr = myRetireYr;
   // 은퇴연도까지만 표시 (미설정이면 전체)
@@ -6749,7 +6746,7 @@ function renderEvalTable() {
   const lastRecYear = recYears[0] || (currentYear - 1);
 
   // 은퇴연도 (나/아내 통합)
-  const _eMyRetireYr   = (wdPlan && wdPlan.startYear) ? wdPlan.startYear : 9999;
+  const _eMyRetireYr   = wdPlan?.periods?.[0]?.startYear || 9999;
   const _eWifeRetireYr = _eMyRetireYr;
 
   // 최신 record 날짜 (timestamp)
@@ -7340,7 +7337,7 @@ function renderAnnualCharts() {
       if (!chartArea || !scales.x) return;
       const markers = [
         { yr: currentYear,       color: '#6366f1', lbl: '📅' },
-        { yr: wdPlan?.startYear, color: '#f59e0b', lbl: '🏁' }
+        { yr: wdPlan?.periods?.[0]?.startYear, color: '#f59e0b', lbl: '🏁' }
       ];
       c.save();
       for (const m of markers) {
