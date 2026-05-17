@@ -2681,7 +2681,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.343';
+const APP_VERSION = 'MyPM v0.344';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -5015,11 +5015,15 @@ function renderRecordsList() {
     const prevTotal = prevRec ? activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0) : null;
     const prevPrincipal = prevRec ? getTotalPrincipalAtRec(prevRec) : null;
     // 수익금 = 총합 변화분 - 원금 증가분(신규 입금액)
-    const profit = prevTotal !== null ? (total - prevTotal) - (principal - prevPrincipal) : null;
+    const principalDiff = prevPrincipal !== null ? principal - prevPrincipal : 0;
+    const profit = prevTotal !== null ? (total - prevTotal) - principalDiff : null;
     const profitRate = (prevTotal !== null && prevTotal !== 0) ? (profit / prevTotal * 100) : null;
     const profitColor = profit !== null ? (profit >= 0 ? '#16a34a' : '#dc2626') : '';
     const profitStr = profit !== null ? `${profit >= 0 ? '+' : ''}${formatMil(profit)}` : '-';
     const rateStr = profitRate !== null ? `${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(1)}%` : '-';
+    const principalDiffStr = (prevPrincipal !== null && Math.abs(principalDiff) >= 100)
+      ? ` <span style="font-size:11px;color:${principalDiff > 0 ? '#dc2626' : '#2563eb'}">${principalDiff > 0 ? '+' : ''}${formatMil(principalDiff)}</span>`
+      : '';
     const accCells = activeAccs.map(a => {
       const v = Number(rec.accounts[a.id]) || 0;
       return `<span class="amount">${v ? formatMil(v) : '-'}</span>`;
@@ -5030,7 +5034,7 @@ function renderRecordsList() {
     return `
       <div class="records-row" style="grid-template-columns:${cols}">
         <span>${dateStr}</span>
-        <span style="text-align:right;color:var(--muted)">${formatMil(principal)}</span>
+        <span style="text-align:right;color:var(--muted)">${formatMil(principal)}${principalDiffStr}</span>
         <span class="total">${formatMil(total)}</span>
         <span style="text-align:right;font-weight:600;color:${profitColor}">${profitStr}</span>
         <span style="text-align:right;font-weight:600;color:${profitColor}">${rateStr}</span>
