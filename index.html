@@ -2741,6 +2741,63 @@ Chart.register({
           </div>
         </div>
       </div>
+
+      <!-- 엑셀 표 일괄 가져오기 (기타항목 일괄 등록) -->
+      <div class="records-input-card" style="margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleDivImportForm()">
+          <div style="font-weight:600">📥 엑셀 표 일괄 가져오기 <small style="color:var(--muted);font-weight:400">(과거 배당 데이터를 한 번에 등록)</small></div>
+          <button type="button" id="divImportToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
+        </div>
+        <div id="divImportBody" style="display:none;margin-top:10px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+            엑셀에서 <b>연도 / 월 / 계좌별 금액</b> 영역을 선택해 복사한 뒤 아래 칸에 붙여넣으세요. 결산·합계 행은 자동 제외, 모두 0인 행도 스킵됩니다. 등록되는 모든 행은 <b>현금(예수금)에 반영하지 않음</b>으로 저장됩니다.
+          </div>
+          <textarea id="divImportText" rows="8" placeholder="예시 (탭 또는 쉼표 구분):
+2023	1	0	0	10	0
+2023	2	373	0	7	20
+2023	3	217	148	9	0
+..." style="width:100%;box-sizing:border-box;padding:8px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px" oninput="onDivImportTextChange()"></textarea>
+
+          <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:8px;font-size:13px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <span>단위:</span>
+              <select id="divImportUnit" onchange="renderDivImportPreview()" style="padding:4px 6px">
+                <option value="1000" selected>천원 (× 1,000)</option>
+                <option value="1">원</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="divImportFFill" checked onchange="renderDivImportPreview()">
+              <span>빈 연도 셀은 윗줄 연도 재사용</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="divImportHeader" checked onchange="renderDivImportPreview()">
+              <span>첫 행은 헤더로 인식 (자동 스킵)</span>
+            </label>
+          </div>
+
+          <div style="margin-top:8px">
+            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">메모 prefix <small>(저장될 메모: "{prefix} YYYY.MM")</small></label>
+            <input type="text" id="divImportMemoPrefix" value="엑셀 일괄" style="width:100%;padding:8px;box-sizing:border-box">
+          </div>
+
+          <div style="margin-top:10px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">컬럼 매핑 <small>(붙여넣으면 자동 추정됩니다)</small></div>
+            <div id="divImportMapping" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px"></div>
+          </div>
+
+          <div id="divImportPreviewWrap" style="margin-top:10px;display:none">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">미리보기</div>
+            <div id="divImportPreview" style="max-height:240px;overflow:auto;border:1px solid var(--border,#ddd);border-radius:4px;padding:6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5"></div>
+            <div id="divImportSummary" style="margin-top:6px;font-size:12px;color:var(--muted)"></div>
+          </div>
+
+          <div class="records-input-actions" style="margin-top:8px">
+            <button class="btn-secondary" onclick="clearDivImportForm()">입력 초기화</button>
+            <button id="divImportApplyBtn" class="btn-primary" onclick="applyDivImport()" disabled>가져오기 시작</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="div-sections">
@@ -2775,7 +2832,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.365';
+const APP_VERSION = 'MyPM v0.366';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7968,6 +8025,235 @@ function addMiscDividendRecord() {
   renderDividendLists();
   renderDivCharts();
   renderTradeList();
+}
+
+
+// ===== 엑셀 표 일괄 가져오기 =====
+let _divImportColCount = 0;
+let _divImportLastParsed = null;
+
+function toggleDivImportForm(forceOpen) {
+  const body = document.getElementById('divImportBody');
+  const btn = document.getElementById('divImportToggleBtn');
+  const willOpen = (typeof forceOpen === 'boolean') ? forceOpen : (body.style.display === 'none');
+  body.style.display = willOpen ? 'block' : 'none';
+  btn.textContent = willOpen ? '접기 ▴' : '펼치기 ▾';
+}
+
+function splitImportRow(line) {
+  // 탭 우선, 없으면 쉼표
+  if (line.indexOf('\t') >= 0) return line.split('\t');
+  return line.split(',');
+}
+
+function parseImportCellNum(cell) {
+  if (cell == null) return null;
+  const s = String(cell).replace(/[,\s]/g, '').replace(/^"|"$/g, '');
+  if (s === '' || s === '-') return null;
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+  return Number(s);
+}
+
+function onDivImportTextChange() {
+  const text = document.getElementById('divImportText').value;
+  const lines = text.split(/\r?\n/).map(l => l.replace(/\s+$/, ''));
+  let maxCols = 0;
+  for (const l of lines) {
+    if (!l.trim()) continue;
+    const cols = splitImportRow(l).length;
+    if (cols > maxCols) maxCols = cols;
+  }
+  _divImportColCount = maxCols;
+  renderDivImportMapping();
+  renderDivImportPreview();
+}
+
+function renderDivImportMapping() {
+  const wrap = document.getElementById('divImportMapping');
+  if (!wrap) return;
+  if (_divImportColCount === 0) { wrap.innerHTML = '<div style="font-size:12px;color:var(--muted)">표를 붙여넣으면 컬럼 매핑이 나타납니다.</div>'; return; }
+  const accs = getActiveAccounts();
+
+  // 자동 추정: 첫 두 컬럼은 연/월, 나머지는 활성 계좌 순서대로
+  const prevSel = {};
+  wrap.querySelectorAll('select.div-imp-col').forEach(s => { prevSel[s.dataset.col] = s.value; });
+
+  let html = '';
+  for (let i = 0; i < _divImportColCount; i++) {
+    let guess;
+    if (i === 0) guess = '__year';
+    else if (i === 1) guess = '__month';
+    else if (accs[i - 2]) guess = accs[i - 2].id;
+    else guess = '__skip';
+    const cur = prevSel[i] != null ? prevSel[i] : guess;
+    const opts = [
+      `<option value="__skip"${cur === '__skip' ? ' selected' : ''}>건너뜀</option>`,
+      `<option value="__year"${cur === '__year' ? ' selected' : ''}>연도</option>`,
+      `<option value="__month"${cur === '__month' ? ' selected' : ''}>월</option>`,
+      ...accs.map(a => `<option value="${a.id}"${cur === a.id ? ' selected' : ''}>${escapeHtml(getAccName(a.id))}</option>`)
+    ].join('');
+    html += `<label style="display:flex;flex-direction:column;gap:2px;font-size:12px">
+      <span style="color:var(--muted)">컬럼 ${i + 1}</span>
+      <select class="div-imp-col" data-col="${i}" onchange="renderDivImportPreview()" style="padding:4px 6px">${opts}</select>
+    </label>`;
+  }
+  wrap.innerHTML = html;
+}
+
+function parseDivImportTable() {
+  const text = document.getElementById('divImportText').value;
+  const unit = Number(document.getElementById('divImportUnit').value) || 1;
+  const fFill = !!document.getElementById('divImportFFill').checked;
+  const hasHeader = !!document.getElementById('divImportHeader').checked;
+  const map = {};
+  document.querySelectorAll('#divImportMapping select.div-imp-col').forEach(s => { map[s.dataset.col] = s.value; });
+
+  const rawLines = text.split(/\r?\n/).map(l => l.replace(/\s+$/, '')).filter(l => l.trim() !== '');
+  const results = [];
+  const skipped = [];
+  let lastYear = null;
+  let headerSkipped = false;
+
+  for (let li = 0; li < rawLines.length; li++) {
+    const line = rawLines[li];
+    const cells = splitImportRow(line).map(c => String(c).trim());
+
+    // 결산/합계 행 자동 제외
+    if (cells.some(c => /결산|합계|소계|총합|total/i.test(c))) {
+      skipped.push({ line, reason: '결산/합계 행' });
+      continue;
+    }
+
+    // 헤더 자동 인식
+    if (hasHeader && !headerSkipped) {
+      const numericCells = cells.filter(c => parseImportCellNum(c) != null).length;
+      if (numericCells < cells.length / 2) {
+        headerSkipped = true;
+        skipped.push({ line, reason: '헤더 행' });
+        continue;
+      }
+      headerSkipped = true; // 첫 데이터 행 이후로는 헤더 검사 안 함
+    }
+
+    // 매핑된 컬럼 값 추출
+    let year = null, month = null;
+    const accountAmounts = {};
+    for (let i = 0; i < cells.length; i++) {
+      const role = map[i];
+      if (!role || role === '__skip') continue;
+      const num = parseImportCellNum(cells[i]);
+      if (role === '__year') { if (num != null) year = Math.round(num); }
+      else if (role === '__month') { if (num != null) month = Math.round(num); }
+      else { // 계좌 id
+        if (num != null && num !== 0) {
+          const amt = Math.round(num * unit);
+          accountAmounts[role] = (accountAmounts[role] || 0) + amt;
+        }
+      }
+    }
+
+    if (year == null && fFill && lastYear != null) year = lastYear;
+    if (year != null) lastYear = year;
+
+    if (year == null || month == null) {
+      skipped.push({ line, reason: '연도/월 누락' });
+      continue;
+    }
+    if (month < 1 || month > 12) {
+      skipped.push({ line, reason: '월 범위 오류' });
+      continue;
+    }
+    if (Object.keys(accountAmounts).length === 0) {
+      skipped.push({ line, reason: '모든 금액이 0' });
+      continue;
+    }
+    results.push({ year, month, accountAmounts });
+  }
+
+  return { rows: results, skipped };
+}
+
+function renderDivImportPreview() {
+  const wrap = document.getElementById('divImportPreviewWrap');
+  const list = document.getElementById('divImportPreview');
+  const summary = document.getElementById('divImportSummary');
+  const applyBtn = document.getElementById('divImportApplyBtn');
+  const text = document.getElementById('divImportText')?.value || '';
+  if (!text.trim() || _divImportColCount === 0) {
+    wrap.style.display = 'none';
+    applyBtn.disabled = true;
+    _divImportLastParsed = null;
+    return;
+  }
+
+  const parsed = parseDivImportTable();
+  _divImportLastParsed = parsed;
+
+  const accs = getActiveAccounts();
+  const accNameMap = Object.fromEntries(accs.map(a => [a.id, getAccName(a.id)]));
+
+  const lines = parsed.rows.map(r => {
+    const parts = Object.entries(r.accountAmounts).map(([id, amt]) =>
+      `${escapeHtml(accNameMap[id] || id)}=${amt.toLocaleString('ko-KR')}`
+    );
+    const total = Object.values(r.accountAmounts).reduce((s, v) => s + v, 0);
+    return `✓ ${r.year}.${String(r.month).padStart(2,'0')}  ${parts.join('  ')}  <span style="color:var(--muted)">합계 ${total.toLocaleString('ko-KR')}</span>`;
+  });
+
+  const skipLines = parsed.skipped.map(s =>
+    `<span style="color:var(--muted)">✗ ${escapeHtml(s.line.length > 80 ? s.line.slice(0,80) + '…' : s.line)} — ${s.reason}</span>`
+  );
+
+  list.innerHTML = [...lines, ...skipLines].join('<br>') || '<span style="color:var(--muted)">파싱된 행이 없습니다.</span>';
+  summary.textContent = `${parsed.rows.length}개 행 추가 / ${parsed.skipped.length}개 스킵`;
+  wrap.style.display = 'block';
+  applyBtn.disabled = parsed.rows.length === 0;
+}
+
+function applyDivImport() {
+  if (!_divImportLastParsed || _divImportLastParsed.rows.length === 0) {
+    alert('가져올 행이 없습니다. 미리보기를 확인해 주세요.');
+    return;
+  }
+  const rows = _divImportLastParsed.rows;
+  const memoPrefix = (document.getElementById('divImportMemoPrefix').value || '').trim() || '엑셀 일괄';
+
+  if (!confirm(`${rows.length}개의 기타항목 배당 기록을 추가합니다.\n현금(예수금)에는 반영되지 않습니다.\n진행할까요?`)) return;
+
+  for (const r of rows) {
+    const ts = Date.now();
+    const newId = String(ts) + '_' + Math.floor(Math.random() * 1000000);
+    const accountsCopy = { ...r.accountAmounts };
+    const memo = `${memoPrefix} ${r.year}.${String(r.month).padStart(2,'0')}`;
+    dividendRecords.push({
+      id: newId,
+      year: r.year, month: r.month, day: 1,
+      stocksPerShare: {}, stocksShares: {},
+      accounts: accountsCopy,
+      misc: { memo, accounts: { ...accountsCopy } },
+      skipCash: true
+    });
+  }
+  saveDividendRecords();
+  renderDividendLists();
+  renderDivCharts();
+  renderTradeList();
+
+  clearDivImportForm();
+  alert(`${rows.length}개 행이 추가되었습니다.`);
+}
+
+function clearDivImportForm() {
+  document.getElementById('divImportText').value = '';
+  document.getElementById('divImportMemoPrefix').value = '엑셀 일괄';
+  const unitSel = document.getElementById('divImportUnit'); if (unitSel) unitSel.value = '1000';
+  const ff = document.getElementById('divImportFFill'); if (ff) ff.checked = true;
+  const hd = document.getElementById('divImportHeader'); if (hd) hd.checked = true;
+  _divImportColCount = 0;
+  _divImportLastParsed = null;
+  document.getElementById('divImportMapping').innerHTML = '';
+  document.getElementById('divImportPreviewWrap').style.display = 'none';
+  document.getElementById('divImportApplyBtn').disabled = true;
 }
 
 
