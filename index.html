@@ -701,6 +701,23 @@ Chart.register({
     padding: 26px 16px; text-align: center; color: var(--muted);
     font-size: 12px;
   }
+  #depositList .txn-year-hdr {
+    display: grid;
+    grid-template-columns: 22px 1fr auto auto;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f0fdf4;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; user-select: none;
+  }
+  #depositList .txn-year-hdr:hover { background: #dcfce7; }
+  #depositList .txn-year-hdr .yh-chev { color: var(--primary); font-size: 10px; }
+  #depositList .txn-year-hdr .yh-year { color: #065f46; }
+  #depositList .txn-year-hdr .yh-count { color: var(--muted); font-weight: 500; font-size: 11px; }
+  #depositList .txn-year-hdr .yh-sum { font-variant-numeric: tabular-nums; }
+  #depositList .txn-year-hdr .yh-sum.pos { color: var(--plus); }
+  #depositList .txn-year-hdr .yh-sum.neg { color: var(--minus); }
 
   /* 거래내역 탭 */
   #tradeList .txn-row {
@@ -2832,7 +2849,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.366';
+const APP_VERSION = 'MyPM v0.367';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2973,6 +2990,7 @@ let depositData = loadDeposits();
 let editingTxnId    = null;
 let editingRecordId = null;
 let _depositAccFilter = null;
+let _depositCollapsedYears = null;
 
 // 기존 데이터 마이그레이션
 // - accounts 필드가 없으면 빈 객체로 초기화
@@ -3233,6 +3251,13 @@ function filterDepositByAcc(accId) {
   renderDepositList();
 }
 
+function toggleDepositYear(year) {
+  if (!_depositCollapsedYears) _depositCollapsedYears = new Set();
+  if (_depositCollapsedYears.has(year)) _depositCollapsedYears.delete(year);
+  else _depositCollapsedYears.add(year);
+  renderDepositList();
+}
+
 function renderDepositList() {
   const list = document.getElementById('depositList');
   const activeIds = new Set(getActiveAccounts().map(a => a.id));
@@ -3247,27 +3272,58 @@ function renderDepositList() {
     return;
   }
 
-  list.innerHTML = txns.map(t => {
-    const accName = getAccName(t.accId) || t.accId;
-    const amt = Number(t.amount) || 0;
-    const amountCls = amt >= 0 ? 'pos' : 'neg';
-    const amountStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
-    const anseBadge = (t.anse && Number(t.anse) !== 0)
-      ? `<span class="txn-anse-badge">안세공 ${Number(t.anse).toLocaleString('ko-KR')}원</span>` : '';
-    const transferBadge = t.transfer
-      ? `<span class="txn-anse-badge" style="background:#eef2ff;color:#3730a3">계좌이전</span>` : '';
-    const autoBadge = t.autoFromPlan
-      ? `<span class="txn-anse-badge" style="background:#ecfdf5;color:#065f46">자동</span>` : '';
-    return `
-      <div class="txn-row">
-        <span class="txn-date">${t.date}</span>
-        <span class="txn-acc">${accName}</span>
-        <span class="txn-amount ${amountCls}">${amountStr}${anseBadge}${transferBadge}${autoBadge}</span>
-        <span style="display:flex;align-items:center;gap:2px">
-          <button class="tbl-icon-btn" onclick="openTxnEditor('${t.id}')" title="편집">✏️</button>
-          <button class="tbl-icon-btn" onclick="deleteTxn('${t.id}')" title="삭제">🗑️</button>
-        </span>
+  // 연도별 그룹핑
+  const byYear = new Map();
+  txns.forEach(t => {
+    const y = (t.date || '').slice(0, 4) || '미지정';
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(t);
+  });
+  const years = [...byYear.keys()].sort((a, b) => b.localeCompare(a));
+
+  // 첫 렌더: 최근 연도 외 전부 접음
+  if (_depositCollapsedYears === null) {
+    _depositCollapsedYears = new Set(years.slice(1));
+  }
+
+  list.innerHTML = years.map(y => {
+    const ytx = byYear.get(y);
+    const yearSum = ytx.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const sumCls = yearSum >= 0 ? 'pos' : 'neg';
+    const sumStr = (yearSum >= 0 ? '+' : '−') + Math.abs(yearSum).toLocaleString('ko-KR') + ' 원';
+    const collapsed = _depositCollapsedYears.has(y);
+    const chevron = collapsed ? '▶' : '▼';
+    const header = `
+      <div class="txn-year-hdr" onclick="toggleDepositYear('${y}')">
+        <span class="yh-chev">${chevron}</span>
+        <span class="yh-year">${y}년</span>
+        <span class="yh-count">${ytx.length}건</span>
+        <span class="yh-sum ${sumCls}">${sumStr}</span>
       </div>`;
+    if (collapsed) return header;
+    const rows = ytx.map(t => {
+      const accName = getAccName(t.accId) || t.accId;
+      const amt = Number(t.amount) || 0;
+      const amountCls = amt >= 0 ? 'pos' : 'neg';
+      const amountStr = (amt >= 0 ? '+' : '−') + Math.abs(amt).toLocaleString('ko-KR') + ' 원';
+      const anseBadge = (t.anse && Number(t.anse) !== 0)
+        ? `<span class="txn-anse-badge">안세공 ${Number(t.anse).toLocaleString('ko-KR')}원</span>` : '';
+      const transferBadge = t.transfer
+        ? `<span class="txn-anse-badge" style="background:#eef2ff;color:#3730a3">계좌이전</span>` : '';
+      const autoBadge = t.autoFromPlan
+        ? `<span class="txn-anse-badge" style="background:#ecfdf5;color:#065f46">자동</span>` : '';
+      return `
+        <div class="txn-row">
+          <span class="txn-date">${t.date}</span>
+          <span class="txn-acc">${accName}</span>
+          <span class="txn-amount ${amountCls}">${amountStr}${anseBadge}${transferBadge}${autoBadge}</span>
+          <span style="display:flex;align-items:center;gap:2px">
+            <button class="tbl-icon-btn" onclick="openTxnEditor('${t.id}')" title="편집">✏️</button>
+            <button class="tbl-icon-btn" onclick="deleteTxn('${t.id}')" title="삭제">🗑️</button>
+          </span>
+        </div>`;
+    }).join('');
+    return header + rows;
   }).join('');
 }
 
