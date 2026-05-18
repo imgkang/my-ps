@@ -1238,6 +1238,29 @@
         <button id="nkDivSaveBtn" class="btn-primary" onclick="nkAddDividendRecord()">➕ 추가</button>
       </div>
     </div>
+
+    <!-- 기타항목 입력 (종목 없이 금액만) -->
+    <div class="records-input-card" style="margin-top:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="nkToggleDivMiscForm()">
+        <div style="font-weight:600">📝 기타항목 (종목 없이 금액만)</div>
+        <button type="button" id="nkDivMiscToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
+      </div>
+      <div id="nkDivMiscBody" style="display:none;margin-top:10px">
+        <div style="font-size:12px;color:var(--muted,#888);margin-bottom:8px">
+          계산값(주당 × 수량)이 실제 입금액과 다르거나, 종목 정보 없이 금액만 기록해야 할 때 사용합니다. 음수도 입력 가능합니다.
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:12px;margin-bottom:4px">메모</label>
+          <input type="text" id="nkDivMiscMemo" placeholder="예: 4월 배당 조정 / 2024년 누락분" style="width:100%;padding:8px;box-sizing:border-box">
+        </div>
+        <div id="nkDivMiscAccInputs" style="display:grid;gap:6px"></div>
+        <div class="div-grand-total" style="margin-top:8px"><span>기타항목 합계</span><strong id="nkDivMiscGrandTotal">$0</strong></div>
+        <div class="records-input-actions" style="margin-top:8px">
+          <button id="nkDivMiscCancelBtn" class="btn-secondary" style="display:none" onclick="nkCancelDivMiscEdit()">취소</button>
+          <button id="nkDivMiscSaveBtn" class="btn-primary" onclick="nkAddMiscDividendRecord()">기타항목 추가</button>
+        </div>
+      </div>
+    </div>
     <div class="div-sections">
       <div class="div-section-title">종목별 배당 내역</div>
       <div class="div-records-wrap">
@@ -1267,7 +1290,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.364';
+const APP_VERSION = 'NonK v0.365';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -2539,6 +2562,8 @@ function nkOpenDividendModal() {
   const cancelBtn = document.getElementById('nkDivCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
   nkRenderDivStockInputs({}, null);
+  nkToggleDivMiscForm(false);
+  nkCancelDivMiscEdit();
   nkRenderDividendLists();
   document.getElementById('nkDividendModal').classList.add('open');
 }
@@ -2737,7 +2762,9 @@ function nkAddDividendRecord() {
 
 function nkDeleteDividendRecord(id) {
   const rec = nkDividendRecords.find(r => r.id === id);
-  if (!rec || !confirm(`${rec.year}년 ${rec.month}월 배당 기록을 삭제하시겠습니까?`)) return;
+  if (!rec) return;
+  const miscLabel = rec.misc ? ` (기타: ${rec.misc.memo || ''})` : '';
+  if (!confirm(`${rec.year}년 ${rec.month}월${miscLabel} 배당 기록을 삭제하시겠습니까?`)) return;
   nkDividendRecords = nkDividendRecords.filter(r => r.id !== id);
   if (nkEditingDivId === id) {
     nkEditingDivId = null;
@@ -2747,6 +2774,7 @@ function nkDeleteDividendRecord(id) {
     if (cancelBtn) cancelBtn.style.display = 'none';
     nkClearDividendInputs();
   }
+  if (nkDivMiscEditingId === id) nkCancelDivMiscEdit();
   nkSaveDividends();
   nkRenderDividendLists();
 }
@@ -2754,9 +2782,26 @@ function nkDeleteDividendRecord(id) {
 function nkEditDividendRecord(id) {
   const rec = nkDividendRecords.find(r => r.id === id);
   if (!rec) return;
-  nkEditingDivId = id;
   document.getElementById('nkDivYear').value = rec.year;
   document.getElementById('nkDivMonth').value = rec.month;
+  if (nkDivRecIsMisc(rec)) {
+    nkEditingDivId = null;
+    const stockSaveBtn = document.getElementById('nkDivSaveBtn');
+    if (stockSaveBtn) stockSaveBtn.textContent = '➕ 추가';
+    const stockCancelBtn = document.getElementById('nkDivCancelBtn');
+    if (stockCancelBtn) stockCancelBtn.style.display = 'none';
+    nkDivMiscEditingId = id;
+    document.getElementById('nkDivMiscMemo').value = rec.misc.memo || '';
+    nkToggleDivMiscForm(true);
+    nkRenderDivMiscInputs(rec.misc.accounts || {});
+    const saveBtn = document.getElementById('nkDivMiscSaveBtn');
+    if (saveBtn) saveBtn.textContent = '수정 저장';
+    const cancelBtn = document.getElementById('nkDivMiscCancelBtn');
+    if (cancelBtn) cancelBtn.style.display = '';
+    document.getElementById('nkDivMiscBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+  nkEditingDivId = id;
   const perShareMap = (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) ? rec.stocksPerShare : {};
   const sharesOverride = (rec.stocksShares && Object.keys(rec.stocksShares).length > 0) ? rec.stocksShares : null;
   nkRenderDivStockInputs(perShareMap, sharesOverride);
@@ -2777,6 +2822,114 @@ function nkCancelDivEdit() {
   nkRenderDivStockInputs({}, null);
 }
 
+// === NonK 기타항목 (종목 없이 금액만) ===
+let nkDivMiscEditingId = null;
+
+function nkDivRecIsMisc(rec) { return !!(rec && rec.misc); }
+function nkDivRecMiscTotal(rec) {
+  if (!rec || !rec.misc) return 0;
+  let t = 0;
+  for (const v of Object.values(rec.misc.accounts || {})) t += Number(v) || 0;
+  return t;
+}
+
+function nkToggleDivMiscForm(forceOpen) {
+  const body = document.getElementById('nkDivMiscBody');
+  const btn  = document.getElementById('nkDivMiscToggleBtn');
+  if (!body) return;
+  const shouldOpen = forceOpen !== undefined ? forceOpen : body.style.display === 'none';
+  if (shouldOpen) {
+    body.style.display = '';
+    if (btn) btn.textContent = '접기 ▴';
+    nkRenderDivMiscInputs();
+  } else {
+    body.style.display = 'none';
+    if (btn) btn.textContent = '펼치기 ▾';
+  }
+}
+
+function nkRenderDivMiscInputs(values) {
+  const wrap = document.getElementById('nkDivMiscAccInputs');
+  if (!wrap) return;
+  const accs = NK_ACCOUNTS.filter(a => a.active !== false);
+  if (!accs.length) {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--muted,#888)">활성 계좌가 없습니다.</div>';
+    return;
+  }
+  wrap.innerHTML = accs.map(a => {
+    const v = values && values[a.id] != null ? values[a.id] : '';
+    return `<label style="display:flex;align-items:center;gap:8px">
+      <span style="min-width:90px;font-size:13px">${a.name}</span>
+      <input type="number" step="0.01" class="nk-div-misc-amt" data-acc="${a.id}" value="${v}"
+             oninput="nkUpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
+      <span style="font-size:12px;color:var(--muted,#888)">USD</span>
+    </label>`;
+  }).join('');
+  nkUpdateDivMiscTotal();
+}
+
+function nkUpdateDivMiscTotal() {
+  let t = 0;
+  document.querySelectorAll('#nkDivMiscAccInputs .nk-div-misc-amt').forEach(inp => {
+    t += Number(inp.value) || 0;
+  });
+  const el = document.getElementById('nkDivMiscGrandTotal');
+  if (el) el.textContent = fmtUSD(t);
+}
+
+function nkClearDivMiscInputs() {
+  document.getElementById('nkDivMiscMemo').value = '';
+  document.querySelectorAll('#nkDivMiscAccInputs .nk-div-misc-amt').forEach(inp => { inp.value = ''; });
+  nkUpdateDivMiscTotal();
+}
+
+function nkCancelDivMiscEdit() {
+  nkDivMiscEditingId = null;
+  const saveBtn = document.getElementById('nkDivMiscSaveBtn');
+  if (saveBtn) saveBtn.textContent = '기타항목 추가';
+  const cancelBtn = document.getElementById('nkDivMiscCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  nkClearDivMiscInputs();
+}
+
+function nkAddMiscDividendRecord() {
+  const year  = Number(document.getElementById('nkDivYear').value);
+  const month = Number(document.getElementById('nkDivMonth').value);
+  if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
+  const memo = document.getElementById('nkDivMiscMemo').value.trim();
+  if (!memo) { alert('메모를 입력해 주세요.'); return; }
+
+  const accounts = {};
+  let total = 0;
+  document.querySelectorAll('#nkDivMiscAccInputs .nk-div-misc-amt').forEach(inp => {
+    const v = Number(inp.value) || 0;
+    if (v) { accounts[inp.dataset.acc] = Math.round(v * 100) / 100; total += v; }
+  });
+  if (total === 0 && !confirm('모든 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
+
+  if (nkDivMiscEditingId) {
+    const idx = nkDividendRecords.findIndex(r => r.id === nkDivMiscEditingId);
+    if (idx >= 0) {
+      nkDividendRecords[idx] = {
+        id: nkDivMiscEditingId, year, month,
+        stocksPerShare: {}, stocksShares: {}, accounts,
+        misc: { memo, accounts: { ...accounts } }
+      };
+    }
+    nkCancelDivMiscEdit();
+  } else {
+    nkDividendRecords.push({
+      id: String(Date.now()) + Math.floor(Math.random() * 1000),
+      year, month,
+      stocksPerShare: {}, stocksShares: {}, accounts,
+      misc: { memo, accounts: { ...accounts } }
+    });
+    nkClearDivMiscInputs();
+  }
+  nkSaveDividends();
+  nkRenderDividendLists();
+}
+
 function nkRenderDividendLists() {
   // Stock table
   const sHeader = document.getElementById('nkDivStockTableHeader');
@@ -2787,14 +2940,29 @@ function nkRenderDividendLists() {
     } else {
       const allTickers = [...new Set(nkDividendRecords.flatMap(r => nkDivRecCodes(r)))];
       const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 110px`;
+      const spanCount = Math.max(allTickers.length, 1);
       sHeader.style.gridTemplateColumns = cols;
       sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
       const sorted = [...nkDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       sList.innerHTML = sorted.map(rec => {
+        const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+        if (nkDivRecIsMisc(rec)) {
+          const total = nkDivRecMiscTotal(rec);
+          const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
+          return `<div class="div-record-row" style="grid-template-columns:${cols}">
+            <span>${dateLabel}</span>
+            <span style="grid-column: span ${spanCount};color:var(--muted,#888)">📝 ${memo}</span>
+            <span class="total">${fmtUSD(total)}</span>
+            <span>
+              <button class="edit-btn" onclick="nkEditDividendRecord('${rec.id}')">수정</button>
+              <button class="del-btn" onclick="nkDeleteDividendRecord('${rec.id}')">삭제</button>
+            </span>
+          </div>`;
+        }
         const total = allTickers.reduce((s,t) => s + nkDivRecAmount(rec, t), 0);
         const cells = allTickers.map(t => { const v = nkDivRecAmount(rec, t); return `<span class="amount">${v ? fmtUSD(v) : '-'}</span>`; }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span>${dateLabel}</span>${cells}
           <span class="total">${fmtUSD(total)}</span>
           <span>
             <button class="edit-btn" onclick="nkEditDividendRecord('${rec.id}')">수정</button>
@@ -2818,8 +2986,11 @@ function nkRenderDividendLists() {
       aList.innerHTML = sorted.map(rec => {
         const total = NK_ACCOUNTS.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
         const cells = NK_ACCOUNTS.map(a=>`<span class="amount">${Number(rec.accounts[a.id])||0 ? fmtUSD(Number(rec.accounts[a.id])) : '-'}</span>`).join('');
+        const miscPrefix = nkDivRecIsMisc(rec)
+          ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}" style="color:var(--muted,#888)">📝 </small>`
+          : '';
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span>${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
           <span class="total">${fmtUSD(total)}</span>
         </div>`;
       }).join('');

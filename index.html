@@ -2686,7 +2686,6 @@ Chart.register({
         <div class="rec-date-row">
           <label>기록일</label>
           <input type="date" id="divDate">
-          <button class="btn-secondary" onclick="loadDividendData()">📥 배당내역 불러오기</button>
         </div>
         <div style="overflow-x:auto">
           <table class="div-stock-table">
@@ -2709,6 +2708,37 @@ Chart.register({
           <button class="btn-secondary" onclick="clearDividendInputs()">입력 초기화</button>
           <button id="divCancelBtn" class="btn-secondary" style="display:none" onclick="cancelDivEdit()">취소</button>
           <button id="divSaveBtn" class="btn-primary" onclick="addDividendRecord()">저장</button>
+        </div>
+      </div>
+
+      <!-- 기타항목 입력 (종목 없이 금액만) -->
+      <div class="records-input-card" style="margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleDivMiscForm()">
+          <div style="font-weight:600">📝 기타항목 (종목 없이 금액만)</div>
+          <button type="button" id="divMiscToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
+        </div>
+        <div id="divMiscBody" style="display:none;margin-top:10px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+            계산값(주당 × 수량)이 실제 입금액과 다르거나, 종목 정보 없이 금액만 기록해야 할 때 사용합니다. 음수도 입력 가능합니다.
+          </div>
+          <div style="margin-bottom:8px">
+            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">메모</label>
+            <input type="text" id="divMiscMemo" placeholder="예: 4월 배당 조정 / 2024년 누락분" style="width:100%;padding:8px;box-sizing:border-box">
+          </div>
+          <div id="divMiscAccInputs" style="display:grid;gap:6px"></div>
+          <div class="div-grand-total" style="margin-top:8px">
+            <span>기타항목 합계</span>
+            <strong id="divMiscGrandTotal">0 원</strong>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="divMiscSkipCash">
+            <span>포트폴리오 현금(예수금)에 반영하지 않음 <small style="color:var(--muted)">(과거에 이미 입금된 배당을 소급 기록할 때)</small></span>
+          </label>
+          <div class="records-input-actions" style="margin-top:8px">
+            <button class="btn-secondary" onclick="clearDivMiscInputs()">입력 초기화</button>
+            <button id="divMiscCancelBtn" class="btn-secondary" style="display:none" onclick="cancelDivMiscEdit()">취소</button>
+            <button id="divMiscSaveBtn" class="btn-primary" onclick="addMiscDividendRecord()">기타항목 추가</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2745,7 +2775,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.364';
+const APP_VERSION = 'MyPM v0.365';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7654,6 +7684,8 @@ function openDividendModal() {
   document.getElementById('divDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   renderDivStockInputs({});
   toggleDivForm(false);
+  toggleDivMiscForm(false);
+  cancelDivMiscEdit();
   renderDividendLists();
   renderDivCharts();
   switchTab('dividend');
@@ -7803,43 +7835,141 @@ function clearDividendInputs() {
   updateDivGrandTotal();
 }
 
-async function loadDividendData() {
-  const dateVal = document.getElementById('divDate').value;
-  if (!dateVal || !/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) { alert('기록일을 먼저 선택해 주세요.'); return; }
-  const [year, month] = dateVal.split('-').map(Number);
-  if (!year || !month) { alert('유효한 날짜를 선택해 주세요.'); return; }
+// === 기타항목 (종목 없이 금액만) ===
+let _divMiscEditingId = null;
 
-  const btn = document.querySelector('button[onclick="loadDividendData()"]');
-  const origText = btn ? btn.textContent : '';
-  if (btn) { btn.textContent = '불러오는 중...'; btn.disabled = true; }
+function divRecIsMisc(rec) { return !!(rec && rec.misc); }
+function divRecMiscTotal(rec) {
+  if (!rec || !rec.misc) return 0;
+  let t = 0;
+  for (const v of Object.values(rec.misc.accounts || {})) t += Number(v) || 0;
+  return t;
+}
 
-  const perShareMap = {};
-  const active = holdings.filter(h => h.quantity > 0);
-
-  await Promise.all(active.map(async h => {
-    try {
-      const url = `https://m.stock.naver.com/api/stock/${h.code}/dividend`;
-      const json = JSON.parse(await fetchViaProxy(url));
-      const list = Array.isArray(json) ? json
-        : (json && Array.isArray(json.dividendList) ? json.dividendList : []);
-      const ym = `${year}${String(month).padStart(2, '0')}`;
-      for (const d of list) {
-        const bd = String(d.baseDate || d.paymentDate || '').replace(/[.\-\/]/g, '').slice(0, 6);
-        if (bd === ym) {
-          const cash = Number(d.cashDividend || d.cash || d.dividend || 0);
-          if (cash > 0) { perShareMap[h.code] = cash; break; }
-        }
-      }
-    } catch (_) {}
-  }));
-
-  if (btn) { btn.textContent = origText; btn.disabled = false; }
-  renderDivStockInputs(perShareMap);
-
-  if (Object.keys(perShareMap).length === 0) {
-    alert(`${year}년 ${month}월 배당 데이터를 찾지 못했습니다.\n직접 주당 배당금을 입력해 주세요.`);
+function toggleDivMiscForm(forceOpen) {
+  const body = document.getElementById('divMiscBody');
+  const btn  = document.getElementById('divMiscToggleBtn');
+  if (!body) return;
+  const shouldOpen = forceOpen !== undefined ? forceOpen : body.style.display === 'none';
+  if (shouldOpen) {
+    body.style.display = '';
+    if (btn) btn.textContent = '접기 ▴';
+    renderDivMiscInputs();
+  } else {
+    body.style.display = 'none';
+    if (btn) btn.textContent = '펼치기 ▾';
   }
 }
+
+function renderDivMiscInputs(values) {
+  const wrap = document.getElementById('divMiscAccInputs');
+  if (!wrap) return;
+  const accs = getActiveAccounts();
+  if (!accs.length) {
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:12px">활성 계좌가 없습니다.</div>';
+    return;
+  }
+  wrap.innerHTML = accs.map(a => {
+    const v = values && values[a.id] != null ? values[a.id] : '';
+    return `<label style="display:flex;align-items:center;gap:8px">
+      <span style="min-width:90px;font-size:13px">${getAccName(a.id)}</span>
+      <input type="number" step="1" class="div-misc-amt" data-acc="${a.id}" value="${v}"
+             oninput="updateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
+      <span style="font-size:12px;color:var(--muted)">원</span>
+    </label>`;
+  }).join('');
+  updateDivMiscTotal();
+}
+
+function updateDivMiscTotal() {
+  let t = 0;
+  document.querySelectorAll('#divMiscAccInputs .div-misc-amt').forEach(inp => {
+    t += Math.round(Number(inp.value) || 0);
+  });
+  const el = document.getElementById('divMiscGrandTotal');
+  if (el) {
+    const sign = t < 0 ? '-' : '';
+    el.textContent = `${sign}${Math.abs(t).toLocaleString('ko-KR')} 원`;
+  }
+}
+
+function clearDivMiscInputs() {
+  document.getElementById('divMiscMemo').value = '';
+  const sc = document.getElementById('divMiscSkipCash');
+  if (sc) sc.checked = false;
+  document.querySelectorAll('#divMiscAccInputs .div-misc-amt').forEach(inp => { inp.value = ''; });
+  updateDivMiscTotal();
+}
+
+function cancelDivMiscEdit() {
+  _divMiscEditingId = null;
+  const saveBtn = document.getElementById('divMiscSaveBtn');
+  if (saveBtn) saveBtn.textContent = '기타항목 추가';
+  const cancelBtn = document.getElementById('divMiscCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  clearDivMiscInputs();
+}
+
+function addMiscDividendRecord() {
+  const dateVal = document.getElementById('divDate').value;
+  if (!dateVal || !/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) { alert('유효한 기록일을 선택해 주세요.'); return; }
+  const [year, month, day] = dateVal.split('-').map(Number);
+  const memo = document.getElementById('divMiscMemo').value.trim();
+  if (!memo) { alert('메모를 입력해 주세요.'); return; }
+
+  const accounts = {};
+  let total = 0;
+  document.querySelectorAll('#divMiscAccInputs .div-misc-amt').forEach(inp => {
+    const v = Math.round(Number(inp.value) || 0);
+    if (v) { accounts[inp.dataset.acc] = v; total += v; }
+  });
+  if (total === 0 && !confirm('모든 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
+
+  const skipCash = document.getElementById('divMiscSkipCash')?.checked || false;
+
+  if (_divMiscEditingId) {
+    const idx = dividendRecords.findIndex(r => r.id === _divMiscEditingId);
+    if (idx >= 0) {
+      const old = dividendRecords[idx];
+      const wasSkip = !!old.skipCash;
+      if (!wasSkip) {
+        applyDividendCashDelta(old.accounts || {}, -1);
+        removeDividendCashAdj(_divMiscEditingId);
+      }
+      dividendRecords[idx] = {
+        id: _divMiscEditingId, year, month, day,
+        stocksPerShare: {}, stocksShares: {}, accounts,
+        misc: { memo, accounts: { ...accounts } },
+        skipCash
+      };
+      if (!skipCash) {
+        const negAccs = applyDividendCashDelta(accounts, +1);
+        pushDividendCashAdj(_divMiscEditingId, dateVal, accounts);
+        if (negAccs.length) alert(`⚠️ 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
+      }
+    }
+    cancelDivMiscEdit();
+  } else {
+    const newId = String(Date.now()) + Math.floor(Math.random() * 1000);
+    dividendRecords.push({
+      id: newId, year, month, day,
+      stocksPerShare: {}, stocksShares: {}, accounts,
+      misc: { memo, accounts: { ...accounts } },
+      skipCash
+    });
+    if (!skipCash) {
+      const negAccs = applyDividendCashDelta(accounts, +1);
+      pushDividendCashAdj(newId, dateVal, accounts);
+      if (negAccs.length) alert(`⚠️ 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
+    }
+    clearDivMiscInputs();
+  }
+  saveDividendRecords();
+  renderDividendLists();
+  renderDivCharts();
+  renderTradeList();
+}
+
 
 function formatDividendCashImpact(accounts, sign) {
   // sign: +1 추가, -1 차감. 0인 계좌는 생략.
@@ -7865,13 +7995,13 @@ function pushDividendCashAdj(divId, dateStr, accounts) {
   for (const [accId, amount] of Object.entries(accounts || {})) {
     if (!activeIds.has(accId)) continue;
     const amt = Number(amount) || 0;
-    if (amt <= 0) continue;
+    if (!amt) continue;
     cashAdjRecords.push({
       id: generateTxnId(),
       date: dateStr,
       accId,
-      type: 'add',
-      amount: amt,
+      type: amt >= 0 ? 'add' : 'sub',
+      amount: Math.abs(amt),
       note: '배당입력(자동)',
       divId
     });
@@ -8013,16 +8143,21 @@ function deleteDividendRecord(id) {
   const rec = dividendRecords.find(r => r.id === id);
   if (!rec) return;
   const dayStr = rec.day ? ` ${rec.day}일` : '';
-  const impact = formatDividendCashImpact(rec.accounts || {}, -1);
+  const miscLabel = rec.misc ? ` (기타: ${rec.misc.memo || ''})` : '';
+  const cashAffects = !rec.skipCash;
+  const impact = cashAffects ? formatDividendCashImpact(rec.accounts || {}, -1) : '';
   const msg = impact
-    ? `${rec.year}년 ${rec.month}월${dayStr} 배당 기록을 삭제하면 계좌별 현금(예수금)이 다음과 같이 자동 차감됩니다:\n\n${impact}\n\n삭제할까요?`
-    : `${rec.year}년 ${rec.month}월${dayStr} 배당 기록을 삭제하시겠습니까?`;
+    ? `${rec.year}년 ${rec.month}월${dayStr}${miscLabel} 배당 기록을 삭제하면 계좌별 현금(예수금)이 다음과 같이 자동 차감됩니다:\n\n${impact}\n\n삭제할까요?`
+    : `${rec.year}년 ${rec.month}월${dayStr}${miscLabel} 배당 기록을 삭제하시겠습니까?`;
   if (!confirm(msg)) return;
   dividendRecords = dividendRecords.filter(r => r.id !== id);
   saveDividendRecords();
-  // 배당 기록 삭제 → 계좌별 현금 차감 + 자동 현금조정이력 항목 제거
-  const negAccs = applyDividendCashDelta(rec.accounts || {}, -1);
-  removeDividendCashAdj(id);
+  let negAccs = [];
+  if (cashAffects) {
+    negAccs = applyDividendCashDelta(rec.accounts || {}, -1);
+    removeDividendCashAdj(id);
+  }
+  if (_divMiscEditingId === id) cancelDivMiscEdit();
   if (negAccs.length) alert(`⚠️ 배당금 차감 후 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
   renderDividendLists();
   renderDivCharts();
@@ -8032,10 +8167,34 @@ function deleteDividendRecord(id) {
 function editDividendRecord(id) {
   const rec = dividendRecords.find(r => r.id === id);
   if (!rec) return;
-  _divEditingId = id;
   const pad = n => String(n).padStart(2, '0');
   const d = rec.day || 1;
   document.getElementById('divDate').value = `${rec.year}-${pad(rec.month)}-${pad(d)}`;
+
+  // 기타항목 레코드면 기타항목 폼에 로드
+  if (divRecIsMisc(rec)) {
+    // 진행 중이던 종목 편집 상태 초기화
+    _divEditingId = null;
+    const stockSaveBtn = document.getElementById('divSaveBtn');
+    if (stockSaveBtn) stockSaveBtn.textContent = '저장';
+    const stockCancelBtn = document.getElementById('divCancelBtn');
+    if (stockCancelBtn) stockCancelBtn.style.display = 'none';
+    _divMiscEditingId = id;
+    document.getElementById('divMiscMemo').value = rec.misc.memo || '';
+    const sc = document.getElementById('divMiscSkipCash');
+    if (sc) sc.checked = !!rec.skipCash;
+    renderDivMiscInputs(rec.misc.accounts || {});
+    const saveBtn = document.getElementById('divMiscSaveBtn');
+    if (saveBtn) saveBtn.textContent = '수정 저장';
+    const cancelBtn = document.getElementById('divMiscCancelBtn');
+    if (cancelBtn) cancelBtn.style.display = '';
+    toggleDivForm(true);
+    toggleDivMiscForm(true);
+    document.getElementById('divMiscBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
+  _divEditingId = id;
 
   const perShareMap = {};
   if (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) {
@@ -8074,6 +8233,7 @@ function cancelDivEdit() {
   if (saveBtn) saveBtn.textContent = '저장';
   const cancelBtn = document.getElementById('divCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
+  if (_divMiscEditingId) cancelDivMiscEdit();
   toggleDivForm(false);
 }
 
@@ -8121,15 +8281,34 @@ function renderDivStockRecordsList() {
     if (b.month !== a.month) return b.month - a.month;
     return (b.day || 0) - (a.day || 0);
   });
+  const spanCount = Math.max(allCodes.length, 1);
   list.innerHTML = sorted.map(rec => {
+    const dateStr = rec.day
+      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
+      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+    if (divRecIsMisc(rec)) {
+      const total = divRecMiscTotal(rec);
+      const sign = total < 0 ? '-' : '';
+      const totalStr = `${sign}${Math.abs(total).toLocaleString('ko-KR')}`;
+      const skipBadge = rec.skipCash ? ` <small style="color:var(--muted)">[현금반영X]</small>` : '';
+      const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
+      return `
+        <div class="div-record-row" style="grid-template-columns:${cols}">
+          <span>${dateStr}</span>
+          <span style="grid-column: span ${spanCount};color:var(--muted)">📝 ${memo}${skipBadge}</span>
+          <span class="total">${totalStr}</span>
+          <span>
+            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+          </span>
+        </div>
+      `;
+    }
     const total = allCodes.reduce((s, c) => s + divRecAmount(rec, c), 0);
     const cells = allCodes.map(c => {
       const v = divRecAmount(rec, c);
       return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
     }).join('');
-    const dateStr = rec.day
-      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
-      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
     return `
       <div class="div-record-row" style="grid-template-columns:${cols}">
         <span>${dateStr}</span>
@@ -8179,9 +8358,12 @@ function renderDivAccRecordsList() {
     const dateStr = rec.day
       ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
       : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+    const miscPrefix = divRecIsMisc(rec)
+      ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}${rec.skipCash?' (현금반영X)':''}" style="color:var(--muted)">📝 </small>`
+      : '';
     return `
       <div class="div-record-row" style="grid-template-columns:${cols}">
-        <span>${dateStr}</span>
+        <span>${miscPrefix}${dateStr}</span>
         ${cells}
         <span class="total">${total.toLocaleString('ko-KR')}</span>
       </div>

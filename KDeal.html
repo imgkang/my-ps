@@ -1244,6 +1244,29 @@
         <button id="kdDivSaveBtn" class="btn-primary" onclick="kdAddDividendRecord()">➕ 추가</button>
       </div>
     </div>
+
+    <!-- 기타항목 입력 (종목 없이 금액만) -->
+    <div class="records-input-card" style="margin-top:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="kdToggleDivMiscForm()">
+        <div style="font-weight:600">📝 기타항목 (종목 없이 금액만)</div>
+        <button type="button" id="kdDivMiscToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
+      </div>
+      <div id="kdDivMiscBody" style="display:none;margin-top:10px">
+        <div style="font-size:12px;color:var(--muted,#888);margin-bottom:8px">
+          계산값(주당 × 수량)이 실제 입금액과 다르거나, 종목 정보 없이 금액만 기록해야 할 때 사용합니다. 음수도 입력 가능합니다.
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:12px;margin-bottom:4px">메모</label>
+          <input type="text" id="kdDivMiscMemo" placeholder="예: 4월 배당 조정 / 2024년 누락분" style="width:100%;padding:8px;box-sizing:border-box">
+        </div>
+        <div id="kdDivMiscAccInputs" style="display:grid;gap:6px"></div>
+        <div class="div-grand-total" style="margin-top:8px"><span>기타항목 합계</span><strong id="kdDivMiscGrandTotal">0원</strong></div>
+        <div class="records-input-actions" style="margin-top:8px">
+          <button id="kdDivMiscCancelBtn" class="btn-secondary" style="display:none" onclick="kdCancelDivMiscEdit()">취소</button>
+          <button id="kdDivMiscSaveBtn" class="btn-primary" onclick="kdAddMiscDividendRecord()">기타항목 추가</button>
+        </div>
+      </div>
+    </div>
     <div class="div-sections">
       <div class="div-section-title">종목별 배당 내역</div>
       <div class="div-records-wrap">
@@ -1274,7 +1297,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.364';
+const APP_VERSION = 'KDeal v0.365';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2642,6 +2665,8 @@ function kdOpenDividendModal() {
   const cancelBtn = document.getElementById('kdDivCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
   kdRenderDivStockInputs({}, null);
+  kdToggleDivMiscForm(false);
+  kdCancelDivMiscEdit();
   kdRenderDividendLists();
   document.getElementById('kdDividendModal').classList.add('open');
 }
@@ -2839,7 +2864,9 @@ function kdAddDividendRecord() {
 
 function kdDeleteDividendRecord(id) {
   const rec = kdDividendRecords.find(r => r.id === id);
-  if (!rec || !confirm(`${rec.year}년 ${rec.month}월 배당 기록을 삭제하시겠습니까?`)) return;
+  if (!rec) return;
+  const miscLabel = rec.misc ? ` (기타: ${rec.misc.memo || ''})` : '';
+  if (!confirm(`${rec.year}년 ${rec.month}월${miscLabel} 배당 기록을 삭제하시겠습니까?`)) return;
   kdDividendRecords = kdDividendRecords.filter(r => r.id !== id);
   if (kdEditingDivId === id) {
     kdEditingDivId = null;
@@ -2849,6 +2876,7 @@ function kdDeleteDividendRecord(id) {
     if (cancelBtn) cancelBtn.style.display = 'none';
     kdClearDividendInputs();
   }
+  if (kdDivMiscEditingId === id) kdCancelDivMiscEdit();
   kdSaveDividends();
   kdRenderDividendLists();
 }
@@ -2856,9 +2884,26 @@ function kdDeleteDividendRecord(id) {
 function kdEditDividendRecord(id) {
   const rec = kdDividendRecords.find(r => r.id === id);
   if (!rec) return;
-  kdEditingDivId = id;
   document.getElementById('kdDivYear').value = rec.year;
   document.getElementById('kdDivMonth').value = rec.month;
+  if (kdDivRecIsMisc(rec)) {
+    kdEditingDivId = null;
+    const stockSaveBtn = document.getElementById('kdDivSaveBtn');
+    if (stockSaveBtn) stockSaveBtn.textContent = '➕ 추가';
+    const stockCancelBtn = document.getElementById('kdDivCancelBtn');
+    if (stockCancelBtn) stockCancelBtn.style.display = 'none';
+    kdDivMiscEditingId = id;
+    document.getElementById('kdDivMiscMemo').value = rec.misc.memo || '';
+    kdToggleDivMiscForm(true);
+    kdRenderDivMiscInputs(rec.misc.accounts || {});
+    const saveBtn = document.getElementById('kdDivMiscSaveBtn');
+    if (saveBtn) saveBtn.textContent = '수정 저장';
+    const cancelBtn = document.getElementById('kdDivMiscCancelBtn');
+    if (cancelBtn) cancelBtn.style.display = '';
+    document.getElementById('kdDivMiscBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+  kdEditingDivId = id;
   const perShareMap = (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) ? rec.stocksPerShare : {};
   const sharesOverride = (rec.stocksShares && Object.keys(rec.stocksShares).length > 0) ? rec.stocksShares : null;
   kdRenderDivStockInputs(perShareMap, sharesOverride);
@@ -2879,6 +2924,114 @@ function kdCancelDivEdit() {
   kdRenderDivStockInputs({}, null);
 }
 
+// === KDeal 기타항목 (종목 없이 금액만) ===
+let kdDivMiscEditingId = null;
+
+function kdDivRecIsMisc(rec) { return !!(rec && rec.misc); }
+function kdDivRecMiscTotal(rec) {
+  if (!rec || !rec.misc) return 0;
+  let t = 0;
+  for (const v of Object.values(rec.misc.accounts || {})) t += Number(v) || 0;
+  return t;
+}
+
+function kdToggleDivMiscForm(forceOpen) {
+  const body = document.getElementById('kdDivMiscBody');
+  const btn  = document.getElementById('kdDivMiscToggleBtn');
+  if (!body) return;
+  const shouldOpen = forceOpen !== undefined ? forceOpen : body.style.display === 'none';
+  if (shouldOpen) {
+    body.style.display = '';
+    if (btn) btn.textContent = '접기 ▴';
+    kdRenderDivMiscInputs();
+  } else {
+    body.style.display = 'none';
+    if (btn) btn.textContent = '펼치기 ▾';
+  }
+}
+
+function kdRenderDivMiscInputs(values) {
+  const wrap = document.getElementById('kdDivMiscAccInputs');
+  if (!wrap) return;
+  const accs = KD_ACCOUNTS.filter(a => a.active !== false);
+  if (!accs.length) {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--muted,#888)">활성 계좌가 없습니다.</div>';
+    return;
+  }
+  wrap.innerHTML = accs.map(a => {
+    const v = values && values[a.id] != null ? values[a.id] : '';
+    return `<label style="display:flex;align-items:center;gap:8px">
+      <span style="min-width:90px;font-size:13px">${a.name}</span>
+      <input type="number" step="1" class="kd-div-misc-amt" data-acc="${a.id}" value="${v}"
+             oninput="kdUpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
+      <span style="font-size:12px;color:var(--muted,#888)">원</span>
+    </label>`;
+  }).join('');
+  kdUpdateDivMiscTotal();
+}
+
+function kdUpdateDivMiscTotal() {
+  let t = 0;
+  document.querySelectorAll('#kdDivMiscAccInputs .kd-div-misc-amt').forEach(inp => {
+    t += Math.round(Number(inp.value) || 0);
+  });
+  const el = document.getElementById('kdDivMiscGrandTotal');
+  if (el) el.textContent = fmtKRW(t);
+}
+
+function kdClearDivMiscInputs() {
+  document.getElementById('kdDivMiscMemo').value = '';
+  document.querySelectorAll('#kdDivMiscAccInputs .kd-div-misc-amt').forEach(inp => { inp.value = ''; });
+  kdUpdateDivMiscTotal();
+}
+
+function kdCancelDivMiscEdit() {
+  kdDivMiscEditingId = null;
+  const saveBtn = document.getElementById('kdDivMiscSaveBtn');
+  if (saveBtn) saveBtn.textContent = '기타항목 추가';
+  const cancelBtn = document.getElementById('kdDivMiscCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  kdClearDivMiscInputs();
+}
+
+function kdAddMiscDividendRecord() {
+  const year  = Number(document.getElementById('kdDivYear').value);
+  const month = Number(document.getElementById('kdDivMonth').value);
+  if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
+  const memo = document.getElementById('kdDivMiscMemo').value.trim();
+  if (!memo) { alert('메모를 입력해 주세요.'); return; }
+
+  const accounts = {};
+  let total = 0;
+  document.querySelectorAll('#kdDivMiscAccInputs .kd-div-misc-amt').forEach(inp => {
+    const v = Math.round(Number(inp.value) || 0);
+    if (v) { accounts[inp.dataset.acc] = v; total += v; }
+  });
+  if (total === 0 && !confirm('모든 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
+
+  if (kdDivMiscEditingId) {
+    const idx = kdDividendRecords.findIndex(r => r.id === kdDivMiscEditingId);
+    if (idx >= 0) {
+      kdDividendRecords[idx] = {
+        id: kdDivMiscEditingId, year, month,
+        stocksPerShare: {}, stocksShares: {}, accounts,
+        misc: { memo, accounts: { ...accounts } }
+      };
+    }
+    kdCancelDivMiscEdit();
+  } else {
+    kdDividendRecords.push({
+      id: String(Date.now()) + Math.floor(Math.random() * 1000),
+      year, month,
+      stocksPerShare: {}, stocksShares: {}, accounts,
+      misc: { memo, accounts: { ...accounts } }
+    });
+    kdClearDivMiscInputs();
+  }
+  kdSaveDividends();
+  kdRenderDividendLists();
+}
+
 function kdRenderDividendLists() {
   // Stock table
   const sHeader = document.getElementById('kdDivStockTableHeader');
@@ -2889,14 +3042,29 @@ function kdRenderDividendLists() {
     } else {
       const allTickers = [...new Set(kdDividendRecords.flatMap(r => kdDivRecCodes(r)))];
       const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 110px`;
+      const spanCount = Math.max(allTickers.length, 1);
       sHeader.style.gridTemplateColumns = cols;
       sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
       const sorted = [...kdDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       sList.innerHTML = sorted.map(rec => {
+        const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+        if (kdDivRecIsMisc(rec)) {
+          const total = kdDivRecMiscTotal(rec);
+          const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
+          return `<div class="div-record-row" style="grid-template-columns:${cols}">
+            <span>${dateLabel}</span>
+            <span style="grid-column: span ${spanCount};color:var(--muted,#888)">📝 ${memo}</span>
+            <span class="total">${fmtKRW(total)}</span>
+            <span>
+              <button class="edit-btn" onclick="kdEditDividendRecord('${rec.id}')">수정</button>
+              <button class="del-btn" onclick="kdDeleteDividendRecord('${rec.id}')">삭제</button>
+            </span>
+          </div>`;
+        }
         const total = allTickers.reduce((s,t) => s + kdDivRecAmount(rec, t), 0);
         const cells = allTickers.map(t => { const v = kdDivRecAmount(rec, t); return `<span class="amount">${v ? fmtKRW(v) : '-'}</span>`; }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span>${dateLabel}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
           <span>
             <button class="edit-btn" onclick="kdEditDividendRecord('${rec.id}')">수정</button>
@@ -2920,8 +3088,11 @@ function kdRenderDividendLists() {
       aList.innerHTML = sorted.map(rec => {
         const total = KD_ACCOUNTS.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
         const cells = KD_ACCOUNTS.map(a=>`<span class="amount">${Number(rec.accounts[a.id])||0 ? fmtKRW(Number(rec.accounts[a.id])) : '-'}</span>`).join('');
+        const miscPrefix = kdDivRecIsMisc(rec)
+          ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}" style="color:var(--muted,#888)">📝 </small>`
+          : '';
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span>${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span>${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
         </div>`;
       }).join('');
