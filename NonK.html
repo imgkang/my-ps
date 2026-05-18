@@ -780,6 +780,23 @@
     padding: 3px 7px; border-radius: 4px; cursor: pointer; font-size: 11px;
   }
   .deposit-row .del-btn:hover { background: #fecaca; }
+  .txn-year-hdr {
+    display: grid;
+    grid-template-columns: 22px 1fr auto auto;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f0fdf4;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; user-select: none;
+  }
+  .txn-year-hdr:hover { background: #dcfce7; }
+  .txn-year-hdr .yh-chev { color: var(--primary); font-size: 10px; }
+  .txn-year-hdr .yh-year { color: #065f46; }
+  .txn-year-hdr .yh-count { color: var(--muted); font-weight: 500; font-size: 11px; }
+  .txn-year-hdr .yh-sum { font-variant-numeric: tabular-nums; }
+  .txn-year-hdr .yh-sum.pos { color: var(--plus); }
+  .txn-year-hdr .yh-sum.neg { color: var(--minus); }
   .edit-btn {
     background: #e0f2fe; color: #0369a1; border: none;
     padding: 3px 7px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 3px;
@@ -1290,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.366';
+const APP_VERSION = 'NonK v0.367';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1412,6 +1429,7 @@ let nkChartInstance       = null;
 let nkDetailChartInstance = null;
 let nkEditingTicker   = null;
 let nkEditingTxnId    = null;
+let _nkDepositCollapsedYears = null;
 let nkEditingRecordId = null;
 let nkEditingDivId    = null;
 let nkDivFormShares   = {}; // { ticker: { accId: qty } }
@@ -2279,19 +2297,56 @@ function nkRenderDepositList() {
 
   if (!txns.length) { list.innerHTML = '<div class="deposit-empty">입출금 내역이 없습니다.</div>'; return; }
   const sorted = [...txns].sort((a, b) => (b.date || '') < (a.date || '') ? -1 : 1);
-  list.innerHTML = sorted.map(t => {
-    const accName = NK_ACCOUNTS.find(a => a.id === t.accId)?.name || t.accId;
-    const sign = t.type === 'withdraw' ? '-' : '+';
-    return `<div class="deposit-row">
-      <span>${t.date || '-'}</span>
-      <span>${accName}</span>
-      <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtUSD(Number(t.amount))}</span>
-      <span>
-        <button class="edit-btn" onclick="nkOpenTxnEditor('${t.id}')">편집</button>
-        <button class="del-btn" onclick="nkDeleteTxn('${t.id}')">삭제</button>
-      </span>
-    </div>`;
+
+  // 연도별 그룹핑
+  const byYear = new Map();
+  sorted.forEach(t => {
+    const y = (t.date || '').slice(0, 4) || '미지정';
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(t);
+  });
+  const years = [...byYear.keys()].sort((a, b) => b.localeCompare(a));
+  if (_nkDepositCollapsedYears === null) {
+    _nkDepositCollapsedYears = new Set(years.slice(1));
+  }
+
+  list.innerHTML = years.map(y => {
+    const ytx = byYear.get(y);
+    const yearSum = ytx.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+    const sumCls = yearSum >= 0 ? 'pos' : 'neg';
+    const sumStr = (yearSum >= 0 ? '+' : '−') + fmtUSD(Math.abs(yearSum));
+    const collapsed = _nkDepositCollapsedYears.has(y);
+    const chevron = collapsed ? '▶' : '▼';
+    const header = `
+      <div class="txn-year-hdr" onclick="nkToggleDepositYear('${y}')">
+        <span class="yh-chev">${chevron}</span>
+        <span class="yh-year">${y}년</span>
+        <span class="yh-count">${ytx.length}건</span>
+        <span class="yh-sum ${sumCls}">${sumStr}</span>
+      </div>`;
+    if (collapsed) return header;
+    const rows = ytx.map(t => {
+      const accName = NK_ACCOUNTS.find(a => a.id === t.accId)?.name || t.accId;
+      const sign = t.type === 'withdraw' ? '-' : '+';
+      return `<div class="deposit-row">
+        <span>${t.date || '-'}</span>
+        <span>${accName}</span>
+        <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtUSD(Number(t.amount))}</span>
+        <span>
+          <button class="edit-btn" onclick="nkOpenTxnEditor('${t.id}')">편집</button>
+          <button class="del-btn" onclick="nkDeleteTxn('${t.id}')">삭제</button>
+        </span>
+      </div>`;
+    }).join('');
+    return header + rows;
   }).join('');
+}
+
+function nkToggleDepositYear(year) {
+  if (!_nkDepositCollapsedYears) _nkDepositCollapsedYears = new Set();
+  if (_nkDepositCollapsedYears.has(year)) _nkDepositCollapsedYears.delete(year);
+  else _nkDepositCollapsedYears.add(year);
+  nkRenderDepositList();
 }
 
 function nkDeleteTxn(id) {
