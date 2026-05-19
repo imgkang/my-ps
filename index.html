@@ -2527,6 +2527,44 @@ Chart.register({
     display: flex; justify-content: space-between; align-items: center;
   }
   .wdrec-modal-total strong { color: #d97706; font-size: 18px; font-weight: 700; }
+  .wdrec-prio-toggle {
+    width: 100%; padding: 12px 14px; background: #fff7ed;
+    border: 1px solid #fed7aa; border-radius: 10px;
+    color: #9a3412; font-weight: 600; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px; margin-bottom: 12px;
+  }
+  .wdrec-prio-toggle:hover { background: #ffedd5; }
+  .wdrec-prio-card { padding: 14px 16px; border: 1px solid #fed7aa; border-radius: 10px; background: #fffbf5; margin-bottom: 12px; }
+  .wdrec-prio-section-title { font-size: 11px; font-weight: 600; color: #9a3412; text-transform: uppercase; letter-spacing: 0.5px; margin: 12px 0 6px; }
+  .wdrec-prio-section-title:first-child { margin-top: 0; }
+  .wdrec-prio-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: 8px; background: #fff; margin-bottom: 4px;
+  }
+  .wdrec-prio-num {
+    width: 22px; height: 22px; background: #d97706; color: #fff;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .wdrec-prio-name { flex: 1; font-size: 13px; font-weight: 600; }
+  .wdrec-prio-bal { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .wdrec-prio-btn {
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 6px; width: 26px; height: 26px;
+    cursor: pointer; font-size: 12px; line-height: 1;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .wdrec-prio-btn:hover { background: #f3f4f6; }
+  .wdrec-prio-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .wdrec-prio-add { color: #d97706; border-color: #fed7aa; background: #fff7ed; font-weight: 700; }
+  .wdrec-prio-add:hover { background: #ffedd5; }
+  .wdrec-cash-low { color: #b91c1c; }
+  .wdrec-warn {
+    background: #fef3c7; border: 1px solid #fde68a; color: #92400e;
+    padding: 10px 12px; border-radius: 8px; font-size: 12px; margin-top: 8px;
+  }
 </style>
 <div id="panel-wdrec" class="tab-panel">
   <div class="modal-header">
@@ -2537,6 +2575,18 @@ Chart.register({
   </div>
 
   <div class="wdrec-summary" id="wdrecSummaryCard"></div>
+
+  <!-- 인출 계좌 우선순위 (접기/펼치기) -->
+  <button class="wdrec-prio-toggle" id="wdrecPrioToggle" onclick="toggleWdrecPrio()">
+    <span>🏧 인출 계좌 우선순위 설정</span>
+    <span id="wdrecPrioChev">▼</span>
+  </button>
+  <div class="wdrec-prio-card" id="wdrecPrioCard" style="display:none">
+    <div id="wdrecPrioBody"></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">
+      💡 우선순위는 인출 기록 추가 시 계좌 선택 순서로 사용됩니다. 1순위 계좌가 기본 선택됩니다.
+    </div>
+  </div>
 
   <button class="wdrec-add-btn" onclick="openWdrecAddModal()">+ 인출 기록 추가</button>
 
@@ -2573,8 +2623,9 @@ Chart.register({
     </div>
 
     <div style="margin-bottom:12px">
-      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 계좌</label>
-      <select id="wdrecAcc" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px"></select>
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 계좌 <span style="font-weight:400">— ⭐ 우선순위, 잔액 표시</span></label>
+      <select id="wdrecAcc" onchange="onWdrecAccChange()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px"></select>
+      <div id="wdrecBalanceWarn" class="wdrec-warn" style="display:none"></div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -2992,7 +3043,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.371';
+const APP_VERSION = 'MyPM v0.372';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3074,6 +3125,7 @@ function getDefaultPersonCfg(isWife) {
   return {
     activeAccIds:   isWife ? ['wife_pension1'] : ['pension1'],
     extraAccounts:  [],
+    withdrawalAccIds: [],
     np:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 100, delayYears: 0, earlyYears: 0 },
     gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
     sp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, delayYears: 0, earlyYears: 0 },
@@ -3092,6 +3144,7 @@ function _deepMergePersonCfg(def, saved) {
   r.sp  = { ...def.sp,  ...(saved.sp  || {}) };
   r.activeAccIds  = Array.isArray(saved.activeAccIds)  ? saved.activeAccIds  : def.activeAccIds;
   r.extraAccounts = Array.isArray(saved.extraAccounts) ? saved.extraAccounts : def.extraAccounts;
+  r.withdrawalAccIds = Array.isArray(saved.withdrawalAccIds) ? saved.withdrawalAccIds : def.withdrawalAccIds;
   return r;
 }
 
@@ -9070,29 +9123,158 @@ function toggleWdrecPreview() {
 
 function openWdrec() {
   renderWdrecSummary();
+  renderWdrecPrio();
   renderWdrecFilter();
   renderWdrecList();
   switchTab('wdrec');
 }
 
-function _personActiveAccIds(person) {
-  if (person === 'wife') return appSettings.wife?.activeAccIds || [];
-  return appSettings.my?.activeAccIds || [];
+function toggleWdrecPrio() {
+  const card = document.getElementById('wdrecPrioCard');
+  const chev = document.getElementById('wdrecPrioChev');
+  if (!card) return;
+  const open = card.style.display === 'none';
+  card.style.display = open ? '' : 'none';
+  if (chev) chev.textContent = open ? '▲' : '▼';
+}
+
+// 인출 계좌 우선순위 정렬: withdrawalAccIds 우선, 그 뒤 나머지 active 계좌
+function getWdrecOrderedAccIds(person) {
+  const cfg = (person === 'wife') ? appSettings.wife : appSettings.my;
+  const active = cfg.activeAccIds || [];
+  const prio = (cfg.withdrawalAccIds || []).filter(id => active.includes(id));
+  const rest = active.filter(id => !prio.includes(id));
+  return { prio, rest, all: [...prio, ...rest] };
+}
+
+function renderWdrecPrio() {
+  const wrap = document.getElementById('wdrecPrioBody');
+  if (!wrap) return;
+  const hasWife = !!appSettings.hasWife;
+  const html = [];
+  for (const person of (hasWife ? ['my','wife'] : ['my'])) {
+    const label = person === 'wife' ? getWifeTitle() : '본인';
+    const { prio, rest } = getWdrecOrderedAccIds(person);
+    html.push(`<div class="wdrec-prio-section-title">${label}</div>`);
+
+    if (prio.length === 0) {
+      html.push(`<div style="font-size:12px;color:var(--muted);padding:6px 2px">우선순위 계좌가 없습니다. 아래에서 추가하세요.</div>`);
+    } else {
+      prio.forEach((accId, idx) => {
+        const bal = (Number(cashAccounts[accId]) || 0);
+        const balTxt = Math.round(bal / 10000).toLocaleString('ko-KR') + ' 만원';
+        html.push(`
+          <div class="wdrec-prio-row">
+            <span class="wdrec-prio-num">${idx+1}</span>
+            <span class="wdrec-prio-name">${getAccName(accId)}</span>
+            <span class="wdrec-prio-bal">${balTxt}</span>
+            <button class="wdrec-prio-btn" onclick="moveWdrecPrio('${person}','${accId}',-1)" ${idx === 0 ? 'disabled' : ''} title="위로">↑</button>
+            <button class="wdrec-prio-btn" onclick="moveWdrecPrio('${person}','${accId}',1)" ${idx === prio.length-1 ? 'disabled' : ''} title="아래로">↓</button>
+            <button class="wdrec-prio-btn" onclick="removeWdrecPrio('${person}','${accId}')" title="제거">×</button>
+          </div>
+        `);
+      });
+    }
+
+    if (rest.length > 0) {
+      html.push(`<div style="font-size:11px;color:var(--muted);margin:10px 0 6px">➕ 추가 가능한 계좌</div>`);
+      rest.forEach(accId => {
+        const bal = (Number(cashAccounts[accId]) || 0);
+        const balTxt = Math.round(bal / 10000).toLocaleString('ko-KR') + ' 만원';
+        html.push(`
+          <div class="wdrec-prio-row" style="background:#f9fafb">
+            <span class="wdrec-prio-name" style="color:var(--muted)">${getAccName(accId)}</span>
+            <span class="wdrec-prio-bal">${balTxt}</span>
+            <button class="wdrec-prio-btn wdrec-prio-add" onclick="addWdrecPrio('${person}','${accId}')">+ 추가</button>
+          </div>
+        `);
+      });
+    }
+  }
+  wrap.innerHTML = html.join('');
+}
+
+function _personCfg(person) {
+  return (person === 'wife') ? appSettings.wife : appSettings.my;
+}
+
+function addWdrecPrio(person, accId) {
+  const cfg = _personCfg(person);
+  if (!Array.isArray(cfg.withdrawalAccIds)) cfg.withdrawalAccIds = [];
+  if (!cfg.withdrawalAccIds.includes(accId)) cfg.withdrawalAccIds.push(accId);
+  saveAppSettings();
+  renderWdrecPrio();
+}
+function removeWdrecPrio(person, accId) {
+  const cfg = _personCfg(person);
+  cfg.withdrawalAccIds = (cfg.withdrawalAccIds || []).filter(id => id !== accId);
+  saveAppSettings();
+  renderWdrecPrio();
+}
+function moveWdrecPrio(person, accId, dir) {
+  const cfg = _personCfg(person);
+  const arr = cfg.withdrawalAccIds || [];
+  const i = arr.indexOf(accId);
+  if (i < 0) return;
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  cfg.withdrawalAccIds = arr;
+  saveAppSettings();
+  renderWdrecPrio();
 }
 
 function populateWdrecAccountSelect(person, selectedId) {
   const sel = document.getElementById('wdrecAcc');
   if (!sel) return;
-  const ids = _personActiveAccIds(person);
-  sel.innerHTML = ids.map(id =>
-    `<option value="${id}"${id === selectedId ? ' selected' : ''}>${getAccName(id)}</option>`
-  ).join('');
-  if (!ids.length) sel.innerHTML = '<option value="">(활성 계좌 없음 - 설정에서 추가)</option>';
+  const { prio, rest } = getWdrecOrderedAccIds(person);
+  const ordered = [...prio, ...rest];
+  if (!ordered.length) {
+    sel.innerHTML = '<option value="">(활성 계좌 없음 - 설정에서 추가)</option>';
+    updateWdrecBalanceHint();
+    return;
+  }
+  // 명시 선택값이 없으면 1순위 계좌를 기본 선택
+  const defaultId = selectedId || ordered[0];
+  sel.innerHTML = ordered.map(id => {
+    const balManwon = Math.round((Number(cashAccounts[id]) || 0) / 10000);
+    const priIdx = prio.indexOf(id);
+    const prefix = priIdx >= 0 ? `⭐${priIdx+1} ` : '';
+    return `<option value="${id}"${id === defaultId ? ' selected' : ''}>${prefix}${getAccName(id)} — 잔액 ${balManwon.toLocaleString('ko-KR')} 만원</option>`;
+  }).join('');
+  updateWdrecBalanceHint();
 }
 
 function onWdrecPersonChange() {
   const person = document.getElementById('wdrecPerson').value;
   populateWdrecAccountSelect(person);
+}
+function onWdrecAccChange() {
+  updateWdrecBalanceHint();
+}
+
+function _currentAccBalanceManwon(accId) {
+  return (Number(cashAccounts[accId]) || 0) / 10000;
+}
+
+function updateWdrecBalanceHint() {
+  const accId = document.getElementById('wdrecAcc')?.value;
+  const amount = Number(document.getElementById('wdrecAmount')?.value) || 0;
+  const warn = document.getElementById('wdrecBalanceWarn');
+  if (!warn) return;
+  if (!accId || amount <= 0) { warn.style.display = 'none'; return; }
+  // 편집 중이면 본인의 기존 차감분은 가산하여 비교
+  let effectiveBal = _currentAccBalanceManwon(accId);
+  if (editingWdrecId) {
+    const old = withdrawals.transactions.find(x => x.id === editingWdrecId);
+    if (old && old.accId === accId) effectiveBal += old.amount;
+  }
+  if (amount > effectiveBal) {
+    warn.style.display = '';
+    warn.textContent = `⚠️ 계좌 잔액 부족: 현재 ${effectiveBal.toFixed(0)}만원, 인출 ${amount.toFixed(0)}만원`;
+  } else {
+    warn.style.display = 'none';
+  }
 }
 
 function getWdTaxRateByType(type) {
@@ -9118,6 +9300,7 @@ function onWdrecAmountInput() {
     taxField.value = (Math.round(amount * rate * 10) / 1000).toFixed(1);
   }
   updateWdrecTotalPreview();
+  updateWdrecBalanceHint();
 }
 function onWdrecTaxTypeChange() {
   // 세금유형 바꾸면 수동입력 플래그 해제하고 재계산
@@ -9194,27 +9377,62 @@ function saveWdrec() {
   if (!accId) { alert('계좌를 선택하세요 (설정에서 인물의 활성 계좌를 추가하세요)'); return; }
   if (amount <= 0) { alert('인출 금액을 입력하세요'); return; }
 
+  // 기존 차감분이 있다면 먼저 복원
+  let oldEntry = null;
   if (editingWdrecId) {
-    const t = withdrawals.transactions.find(x => x.id === editingWdrecId);
-    if (t) Object.assign(t, { date, person, accId, amount, taxType, taxAmount, memo });
+    oldEntry = withdrawals.transactions.find(x => x.id === editingWdrecId);
+    if (oldEntry) cashAccounts[oldEntry.accId] = (Number(cashAccounts[oldEntry.accId]) || 0) + oldEntry.amount * 10000;
+  }
+
+  // 신규/변경된 금액으로 차감 가능 여부 확인
+  const effectiveBal = (Number(cashAccounts[accId]) || 0) / 10000;
+  if (amount > effectiveBal) {
+    const ok = confirm(
+      `⚠️ 계좌 잔액이 부족합니다.\n` +
+      `현재 잔액: ${effectiveBal.toFixed(0)}만원\n` +
+      `인출 금액: ${amount.toFixed(0)}만원\n\n` +
+      `그래도 진행하시겠습니까? (현금 잔액이 음수가 됩니다)`
+    );
+    if (!ok) {
+      // 사용자가 취소 → 복원한 분량을 다시 차감하여 원상복구
+      if (oldEntry) cashAccounts[oldEntry.accId] = (Number(cashAccounts[oldEntry.accId]) || 0) - oldEntry.amount * 10000;
+      return;
+    }
+  }
+
+  // 차감 적용
+  cashAccounts[accId] = (Number(cashAccounts[accId]) || 0) - amount * 10000;
+
+  if (editingWdrecId) {
+    if (oldEntry) Object.assign(oldEntry, { date, person, accId, amount, taxType, taxAmount, memo });
   } else {
     withdrawals.transactions.push({ id: generateWdId(), date, person, accId, amount, taxType, taxAmount, memo });
   }
   saveWithdrawals();
+  persistCashAccounts();
   closeWdrecModal();
   renderWdrecSummary();
+  renderWdrecPrio();
   renderWdrecFilter();
   renderWdrecList();
+  if (typeof render === 'function') render();
 }
 function deleteWdrec() {
   if (!editingWdrecId) return;
-  if (!confirm('이 인출 기록을 삭제할까요?')) return;
+  if (!confirm('이 인출 기록을 삭제하고 계좌 잔액을 복원할까요?')) return;
+  const t = withdrawals.transactions.find(x => x.id === editingWdrecId);
+  if (t) {
+    cashAccounts[t.accId] = (Number(cashAccounts[t.accId]) || 0) + t.amount * 10000;
+    persistCashAccounts();
+  }
   withdrawals.transactions = withdrawals.transactions.filter(x => x.id !== editingWdrecId);
   saveWithdrawals();
   closeWdrecModal();
   renderWdrecSummary();
+  renderWdrecPrio();
   renderWdrecFilter();
   renderWdrecList();
+  if (typeof render === 'function') render();
 }
 
 function _computePlannedForYear(year) {
