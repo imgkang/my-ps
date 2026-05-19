@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인출기록 UI 목업</title>
+<style>
+  :root {
+    --primary: #03c75a;
+    --primary-dark: #02a04a;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --plus: #e53935;
+    --minus: #1e88e5;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --withdraw: #d97706;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .mockup-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: #fef3c7; border-bottom: 1px solid #fde68a;
+    padding: 8px 16px; font-size: 12px; color: #92400e;
+    text-align: center;
+  }
+  .mockup-banner b { font-weight: 700; }
+  .mockup-banner select {
+    margin-left: 8px; padding: 2px 6px; border: 1px solid #fde68a;
+    border-radius: 4px; background: #fffbeb; font-size: 12px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 72px 16px 130px; }
+
+  header {
+    position: fixed; top: 32px; left: 0; right: 0; z-index: 500;
+    display: flex; align-items: center;
+    height: 56px; background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+    padding: 0 16px;
+  }
+  .hdr-title { font-size: 17px; font-weight: 700; }
+  .hdr-spacer { flex: 1; }
+  .hdr-mode-badge {
+    background: rgba(217, 119, 6, 0.1); color: var(--withdraw);
+    padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  }
+
+  .tab-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+    display: flex;
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -1px 0 rgba(0,0,0,0.06);
+    padding: 14px 0 20px;
+  }
+  .tab-nav-btn {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 6px 4px 0;
+    border: none; background: transparent;
+    color: #9ca3af; cursor: pointer;
+    transition: color 0.15s;
+    font-size: 10px; font-weight: 600;
+  }
+  .tab-nav-btn.active { color: var(--primary); }
+  .tab-nav-btn.withdrawal-tab { position: relative; }
+  .tab-nav-btn.withdrawal-tab.new-mode::before {
+    content: ''; position: absolute; top: 4px; right: 50%; margin-right: -22px;
+    width: 8px; height: 8px; background: var(--withdraw); border-radius: 50%;
+  }
+  .tab-nav-btn svg { display: block; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Summary cards */
+  .summary-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .summary-card-mini {
+    background: var(--card); border-radius: 12px; padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .summary-card-mini.planned { border-left: 4px solid #6b7280; }
+  .summary-card-mini.actual { border-left: 4px solid var(--withdraw); }
+  .summary-card-mini.remain { border-left: 4px solid var(--primary); }
+  .sc-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .sc-value { font-size: 22px; font-weight: 700; color: var(--text); }
+  .sc-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .summary-card {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    color: #fff; padding: 20px 24px; border-radius: 12px;
+    box-shadow: var(--shadow); margin-bottom: 20px;
+  }
+  .summary-label { font-size: 13px; opacity: 0.9; }
+  .summary-value { font-size: 32px; font-weight: 700; margin-top: 4px; }
+  .summary-meta { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+
+  .card {
+    background: var(--card); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 15px; margin: 0 0 14px 0; color: var(--muted);
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .card-row { display: flex; align-items: center; justify-content: space-between; }
+
+  .btn {
+    padding: 9px 14px; border: none; border-radius: 8px;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-withdraw { background: var(--withdraw); color: #fff; }
+  .btn-secondary { background: #f3f4f6; color: var(--text); }
+  .btn-block { width: 100%; padding: 14px; font-size: 15px; }
+
+  /* Filter chips */
+  .filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip {
+    padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: 16px; font-size: 12px; cursor: pointer;
+    background: #fff; color: var(--muted);
+  }
+  .chip.active { background: var(--withdraw); border-color: var(--withdraw); color: #fff; }
+
+  /* Records table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 6px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 6px; border-bottom: 1px solid #f3f4f6; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .acc-pill {
+    display: inline-block; padding: 2px 8px; background: #eff6ff;
+    color: #1e40af; border-radius: 10px; font-size: 11px; font-weight: 600;
+  }
+  .acc-pill.wife { background: #fdf2f8; color: #be185d; }
+  .source-tag {
+    display: inline-block; padding: 1px 6px; font-size: 10px;
+    border-radius: 4px; font-weight: 600;
+  }
+  .source-cash { background: #f0fdf4; color: #166534; }
+  .source-sell { background: #fff7ed; color: #9a3412; }
+  .tbl-icon-btn {
+    background: transparent; border: none; cursor: pointer;
+    font-size: 15px; padding: 2px 4px; line-height: 1; border-radius: 4px;
+  }
+  .tbl-icon-btn:hover { background: #f1f5f9; }
+
+  /* Plan vs Actual */
+  .pv-row {
+    display: grid; grid-template-columns: 80px 1fr 110px 110px 90px;
+    gap: 8px; padding: 10px 0; border-bottom: 1px solid #f3f4f6;
+    align-items: center; font-size: 13px;
+  }
+  .pv-header { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .pv-bar-wrap { background: #f3f4f6; height: 6px; border-radius: 3px; overflow: hidden; position: relative; }
+  .pv-bar { background: var(--withdraw); height: 100%; border-radius: 3px; }
+  .pv-bar.over { background: var(--plus); }
+  .pv-diff.over { color: var(--plus); }
+  .pv-diff.under { color: var(--minus); }
+
+  /* Modal */
+  .modal-backdrop {
+    display: none;
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+    z-index: 1500; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; max-width: 520px; width: 100%;
+    max-height: 90vh; overflow-y: auto; padding: 24px;
+  }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  .modal-header h2 { margin: 0; font-size: 18px; }
+  .close-btn {
+    border: none; cursor: pointer; background: transparent;
+    font-size: 26px; padding: 0 8px; line-height: 1; color: var(--muted);
+  }
+  .form-row { margin-bottom: 14px; }
+  .form-row label {
+    display: block; font-size: 12px; color: var(--muted);
+    margin-bottom: 6px; font-weight: 600;
+  }
+  .form-row input, .form-row select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px;
+  }
+  .form-row input:focus, .form-row select:focus {
+    outline: none; border-color: var(--withdraw);
+    box-shadow: 0 0 0 3px rgba(217,119,6,0.15);
+  }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .radio-group { display: flex; gap: 8px; }
+  .radio-card {
+    flex: 1; padding: 12px; border: 2px solid var(--border);
+    border-radius: 8px; cursor: pointer; text-align: center;
+    font-size: 13px; font-weight: 600; color: var(--muted);
+  }
+  .radio-card.active { border-color: var(--withdraw); background: #fff7ed; color: var(--withdraw); }
+  .radio-card-sub { font-size: 10px; font-weight: 400; margin-top: 4px; opacity: 0.8; }
+
+  .modal-total {
+    background: #fff7ed; border: 1px solid #fed7aa;
+    padding: 14px 16px; border-radius: 8px; margin-top: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-total strong { color: var(--withdraw); font-size: 18px; font-weight: 700; }
+
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .modal-actions .btn { flex: 1; padding: 12px; }
+
+  /* Sell section (conditional) */
+  .sell-section {
+    display: none; background: #fff7ed; padding: 12px;
+    border-radius: 8px; margin-top: 8px;
+  }
+  .sell-section.show { display: block; }
+
+  /* Account priority list */
+  .acc-priority-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; margin-bottom: 6px; background: #fff;
+  }
+  .acc-priority-num {
+    width: 24px; height: 24px; background: var(--withdraw); color: #fff;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .acc-priority-name { flex: 1; font-size: 14px; font-weight: 600; }
+  .acc-priority-bal { font-size: 12px; color: var(--muted); }
+  .drag-handle { color: #d1d5db; cursor: grab; font-size: 16px; }
+
+  /* Tab inner switcher */
+  .inner-tabs {
+    display: flex; background: #fff; border-radius: 10px;
+    padding: 4px; margin-bottom: 16px; box-shadow: var(--shadow);
+  }
+  .inner-tab {
+    flex: 1; padding: 10px; text-align: center; cursor: pointer;
+    border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted);
+  }
+  .inner-tab.active { background: var(--withdraw); color: #fff; }
+
+  .inner-panel { display: none; }
+  .inner-panel.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="mockup-banner">
+  <b>📐 인출기록 UI 목업</b> ·
+  시나리오:
+  <select onchange="switchScenario(this.value)">
+    <option value="before">은퇴 전 (탭 숨김)</option>
+    <option value="active" selected>은퇴 후 (인출모드 ON)</option>
+  </select>
+  ·
+  <select onchange="switchView(this.value)">
+    <option value="records" selected>인출기록 메인</option>
+    <option value="planvs">계획 vs 실제</option>
+    <option value="settings">인출계좌 설정</option>
+  </select>
+  · 인출추가 모달:
+  <button onclick="openModal()" style="padding:2px 8px;border:1px solid #fde68a;border-radius:4px;background:#fffbeb;cursor:pointer;font-size:12px">열기</button>
+</div>
+
+<header>
+  <div class="hdr-title">🏦 MyPM</div>
+  <div class="hdr-spacer"></div>
+  <div class="hdr-mode-badge" id="modeBadge">🏧 인출모드</div>
+</header>
+
+<div class="container">
+
+  <!-- ============ 인출기록 메인 화면 ============ -->
+  <div class="tab-panel active" id="view-records">
+
+    <!-- 큰 요약 카드 -->
+    <div class="summary-card">
+      <div class="summary-label">올해 인출 (2027년)</div>
+      <div class="summary-value">720<span style="font-size:18px;font-weight:500;opacity:0.85"> / 800 만원</span></div>
+      <div class="summary-meta">계획 대비 90% · 잔여 80만원 (2개월)</div>
+    </div>
+
+    <!-- 미니 카드 -->
+    <div class="summary-grid">
+      <div class="summary-card-mini planned">
+        <div class="sc-label">올해 계획</div>
+        <div class="sc-value">800<span style="font-size:13px;color:var(--muted)"> 만원</span></div>
+        <div class="sc-meta">월 평균 66.7</div>
+      </div>
+      <div class="summary-card-mini actual">
+        <div class="sc-label">올해 인출액</div>
+        <div class="sc-value">720<span style="font-size:13px;color:var(--muted)"> 만원</span></div>
+        <div class="sc-meta">10건 · 세금 39.6</div>
+      </div>
+      <div class="summary-card-mini remain">
+        <div class="sc-label">총 자산 잔액</div>
+        <div class="sc-value">3.2<span style="font-size:13px;color:var(--muted)"> 억</span></div>
+        <div class="sc-meta">예상 소진: 2052년</div>
+      </div>
+    </div>
+
+    <!-- 액션 버튼 -->
+    <button class="btn btn-withdraw btn-block" onclick="openModal()" style="margin-bottom:16px">
+      + 인출 기록 추가
+    </button>
+
+    <!-- 인출 내역 카드 -->
+    <div class="card">
+      <div class="card-row" style="margin-bottom:14px">
+        <h2 style="margin:0">인출 내역</h2>
+        <span style="font-size:12px;color:var(--muted)">총 10건</span>
+      </div>
+
+      <div class="filter-row">
+        <span class="chip active">2027년</span>
+        <span class="chip">2026년</span>
+        <span class="chip">전체 인물</span>
+        <span class="chip">전체 계좌</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>날짜</th>
+            <th>계좌</th>
+            <th>유형</th>
+            <th class="num">금액</th>
+            <th class="num">세금</th>
+            <th class="num">실수령</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>11/15</td>
+            <td><span class="acc-pill">연금1</span></td>
+            <td><span class="source-tag source-cash">현금</span></td>
+            <td class="num">80</td>
+            <td class="num" style="color:var(--muted)">4.4</td>
+            <td class="num"><b>75.6</b></td>
+            <td><button class="tbl-icon-btn">✏️</button></td>
+          </tr>
+          <tr>
+            <td>10/15</td>
+            <td><span class="acc-pill">연금1</span></td>
+            <td><span class="source-tag source-cash">현금</span></td>
+            <td class="num">80</td>
+            <td class="num" style="color:var(--muted)">4.4</td>
+            <td class="num"><b>75.6</b></td>
+            <td><button class="tbl-icon-btn">✏️</button></td>
+          </tr>
+          <tr>
+            <td>09/20</td>
+            <td><span class="acc-pill">IRP</span></td>
+            <td><span class="source-tag source-sell">매도</span></td>
+            <td class="num">120</td>
+            <td class="num" style="color:var(--muted)">6.6</td>
+            <td class="num"><b>113.4</b></td>
+            <td><button class="tbl-icon-btn">✏️</button></td>
+          </tr>
+          <tr>
+            <td>09/15</td>
+            <td><span class="acc-pill wife">아내연금</span></td>
+            <td><span class="source-tag source-cash">현금</span></td>
+            <td class="num">60</td>
+            <td class="num" style="color:var(--muted)">3.3</td>
+            <td class="num"><b>56.7</b></td>
+            <td><button class="tbl-icon-btn">✏️</button></td>
+          </tr>
+          <tr>
+            <td>08/15</td>
+            <td><span class="acc-pill">연금1</span></td>
+            <td><span class="source-tag source-cash">현금</span></td>
+            <td class="num">80</td>
+            <td class="num" style="color:var(--muted)">4.4</td>
+            <td class="num"><b>75.6</b></td>
+            <td><button class="tbl-icon-btn">✏️</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ 계획 vs 실제 비교 화면 ============ -->
+  <div class="tab-panel" id="view-planvs">
+    <div class="card">
+      <h2>📊 인출계획 vs 실제 (월별)</h2>
+
+      <div class="pv-row pv-header">
+        <div>월</div>
+        <div>진행률</div>
+        <div style="text-align:right">계획</div>
+        <div style="text-align:right">실제</div>
+        <div style="text-align:right">차이</div>
+      </div>
+
+      <div class="pv-row">
+        <div>2027.06</div>
+        <div class="pv-bar-wrap"><div class="pv-bar" style="width:100%"></div></div>
+        <div style="text-align:right">66.7</div>
+        <div style="text-align:right"><b>80</b></div>
+        <div style="text-align:right" class="pv-diff over">+13.3</div>
+      </div>
+      <div class="pv-row">
+        <div>2027.07</div>
+        <div class="pv-bar-wrap"><div class="pv-bar" style="width:100%"></div></div>
+        <div style="text-align:right">66.7</div>
+        <div style="text-align:right"><b>80</b></div>
+        <div style="text-align:right" class="pv-diff over">+13.3</div>
+      </div>
+      <div class="pv-row">
+        <div>2027.08</div>
+        <div class="pv-bar-wrap"><div class="pv-bar" style="width:100%"></div></div>
+        <div style="text-align:right">66.7</div>
+        <div style="text-align:right"><b>80</b></div>
+        <div style="text-align:right" class="pv-diff over">+13.3</div>
+      </div>
+      <div class="pv-row">
+        <div>2027.09</div>
+        <div class="pv-bar-wrap"><div class="pv-bar over" style="width:100%"></div></div>
+        <div style="text-align:right">66.7</div>
+        <div style="text-align:right"><b>180</b></div>
+        <div style="text-align:right" class="pv-diff over">+113.3</div>
+      </div>
+      <div class="pv-row">
+        <div>2027.10</div>
+        <div class="pv-bar-wrap"><div class="pv-bar" style="width:100%"></div></div>
+        <div style="text-align:right">66.7</div>
+        <div style="text-align:right"><b>80</b></div>
+        <div style="text-align:right" class="pv-diff over">+13.3</div>
+      </div>
+      <div class="pv-row">
+        <div>2027.11</div>
+        <div class="pv-bar-wrap"><div class="pv-bar" style="width:60%"></div></div>
+        <div style="text-align:right">66.7</div>
+        <div style="text-align:right"><b>40</b></div>
+        <div style="text-align:right" class="pv-diff under">-26.7</div>
+      </div>
+      <div class="pv-row" style="border-top:2px solid var(--border);margin-top:8px;padding-top:14px">
+        <div><b>누적</b></div>
+        <div></div>
+        <div style="text-align:right"><b>800</b></div>
+        <div style="text-align:right"><b>720</b></div>
+        <div style="text-align:right" class="pv-diff under"><b>-80</b></div>
+      </div>
+
+      <div style="margin-top:20px;padding:14px;background:#f9fafb;border-radius:8px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">⚙️ 잔여 기간 자동조정</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          현재 누적 인출액이 계획보다 80만원 부족합니다.
+          잔여 인출계획(2028~2050)에 차액을 반영할까요?
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" style="flex:1">무시</button>
+          <button class="btn btn-withdraw" style="flex:1">차액 반영</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 인출계좌 설정 화면 ============ -->
+  <div class="tab-panel" id="view-settings">
+    <div class="card">
+      <h2>🏧 인출 계좌 우선순위 (본인)</h2>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        인출 시 위에서부터 우선 사용. 드래그로 순서 변경.
+      </div>
+
+      <div class="acc-priority-item">
+        <span class="acc-priority-num">1</span>
+        <span class="acc-priority-name">연금저축1</span>
+        <span class="acc-priority-bal">잔액 1.2억</span>
+        <span class="drag-handle">≡</span>
+      </div>
+      <div class="acc-priority-item">
+        <span class="acc-priority-num">2</span>
+        <span class="acc-priority-name">IRP</span>
+        <span class="acc-priority-bal">잔액 8,400만</span>
+        <span class="drag-handle">≡</span>
+      </div>
+      <div class="acc-priority-item">
+        <span class="acc-priority-num">3</span>
+        <span class="acc-priority-name">DC</span>
+        <span class="acc-priority-bal">잔액 5,200만</span>
+        <span class="drag-handle">≡</span>
+      </div>
+
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px">+ 계좌 추가</button>
+    </div>
+
+    <div class="card">
+      <h2>🏧 인출 계좌 우선순위 (배우자)</h2>
+      <div class="acc-priority-item">
+        <span class="acc-priority-num">1</span>
+        <span class="acc-priority-name">아내 연금저축</span>
+        <span class="acc-priority-bal">잔액 6,500만</span>
+        <span class="drag-handle">≡</span>
+      </div>
+      <div class="acc-priority-item">
+        <span class="acc-priority-num">2</span>
+        <span class="acc-priority-name">아내 IRP</span>
+        <span class="acc-priority-bal">잔액 3,800만</span>
+        <span class="drag-handle">≡</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ 인출모드 설정</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+        <div>
+          <div style="font-weight:600">자동 활성화</div>
+          <div style="font-size:12px;color:var(--muted)">인출 시작년도(2027) 도달 시 자동으로 탭 노출</div>
+        </div>
+        <div style="width:44px;height:24px;background:var(--withdraw);border-radius:12px;position:relative">
+          <div style="position:absolute;right:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600">미리보기 모드</div>
+          <div style="font-size:12px;color:var(--muted)">은퇴 전이라도 인출 탭을 강제로 표시</div>
+        </div>
+        <div style="width:44px;height:24px;background:#d1d5db;border-radius:12px;position:relative">
+          <div style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ 하단 탭 네비게이션 ============ -->
+<nav class="tab-nav">
+  <button class="tab-nav-btn">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+      <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+    </svg>
+    입출금
+  </button>
+  <button class="tab-nav-btn">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="7" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="17" rx="1"/>
+    </svg>
+    포트폴리오
+  </button>
+  <button class="tab-nav-btn">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      <line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/>
+    </svg>
+    계좌기록
+  </button>
+  <button class="tab-nav-btn">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    적립계획
+  </button>
+  <button class="tab-nav-btn">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+      <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
+    </svg>
+    인출계획
+  </button>
+  <!-- 신규 인출기록 탭 -->
+  <button class="tab-nav-btn withdrawal-tab active new-mode" id="newTab">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="20" height="14" rx="2"/>
+      <circle cx="12" cy="13" r="3"/>
+      <line x1="6" y1="10" x2="6" y2="10.01"/>
+      <line x1="18" y1="10" x2="18" y2="10.01"/>
+      <line x1="9" y1="3" x2="15" y2="3"/>
+    </svg>
+    인출기록
+  </button>
+</nav>
+
+<!-- ============ 인출 추가 모달 ============ -->
+<div class="modal-backdrop" id="addModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🏧 인출 기록 추가</h2>
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label>날짜</label>
+        <input type="date" value="2027-11-15">
+      </div>
+      <div class="form-row">
+        <label>인물</label>
+        <select>
+          <option>본인</option>
+          <option>배우자</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>인출 계좌 (우선순위 순)</label>
+      <select>
+        <option>연금저축1 — 잔액 1.2억 ⭐1순위</option>
+        <option>IRP — 잔액 8,400만</option>
+        <option>DC — 잔액 5,200만</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>인출 방식</label>
+      <div class="radio-group">
+        <div class="radio-card active" onclick="toggleSource(this, false)">
+          💵 현금 인출
+          <div class="radio-card-sub">계좌 현금에서 차감</div>
+        </div>
+        <div class="radio-card" onclick="toggleSource(this, true)">
+          📉 매도 후 인출
+          <div class="radio-card-sub">종목 매도 + 인출</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 매도 선택 시 노출되는 영역 -->
+    <div class="sell-section" id="sellSection">
+      <div class="form-row" style="margin-bottom:8px">
+        <label>매도 종목</label>
+        <select>
+          <option>SCHD — 보유 50주</option>
+          <option>QQQ — 보유 12주</option>
+          <option>VOO — 보유 8주</option>
+        </select>
+      </div>
+      <div class="form-grid-2" style="margin-bottom:0">
+        <div class="form-row" style="margin-bottom:0">
+          <label>수량</label>
+          <input type="number" value="2">
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label>매도가 (원)</label>
+          <input type="number" value="125000">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-grid-2" style="margin-top:14px">
+      <div class="form-row">
+        <label>인출 금액 (만원, 세전)</label>
+        <input type="number" value="80">
+      </div>
+      <div class="form-row">
+        <label>세금 유형</label>
+        <select>
+          <option>연금소득세 (5.5%)</option>
+          <option>퇴직소득세 (12%)</option>
+          <option>국민연금 (4%)</option>
+          <option>연금 초과분 (16.5%)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>메모 (선택)</label>
+      <input type="text" placeholder="예: 11월 생활비">
+    </div>
+
+    <!-- 자동계산 -->
+    <div class="modal-total">
+      <div>
+        <div style="font-size:11px;color:var(--muted)">세금 4.4 · 실수령</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">계좌잔액: 1.2억 → 1.196억</div>
+      </div>
+      <strong>75.6 만원</strong>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-withdraw">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchScenario(v) {
+  const tab = document.getElementById('newTab');
+  const badge = document.getElementById('modeBadge');
+  if (v === 'before') {
+    tab.style.display = 'none';
+    badge.style.display = 'none';
+  } else {
+    tab.style.display = '';
+    badge.style.display = '';
+  }
+}
+function switchView(v) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+}
+function openModal() { document.getElementById('addModal').classList.add('show'); }
+function closeModal() { document.getElementById('addModal').classList.remove('show'); }
+function toggleSource(el, isSell) {
+  document.querySelectorAll('.radio-card').forEach(r => r.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sellSection').classList.toggle('show', isSell);
+}
+</script>
+
+</body>
+</html>
