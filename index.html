@@ -2565,6 +2565,25 @@ Chart.register({
     background: #fef3c7; border: 1px solid #fde68a; color: #92400e;
     padding: 10px 12px; border-radius: 8px; font-size: 12px; margin-top: 8px;
   }
+  .wdrec-radio-card.active { border-color: #d97706 !important; background: #fff7ed !important; color: #9a3412 !important; }
+  .wdrec-radio-card:hover { border-color: #fed7aa; }
+  .wdrec-pv-row {
+    display: grid; grid-template-columns: 70px 1fr 90px 90px 80px;
+    gap: 8px; padding: 10px 0; border-bottom: 1px solid #f3f4f6;
+    align-items: center; font-size: 13px;
+  }
+  .wdrec-pv-header { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .wdrec-pv-bar-wrap { background: #f3f4f6; height: 6px; border-radius: 3px; overflow: hidden; }
+  .wdrec-pv-bar { background: #d97706; height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .wdrec-pv-bar.over { background: var(--plus); }
+  .wdrec-pv-bar.future { background: #d1d5db; }
+  .wdrec-pv-diff.over { color: var(--plus); }
+  .wdrec-pv-diff.under { color: var(--minus); }
+  .wdrec-pv-row.current { background: #fff7ed; margin: 0 -10px; padding: 10px; border-radius: 6px; }
+  .wdrec-adjust-card {
+    margin-top: 16px; padding: 14px;
+    background: #f9fafb; border: 1px solid var(--border); border-radius: 8px;
+  }
 </style>
 <div id="panel-wdrec" class="tab-panel">
   <div class="modal-header">
@@ -2598,6 +2617,15 @@ Chart.register({
     <div id="wdrecFilterRow" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center"></div>
     <div id="wdrecListWrap"></div>
   </div>
+
+  <!-- 계획 vs 실제 비교 -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0;font-size:15px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">📊 계획 vs 실제 (연도별)</h2>
+      <button class="btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderWdrecPlanVsActual()">새로고침</button>
+    </div>
+    <div id="wdrecPlanVsActualWrap"></div>
+  </div>
 </div><!-- /panel-wdrec -->
 
 <!-- 인출 기록 추가/수정 모달 -->
@@ -2626,6 +2654,45 @@ Chart.register({
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 계좌 <span style="font-weight:400">— ⭐ 우선순위, 잔액 표시</span></label>
       <select id="wdrecAcc" onchange="onWdrecAccChange()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px"></select>
       <div id="wdrecBalanceWarn" class="wdrec-warn" style="display:none"></div>
+    </div>
+
+    <!-- 인출 방식 -->
+    <div style="margin-bottom:12px" id="wdrecSourceWrap">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 방식</label>
+      <div style="display:flex;gap:8px">
+        <div class="wdrec-radio-card" id="wdrecSourceCash" onclick="setWdrecSource('cash')" style="flex:1;padding:10px;border:2px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:8px;cursor:pointer;text-align:center;font-size:13px;font-weight:600">
+          💵 현금 인출
+          <div style="font-size:10px;font-weight:400;margin-top:2px;opacity:0.8">계좌 현금에서 차감</div>
+        </div>
+        <div class="wdrec-radio-card" id="wdrecSourceSell" onclick="setWdrecSource('sell')" style="flex:1;padding:10px;border:2px solid var(--border);background:#fff;color:var(--muted);border-radius:8px;cursor:pointer;text-align:center;font-size:13px;font-weight:600">
+          📉 매도 후 인출
+          <div style="font-size:10px;font-weight:400;margin-top:2px;opacity:0.8">종목 매도 → 현금 → 인출</div>
+        </div>
+      </div>
+      <div id="wdrecSourceLockedNote" style="display:none;margin-top:8px;font-size:11px;color:var(--muted);padding:8px 10px;background:#f9fafb;border-radius:6px"></div>
+    </div>
+
+    <!-- 매도 입력 (조건부) -->
+    <div id="wdrecSellSection" style="display:none;background:#fff7ed;padding:12px;border-radius:8px;margin-bottom:12px;border:1px solid #fed7aa">
+      <div style="margin-bottom:8px">
+        <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">매도 종목</label>
+        <select id="wdrecSellCode" onchange="onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div>
+          <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">수량 (주)</label>
+          <input type="number" id="wdrecSellQty" min="0" step="1" oninput="onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">매도가 (원/주)</label>
+          <input type="number" id="wdrecSellPrice" min="0" step="1" oninput="onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
+        </div>
+      </div>
+      <div style="font-size:12px;color:#9a3412;display:flex;justify-content:space-between;align-items:center">
+        <span>매도 금액 = 수량 × 단가</span>
+        <strong id="wdrecSellTotal">0 만원</strong>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">💡 매도 후 발생한 현금에서 인출금액을 차감합니다. 매도금액이 인출금액보다 크면 차액은 계좌 현금으로 남습니다.</div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -3043,7 +3110,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.372';
+const APP_VERSION = 'MyPM v0.373';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -9082,7 +9149,9 @@ function loadWithdrawals() {
           amount: Number(t.amount) || 0,
           taxAmount: Number(t.taxAmount) || 0,
           taxType: String(t.taxType || 'pension_u70'),
-          memo: String(t.memo || '')
+          memo: String(t.memo || ''),
+          source: t.source === 'sell' ? 'sell' : 'cash',
+          ...(t.relatedTradeId ? { relatedTradeId: String(t.relatedTradeId) } : {})
         }))
         .filter(t => t.date && t.accId && t.amount > 0)
     };
@@ -9126,7 +9195,151 @@ function openWdrec() {
   renderWdrecPrio();
   renderWdrecFilter();
   renderWdrecList();
+  renderWdrecPlanVsActual();
   switchTab('wdrec');
+}
+
+// === Phase 4: 계획 vs 실제 비교 ===
+function _actualForYear(year) {
+  return withdrawals.transactions
+    .filter(t => t.date.startsWith(year + '-'))
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+}
+
+function renderWdrecPlanVsActual() {
+  const wrap = document.getElementById('wdrecPlanVsActualWrap');
+  if (!wrap) return;
+  if (typeof wdPlan === 'undefined' || !wdPlan || !Array.isArray(wdPlan.periods) || !wdPlan.periods.length) {
+    wrap.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:30px 0">인출 계획이 없습니다. 먼저 인출계획 탭에서 설정하세요.</div>';
+    return;
+  }
+  const curYear = new Date().getFullYear();
+  // 모든 period 범위에서 연도 목록 생성
+  const years = [];
+  let minY = Infinity, maxY = -Infinity;
+  for (const p of wdPlan.periods) {
+    minY = Math.min(minY, Number(p.startYear) || 9999);
+    maxY = Math.max(maxY, Number(p.endYear) || 0);
+  }
+  for (let y = minY; y <= maxY; y++) years.push(y);
+
+  let cumPlan = 0, cumActual = 0, cumDiff = 0;
+  const rows = years.map(y => {
+    const planned = _computePlannedForYear(y);
+    const actual = _actualForYear(y);
+    const diff = actual - planned;
+    cumPlan += planned;
+    cumActual += actual;
+    cumDiff += diff;
+    const isPast = y < curYear;
+    const isCurrent = y === curYear;
+    const isFuture = y > curYear;
+    const pct = planned > 0 ? Math.min(100, (actual / planned) * 100) : 0;
+    const barCls = isFuture ? 'future' : (actual > planned && !isFuture ? 'over' : '');
+    const diffCls = diff > 0 ? 'over' : (diff < 0 ? 'under' : '');
+    const diffTxt = diff === 0 ? '—' : (diff > 0 ? '+' : '') + diff.toFixed(0);
+    const rowCls = isCurrent ? 'wdrec-pv-row current' : 'wdrec-pv-row';
+    const planTxt = isFuture ? `<span style="color:var(--muted)">${planned.toFixed(0)}</span>` : planned.toFixed(0);
+    const actualTxt = isFuture ? '—' : `<b>${actual.toFixed(0)}</b>`;
+    const diffDisplay = isFuture ? '—' : `<span class="wdrec-pv-diff ${diffCls}">${diffTxt}</span>`;
+    return `
+      <div class="${rowCls}">
+        <div>${y}${isCurrent ? ' ★' : ''}</div>
+        <div class="wdrec-pv-bar-wrap"><div class="wdrec-pv-bar ${barCls}" style="width:${isFuture ? 0 : pct}%"></div></div>
+        <div style="text-align:right">${planTxt}</div>
+        <div style="text-align:right">${actualTxt}</div>
+        <div style="text-align:right">${diffDisplay}</div>
+      </div>
+    `;
+  }).join('');
+
+  const cumDiffCls = cumDiff > 0 ? 'over' : (cumDiff < 0 ? 'under' : '');
+  const cumDiffTxt = cumDiff === 0 ? '—' : (cumDiff > 0 ? '+' : '') + cumDiff.toFixed(0);
+
+  // 잔여 자동조정 카드 (올해 기준)
+  const curPlanned = _computePlannedForYear(curYear);
+  const curActual = _actualForYear(curYear);
+  const curDiff = curActual - curPlanned;
+  let adjustCard = '';
+  if (curPlanned > 0 && Math.abs(curDiff) >= 1) {
+    const sign = curDiff > 0 ? '초과' : '부족';
+    const abs = Math.abs(curDiff);
+    adjustCard = `
+      <div class="wdrec-adjust-card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">⚙️ 잔여 기간 자동조정</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+          올해(${curYear}) 인출이 계획보다 <strong>${abs.toFixed(0)}만원 ${sign}</strong>되었습니다.
+          잔여 기간(${curYear+1}년~)의 계획 금액에 차액을 균등 분산할까요?
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" style="flex:1;padding:8px" onclick="renderWdrecPlanVsActual()">무시</button>
+          <button class="btn-primary" style="flex:1;padding:8px;background:#d97706" onclick="autoAdjustWdPlan(${curDiff})">차액 ${curDiff > 0 ? '−' : '+'} ${abs.toFixed(0)}만원 반영</button>
+        </div>
+      </div>
+    `;
+  }
+
+  wrap.innerHTML = `
+    <div class="wdrec-pv-row wdrec-pv-header">
+      <div>연도</div>
+      <div>진행률</div>
+      <div style="text-align:right">계획</div>
+      <div style="text-align:right">실제</div>
+      <div style="text-align:right">차이</div>
+    </div>
+    ${rows}
+    <div class="wdrec-pv-row" style="border-top:2px solid var(--border);margin-top:8px;padding-top:14px;font-weight:600">
+      <div>누적</div>
+      <div></div>
+      <div style="text-align:right">${cumPlan.toFixed(0)}</div>
+      <div style="text-align:right">${cumActual.toFixed(0)}</div>
+      <div style="text-align:right"><span class="wdrec-pv-diff ${cumDiffCls}">${cumDiffTxt}</span></div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:6px">단위: 만원</div>
+    ${adjustCard}
+  `;
+}
+
+// 올해 차액을 잔여 기간(올해 이후) period들에 균등 분산하여 totalAmount 조정.
+// diff > 0: 초과 → 잔여에서 차감 / diff < 0: 부족 → 잔여에 추가
+function autoAdjustWdPlan(diff) {
+  if (typeof wdPlan === 'undefined' || !wdPlan) return;
+  const curYear = new Date().getFullYear();
+  // 잔여 연도 수 계산 (올해 다음부터 전체 period 끝까지)
+  const remainingYears = [];
+  for (const p of (wdPlan.periods || [])) {
+    for (let y = Math.max(p.startYear, curYear + 1); y <= p.endYear; y++) remainingYears.push({ y, period: p });
+  }
+  if (!remainingYears.length) {
+    alert('잔여 인출 기간이 없습니다.');
+    return;
+  }
+  const perYear = -diff / remainingYears.length; // 연간 조정량 (만원)
+  if (!confirm(
+    `잔여 기간(${remainingYears.length}년)의 연간 계획 금액에\n` +
+    `${perYear >= 0 ? '+' : ''}${perYear.toFixed(1)}만원/년 (전체 ${(-diff).toFixed(0)}만원)\n` +
+    `씩 분산 적용합니다.\n\n진행할까요?`
+  )) return;
+
+  // period별로 해당 period에 속하는 잔여연도 수 × perYear 만큼 totalAmount 조정
+  // (period.totalAmount는 단일연도 기준이라 가정 — 기존 정의가 그렇게 동작 중)
+  // 더 안전하게는 period 자체에 적용. 여기서는 period.totalAmount 조정.
+  const counts = new Map();
+  remainingYears.forEach(({ period }) => {
+    counts.set(period, (counts.get(period) || 0) + 1);
+  });
+  for (const [period, _cnt] of counts) {
+    period.totalAmount = Math.max(0, (Number(period.totalAmount) || 0) + perYear);
+    // 본인/배우자 분배 비율은 기존 비율 유지 (myAmount, wifeAmount 재계산)
+    const tot = Number(period.totalAmount) || 0;
+    const ratio = Number(period.wifeRatio) || 50;
+    period.wifeAmount = Math.round(tot * ratio / 100);
+    period.myAmount = tot - period.wifeAmount;
+  }
+  saveWdPlan();
+  alert('잔여 기간 계획이 조정되었습니다.');
+  renderWdrecPlanVsActual();
+  renderWdrecSummary();
 }
 
 function toggleWdrecPrio() {
@@ -9248,9 +9461,70 @@ function populateWdrecAccountSelect(person, selectedId) {
 function onWdrecPersonChange() {
   const person = document.getElementById('wdrecPerson').value;
   populateWdrecAccountSelect(person);
+  populateWdrecSellCodeSelect();
 }
 function onWdrecAccChange() {
   updateWdrecBalanceHint();
+  populateWdrecSellCodeSelect();
+}
+
+// === Phase 3: 매도 후 인출 통합 ===
+let _wdrecSource = 'cash'; // 'cash' | 'sell'
+
+function setWdrecSource(src) {
+  // 편집 모드에서는 source 변경 불가
+  if (editingWdrecId) return;
+  _wdrecSource = src;
+  document.getElementById('wdrecSourceCash').classList.toggle('active', src === 'cash');
+  document.getElementById('wdrecSourceSell').classList.toggle('active', src === 'sell');
+  document.getElementById('wdrecSellSection').style.display = src === 'sell' ? '' : 'none';
+  if (src === 'sell') populateWdrecSellCodeSelect();
+  updateWdrecBalanceHint();
+  updateWdrecTotalPreview();
+}
+
+function populateWdrecSellCodeSelect() {
+  const sel = document.getElementById('wdrecSellCode');
+  if (!sel) return;
+  const accId = document.getElementById('wdrecAcc')?.value;
+  if (!accId) { sel.innerHTML = '<option value="">(계좌 먼저 선택)</option>'; return; }
+  const items = (holdings || []).filter(h => {
+    const qty = Number(h.accounts?.[accId]?.qty) || 0;
+    return qty > 0;
+  });
+  if (!items.length) {
+    sel.innerHTML = '<option value="">(이 계좌에 보유 종목 없음)</option>';
+  } else {
+    sel.innerHTML = items.map(h => {
+      const qty = Number(h.accounts[accId].qty) || 0;
+      const price = Number(h.price) || 0;
+      return `<option value="${escapeHtml(h.code)}" data-qty="${qty}" data-price="${price}">${escapeHtml(h.name)} — 보유 ${qty.toLocaleString('ko-KR')}주 (현재가 ${price.toLocaleString('ko-KR')}원)</option>`;
+    }).join('');
+    // 현재가를 기본 매도가로 채움
+    const first = items[0];
+    const priceField = document.getElementById('wdrecSellPrice');
+    if (priceField && !priceField.value) priceField.value = Number(first.price) || 0;
+  }
+  onWdrecSellChange();
+}
+
+function onWdrecSellChange() {
+  const sel = document.getElementById('wdrecSellCode');
+  const qty = Number(document.getElementById('wdrecSellQty').value) || 0;
+  const price = Number(document.getElementById('wdrecSellPrice').value) || 0;
+  const total = qty * price;
+  const totalManwon = Math.round(total / 10000);
+  const totalEl = document.getElementById('wdrecSellTotal');
+  if (totalEl) totalEl.textContent = totalManwon.toLocaleString('ko-KR') + ' 만원';
+
+  // 매도 모드면서 금액이 비어있으면 매도금액으로 자동 채움
+  if (_wdrecSource === 'sell') {
+    const amtField = document.getElementById('wdrecAmount');
+    if (amtField && !amtField.dataset.touched && totalManwon > 0) {
+      amtField.value = totalManwon;
+      onWdrecAmountInput();
+    }
+  }
 }
 
 function _currentAccBalanceManwon(accId) {
@@ -9292,10 +9566,13 @@ function getWdTaxRateByType(type) {
 }
 
 function onWdrecAmountInput() {
+  // 사용자가 amount를 입력하면 매도 자동 동기화 중지
+  const amtField = document.getElementById('wdrecAmount');
+  if (document.activeElement === amtField) amtField.dataset.touched = '1';
   // 금액 바뀌면 (수동 입력 안 한 경우) 세금 재계산
   const taxField = document.getElementById('wdrecTax');
   if (!taxField.dataset.manual) {
-    const amount = Number(document.getElementById('wdrecAmount').value) || 0;
+    const amount = Number(amtField.value) || 0;
     const rate = getWdTaxRateByType(document.getElementById('wdrecTaxType').value);
     taxField.value = (Math.round(amount * rate * 10) / 1000).toFixed(1);
   }
@@ -9328,7 +9605,13 @@ function openWdrecAddModal(id) {
   const modal = document.getElementById('wdrecModal');
   const titleEl = document.getElementById('wdrecModalTitle');
   const taxField = document.getElementById('wdrecTax');
+  const amtField = document.getElementById('wdrecAmount');
   delete taxField.dataset.manual;
+  delete amtField.dataset.touched;
+
+  // 매도 영역 기본 초기화
+  document.getElementById('wdrecSellQty').value = '';
+  document.getElementById('wdrecSellPrice').value = '';
 
   if (id) {
     const t = withdrawals.transactions.find(x => x.id === id);
@@ -9337,12 +9620,33 @@ function openWdrecAddModal(id) {
     document.getElementById('wdrecDate').value = t.date;
     document.getElementById('wdrecPerson').value = t.person;
     populateWdrecAccountSelect(t.person, t.accId);
-    document.getElementById('wdrecAmount').value = t.amount;
+    amtField.value = t.amount;
     document.getElementById('wdrecTaxType').value = t.taxType;
-    document.getElementById('wdrecTax').value = t.taxAmount.toFixed(1);
-    taxField.dataset.manual = '1'; // 저장된 값은 수동 입력으로 취급(자동 재계산 방지)
+    taxField.value = t.taxAmount.toFixed(1);
+    taxField.dataset.manual = '1';
     document.getElementById('wdrecMemo').value = t.memo || '';
     document.getElementById('wdrecDeleteBtn').style.display = '';
+
+    // 편집 모드: source 라디오 잠금
+    _wdrecSource = t.source || 'cash';
+    document.getElementById('wdrecSourceCash').classList.toggle('active', _wdrecSource === 'cash');
+    document.getElementById('wdrecSourceSell').classList.toggle('active', _wdrecSource === 'sell');
+    document.getElementById('wdrecSourceCash').style.cursor = 'not-allowed';
+    document.getElementById('wdrecSourceSell').style.cursor = 'not-allowed';
+    document.getElementById('wdrecSourceCash').style.opacity = _wdrecSource === 'cash' ? '1' : '0.4';
+    document.getElementById('wdrecSourceSell').style.opacity = _wdrecSource === 'sell' ? '1' : '0.4';
+    document.getElementById('wdrecSellSection').style.display = 'none'; // 편집 모드는 매도 영역 숨김
+    const lockNote = document.getElementById('wdrecSourceLockedNote');
+    if (t.source === 'sell' && t.relatedTradeId) {
+      const tr = (tradeRecords || []).find(x => x.id === t.relatedTradeId);
+      lockNote.style.display = '';
+      lockNote.innerHTML = tr
+        ? `🔗 연결된 매도 거래: ${escapeHtml(tr.name)} · ${tr.qty}주 × ${Number(tr.price).toLocaleString('ko-KR')}원 (${tr.date})<br>매도 정보를 변경하려면 이 기록을 삭제하고 다시 추가하세요.`
+        : `🔗 매도 거래 (이미 삭제됨)`;
+    } else {
+      lockNote.style.display = 'none';
+      lockNote.textContent = '';
+    }
   } else {
     titleEl.textContent = '🏧 인출 기록 추가';
     const now = new Date();
@@ -9350,11 +9654,22 @@ function openWdrecAddModal(id) {
     document.getElementById('wdrecDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
     document.getElementById('wdrecPerson').value = 'my';
     populateWdrecAccountSelect('my');
-    document.getElementById('wdrecAmount').value = '';
+    amtField.value = '';
     document.getElementById('wdrecTaxType').value = 'pension_u70';
-    document.getElementById('wdrecTax').value = '0';
+    taxField.value = '0';
     document.getElementById('wdrecMemo').value = '';
     document.getElementById('wdrecDeleteBtn').style.display = 'none';
+
+    // 신규: source = cash 기본
+    _wdrecSource = 'cash';
+    document.getElementById('wdrecSourceCash').classList.add('active');
+    document.getElementById('wdrecSourceSell').classList.remove('active');
+    document.getElementById('wdrecSourceCash').style.cursor = 'pointer';
+    document.getElementById('wdrecSourceSell').style.cursor = 'pointer';
+    document.getElementById('wdrecSourceCash').style.opacity = '1';
+    document.getElementById('wdrecSourceSell').style.opacity = '1';
+    document.getElementById('wdrecSellSection').style.display = 'none';
+    document.getElementById('wdrecSourceLockedNote').style.display = 'none';
   }
   updateWdrecTotalPreview();
   modal.classList.add('open');
@@ -9372,19 +9687,78 @@ function saveWdrec() {
   const taxType = document.getElementById('wdrecTaxType').value;
   const taxAmount = Number(document.getElementById('wdrecTax').value) || 0;
   const memo = document.getElementById('wdrecMemo').value.trim();
+  const isEditing = !!editingWdrecId;
+  // 편집 시: 기존 source 유지. 신규: _wdrecSource
+  let source = _wdrecSource;
+  let oldEntry = null;
+  if (isEditing) {
+    oldEntry = withdrawals.transactions.find(x => x.id === editingWdrecId);
+    if (oldEntry) source = oldEntry.source || 'cash';
+  }
 
   if (!date) { alert('날짜를 입력하세요'); return; }
   if (!accId) { alert('계좌를 선택하세요 (설정에서 인물의 활성 계좌를 추가하세요)'); return; }
   if (amount <= 0) { alert('인출 금액을 입력하세요'); return; }
 
-  // 기존 차감분이 있다면 먼저 복원
-  let oldEntry = null;
-  if (editingWdrecId) {
-    oldEntry = withdrawals.transactions.find(x => x.id === editingWdrecId);
-    if (oldEntry) cashAccounts[oldEntry.accId] = (Number(cashAccounts[oldEntry.accId]) || 0) + oldEntry.amount * 10000;
+  // === 매도 모드 (신규만) ===
+  let newTradeRecord = null;
+  if (!isEditing && source === 'sell') {
+    const code = document.getElementById('wdrecSellCode').value;
+    const sellQty = Number(document.getElementById('wdrecSellQty').value) || 0;
+    const sellPrice = Number(document.getElementById('wdrecSellPrice').value) || 0;
+
+    if (!code) { alert('매도 종목을 선택하세요'); return; }
+    if (sellQty <= 0) { alert('매도 수량을 입력하세요'); return; }
+    if (sellPrice <= 0) { alert('매도 단가를 입력하세요'); return; }
+
+    const h = holdings.find(x => x.code === code);
+    if (!h) { alert('해당 종목을 찾을 수 없습니다'); return; }
+    const curQty = Number(h.accounts?.[accId]?.qty) || 0;
+    if (sellQty > curQty) {
+      alert(`보유 수량이 부족합니다.\n보유: ${curQty}주\n매도 요청: ${sellQty}주`);
+      return;
+    }
+
+    const sellTotal = sellQty * sellPrice; // 원
+    if (sellTotal < amount * 10000) {
+      const ok = confirm(
+        `⚠️ 매도 금액이 인출 금액보다 적습니다.\n` +
+        `매도 금액: ${Math.round(sellTotal/10000)}만원\n` +
+        `인출 금액: ${amount.toFixed(0)}만원\n\n` +
+        `차액(${(amount - sellTotal/10000).toFixed(0)}만원)은 계좌 현금에서 추가 차감됩니다. 진행할까요?`
+      );
+      if (!ok) return;
+    }
+
+    // 매도 실행 (기존 saveTrade와 동일한 로직)
+    if (!h.accounts) h.accounts = {};
+    const accData = h.accounts[accId] || { qty: 0, avgPrice: 0 };
+    const newQty = (Number(accData.qty) || 0) - sellQty;
+    h.accounts[accId] = { qty: newQty, avgPrice: Number(accData.avgPrice) || 0 };
+    if (newQty === 0) delete h.accounts[accId];
+    cashAccounts[accId] = (Number(cashAccounts[accId]) || 0) + sellTotal;
+
+    newTradeRecord = {
+      id: generateTxnId(),
+      date, type: 'sell', accId, code,
+      name: h.name,
+      qty: sellQty, price: sellPrice, total: sellTotal,
+      fromWdrec: true
+    };
+    tradeRecords.push(newTradeRecord);
+    cashAdjRecords.push({
+      id: generateTxnId(), date, accId,
+      type: 'add', amount: sellTotal, note: '매도(인출)',
+      tradeId: newTradeRecord.id
+    });
   }
 
-  // 신규/변경된 금액으로 차감 가능 여부 확인
+  // === 인출 금액 차감 ===
+  // 편집 시: 기존 차감분 복원
+  if (isEditing && oldEntry) {
+    cashAccounts[oldEntry.accId] = (Number(cashAccounts[oldEntry.accId]) || 0) + oldEntry.amount * 10000;
+  }
+
   const effectiveBal = (Number(cashAccounts[accId]) || 0) / 10000;
   if (amount > effectiveBal) {
     const ok = confirm(
@@ -9394,20 +9768,80 @@ function saveWdrec() {
       `그래도 진행하시겠습니까? (현금 잔액이 음수가 됩니다)`
     );
     if (!ok) {
-      // 사용자가 취소 → 복원한 분량을 다시 차감하여 원상복구
-      if (oldEntry) cashAccounts[oldEntry.accId] = (Number(cashAccounts[oldEntry.accId]) || 0) - oldEntry.amount * 10000;
+      // 원상복구: 매도 영향과 편집 영향 되돌리기
+      if (newTradeRecord) {
+        // 방금 만든 매도 trade를 취소
+        const h2 = holdings.find(x => x.code === newTradeRecord.code);
+        if (h2) {
+          if (!h2.accounts) h2.accounts = {};
+          const ad = h2.accounts[accId] || { qty: 0, avgPrice: 0 };
+          ad.qty = (Number(ad.qty) || 0) + newTradeRecord.qty;
+          h2.accounts[accId] = ad;
+        }
+        cashAccounts[accId] = (Number(cashAccounts[accId]) || 0) - newTradeRecord.total;
+        tradeRecords = tradeRecords.filter(x => x.id !== newTradeRecord.id);
+        cashAdjRecords = cashAdjRecords.filter(x => x.tradeId !== newTradeRecord.id);
+      }
+      if (isEditing && oldEntry) {
+        cashAccounts[oldEntry.accId] = (Number(cashAccounts[oldEntry.accId]) || 0) - oldEntry.amount * 10000;
+      }
       return;
     }
   }
-
-  // 차감 적용
   cashAccounts[accId] = (Number(cashAccounts[accId]) || 0) - amount * 10000;
 
-  if (editingWdrecId) {
+  // === 기록 저장 ===
+  if (isEditing) {
     if (oldEntry) Object.assign(oldEntry, { date, person, accId, amount, taxType, taxAmount, memo });
   } else {
-    withdrawals.transactions.push({ id: generateWdId(), date, person, accId, amount, taxType, taxAmount, memo });
+    const newEntry = { id: generateWdId(), date, person, accId, amount, taxType, taxAmount, memo, source };
+    if (newTradeRecord) newEntry.relatedTradeId = newTradeRecord.id;
+    withdrawals.transactions.push(newEntry);
   }
+
+  saveWithdrawals();
+  if (newTradeRecord) { saveTradeRecords(); saveCashAdjRecords(); saveHoldings(); }
+  persistCashAccounts();
+  closeWdrecModal();
+  renderWdrecSummary();
+  renderWdrecPrio();
+  renderWdrecFilter();
+  renderWdrecList();
+  renderWdrecPlanVsActual();
+  if (typeof render === 'function') render();
+}
+function deleteWdrec() {
+  if (!editingWdrecId) return;
+  const t = withdrawals.transactions.find(x => x.id === editingWdrecId);
+  if (!t) return;
+  const hasTrade = t.source === 'sell' && t.relatedTradeId;
+  const tr = hasTrade ? (tradeRecords || []).find(x => x.id === t.relatedTradeId) : null;
+
+  let msg = '이 인출 기록을 삭제하고 계좌 잔액을 복원할까요?';
+  if (tr) msg += `\n\n연결된 매도 거래도 함께 되돌립니다:\n· ${tr.name} ${tr.qty}주 × ${Number(tr.price).toLocaleString('ko-KR')}원`;
+  if (!confirm(msg)) return;
+
+  // 인출 금액 복원
+  cashAccounts[t.accId] = (Number(cashAccounts[t.accId]) || 0) + t.amount * 10000;
+
+  // 매도 trade 되돌리기
+  if (tr) {
+    const h = holdings.find(x => x.code === tr.code);
+    if (h) {
+      if (!h.accounts) h.accounts = {};
+      const acc = h.accounts[tr.accId] || { qty: 0, avgPrice: 0 };
+      acc.qty = (Number(acc.qty) || 0) + Number(tr.qty);
+      h.accounts[tr.accId] = acc;
+    }
+    cashAccounts[tr.accId] = (Number(cashAccounts[tr.accId]) || 0) - Number(tr.total);
+    tradeRecords = tradeRecords.filter(x => x.id !== tr.id);
+    cashAdjRecords = cashAdjRecords.filter(x => x.tradeId !== tr.id);
+    saveTradeRecords();
+    saveCashAdjRecords();
+    saveHoldings();
+  }
+
+  withdrawals.transactions = withdrawals.transactions.filter(x => x.id !== editingWdrecId);
   saveWithdrawals();
   persistCashAccounts();
   closeWdrecModal();
@@ -9415,23 +9849,7 @@ function saveWdrec() {
   renderWdrecPrio();
   renderWdrecFilter();
   renderWdrecList();
-  if (typeof render === 'function') render();
-}
-function deleteWdrec() {
-  if (!editingWdrecId) return;
-  if (!confirm('이 인출 기록을 삭제하고 계좌 잔액을 복원할까요?')) return;
-  const t = withdrawals.transactions.find(x => x.id === editingWdrecId);
-  if (t) {
-    cashAccounts[t.accId] = (Number(cashAccounts[t.accId]) || 0) + t.amount * 10000;
-    persistCashAccounts();
-  }
-  withdrawals.transactions = withdrawals.transactions.filter(x => x.id !== editingWdrecId);
-  saveWithdrawals();
-  closeWdrecModal();
-  renderWdrecSummary();
-  renderWdrecPrio();
-  renderWdrecFilter();
-  renderWdrecList();
+  renderWdrecPlanVsActual();
   if (typeof render === 'function') render();
 }
 
@@ -9514,12 +9932,15 @@ function renderWdrecList() {
     const net = t.amount - t.taxAmount;
     const accName = getAccName(t.accId) || t.accId;
     const personTag = (hasWife && t.person === 'wife') ? `<span class="wdrec-person-pill">${getWifeTitle()}</span>` : '';
+    const sourceTag = t.source === 'sell'
+      ? `<span style="display:inline-block;padding:1px 6px;background:#fff7ed;color:#9a3412;border-radius:8px;font-size:10px;font-weight:600;margin-left:4px">📉 매도</span>`
+      : `<span style="display:inline-block;padding:1px 6px;background:#f0fdf4;color:#166534;border-radius:8px;font-size:10px;font-weight:600;margin-left:4px">💵 현금</span>`;
     const memoTxt = t.memo ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${_escapeHtml(t.memo)}</div>` : '';
     return `
       <tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:10px 6px;font-size:13px;white-space:nowrap">${t.date.slice(5).replace('-', '/')}</td>
         <td style="padding:10px 6px;font-size:13px">
-          <span class="wdrec-acc-pill">${accName}</span>${personTag}${memoTxt}
+          <span class="wdrec-acc-pill">${accName}</span>${personTag}${sourceTag}${memoTxt}
         </td>
         <td style="padding:10px 6px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums">${t.amount.toFixed(0)}</td>
         <td style="padding:10px 6px;text-align:right;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums">${t.taxAmount.toFixed(1)}</td>
