@@ -1441,6 +1441,16 @@ Chart.register({
     </svg>
     인출계획
   </button>
+  <button class="tab-nav-btn" id="tab-wdrec" onclick="openWdrec()" style="display:none">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="20" height="14" rx="2"/>
+      <circle cx="12" cy="13" r="3"/>
+      <line x1="6" y1="10" x2="6.01" y2="10"/>
+      <line x1="18" y1="10" x2="18.01" y2="10"/>
+      <line x1="9" y1="3" x2="15" y2="3"/>
+    </svg>
+    인출기록
+  </button>
 </nav>
 
 <!-- 종목 추가 모달 -->
@@ -2296,9 +2306,10 @@ Chart.register({
     <div>
       <h2>💸 인출 계획</h2>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openWdSettingsModal()">⚙️ 인출설정</button>
       <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합 및 정리</button>
+      <button class="btn-secondary" id="wdrecPreviewBtn" style="font-size:12px;padding:4px 10px" onclick="toggleWdrecPreview()" title="은퇴 전이라도 인출기록 탭을 강제로 표시">🏧 인출기록 미리보기 (OFF)</button>
     </div>
   </div>
 
@@ -2475,6 +2486,141 @@ Chart.register({
     </div>
 
 </div><!-- /panel-withdrawal -->
+
+<!-- 인출 기록 패널 (실제 인출 내역) -->
+<style>
+  .wdrec-summary {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    color: #fff; padding: 20px 24px; border-radius: 12px;
+    box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .wdrec-summary-label { font-size: 13px; opacity: 0.9; }
+  .wdrec-summary-value { font-size: 32px; font-weight: 700; margin-top: 4px; }
+  .wdrec-summary-meta { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+  .wdrec-add-btn {
+    width: 100%; padding: 14px; font-size: 15px; font-weight: 600;
+    background: #d97706; color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; margin-bottom: 16px;
+  }
+  .wdrec-add-btn:hover { background: #b45309; }
+  .wdrec-chip {
+    padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: 16px; font-size: 12px; cursor: pointer;
+    background: #fff; color: var(--muted); font-weight: 600;
+  }
+  .wdrec-chip.active { background: #d97706; border-color: #d97706; color: #fff; }
+  .wdrec-chip:hover { color: #d97706; }
+  .wdrec-chip.active:hover { color: #fff; }
+  .wdrec-acc-pill {
+    display: inline-block; padding: 2px 8px; background: #eff6ff;
+    color: #1e40af; border-radius: 10px; font-size: 11px; font-weight: 600;
+  }
+  .wdrec-person-pill {
+    display: inline-block; padding: 1px 6px; background: #fdf2f8;
+    color: #be185d; border-radius: 8px; font-size: 10px;
+    font-weight: 600; margin-left: 4px;
+  }
+  #wdrecPreviewBtn.active { background: #fed7aa; color: #9a3412; border-color: #fdba74; }
+  .wdrec-modal-total {
+    background: #fff7ed; border: 1px solid #fed7aa;
+    padding: 14px 16px; border-radius: 8px; margin-top: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .wdrec-modal-total strong { color: #d97706; font-size: 18px; font-weight: 700; }
+</style>
+<div id="panel-wdrec" class="tab-panel">
+  <div class="modal-header">
+    <div>
+      <h2>🏧 인출 기록</h2>
+      <div class="modal-subtitle">실제 인출한 금액 기록 (인출계획과 별개로 관리)</div>
+    </div>
+  </div>
+
+  <div class="wdrec-summary" id="wdrecSummaryCard"></div>
+
+  <button class="wdrec-add-btn" onclick="openWdrecAddModal()">+ 인출 기록 추가</button>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0;font-size:15px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">인출 내역</h2>
+      <span id="wdrecListCount" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div id="wdrecFilterRow" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center"></div>
+    <div id="wdrecListWrap"></div>
+  </div>
+</div><!-- /panel-wdrec -->
+
+<!-- 인출 기록 추가/수정 모달 -->
+<div class="modal-backdrop" id="wdrecModal" onclick="if(event.target.id==='wdrecModal')closeWdrecModal()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div><h2 id="wdrecModalTitle">🏧 인출 기록 추가</h2></div>
+      <button class="close-btn" onclick="closeWdrecModal()">×</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">날짜</label>
+        <input type="date" id="wdrecDate" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인물</label>
+        <select id="wdrecPerson" onchange="onWdrecPersonChange()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          <option value="my">본인</option>
+          <option value="wife">배우자</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 계좌</label>
+      <select id="wdrecAcc" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px"></select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 금액 (만원, 세전)</label>
+        <input type="number" id="wdrecAmount" min="0" step="1" oninput="onWdrecAmountInput()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">세금 유형</label>
+        <select id="wdrecTaxType" onchange="onWdrecTaxTypeChange()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+          <option value="pension_u70">연금소득세 (70세 미만)</option>
+          <option value="pension_7080">연금소득세 (70~80세)</option>
+          <option value="pension_o80">연금소득세 (80세 이상)</option>
+          <option value="retire">퇴직소득세</option>
+          <option value="np">국민연금</option>
+          <option value="excess">연금 초과분 (종합과세)</option>
+          <option value="none">없음 (비과세)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">세금 (만원) <span style="font-weight:400">— 자동계산, 직접 입력 가능</span></label>
+      <input type="number" id="wdrecTax" min="0" step="0.1" oninput="onWdrecTaxManualEdit()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">메모 (선택)</label>
+      <input type="text" id="wdrecMemo" placeholder="예: 11월 생활비" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+    </div>
+
+    <div class="wdrec-modal-total">
+      <div>
+        <div style="font-size:11px;color:var(--muted)" id="wdrecRateLabel"></div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">실수령</div>
+      </div>
+      <strong id="wdrecNetPreview">0 만원</strong>
+    </div>
+
+    <div class="modal-actions" style="display:flex;gap:8px;margin-top:20px">
+      <button class="btn-danger" id="wdrecDeleteBtn" style="padding:12px 16px;display:none" onclick="deleteWdrec()">삭제</button>
+      <button class="btn-secondary" style="flex:1;padding:12px" onclick="closeWdrecModal()">취소</button>
+      <button class="btn-primary" style="flex:1;padding:12px;background:#d97706" onclick="saveWdrec()">저장</button>
+    </div>
+  </div>
+</div>
 
 
 <!-- 매수/매도 입력 모달 -->
@@ -2846,12 +2992,13 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.370';
+const APP_VERSION = 'MyPM v0.371';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
   applyNavVisibility();
+  if (typeof applyWithdrawalTabVisibility === 'function') applyWithdrawalTabVisibility();
   // 시작하기 마법사 자동 실행
   if (sessionStorage.getItem('open_onboarding')) {
     sessionStorage.removeItem('open_onboarding');
@@ -2868,7 +3015,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyAutoDeposits();
 });
 
-const _TAB_NAMES = ['portfolio','records','dividend','deposit','annual','withdrawal'];
+const _TAB_NAMES = ['portfolio','records','dividend','deposit','annual','withdrawal','wdrec'];
 function switchTab(name) {
   _TAB_NAMES.forEach(t => {
     const panel = document.getElementById('panel-' + t);
@@ -3786,7 +3933,8 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('accountModal').classList.contains('open')) { closeAccountModal(); return; }
   if (document.getElementById('accountDetailModal').classList.contains('open')) { closeAccountDetail(); return; }
   if (document.getElementById('cashAccountModal').classList.contains('open')) { closeCashAccountModal(); return; }
-  if (['records','dividend','deposit','annual','withdrawal'].some(t => document.getElementById('panel-'+t)?.classList.contains('active'))) { switchTab('portfolio'); return; }
+  if (document.getElementById('wdrecModal')?.classList.contains('open')) { closeWdrecModal(); return; }
+  if (['records','dividend','deposit','annual','withdrawal','wdrec'].some(t => document.getElementById('panel-'+t)?.classList.contains('active'))) { switchTab('portfolio'); return; }
   if (document.getElementById('settingsModal').classList.contains('open')) { closeSettingsModal(); return; }
 });
 
@@ -8842,7 +8990,10 @@ function loadWdPlan() {
     return data;
   } catch(_) { return getWdDefaults(); }
 }
-function saveWdPlan() { localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan)); }
+function saveWdPlan() {
+  localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan));
+  if (typeof applyWithdrawalTabVisibility === 'function') applyWithdrawalTabVisibility();
+}
 
 function openWithdrawalModal() {
   _wdScrollSyncDone = false;
@@ -8852,6 +9003,337 @@ function openWithdrawalModal() {
   renderWithdrawalPlan();
 }
 function closeWithdrawalModal() { switchTab('portfolio'); }
+
+// ===== 인출 기록 (실제 인출 내역) =====
+// 데이터 구조: withdrawals = { transactions: [{ id, date, person, accId, amount, taxAmount, taxType, memo }] }
+//   amount, taxAmount 단위: 만원
+const WITHDRAWALS_KEY = 'pension_withdrawals_v1';
+let withdrawals = loadWithdrawals();
+let editingWdrecId = null;
+let _wdrecYearFilter = null;   // 'YYYY' | 'all' | null(=올해 자동)
+let _wdrecPersonFilter = null; // 'my' | 'wife' | null(=전체)
+
+function loadWithdrawals() {
+  try {
+    const raw = localStorage.getItem(WITHDRAWALS_KEY);
+    if (!raw) return { transactions: [] };
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.transactions)) return { transactions: [] };
+    return {
+      transactions: parsed.transactions
+        .map(t => ({
+          id: String(t.id || generateWdId()),
+          date: String(t.date || ''),
+          person: t.person === 'wife' ? 'wife' : 'my',
+          accId: String(t.accId || ''),
+          amount: Number(t.amount) || 0,
+          taxAmount: Number(t.taxAmount) || 0,
+          taxType: String(t.taxType || 'pension_u70'),
+          memo: String(t.memo || '')
+        }))
+        .filter(t => t.date && t.accId && t.amount > 0)
+    };
+  } catch (_) { return { transactions: [] }; }
+}
+function saveWithdrawals() {
+  try { localStorage.setItem(WITHDRAWALS_KEY, JSON.stringify(withdrawals)); } catch (_) {}
+}
+function generateWdId() {
+  return 'wd_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+// 인출모드 활성화 여부 - 인출 시작연도 도달했거나 미리보기 ON
+function isWithdrawalModeActive() {
+  try {
+    const startYear = Number(wdPlan && wdPlan.startYear) || 9999;
+    if (appSettings.wdrecPreview) return true;
+    return (new Date()).getFullYear() >= startYear;
+  } catch (_) { return false; }
+}
+
+function applyWithdrawalTabVisibility() {
+  const btn = document.getElementById('tab-wdrec');
+  if (btn) btn.style.display = isWithdrawalModeActive() ? '' : 'none';
+  const prev = document.getElementById('wdrecPreviewBtn');
+  if (prev) {
+    const on = !!appSettings.wdrecPreview;
+    prev.textContent = '🏧 인출기록 미리보기 (' + (on ? 'ON' : 'OFF') + ')';
+    prev.classList.toggle('active', on);
+  }
+}
+
+function toggleWdrecPreview() {
+  appSettings.wdrecPreview = !appSettings.wdrecPreview;
+  saveAppSettings();
+  applyWithdrawalTabVisibility();
+}
+
+function openWdrec() {
+  renderWdrecSummary();
+  renderWdrecFilter();
+  renderWdrecList();
+  switchTab('wdrec');
+}
+
+function _personActiveAccIds(person) {
+  if (person === 'wife') return appSettings.wife?.activeAccIds || [];
+  return appSettings.my?.activeAccIds || [];
+}
+
+function populateWdrecAccountSelect(person, selectedId) {
+  const sel = document.getElementById('wdrecAcc');
+  if (!sel) return;
+  const ids = _personActiveAccIds(person);
+  sel.innerHTML = ids.map(id =>
+    `<option value="${id}"${id === selectedId ? ' selected' : ''}>${getAccName(id)}</option>`
+  ).join('');
+  if (!ids.length) sel.innerHTML = '<option value="">(활성 계좌 없음 - 설정에서 추가)</option>';
+}
+
+function onWdrecPersonChange() {
+  const person = document.getElementById('wdrecPerson').value;
+  populateWdrecAccountSelect(person);
+}
+
+function getWdTaxRateByType(type) {
+  const wd = (typeof wdPlan !== 'undefined' && wdPlan) || {};
+  switch (type) {
+    case 'pension_u70':  return Number(wd.pensionTaxRateU70)  || 5.5;
+    case 'pension_7080': return Number(wd.pensionTaxRate7080) || 4.4;
+    case 'pension_o80':  return Number(wd.pensionTaxRateO80)  || 3.3;
+    case 'retire':       return Number(wd.retireTaxRate)      || 12;
+    case 'np':           return Number(wd.npTaxRate)          || 4;
+    case 'excess':       return Number(wd.excessPensionTaxRate) || 16.5;
+    case 'none':         return 0;
+    default: return 0;
+  }
+}
+
+function onWdrecAmountInput() {
+  // 금액 바뀌면 (수동 입력 안 한 경우) 세금 재계산
+  const taxField = document.getElementById('wdrecTax');
+  if (!taxField.dataset.manual) {
+    const amount = Number(document.getElementById('wdrecAmount').value) || 0;
+    const rate = getWdTaxRateByType(document.getElementById('wdrecTaxType').value);
+    taxField.value = (Math.round(amount * rate * 10) / 1000).toFixed(1);
+  }
+  updateWdrecTotalPreview();
+}
+function onWdrecTaxTypeChange() {
+  // 세금유형 바꾸면 수동입력 플래그 해제하고 재계산
+  const taxField = document.getElementById('wdrecTax');
+  delete taxField.dataset.manual;
+  onWdrecAmountInput();
+}
+function onWdrecTaxManualEdit() {
+  document.getElementById('wdrecTax').dataset.manual = '1';
+  updateWdrecTotalPreview();
+}
+function updateWdrecTotalPreview() {
+  const amount = Number(document.getElementById('wdrecAmount').value) || 0;
+  const tax = Number(document.getElementById('wdrecTax').value) || 0;
+  const net = amount - tax;
+  const rate = getWdTaxRateByType(document.getElementById('wdrecTaxType').value);
+  const rateLabel = document.getElementById('wdrecRateLabel');
+  if (rateLabel) rateLabel.textContent = `세율 ${rate}% · 세금 ${tax.toFixed(1)}만원`;
+  const preview = document.getElementById('wdrecNetPreview');
+  if (preview) preview.textContent = `${net.toFixed(1)} 만원`;
+}
+
+function openWdrecAddModal(id) {
+  editingWdrecId = id || null;
+  const modal = document.getElementById('wdrecModal');
+  const titleEl = document.getElementById('wdrecModalTitle');
+  const taxField = document.getElementById('wdrecTax');
+  delete taxField.dataset.manual;
+
+  if (id) {
+    const t = withdrawals.transactions.find(x => x.id === id);
+    if (!t) return;
+    titleEl.textContent = '🏧 인출 기록 수정';
+    document.getElementById('wdrecDate').value = t.date;
+    document.getElementById('wdrecPerson').value = t.person;
+    populateWdrecAccountSelect(t.person, t.accId);
+    document.getElementById('wdrecAmount').value = t.amount;
+    document.getElementById('wdrecTaxType').value = t.taxType;
+    document.getElementById('wdrecTax').value = t.taxAmount.toFixed(1);
+    taxField.dataset.manual = '1'; // 저장된 값은 수동 입력으로 취급(자동 재계산 방지)
+    document.getElementById('wdrecMemo').value = t.memo || '';
+    document.getElementById('wdrecDeleteBtn').style.display = '';
+  } else {
+    titleEl.textContent = '🏧 인출 기록 추가';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('wdrecDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    document.getElementById('wdrecPerson').value = 'my';
+    populateWdrecAccountSelect('my');
+    document.getElementById('wdrecAmount').value = '';
+    document.getElementById('wdrecTaxType').value = 'pension_u70';
+    document.getElementById('wdrecTax').value = '0';
+    document.getElementById('wdrecMemo').value = '';
+    document.getElementById('wdrecDeleteBtn').style.display = 'none';
+  }
+  updateWdrecTotalPreview();
+  modal.classList.add('open');
+}
+function closeWdrecModal() {
+  document.getElementById('wdrecModal').classList.remove('open');
+  editingWdrecId = null;
+}
+
+function saveWdrec() {
+  const date = document.getElementById('wdrecDate').value;
+  const person = document.getElementById('wdrecPerson').value;
+  const accId = document.getElementById('wdrecAcc').value;
+  const amount = Number(document.getElementById('wdrecAmount').value) || 0;
+  const taxType = document.getElementById('wdrecTaxType').value;
+  const taxAmount = Number(document.getElementById('wdrecTax').value) || 0;
+  const memo = document.getElementById('wdrecMemo').value.trim();
+
+  if (!date) { alert('날짜를 입력하세요'); return; }
+  if (!accId) { alert('계좌를 선택하세요 (설정에서 인물의 활성 계좌를 추가하세요)'); return; }
+  if (amount <= 0) { alert('인출 금액을 입력하세요'); return; }
+
+  if (editingWdrecId) {
+    const t = withdrawals.transactions.find(x => x.id === editingWdrecId);
+    if (t) Object.assign(t, { date, person, accId, amount, taxType, taxAmount, memo });
+  } else {
+    withdrawals.transactions.push({ id: generateWdId(), date, person, accId, amount, taxType, taxAmount, memo });
+  }
+  saveWithdrawals();
+  closeWdrecModal();
+  renderWdrecSummary();
+  renderWdrecFilter();
+  renderWdrecList();
+}
+function deleteWdrec() {
+  if (!editingWdrecId) return;
+  if (!confirm('이 인출 기록을 삭제할까요?')) return;
+  withdrawals.transactions = withdrawals.transactions.filter(x => x.id !== editingWdrecId);
+  saveWithdrawals();
+  closeWdrecModal();
+  renderWdrecSummary();
+  renderWdrecFilter();
+  renderWdrecList();
+}
+
+function _computePlannedForYear(year) {
+  try {
+    if (typeof wdPlan === 'undefined' || !wdPlan) return 0;
+    const period = (wdPlan.periods || []).find(p => year >= p.startYear && year <= p.endYear);
+    if (!period) return 0;
+    return Number(period.totalAmount) || 0;
+  } catch (_) { return 0; }
+}
+
+function renderWdrecSummary() {
+  const wrap = document.getElementById('wdrecSummaryCard');
+  if (!wrap) return;
+  const year = new Date().getFullYear();
+  const yearTxns = withdrawals.transactions.filter(t => t.date.startsWith(year + '-'));
+  const totalAmount = yearTxns.reduce((s, t) => s + t.amount, 0);
+  const totalTax = yearTxns.reduce((s, t) => s + t.taxAmount, 0);
+  const totalNet = totalAmount - totalTax;
+  const planned = _computePlannedForYear(year);
+  const remain = planned - totalAmount;
+  const remainTxt = planned > 0
+    ? (remain >= 0 ? `잔여 ${remain.toFixed(0)}만원` : `초과 ${(-remain).toFixed(0)}만원`)
+    : '계획 없음';
+
+  wrap.innerHTML = `
+    <div class="wdrec-summary-label">올해 인출 (${year}년)</div>
+    <div class="wdrec-summary-value">
+      ${totalAmount.toFixed(0)}<span style="font-size:18px;font-weight:500;opacity:0.85">${planned > 0 ? ' / ' + planned.toFixed(0) + ' 만원' : ' 만원'}</span>
+    </div>
+    <div class="wdrec-summary-meta">
+      ${yearTxns.length}건 · 세금 ${totalTax.toFixed(1)} · 실수령 <strong>${totalNet.toFixed(0)} 만원</strong> · ${remainTxt}
+    </div>
+  `;
+}
+
+function renderWdrecFilter() {
+  const wrap = document.getElementById('wdrecFilterRow');
+  if (!wrap) return;
+  const years = [...new Set(withdrawals.transactions.map(t => t.date.slice(0, 4)))].sort().reverse();
+  const cy = String(new Date().getFullYear());
+  if (_wdrecYearFilter === null) _wdrecYearFilter = years.includes(cy) ? cy : (years[0] || cy);
+  const allYearChip = `<button class="wdrec-chip ${_wdrecYearFilter === 'all' ? 'active' : ''}" onclick="setWdrecYearFilter('all')">전체</button>`;
+  const yearChips = years.map(y =>
+    `<button class="wdrec-chip ${y === _wdrecYearFilter ? 'active' : ''}" onclick="setWdrecYearFilter('${y}')">${y}년</button>`
+  ).join('');
+  const hasWife = !!appSettings.hasWife;
+  const personChips = `
+    <span style="width:8px"></span>
+    <button class="wdrec-chip ${_wdrecPersonFilter === null ? 'active' : ''}" onclick="setWdrecPersonFilter(null)">전체</button>
+    <button class="wdrec-chip ${_wdrecPersonFilter === 'my' ? 'active' : ''}" onclick="setWdrecPersonFilter('my')">본인</button>
+    ${hasWife ? `<button class="wdrec-chip ${_wdrecPersonFilter === 'wife' ? 'active' : ''}" onclick="setWdrecPersonFilter('wife')">${getWifeTitle()}</button>` : ''}
+  `;
+  wrap.innerHTML = allYearChip + yearChips + personChips;
+}
+function setWdrecYearFilter(y) { _wdrecYearFilter = y; renderWdrecFilter(); renderWdrecList(); }
+function setWdrecPersonFilter(p) { _wdrecPersonFilter = p; renderWdrecFilter(); renderWdrecList(); }
+
+function _getFilteredWdrec() {
+  return withdrawals.transactions.filter(t => {
+    if (_wdrecYearFilter && _wdrecYearFilter !== 'all' && !t.date.startsWith(_wdrecYearFilter + '-')) return false;
+    if (_wdrecPersonFilter && t.person !== _wdrecPersonFilter) return false;
+    return true;
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+}
+
+function renderWdrecList() {
+  const wrap = document.getElementById('wdrecListWrap');
+  const countEl = document.getElementById('wdrecListCount');
+  if (!wrap) return;
+  const list = _getFilteredWdrec();
+  if (countEl) countEl.textContent = `총 ${list.length}건`;
+  if (!list.length) {
+    wrap.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:30px 0">인출 기록이 없습니다</div>';
+    return;
+  }
+  const hasWife = !!appSettings.hasWife;
+  const rows = list.map(t => {
+    const net = t.amount - t.taxAmount;
+    const accName = getAccName(t.accId) || t.accId;
+    const personTag = (hasWife && t.person === 'wife') ? `<span class="wdrec-person-pill">${getWifeTitle()}</span>` : '';
+    const memoTxt = t.memo ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${_escapeHtml(t.memo)}</div>` : '';
+    return `
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:10px 6px;font-size:13px;white-space:nowrap">${t.date.slice(5).replace('-', '/')}</td>
+        <td style="padding:10px 6px;font-size:13px">
+          <span class="wdrec-acc-pill">${accName}</span>${personTag}${memoTxt}
+        </td>
+        <td style="padding:10px 6px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums">${t.amount.toFixed(0)}</td>
+        <td style="padding:10px 6px;text-align:right;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums">${t.taxAmount.toFixed(1)}</td>
+        <td style="padding:10px 6px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums"><b>${net.toFixed(1)}</b></td>
+        <td style="padding:10px 6px;text-align:right">
+          <button class="tbl-icon-btn" onclick="openWdrecAddModal('${t.id}')" title="수정">✏️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  wrap.innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase">날짜</th>
+            <th style="text-align:left;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase">계좌</th>
+            <th style="text-align:right;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase">금액</th>
+            <th style="text-align:right;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase">세금</th>
+            <th style="text-align:right;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase">실수령</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function _escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 function toggleWdHelp() {
   const panel = document.getElementById('wdHelpPanel');
