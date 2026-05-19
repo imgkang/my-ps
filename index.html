@@ -3137,7 +3137,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.376';
+const APP_VERSION = 'MyPM v0.377';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12988,6 +12988,19 @@ function renderWdCharts(sim) {
   document.querySelectorAll('.wd-chart-err').forEach(b => b.remove());
   document.querySelectorAll('[id^="wdChart"]').forEach(c => delete c.dataset.errShown);
 
+  // 차트 생성 실패 시 캔버스 위에 에러 메시지 오버레이
+  function _showWdChartError(canvasId, err) {
+    const cv = document.getElementById(canvasId);
+    if (!cv || !cv.parentElement) return;
+    const msg = String(err && (err.message || err)).slice(0, 200);
+    const box = document.createElement('div');
+    box.className = 'wd-chart-err';
+    box.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fef2f2;border:1px dashed #fca5a5;border-radius:6px;font-size:11px;color:#991b1b;gap:6px;padding:10px;text-align:center;word-break:break-word;overflow:auto';
+    box.innerHTML = '⚠️ ' + canvasId + ' 렌더링 실패<br><code style="font-size:10px;color:#7f1d1d;background:#fee2e2;padding:2px 4px;border-radius:3px">' + msg.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</code>';
+    cv.parentElement.appendChild(box);
+    console.error('[renderWdCharts]', canvasId, err);
+  }
+
   const makeOpts = (chartN) => ({
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
@@ -13012,66 +13025,76 @@ function renderWdCharts(sim) {
     }
   });
 
-  _wdChart1 = new Chart(ctx1, {
-    data: {
-      labels: years,
-      datasets: [
-        { type: 'bar',  label: '연간 인출금액', data: pvAdj(1, withdrawAmts),   backgroundColor: 'rgba(167,139,250,0.6)', borderColor: '#7c3aed', borderWidth: 1, order: 3 },
-        { type: 'line', label: '인출 누적액',   data: pvAdj(1, cumulativeAmts), borderColor: '#f59e0b', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2, order: 2 },
-        { type: 'line', label: '총 잔액',       data: pvAdj(1, totalBals),      borderColor: '#10b981', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2, order: 1 }
-      ]
-    },
-    options: makeOpts(1)
-  });
-
-  if (appSettings.hasWife && ctx2) {
-    _wdChart2 = new Chart(ctx2, {
-      type: 'line',
+  try {
+    _wdChart1 = new Chart(ctx1, {
       data: {
         labels: years,
         datasets: [
-          { label: '나 총잔액',              data: pvAdj(2, myBals),    borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)', fill: true,  tension: 0.3, pointRadius: 2, borderWidth: 2 },
-          { label: `${_wTitle} 총잔액`,      data: pvAdj(2, wifeBals),  borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.12)', fill: true,  tension: 0.3, pointRadius: 2, borderWidth: 2 },
-          { label: '총잔액',                 data: pvAdj(2, totalBals), borderColor: '#10b981', backgroundColor: 'transparent',          fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2.5 }
+          { type: 'bar',  label: '연간 인출금액', data: pvAdj(1, withdrawAmts),   backgroundColor: 'rgba(167,139,250,0.6)', borderColor: '#7c3aed', borderWidth: 1, order: 3 },
+          { type: 'line', label: '인출 누적액',   data: pvAdj(1, cumulativeAmts), borderColor: '#f59e0b', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2, order: 2 },
+          { type: 'line', label: '총 잔액',       data: pvAdj(1, totalBals),      borderColor: '#10b981', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2, order: 1 }
         ]
       },
-      options: makeOpts(2)
+      options: makeOpts(1)
     });
+  } catch (e) { _showWdChartError('wdChart1', e); }
+
+  if (appSettings.hasWife && ctx2) {
+    try {
+      _wdChart2 = new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: years,
+          datasets: [
+            { label: '나 총잔액',              data: pvAdj(2, myBals),    borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)', fill: true,  tension: 0.3, pointRadius: 2, borderWidth: 2 },
+            { label: `${_wTitle} 총잔액`,      data: pvAdj(2, wifeBals),  borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.12)', fill: true,  tension: 0.3, pointRadius: 2, borderWidth: 2 },
+            { label: '총잔액',                 data: pvAdj(2, totalBals), borderColor: '#10b981', backgroundColor: 'transparent',          fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2.5 }
+          ]
+        },
+        options: makeOpts(2)
+      });
+    } catch (e) { _showWdChartError('wdChart2', e); }
   }
 
   if (ctx3) {
-    _wdChart3 = new Chart(ctx3, {
-      type: 'line',
-      data: {
-        labels: years,
-        datasets: [
-          { label: '퇴직소득세 누적', data: pvAdj(3, cumRetire),  borderColor: '#ef4444', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
-          { label: '연금소득세 누적', data: pvAdj(3, cumPension), borderColor: '#f97316', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
-          { label: '국민연금세 누적', data: pvAdj(3, cumNPTax),   borderColor: '#eab308', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
-          { label: '세금 합계 누적',  data: pvAdj(3, cumTotal),   borderColor: '#6b7280', backgroundColor: 'rgba(107,114,128,0.08)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2.5 }
-        ]
-      },
-      options: makeOpts(3)
-    });
+    try {
+      _wdChart3 = new Chart(ctx3, {
+        type: 'line',
+        data: {
+          labels: years,
+          datasets: [
+            { label: '퇴직소득세 누적', data: pvAdj(3, cumRetire),  borderColor: '#ef4444', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
+            { label: '연금소득세 누적', data: pvAdj(3, cumPension), borderColor: '#f97316', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
+            { label: '국민연금세 누적', data: pvAdj(3, cumNPTax),   borderColor: '#eab308', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2 },
+            { label: '세금 합계 누적',  data: pvAdj(3, cumTotal),   borderColor: '#6b7280', backgroundColor: 'rgba(107,114,128,0.08)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2.5 }
+          ]
+        },
+        options: makeOpts(3)
+      });
+    } catch (e) { _showWdChartError('wdChart3', e); }
   }
 
   const chart4DatasetsPV = chart4Datasets.map(ds => ({ ...ds, data: pvAdj(4, ds.data) }));
   const chart5DatasetsPV = chart5Datasets.map(ds => ({ ...ds, data: pvAdj(5, ds.data) }));
 
   if (ctx4 && chart4DatasetsPV.length) {
-    _wdChart4 = new Chart(ctx4, {
-      type: 'bar',
-      data: { labels: years, datasets: chart4DatasetsPV },
-      options: makeStackedOpts(4)
-    });
+    try {
+      _wdChart4 = new Chart(ctx4, {
+        type: 'bar',
+        data: { labels: years, datasets: chart4DatasetsPV },
+        options: makeStackedOpts(4)
+      });
+    } catch (e) { _showWdChartError('wdChart4', e); }
   }
 
   if (ctx5 && chart5DatasetsPV.length) {
-    _wdChart5 = new Chart(ctx5, {
-      type: 'line',
-      data: { labels: years, datasets: chart5DatasetsPV },
-      options: makeStackedOpts(5)
-    });
+    try {
+      _wdChart5 = new Chart(ctx5, {
+        type: 'line',
+        data: { labels: years, datasets: chart5DatasetsPV },
+        options: makeStackedOpts(5)
+      });
+    } catch (e) { _showWdChartError('wdChart5', e); }
   }
 }
 
