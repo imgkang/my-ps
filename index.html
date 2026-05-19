@@ -15,22 +15,43 @@
 <meta name="theme-color" content="#03c75a">
 <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
 <title>My PM</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script>
-// 모바일 툴팁 자동 닫기: touchend 후 2초 뒤 사라짐
-Chart.register({
-  id: 'mobileTooltipDismiss',
-  afterInit(chart) {
-    let _timer = null;
-    chart.canvas.addEventListener('touchend', () => {
-      clearTimeout(_timer);
-      _timer = setTimeout(() => {
-        chart.tooltip.setActiveElements([], {x: 0, y: 0});
-        chart.update('none');
-      }, 2000);
-    });
-  }
-});
+// Chart.js 가 로드 실패해도 페이지가 깨지지 않도록 가드
+window.__chartJsCDN = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+window.__chartJsLoading = null;
+window.ensureChartJs = function() {
+  if (typeof Chart !== 'undefined') return Promise.resolve();
+  if (window.__chartJsLoading) return window.__chartJsLoading;
+  window.__chartJsLoading = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = window.__chartJsCDN + '?retry=' + Date.now();
+    s.crossOrigin = 'anonymous';
+    s.onload = () => { window.__chartJsLoading = null; registerMobileTooltipDismiss(); res(); };
+    s.onerror = () => { window.__chartJsLoading = null; rej(new Error('Chart.js load failed')); };
+    document.head.appendChild(s);
+  });
+  return window.__chartJsLoading;
+};
+function registerMobileTooltipDismiss() {
+  if (typeof Chart === 'undefined' || Chart.__mtd) return;
+  Chart.__mtd = true;
+  // 모바일 툴팁 자동 닫기: touchend 후 2초 뒤 사라짐
+  Chart.register({
+    id: 'mobileTooltipDismiss',
+    afterInit(chart) {
+      let _timer = null;
+      chart.canvas.addEventListener('touchend', () => {
+        clearTimeout(_timer);
+        _timer = setTimeout(() => {
+          chart.tooltip.setActiveElements([], {x: 0, y: 0});
+          chart.update('none');
+        }, 2000);
+      });
+    }
+  });
+}
+registerMobileTooltipDismiss();
 </script>
 <style>
   :root {
@@ -3113,7 +3134,7 @@ Chart.register({
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.374';
+const APP_VERSION = 'MyPM v0.375';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12508,14 +12529,15 @@ function renderWithdrawalPlan() {
   const sim = computeWithdrawalSim();
   if (!sim) return;
   _lastWdSim = sim;
-  const wp = wdPlan;
 
-  renderWdWithdrawTable(sim);
-  renderWdBalanceTable(sim);
-  renderWdCharts(sim);
-  renderWdBriefing(sim);
-  renderWdScenarioTable();
-  setupWdScrollSync();
+  // 각 step 을 try/catch 로 격리: 한 단계가 실패해도 다음 단계는 진행
+  const safe = (name, fn) => { try { fn(); } catch (e) { console.error('[renderWithdrawalPlan]', name, e); } };
+  safe('WithdrawTable',  () => renderWdWithdrawTable(sim));
+  safe('BalanceTable',   () => renderWdBalanceTable(sim));
+  safe('Charts',         () => renderWdCharts(sim));
+  safe('Briefing',       () => renderWdBriefing(sim));
+  safe('ScenarioTable',  () => renderWdScenarioTable());
+  safe('ScrollSync',     () => setupWdScrollSync());
 }
 
 // ===== 브리핑 =====
@@ -12930,7 +12952,38 @@ function renderWdCharts(sim) {
   const ctx3 = document.getElementById('wdChart3')?.getContext('2d');
   const ctx4 = document.getElementById('wdChart4')?.getContext('2d');
   const ctx5 = document.getElementById('wdChart5')?.getContext('2d');
-  if (!ctx1 || typeof Chart === 'undefined') return;
+  if (!ctx1) return;
+  if (typeof Chart === 'undefined') {
+    // Chart.js 가 로드되지 않은 상태: 캔버스마다 안내 박스 + 재시도 버튼 표시 + 자동 재로드
+    ['wdChart1','wdChart2','wdChart3','wdChart4','wdChart5'].forEach(id => {
+      const cv = document.getElementById(id);
+      if (!cv || cv.dataset.errShown) return;
+      cv.dataset.errShown = '1';
+      const box = document.createElement('div');
+      box.className = 'wd-chart-err';
+      box.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fef2f2;border:1px dashed #fca5a5;border-radius:6px;font-size:12px;color:#991b1b;gap:8px;padding:8px;text-align:center';
+      box.innerHTML = '차트 라이브러리를 불러오는 중...<br><button type="button" style="padding:4px 10px;background:#dc2626;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">다시 시도</button>';
+      box.querySelector('button').onclick = () => {
+        document.querySelectorAll('.wd-chart-err').forEach(b => b.remove());
+        document.querySelectorAll('[id^="wdChart"]').forEach(c => delete c.dataset.errShown);
+        (window.ensureChartJs ? window.ensureChartJs() : Promise.reject())
+          .then(() => renderWdCharts(sim))
+          .catch(() => { /* 재시도 실패 시 다시 안내 박스가 그려짐 */ renderWdCharts(sim); });
+      };
+      if (cv.parentElement) cv.parentElement.appendChild(box);
+    });
+    if (window.ensureChartJs) {
+      window.ensureChartJs().then(() => {
+        document.querySelectorAll('.wd-chart-err').forEach(b => b.remove());
+        document.querySelectorAll('[id^="wdChart"]').forEach(c => delete c.dataset.errShown);
+        renderWdCharts(sim);
+      }).catch(() => {});
+    }
+    return;
+  }
+  // Chart 가 로드되어 있다면 이전에 그렸던 안내 박스는 제거
+  document.querySelectorAll('.wd-chart-err').forEach(b => b.remove());
+  document.querySelectorAll('[id^="wdChart"]').forEach(c => delete c.dataset.errShown);
 
   const makeOpts = (chartN) => ({
     responsive: true, maintainAspectRatio: false,

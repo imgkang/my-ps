@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.374';
+const CACHE_NAME = 'mypm-v0.375';
 
 const BASE = '/my-ps/';
 
@@ -11,7 +11,7 @@ const ASSETS = [
   BASE + 'tickers.json',
   BASE + 'manifest.json',
   BASE + 'icon.svg',
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
+  // Chart.js CDN 은 런타임 fetch handler 에서 캐싱 (precache 실패 시 PWA 가 깨지는 것 방지)
 ];
 
 // 설치: 핵심 파일을 캐시에 저장 (개별 add로 일부 누락 허용 — tickers.json 등이 아직 없을 수 있음)
