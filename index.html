@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.384';
+const APP_VERSION = 'MyPM v0.385';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14095,113 +14095,120 @@ function wdPrepStep2Html() {
   const myAutoResult   = wdPrepComputeAutoConsolidate(myNonDcIds, comps);
   const wifeAutoResult = wifeNonDcIds.length ? wdPrepComputeAutoConsolidate(wifeNonDcIds, comps) : null;
 
-  const myAnseTotal   = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-  const myRegTotal    = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-  const wifeAnseTotal = wifeNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-  const wifeRegTotal  = wifeNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-
   _wdStep2Ctx = { myAutoResult, wifeAutoResult };
 
   const c = wdConsolidated;
   const defMyPP1Anse   = c ? mv(c.myPP1Anse)   : 0;
   const defWifePP1Anse = c ? mv(c.wifePP1Anse) : 0;
-  const pp1MaxAnse     = myAutoResult   ? mv(myAutoResult.pp1Total)   : 0;
-  const wp1MaxAnse     = wifeAutoResult ? mv(wifeAutoResult.pp1Total) : 0;
 
-  // Section A: Auto-consolidation result
-  const accNames = ids => ids.length ? ids.map(getAccName).join(' + ') : '없음';
-  let secA = `<div class="wdprep-box wdprep-box-green" style="margin-top:0">
-    <div style="font-weight:700;font-size:13px;margin-bottom:10px">🔀 자동 통합 제안 결과 <span style="font-weight:400;font-size:11px;color:#166534">${baseYear}년말 예상잔액 기준</span></div>`;
-  if (myAutoResult) {
-    secA += `<div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:4px">본인</div>
-    <div style="font-size:12px;line-height:2.1;padding-left:4px">
-      <b>개인연금1</b> ← ${myAutoResult.pp1Ids.length ? `<b>${accNames(myAutoResult.pp1Ids)}</b>` : '<i>없음</i>'}
-      <span style="color:#15803d"> (합산 ${fmt(mv(myAutoResult.pp1Total))}만원, <b>안세공 0</b>)</span><br>
-      <b>개인연금2</b> ← <b>${accNames(myAutoResult.pp2Ids)}</b>
-      <span style="color:#15803d"> (합산 ${fmt(mv(myAutoResult.pp2Total))}만원, 안세공 ${fmt(mv(myAutoResult.totalAnse))}만원)</span>
+  function renderFlow(autoResult, prefix, pp1InputId, pp2AnseId, pp2RegId, pp1RegId, defPP1Anse) {
+    if (!autoResult) return `<div style="font-size:12px;color:var(--muted)">통합 제안 없음</div>`;
+    const pp1Total  = mv(autoResult.pp1Total);
+    const pp2Total  = mv(autoResult.pp2Total);
+    const totalAnse = mv(autoResult.totalAnse);
+    const pp1Reg0   = Math.max(0, pp1Total  - defPP1Anse);
+    const pp2Anse0  = Math.max(0, totalAnse - defPP1Anse);
+    const pp2Reg0   = Math.max(0, pp2Total  - pp2Anse0);
+
+    const srcRows = ids => ids.map(id => {
+      const comp = comps[id];
+      const anseMv = mv(comp.anse);
+      return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #e2e8f0;font-size:12px">
+        <span style="font-weight:600;white-space:nowrap">${getAccName(id)}</span>
+        <span style="color:#64748b;white-space:nowrap">${fmt(mv(comp.total))}만원 · 안세공 ${anseMv > 0 ? fmt(anseMv) : '0'}만원</span>
+      </div>`;
+    }).join('');
+    const pp1SrcAnse = autoResult.pp1Ids.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
+    const pp2SrcAnse = autoResult.pp2Ids.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
+
+    // PP1 (안세공 0 목표) 블록
+    const pp1Block = `<div style="display:flex;align-items:stretch;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:#f8fafc">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin-bottom:6px">원래 계좌</div>
+        ${autoResult.pp1Ids.length ? srcRows(autoResult.pp1Ids) : '<div style="font-size:12px;color:var(--muted)">없음</div>'}
+        <div style="margin-top:6px;font-size:11px;color:#64748b;text-align:right;padding-top:4px;border-top:1px solid #e2e8f0">
+          합산 ${fmt(pp1Total)}만원 · 안세공 ${fmt(mv(pp1SrcAnse))}만원
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
+      <div style="flex:1;min-width:180px;border:2px solid #22c55e;border-radius:8px;padding:10px 12px;background:#f0fdf4">
+        <div style="font-weight:700;font-size:13px;color:#166534">🏦 개인연금1 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp1Total)}만원)</span></div>
+        <div style="margin-top:8px">
+          <div style="font-size:11px;color:#166534;margin-bottom:3px">배정할 안세공 (만원) <span style="font-size:10px;color:#15803d">← 여기서 조정</span></div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <input type="number" id="${pp1InputId}" min="0" max="${pp1Total}" step="100" value="${defPP1Anse}"
+              style="width:95px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;background:#fff"
+              oninput="wdPrepStep2UpdatePreview()">
+            <span style="font-size:11px;color:#166534">/ ${fmt(pp1Total)}만원</span>
+            <button onclick="document.getElementById('${pp1InputId}').value=0;wdPrepStep2UpdatePreview()"
+              style="font-size:10px;padding:3px 7px;border:1px solid #86efac;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer">최적(0)</button>
+          </div>
+        </div>
+        <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">비세액공제: ${fmt(pp1Reg0)}만원</div>
+      </div>
     </div>`;
+
+    // PP2 (안세공 보유) 블록
+    const pp2Block = `<div style="display:flex;align-items:stretch;gap:6px;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:#f8fafc">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin-bottom:6px">원래 계좌</div>
+        ${srcRows(autoResult.pp2Ids)}
+        <div style="margin-top:6px;font-size:11px;color:#64748b;text-align:right;padding-top:4px;border-top:1px solid #e2e8f0">
+          합산 ${fmt(pp2Total)}만원 · 안세공 ${fmt(mv(pp2SrcAnse))}만원
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
+      <div style="flex:1;min-width:180px;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;background:#f8fafc">
+        <div style="font-weight:700;font-size:13px;color:#334155">🏦 개인연금2 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp2Total)}만원)</span></div>
+        <div style="margin-top:8px;font-size:11px;color:#475569">
+          안세공: <span id="${pp2AnseId}" style="font-weight:700">${fmt(pp2Anse0)}</span>만원
+          <span style="font-size:10px;color:#94a3b8">(= 총안세공 − 개인연금1 배정)</span>
+        </div>
+        <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">비세액공제: ${fmt(pp2Reg0)}만원</div>
+      </div>
+    </div>`;
+
+    return pp1Block + pp2Block;
+  }
+
+  // 본인 플로우
+  let flowHtml = '';
+  if (myAutoResult) {
+    flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px">본인 · ${baseYear}년말 기준</div>`;
+    flowHtml += renderFlow(myAutoResult, 'my', 'wdPrepMyPP1Anse', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg', 'wdPrepMyPP1Reg', defMyPP1Anse);
   } else {
-    secA += `<div style="font-size:12px;color:#166534">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
+    flowHtml += `<div class="wdprep-box wdprep-box-amber">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
   }
   if (wifeAutoResult && appSettings.hasWife) {
     const wt = getWifeTitle();
-    secA += `<div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:4px;margin-top:10px">${wt}</div>
-    <div style="font-size:12px;line-height:2.1;padding-left:4px">
-      <b>개인연금1</b> ← ${wifeAutoResult.pp1Ids.length ? `<b>${accNames(wifeAutoResult.pp1Ids)}</b>` : '<i>없음</i>'}
-      <span style="color:#15803d"> (합산 ${fmt(mv(wifeAutoResult.pp1Total))}만원, <b>안세공 0</b>)</span><br>
-      <b>개인연금2</b> ← <b>${accNames(wifeAutoResult.pp2Ids)}</b>
-      <span style="color:#15803d"> (합산 ${fmt(mv(wifeAutoResult.pp2Total))}만원, 안세공 ${fmt(mv(wifeAutoResult.totalAnse))}만원)</span>
-    </div>`;
+    flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin:16px 0 8px">${wt} · ${baseYear}년말 기준</div>`;
+    flowHtml += renderFlow(wifeAutoResult, 'wife', 'wdPrepWifePP1Anse', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg', 'wdPrepWifePP1Reg', defWifePP1Anse);
   }
-  secA += `</div>`;
 
-  // Section B: Tax advantage explanation
-  const secB = `<div class="wdprep-box wdprep-box-blue" style="margin-top:12px">
-    <div style="font-weight:700;font-size:13px;margin-bottom:8px">💡 개인연금1에 안세공 0을 만드는 이유</div>
+  // 세금 설명
+  const secB = `<div class="wdprep-box wdprep-box-blue" style="margin-top:14px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px">💡 개인연금1 안세공을 0으로 만드는 이유</div>
     <div style="font-size:12px;line-height:1.9">
-      개인연금1에 세액공제납입(안세공)이 없으면, 연 <b>1,500만원 이내</b> 인출 시 <b>연금소득세 3.3~5.5%</b>만 납부합니다.<br>
-      단, 연금소득 합계가 연 <b>1,500만원을 초과하면</b> 전액에 <b>16.5%</b>가 적용됩니다.<br><br>
-      <b>예시 — 연 1,500만원 인출 시 세금 비교:</b><br>
-      &nbsp;• 5.5% (1,500만원 이하) → 세금 <b style="color:#1d4ed8">${(1500*0.055).toFixed(1)}만원</b><br>
-      &nbsp;• 16.5% (1,500만원 초과) → 세금 <b style="color:#dc2626">${(1500*0.165).toFixed(1)}만원</b><br>
-      &nbsp;→ 연간 최대 <b style="color:var(--primary)">${((1500*0.165)-(1500*0.055)).toFixed(1)}만원 절세</b>
+      안세공이 없으면 연 <b>1,500만원 이내</b> 인출 시 연금소득세 <b>3.3~5.5%</b>만 납부합니다.
+      1,500만원 초과 시 전액 <b>16.5%</b> 적용.<br>
+      예시: 연 1,500만원 인출 → 5.5%는 <b style="color:#1d4ed8">${(1500*0.055).toFixed(1)}만원</b>,
+      16.5%는 <b style="color:#dc2626">${(1500*0.165).toFixed(1)}만원</b>
+      → 연간 <b style="color:var(--primary)">${((1500*0.165)-(1500*0.055)).toFixed(1)}만원 절세</b>
     </div>
   </div>`;
 
-  // Section C: Manual adjustment
-  let inputsHtml = '';
-  if (pp1MaxAnse > 0) {
-    inputsHtml += `<div style="margin-bottom:12px">
-      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">
-        본인 개인연금1 배정 안세공액 <span style="font-weight:400;color:var(--muted)">(만원 · 0 = 자동제안 최적값)</span>
-      </label>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <input type="number" id="wdPrepMyPP1Anse" min="0" max="${pp1MaxAnse}" step="100" value="${defMyPP1Anse}"
-          style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:14px"
-          oninput="wdPrepStep2UpdatePreview()">
-        <span style="font-size:12px;color:var(--muted)">/ 최대 ${fmt(pp1MaxAnse)}만원</span>
-        <button onclick="document.getElementById('wdPrepMyPP1Anse').value=0;wdPrepStep2UpdatePreview()"
-          style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:#f1f5f9;cursor:pointer">초기화 (0)</button>
-      </div>
-    </div>`;
-  }
-  if (appSettings.hasWife && wp1MaxAnse > 0) {
-    const wt = getWifeTitle();
-    inputsHtml += `<div style="margin-bottom:12px">
-      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">
-        ${wt} 개인연금1 배정 안세공액 <span style="font-weight:400;color:var(--muted)">(만원 · 0 = 자동제안 최적값)</span>
-      </label>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <input type="number" id="wdPrepWifePP1Anse" min="0" max="${wp1MaxAnse}" step="100" value="${defWifePP1Anse}"
-          style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:14px"
-          oninput="wdPrepStep2UpdatePreview()">
-        <span style="font-size:12px;color:var(--muted)">/ 최대 ${fmt(wp1MaxAnse)}만원</span>
-        <button onclick="document.getElementById('wdPrepWifePP1Anse').value=0;wdPrepStep2UpdatePreview()"
-          style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:#f1f5f9;cursor:pointer">초기화 (0)</button>
-      </div>
-    </div>`;
-  }
-  if (!inputsHtml) {
-    inputsHtml = `<p style="font-size:12px;color:var(--muted)">조정 가능한 연금 계좌가 없습니다.</p>`;
-  }
-  const secC = `<div style="margin-top:12px;padding:14px;border:1px solid var(--border);border-radius:10px;background:#fafafa">
-    <div style="font-weight:700;font-size:13px;margin-bottom:12px">✏️ 수동 조정</div>
-    ${inputsHtml}
-    <div id="wdPrepStep2Preview" style="padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;line-height:1.9;display:none"></div>
-  </div>`;
-
-  // Section D: Apply button
+  // 적용 버튼
   const alreadyApplied = !!(wdConsolidated && wdConsolidated.startYear === (wdPlan?.startYear || 0));
-  const secD = `<div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  const secD = `<div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <button onclick="wdPrepDoApply()" class="btn-primary" id="wdPrepApplyBtn" style="font-size:13px;padding:8px 20px">
       📥 인출 시뮬레이션에 적용
     </button>
-    ${alreadyApplied ? `<span style="font-size:12px;color:#166534;font-weight:600">✅ 현재 적용 중 (변경 후 재적용 가능)</span>` : ''}
+    ${alreadyApplied ? `<span style="font-size:12px;color:#166534;font-weight:600">✅ 현재 적용 중</span>` : ''}
     <span id="wdPrepAppliedMsg" style="display:none;font-size:12px;color:#166534;font-weight:600">✅ 적용되었습니다!</span>
   </div>`;
 
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:14px">계좌를 통합해 세금을 최소화하는 방법을 제안합니다. 수동 조정 후 시뮬레이션에 바로 적용하세요.</p>
-    ${secA}${secB}${secC}${secD}`;
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">원래 계좌들이 통합 후 어디로 이동하는지 확인하고, 개인연금1의 안세공 배정을 조정하세요.</p>
+    ${flowHtml}${secB}${secD}`;
 }
 
 function wdPrepStep3Html() {
@@ -14300,28 +14307,27 @@ function wdPrepStep2UpdatePreview() {
   const M = 1_000_000;
   const mv = v => Math.round(v / M);
   const fmt = n => n.toLocaleString();
-  const myPP1Mv   = Math.max(0, Math.min(Number(document.getElementById('wdPrepMyPP1Anse')?.value)   || 0, myAutoResult   ? mv(myAutoResult.pp1Total)   : 0));
-  const wifePP1Mv = Math.max(0, Math.min(Number(document.getElementById('wdPrepWifePP1Anse')?.value) || 0, wifeAutoResult ? mv(wifeAutoResult.pp1Total) : 0));
-  let html = '';
-  if (myAutoResult) {
-    const pp1R    = Math.max(0, mv(myAutoResult.pp1Total)  - myPP1Mv);
-    const pp2Anse = Math.max(0, mv(myAutoResult.totalAnse) - myPP1Mv);
-    const pp2Reg  = Math.max(0, mv(myAutoResult.pp2Total)  - pp2Anse);
-    html += `<b>본인 결과 미리보기</b><br>
-      · 개인연금1: <b>${fmt(mv(myAutoResult.pp1Total))}만원</b> (안세공 ${fmt(myPP1Mv)}만원, 비세액공제 ${fmt(pp1R)}만원)<br>
-      · 개인연금2: <b>${fmt(mv(myAutoResult.pp2Total))}만원</b> (안세공 ${fmt(pp2Anse)}만원, 비세액공제 ${fmt(pp2Reg)}만원)`;
-  }
-  if (wifeAutoResult && appSettings.hasWife) {
-    const wt = getWifeTitle();
-    const pp1R    = Math.max(0, mv(wifeAutoResult.pp1Total)  - wifePP1Mv);
-    const pp2Anse = Math.max(0, mv(wifeAutoResult.totalAnse) - wifePP1Mv);
-    const pp2Reg  = Math.max(0, mv(wifeAutoResult.pp2Total)  - pp2Anse);
-    html += `${myAutoResult ? '<br><br>' : ''}<b>${wt} 결과 미리보기</b><br>
-      · 개인연금1: <b>${fmt(mv(wifeAutoResult.pp1Total))}만원</b> (안세공 ${fmt(wifePP1Mv)}만원, 비세액공제 ${fmt(pp1R)}만원)<br>
-      · 개인연금2: <b>${fmt(mv(wifeAutoResult.pp2Total))}만원</b> (안세공 ${fmt(pp2Anse)}만원, 비세액공제 ${fmt(pp2Reg)}만원)`;
-  }
-  const el = document.getElementById('wdPrepStep2Preview');
-  if (el) { el.innerHTML = html; el.style.display = html ? '' : 'none'; }
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+
+  const upd = (autoResult, pp1InputId, pp1RegId, pp2AnseId, pp2RegId) => {
+    if (!autoResult) return;
+    const pp1Total  = mv(autoResult.pp1Total);
+    const totalAnse = mv(autoResult.totalAnse);
+    const pp2Total  = mv(autoResult.pp2Total);
+    const inp = document.getElementById(pp1InputId);
+    if (!inp) return;
+    const pp1AnseMv = Math.max(0, Math.min(Number(inp.value) || 0, pp1Total));
+    const pp1Reg    = Math.max(0, pp1Total  - pp1AnseMv);
+    const pp2Anse   = Math.max(0, totalAnse - pp1AnseMv);
+    const pp2Reg    = Math.max(0, pp2Total  - pp2Anse);
+    set(pp1RegId,  `비세액공제: ${fmt(pp1Reg)}만원`);
+    set(pp2AnseId, fmt(pp2Anse));
+    set(pp2RegId,  `비세액공제: ${fmt(pp2Reg)}만원`);
+  };
+
+  upd(myAutoResult,   'wdPrepMyPP1Anse',   'wdPrepMyPP1Reg',   'wdPrepMyPP2Anse',   'wdPrepMyPP2Reg');
+  if (appSettings.hasWife)
+    upd(wifeAutoResult, 'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg');
 }
 
 function wdPrepDoApply() {
