@@ -3137,7 +3137,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.378';
+const APP_VERSION = 'MyPM v0.379';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12396,7 +12396,8 @@ function renderQuickPeriodCard(idx, period, hasWife, endYr) {
       <span style="font-weight:600;color:#334155;min-width:34px">구간${idx+1}</span>
       <input id="qwdP${idx}_start" type="number" min="${_qwdMinYr}" max="2100" step="1" value="${p.startYear||''}"
              style="width:60px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
-             oninput="onQwdStartYearChange(${idx})">년
+             oninput="onQwdStartYearChange(${idx})"
+             onblur="onQwdStartYearBlur(${idx})">년
       <span id="qwdP${idx}_endYrLbl" style="color:var(--muted)">(~${endYr}년)</span>
       ${_qwdHint ? `<span style="font-size:10px;color:var(--muted)">· ${_qwdHint}</span>` : ''}
       <button id="qwdP${idx}_typeBt" data-type="${isFix?'fixed':'pct'}" onclick="cycleQwdType(${idx})" style="${btnAct}">${isFix?'고정가치':'인출율'}</button>
@@ -12520,7 +12521,12 @@ function cycleQwdWifeContrib(idx) {
 }
 function onQwdStartYearChange(idx) {
   const input = document.getElementById(`qwdP${idx}_start`);
-  const newStart = Number(input?.value) || 0;
+  const rawValue = String(input?.value ?? '').trim();
+  const newStart = Number(rawValue) || 0;
+
+  // 편집 중 (4자리 미만): 검증/저장 둘 다 skip
+  // → 2028 에서 8 지우는 동안 발생하는 "202" 같은 부분 입력은 통과시킴
+  if (rawValue.length < 4) return;
 
   // 구간1: 본인/아내 중 한 명이 55세 이상이어야 함
   if (idx === 0 && newStart > 0) {
@@ -12538,6 +12544,15 @@ function onQwdStartYearChange(idx) {
     if (prevLbl) prevLbl.textContent = `(~${newStart - 1}년)`;
   }
   saveQuickWdPlan();
+}
+function onQwdStartYearBlur(idx) {
+  const input = document.getElementById(`qwdP${idx}_start`);
+  if (!input) return;
+  const rawValue = String(input.value ?? '').trim();
+  // 4자리 미만 (편집 중단) → 직전 저장 값으로 시각 복원, alert 없음
+  if (rawValue.length < 4) {
+    input.value = wdPlan.periods?.[idx]?.startYear || '';
+  }
 }
 function readQuickPeriodsFromForm() {
   return (wdPlan.periods || []).map((p, i) => {
