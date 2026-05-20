@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.386';
+const APP_VERSION = 'MyPM v0.387';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -13235,8 +13235,8 @@ function renderWdWithdrawTable(sim) {
   const wp = wdPlan;
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
   const _wt = getWifeTitle();
-  const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
-    wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인연금1(${_wt})`, wife_pension2:`개인연금2(${_wt})` };
+  const consNameMap = { dc:'퇴직연금(나)', pension1:'개인통합1(나)', pension2:'개인통합2(나)',
+    wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인통합1(${_wt})`, wife_pension2:`개인통합2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
   const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
@@ -13335,8 +13335,8 @@ function renderWdBalanceTable(sim) {
   const wp = wdPlan;
   const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
   const _wt = getWifeTitle();
-  const consNameMap = { dc:'퇴직연금(나)', pension1:'개인연금1(나)', pension2:'개인연금2(나)',
-    wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인연금1(${_wt})`, wife_pension2:`개인연금2(${_wt})` };
+  const consNameMap = { dc:'퇴직연금(나)', pension1:'개인통합1(나)', pension2:'개인통합2(나)',
+    wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인통합1(${_wt})`, wife_pension2:`개인통합2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
   const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
@@ -14132,7 +14132,7 @@ function wdPrepStep2Html() {
       </div>
       <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
       <div style="flex:1;min-width:180px;border:2px solid #22c55e;border-radius:8px;padding:10px 12px;background:#f0fdf4">
-        <div style="font-weight:700;font-size:13px;color:#166534">🏦 개인연금1 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp1Total)}백만원)</span></div>
+        <div style="font-weight:700;font-size:13px;color:#166534">🏦 개인통합1 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp1Total)}백만원)</span></div>
         <div style="margin-top:8px">
           <div style="font-size:11px;color:#166534;margin-bottom:3px">배정할 안세공 (백만원) <span style="font-size:10px;color:#15803d">← 여기서 조정</span></div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -14159,10 +14159,10 @@ function wdPrepStep2Html() {
       </div>
       <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
       <div style="flex:1;min-width:180px;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;background:#f8fafc">
-        <div style="font-weight:700;font-size:13px;color:#334155">🏦 개인연금2 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp2Total)}백만원)</span></div>
+        <div style="font-weight:700;font-size:13px;color:#334155">🏦 개인통합2 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp2Total)}백만원)</span></div>
         <div style="margin-top:8px;font-size:11px;color:#475569">
           안세공: <span id="${pp2AnseId}" style="font-weight:700">${fmt(pp2Anse0)}</span>백만원
-          <span style="font-size:10px;color:#94a3b8">(= 총안세공 − 개인연금1 배정)</span>
+          <span style="font-size:10px;color:#94a3b8">(= 총안세공 − 개인통합1 배정)</span>
         </div>
         <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">비세액공제: ${fmt(pp2Reg0)}백만원</div>
       </div>
@@ -14187,7 +14187,7 @@ function wdPrepStep2Html() {
 
   // 세금 설명
   const secB = `<div class="wdprep-box wdprep-box-blue" style="margin-top:14px">
-    <div style="font-weight:700;font-size:13px;margin-bottom:6px">💡 개인연금1 안세공을 0으로 만드는 이유</div>
+    <div style="font-weight:700;font-size:13px;margin-bottom:6px">💡 개인통합1 안세공을 0으로 만드는 이유</div>
     <div style="font-size:12px;line-height:1.9">
       안세공이 없으면 연 <b>1,500만원 이내</b> 인출 시 연금소득세 <b>3.3~5.5%</b>만 납부합니다.
       1,500만원 초과 시 전액 <b>16.5%</b> 적용.<br>
@@ -14207,7 +14207,7 @@ function wdPrepStep2Html() {
     <span id="wdPrepAppliedMsg" style="display:none;font-size:12px;color:#166534;font-weight:600">✅ 적용되었습니다!</span>
   </div>`;
 
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">원래 계좌들이 통합 후 어디로 이동하는지 확인하고, 개인연금1의 안세공 배정을 조정하세요.</p>
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">원래 계좌들이 통합 후 어디로 이동하는지 확인하고, 개인통합1의 안세공 배정을 조정하세요.</p>
     ${flowHtml}${secB}${secD}`;
 }
 
@@ -14468,8 +14468,8 @@ function renderConsAutoLog() {
     const r = log.my;
     h += `<div style="font-size:12px;color:#15803d;margin-bottom:4px"><b>본인</b></div>
     <div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:6px">
-      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}<br>
-      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)
+      개인통합1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}<br>
+      개인통합2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)
     </div>`;
   }
   if (log.wife) {
@@ -14477,8 +14477,8 @@ function renderConsAutoLog() {
     const wt = getWifeTitle();
     h += `<div style="font-size:12px;color:#15803d;margin-bottom:4px"><b>${wt}</b></div>
     <div style="font-size:12px;color:#374151;line-height:1.8">
-      개인연금1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}<br>
-      개인연금2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)
+      개인통합1 ← ${r.pp1Ids.length ? `<b>${accNames(r.pp1Ids)}</b> (합산 ${mv(r.pp1Total)}만원, 안세공 0)` : '해당 없음'}<br>
+      개인통합2 ← <b>${accNames(r.pp2Ids)}</b> (합산 ${mv(r.pp2Total)}만원, 안세공 ${mv(r.totalAnse)}만원)
     </div>`;
   }
   h += `</div>`;
@@ -14552,10 +14552,10 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
     <tr><th>계좌</th><th>구분</th><th>백만원</th></tr></thead><tbody>`;
   h += `<tr class="cons-dc"><td rowspan="2">나 퇴직연금</td><td>퇴직금</td><td>${mv(t.myDCPrincipal)}</td></tr>`;
   h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.myDCRegular)}</td></tr>`;
-  h += `<tr class="cons-anse"><td rowspan="2">나 개인연금1</td><td>안세공</td>
+  h += `<tr class="cons-anse"><td rowspan="2">나 개인통합1</td><td>안세공</td>
     <td><input type="number" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxPP1}" oninput="updateConsPP2()"></td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp1_reg">${pp1Reg}</td></tr>`;
-  h += `<tr class="cons-anse"><td rowspan="2">나 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
+  h += `<tr class="cons-anse"><td rowspan="2">나 개인통합2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_reg">${pp2Reg}</td></tr>`;
   const _cWt = getWifeTitle();
   if (t._consWifeIds && t._consWifeIds.length > 0) {
@@ -14564,12 +14564,12 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
       h += `<tr class="cons-dc"><td rowspan="2">${_cWt} 퇴직연금</td><td>퇴직금</td><td>${mv(t.wifeDCPrincipal)}</td></tr>`;
       h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.wifeDCRegular)}</td></tr>`;
     }
-    h += `<tr class="cons-anse"><td rowspan="3">${_cWt} 개인연금1</td><td>총잔액</td>
+    h += `<tr class="cons-anse"><td rowspan="3">${_cWt} 개인통합1</td><td>총잔액</td>
       <td><input type="number" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="updateConsWP2()"></td></tr>`;
     h += `<tr class="cons-anse"><td>안세공</td>
       <td><input type="number" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
     h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp1_reg">${wp1Reg}</td></tr>`;
-    h += `<tr class="cons-anse"><td rowspan="2">${_cWt} 개인연금2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
+    h += `<tr class="cons-anse"><td rowspan="2">${_cWt} 개인통합2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
     h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_reg">${wp2Reg}</td></tr>`;
   }
   h += `</tbody></table>`;
