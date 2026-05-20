@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.383';
+const APP_VERSION = 'MyPM v0.384';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14048,72 +14048,160 @@ function wdPrepStep1Html() {
     `</div>`;
 }
 
-function wdPrepStep2Html() {
-  const currentYear = new Date().getFullYear();
-  const accounts = getActiveAccounts().filter(a => a.id !== 'cash');
-  const mv  = v => Math.round(v / 10_000);
-  const fmt = n => n.toLocaleString();
+let _wdStep2Ctx = null;
 
-  const BADGE = {
-    keep:    { bg:'#f1f5f9', color:'#475569', text:'현행 유지' },
-    main:    { bg:'#dbeafe', color:'#1d4ed8', text:'주 계좌 유지' },
-    merge:   { bg:'#fef9c3', color:'#92400e', text:'통합 권장' },
-    irp:     { bg:'#ede9fe', color:'#5b21b6', text:'IRP 이전 예정' },
-    isa:     { bg:'#dcfce7', color:'#166534', text:'만기 시 이전' },
-  };
-  const badge = (type) => {
-    const b = BADGE[type];
-    return `<span style="background:${b.bg};color:${b.color};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap">${b.text}</span>`;
-  };
-
-  const proposals = accounts.map(a => {
-    const id   = a.id;
-    const val  = computeAccountValue(id);
-    const comp = computeAccComponents(id, currentYear);
-    let badgeType = 'keep', reason = '';
-    if (id === 'dc' || id === 'wife_dc') {
-      badgeType = 'irp';
-      reason = '재직 중 이전 불가. 퇴직 시 IRP로 이전하면 퇴직소득세 절감.';
-    } else if (id === 'isa' || id === 'wife_isa') {
-      badgeType = 'isa';
-      reason = 'ISA 만기 후 연금계좌 이전 시 추가 세액공제 혜택 (최대 300만원).';
-    } else if (id === 'pension2' && computeAccountValue('pension1') > 0) {
-      badgeType = 'merge';
-      reason = '개인연금1로 통합 → 계좌 단순화. 통합 전 세액공제확인서 발급 필수.';
-    } else if (id === 'wife_pension2' && computeAccountValue('wife_pension1') > 0) {
-      badgeType = 'merge';
-      reason = '아내 개인연금1로 통합 → 계좌 단순화. 세액공제확인서 발급 필수.';
-    } else if (id === 'pension1' || id === 'wife_pension1') {
-      badgeType = 'main';
-      reason = '분할 수령에 가장 유연. 인출 1순위 권장.';
-    } else if (id === 'irp' || id === 'wife_irp') {
-      badgeType = 'keep';
-      reason = 'DC 퇴직급여 이전 수령 계좌. 인출 2순위.';
+function wdPrepComputeAutoConsolidate(nonDcIds, comps) {
+  const totalAnse = nonDcIds.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
+  if (totalAnse <= 0) return null;
+  let pp2Ids = [];
+  const single = nonDcIds.find(id => (comps[id]?.total || 0) > totalAnse);
+  if (single) {
+    pp2Ids = [single];
+  } else {
+    const sorted = [...nonDcIds].sort((a, b) => (comps[b]?.total||0) - (comps[a]?.total||0));
+    let running = 0;
+    for (const id of sorted) {
+      running += comps[id]?.total || 0;
+      pp2Ids.push(id);
+      if (running > totalAnse) break;
     }
-    return { name: a.name, val: mv(val), anse: mv(comp.anse), badgeType, reason };
-  }).filter(p => p.val > 0 || p.anse > 0);
+    if (running <= totalAnse) return null;
+  }
+  const pp1Ids   = nonDcIds.filter(id => !pp2Ids.includes(id));
+  const pp2Total = pp2Ids.reduce((s, id) => s + (comps[id]?.total||0), 0);
+  const pp1Total = pp1Ids.reduce((s, id) => s + (comps[id]?.total||0), 0);
+  return { pp2Ids, pp1Ids, pp2Total, pp1Total, totalAnse };
+}
 
-  let tbody = '';
-  proposals.forEach(p => {
-    tbody += `<tr>` +
-      `<td><b>${p.name}</b></td>` +
-      `<td>${fmt(p.val)}</td>` +
-      `<td>${p.anse > 0 ? fmt(p.anse) : '<span style="color:#94a3b8">—</span>'}</td>` +
-      `<td style="text-align:left">${badge(p.badgeType)}</td>` +
-      `<td style="text-align:left;font-size:11px;color:var(--muted)">${p.reason}</td>` +
-      `</tr>`;
-  });
-  if (!tbody) tbody = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">해당 계좌가 없습니다</td></tr>`;
+function wdPrepStep2Html() {
+  const startYear = wdPlan?.periods?.[0]?.startYear;
+  if (!startYear) return `<p style="color:var(--muted)">인출 구간1 시작연도를 먼저 설정해 주세요.</p>`;
+  const baseYear = startYear - 1;
+  const M = 1_000_000;
+  const mv = v => Math.round(v / M);
+  const fmt = n => n.toLocaleString();
+  const _zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
 
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">계좌 수를 최소화하고 세금을 최적화하기 위한 통합 제안입니다.</p>` +
-    `<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">` +
-    `<table class="wdprep-table">` +
-    `<thead><tr>` +
-    `<th>계좌</th><th>평가금액(만원)</th><th>세액공제납입(만원)</th><th style="text-align:left">처리 제안</th><th style="text-align:left">이유</th>` +
-    `</tr></thead><tbody>${tbody}</tbody></table></div>` +
-    `<div class="wdprep-box wdprep-box-amber">` +
-    `⚠️ 계좌 통합 전 반드시 <b>국세청 홈택스에서 '연금보험료 등 소득 세액공제 확인서'를 발급</b>받아 각 계좌의 세액공제 납입액을 공식 확인하세요. (다음 단계에서 안내)` +
-    `</div>`;
+  const comps = {};
+  for (const id of MY_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
+  if (appSettings.hasWife)
+    for (const id of WIFE_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
+  if (!comps['pension1'])      comps['pension1']      = {..._zero};
+  if (!comps['wife_pension1']) comps['wife_pension1'] = {..._zero};
+
+  const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
+  const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
+
+  const myAutoResult   = wdPrepComputeAutoConsolidate(myNonDcIds, comps);
+  const wifeAutoResult = wifeNonDcIds.length ? wdPrepComputeAutoConsolidate(wifeNonDcIds, comps) : null;
+
+  const myAnseTotal   = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
+  const myRegTotal    = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
+  const wifeAnseTotal = wifeNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
+  const wifeRegTotal  = wifeNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
+
+  _wdStep2Ctx = { myAutoResult, wifeAutoResult };
+
+  const c = wdConsolidated;
+  const defMyPP1Anse   = c ? mv(c.myPP1Anse)   : 0;
+  const defWifePP1Anse = c ? mv(c.wifePP1Anse) : 0;
+  const pp1MaxAnse     = myAutoResult   ? mv(myAutoResult.pp1Total)   : 0;
+  const wp1MaxAnse     = wifeAutoResult ? mv(wifeAutoResult.pp1Total) : 0;
+
+  // Section A: Auto-consolidation result
+  const accNames = ids => ids.length ? ids.map(getAccName).join(' + ') : '없음';
+  let secA = `<div class="wdprep-box wdprep-box-green" style="margin-top:0">
+    <div style="font-weight:700;font-size:13px;margin-bottom:10px">🔀 자동 통합 제안 결과 <span style="font-weight:400;font-size:11px;color:#166534">${baseYear}년말 예상잔액 기준</span></div>`;
+  if (myAutoResult) {
+    secA += `<div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:4px">본인</div>
+    <div style="font-size:12px;line-height:2.1;padding-left:4px">
+      <b>개인연금1</b> ← ${myAutoResult.pp1Ids.length ? `<b>${accNames(myAutoResult.pp1Ids)}</b>` : '<i>없음</i>'}
+      <span style="color:#15803d"> (합산 ${fmt(mv(myAutoResult.pp1Total))}만원, <b>안세공 0</b>)</span><br>
+      <b>개인연금2</b> ← <b>${accNames(myAutoResult.pp2Ids)}</b>
+      <span style="color:#15803d"> (합산 ${fmt(mv(myAutoResult.pp2Total))}만원, 안세공 ${fmt(mv(myAutoResult.totalAnse))}만원)</span>
+    </div>`;
+  } else {
+    secA += `<div style="font-size:12px;color:#166534">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
+  }
+  if (wifeAutoResult && appSettings.hasWife) {
+    const wt = getWifeTitle();
+    secA += `<div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:4px;margin-top:10px">${wt}</div>
+    <div style="font-size:12px;line-height:2.1;padding-left:4px">
+      <b>개인연금1</b> ← ${wifeAutoResult.pp1Ids.length ? `<b>${accNames(wifeAutoResult.pp1Ids)}</b>` : '<i>없음</i>'}
+      <span style="color:#15803d"> (합산 ${fmt(mv(wifeAutoResult.pp1Total))}만원, <b>안세공 0</b>)</span><br>
+      <b>개인연금2</b> ← <b>${accNames(wifeAutoResult.pp2Ids)}</b>
+      <span style="color:#15803d"> (합산 ${fmt(mv(wifeAutoResult.pp2Total))}만원, 안세공 ${fmt(mv(wifeAutoResult.totalAnse))}만원)</span>
+    </div>`;
+  }
+  secA += `</div>`;
+
+  // Section B: Tax advantage explanation
+  const secB = `<div class="wdprep-box wdprep-box-blue" style="margin-top:12px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px">💡 개인연금1에 안세공 0을 만드는 이유</div>
+    <div style="font-size:12px;line-height:1.9">
+      개인연금1에 세액공제납입(안세공)이 없으면, 연 <b>1,500만원 이내</b> 인출 시 <b>연금소득세 3.3~5.5%</b>만 납부합니다.<br>
+      단, 연금소득 합계가 연 <b>1,500만원을 초과하면</b> 전액에 <b>16.5%</b>가 적용됩니다.<br><br>
+      <b>예시 — 연 1,500만원 인출 시 세금 비교:</b><br>
+      &nbsp;• 5.5% (1,500만원 이하) → 세금 <b style="color:#1d4ed8">${(1500*0.055).toFixed(1)}만원</b><br>
+      &nbsp;• 16.5% (1,500만원 초과) → 세금 <b style="color:#dc2626">${(1500*0.165).toFixed(1)}만원</b><br>
+      &nbsp;→ 연간 최대 <b style="color:var(--primary)">${((1500*0.165)-(1500*0.055)).toFixed(1)}만원 절세</b>
+    </div>
+  </div>`;
+
+  // Section C: Manual adjustment
+  let inputsHtml = '';
+  if (pp1MaxAnse > 0) {
+    inputsHtml += `<div style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">
+        본인 개인연금1 배정 안세공액 <span style="font-weight:400;color:var(--muted)">(만원 · 0 = 자동제안 최적값)</span>
+      </label>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="number" id="wdPrepMyPP1Anse" min="0" max="${pp1MaxAnse}" step="100" value="${defMyPP1Anse}"
+          style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:14px"
+          oninput="wdPrepStep2UpdatePreview()">
+        <span style="font-size:12px;color:var(--muted)">/ 최대 ${fmt(pp1MaxAnse)}만원</span>
+        <button onclick="document.getElementById('wdPrepMyPP1Anse').value=0;wdPrepStep2UpdatePreview()"
+          style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:#f1f5f9;cursor:pointer">초기화 (0)</button>
+      </div>
+    </div>`;
+  }
+  if (appSettings.hasWife && wp1MaxAnse > 0) {
+    const wt = getWifeTitle();
+    inputsHtml += `<div style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;display:block;margin-bottom:6px">
+        ${wt} 개인연금1 배정 안세공액 <span style="font-weight:400;color:var(--muted)">(만원 · 0 = 자동제안 최적값)</span>
+      </label>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="number" id="wdPrepWifePP1Anse" min="0" max="${wp1MaxAnse}" step="100" value="${defWifePP1Anse}"
+          style="width:130px;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:14px"
+          oninput="wdPrepStep2UpdatePreview()">
+        <span style="font-size:12px;color:var(--muted)">/ 최대 ${fmt(wp1MaxAnse)}만원</span>
+        <button onclick="document.getElementById('wdPrepWifePP1Anse').value=0;wdPrepStep2UpdatePreview()"
+          style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:#f1f5f9;cursor:pointer">초기화 (0)</button>
+      </div>
+    </div>`;
+  }
+  if (!inputsHtml) {
+    inputsHtml = `<p style="font-size:12px;color:var(--muted)">조정 가능한 연금 계좌가 없습니다.</p>`;
+  }
+  const secC = `<div style="margin-top:12px;padding:14px;border:1px solid var(--border);border-radius:10px;background:#fafafa">
+    <div style="font-weight:700;font-size:13px;margin-bottom:12px">✏️ 수동 조정</div>
+    ${inputsHtml}
+    <div id="wdPrepStep2Preview" style="padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;line-height:1.9;display:none"></div>
+  </div>`;
+
+  // Section D: Apply button
+  const alreadyApplied = !!(wdConsolidated && wdConsolidated.startYear === (wdPlan?.startYear || 0));
+  const secD = `<div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <button onclick="wdPrepDoApply()" class="btn-primary" id="wdPrepApplyBtn" style="font-size:13px;padding:8px 20px">
+      📥 인출 시뮬레이션에 적용
+    </button>
+    ${alreadyApplied ? `<span style="font-size:12px;color:#166534;font-weight:600">✅ 현재 적용 중 (변경 후 재적용 가능)</span>` : ''}
+    <span id="wdPrepAppliedMsg" style="display:none;font-size:12px;color:#166534;font-weight:600">✅ 적용되었습니다!</span>
+  </div>`;
+
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:14px">계좌를 통합해 세금을 최소화하는 방법을 제안합니다. 수동 조정 후 시뮬레이션에 바로 적용하세요.</p>
+    ${secA}${secB}${secC}${secD}`;
 }
 
 function wdPrepStep3Html() {
@@ -14204,6 +14292,92 @@ function wdPrepSelectAccount(accId) {
   localStorage.setItem('wd_prep_primary_account', accId);
   const el = document.getElementById('wdPrepAccSaved');
   if (el) { el.style.display = ''; setTimeout(() => { el.style.display = 'none'; }, 2000); }
+}
+
+function wdPrepStep2UpdatePreview() {
+  if (!_wdStep2Ctx) return;
+  const { myAutoResult, wifeAutoResult } = _wdStep2Ctx;
+  const M = 1_000_000;
+  const mv = v => Math.round(v / M);
+  const fmt = n => n.toLocaleString();
+  const myPP1Mv   = Math.max(0, Math.min(Number(document.getElementById('wdPrepMyPP1Anse')?.value)   || 0, myAutoResult   ? mv(myAutoResult.pp1Total)   : 0));
+  const wifePP1Mv = Math.max(0, Math.min(Number(document.getElementById('wdPrepWifePP1Anse')?.value) || 0, wifeAutoResult ? mv(wifeAutoResult.pp1Total) : 0));
+  let html = '';
+  if (myAutoResult) {
+    const pp1R    = Math.max(0, mv(myAutoResult.pp1Total)  - myPP1Mv);
+    const pp2Anse = Math.max(0, mv(myAutoResult.totalAnse) - myPP1Mv);
+    const pp2Reg  = Math.max(0, mv(myAutoResult.pp2Total)  - pp2Anse);
+    html += `<b>본인 결과 미리보기</b><br>
+      · 개인연금1: <b>${fmt(mv(myAutoResult.pp1Total))}만원</b> (안세공 ${fmt(myPP1Mv)}만원, 비세액공제 ${fmt(pp1R)}만원)<br>
+      · 개인연금2: <b>${fmt(mv(myAutoResult.pp2Total))}만원</b> (안세공 ${fmt(pp2Anse)}만원, 비세액공제 ${fmt(pp2Reg)}만원)`;
+  }
+  if (wifeAutoResult && appSettings.hasWife) {
+    const wt = getWifeTitle();
+    const pp1R    = Math.max(0, mv(wifeAutoResult.pp1Total)  - wifePP1Mv);
+    const pp2Anse = Math.max(0, mv(wifeAutoResult.totalAnse) - wifePP1Mv);
+    const pp2Reg  = Math.max(0, mv(wifeAutoResult.pp2Total)  - pp2Anse);
+    html += `${myAutoResult ? '<br><br>' : ''}<b>${wt} 결과 미리보기</b><br>
+      · 개인연금1: <b>${fmt(mv(wifeAutoResult.pp1Total))}만원</b> (안세공 ${fmt(wifePP1Mv)}만원, 비세액공제 ${fmt(pp1R)}만원)<br>
+      · 개인연금2: <b>${fmt(mv(wifeAutoResult.pp2Total))}만원</b> (안세공 ${fmt(pp2Anse)}만원, 비세액공제 ${fmt(pp2Reg)}만원)`;
+  }
+  const el = document.getElementById('wdPrepStep2Preview');
+  if (el) { el.innerHTML = html; el.style.display = html ? '' : 'none'; }
+}
+
+function wdPrepDoApply() {
+  const myPP1AnseMv   = Number(document.getElementById('wdPrepMyPP1Anse')?.value)   || 0;
+  const wifePP1AnseMv = Number(document.getElementById('wdPrepWifePP1Anse')?.value) || 0;
+  wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv);
+  const btn = document.getElementById('wdPrepApplyBtn');
+  const msg = document.getElementById('wdPrepAppliedMsg');
+  if (btn) btn.textContent = '✅ 적용됨';
+  if (msg) { msg.style.display = ''; setTimeout(() => { if (msg) msg.style.display = 'none'; }, 2500); }
+}
+
+function wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv) {
+  const startYear = wdPlan?.periods?.[0]?.startYear;
+  if (!startYear) return;
+  const baseYear = startYear - 1;
+  const M = 1_000_000;
+  const mv = v => Math.round(v / M);
+  const _zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+  const comps = {};
+  for (const id of MY_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
+  if (appSettings.hasWife)
+    for (const id of WIFE_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
+  if (!comps['pension1'])      comps['pension1']      = {..._zero};
+  if (!comps['wife_pension1']) comps['wife_pension1'] = {..._zero};
+  const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
+  const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
+  const myAutoResult   = wdPrepComputeAutoConsolidate(myNonDcIds, comps);
+  const wifeAutoResult = wifeNonDcIds.length ? wdPrepComputeAutoConsolidate(wifeNonDcIds, comps) : null;
+  const myAnseTotal   = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
+  const myRegTotal    = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
+  const wifeAnseTotal = wifeNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
+  const wifeRegTotal  = wifeNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
+  const pp1MaxAnse = myAutoResult   ? mv(myAutoResult.pp1Total)   : 0;
+  const wp1MaxAnse = wifeAutoResult ? mv(wifeAutoResult.pp1Total) : 0;
+  const pp1A = Math.min(Math.max(0, myPP1AnseMv),   pp1MaxAnse) * M;
+  const pp1R = Math.max(0, (myAutoResult   ? myAutoResult.pp1Total   : 0) - pp1A);
+  const wp1A = Math.min(Math.max(0, wifePP1AnseMv), wp1MaxAnse) * M;
+  const wp1R = Math.max(0, (wifeAutoResult ? wifeAutoResult.pp1Total : 0) - wp1A);
+  wdConsolidated = {
+    startYear:        wdPlan.startYear,
+    myDCPrincipal:    (comps['dc']      || _zero).dcPrincipal,
+    myDCRegular:      (comps['dc']      || _zero).regular,
+    wifeDCPrincipal:  (comps['wife_dc'] || _zero).dcPrincipal,
+    wifeDCRegular:    (comps['wife_dc'] || _zero).regular,
+    myPP1Anse:        pp1A,
+    myPP1Regular:     pp1R,
+    totalMyAnse:      myAnseTotal,
+    totalMyRegular:   myRegTotal,
+    wifePP1Anse:      wp1A,
+    wifePP1Regular:   wp1R,
+    totalWifeAnse:    wifeAnseTotal,
+    totalWifeRegular: wifeRegTotal,
+  };
+  _wdSelectedScenIdx = null;
+  renderWithdrawalPlan();
 }
 
 function wdPrepFinish() {
