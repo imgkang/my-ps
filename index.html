@@ -1324,6 +1324,28 @@ registerMobileTooltipDismiss();
   #ob-tip.visible { display:block; }
   @keyframes wdPrepBlink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.35;transform:scale(1.25)} }
   #wdPrepAlertIcon { display:inline-block; animation:wdPrepBlink 1.3s ease-in-out infinite; font-size:1.15em; cursor:pointer; margin-left:6px; vertical-align:middle; }
+  /* 인출준비 마법사 */
+  .wdprep-stepbar { display:flex; align-items:flex-start; margin-bottom:20px; }
+  .wdprep-step { display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0; }
+  .wdprep-step-circle { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; }
+  .wdprep-step-label { font-size:11px; white-space:nowrap; text-align:center; font-weight:400; }
+  .wdprep-connector { flex:1; height:2px; margin-top:13px; background:#e2e8f0; min-width:8px; }
+  .wdprep-connector.done { background:#22c55e; }
+  .wdprep-table { border-collapse:collapse; width:100%; font-size:13px; }
+  .wdprep-table th { font-size:11px; color:var(--muted); font-weight:600; background:#f8fafc; padding:7px 10px; border-top:1px solid var(--border); border-bottom:2px solid var(--border); line-height:1.35; white-space:nowrap; text-align:right; }
+  .wdprep-table th:first-child { text-align:left; }
+  .wdprep-table td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:middle; text-align:right; }
+  .wdprep-table td:first-child { text-align:left; }
+  .wdprep-table tbody tr:last-child td { border-bottom:none; }
+  .wdprep-table tbody tr:hover td { background:#f8fafc; }
+  .wdprep-box { padding:10px 14px; border-radius:8px; font-size:12px; line-height:1.7; margin-top:10px; }
+  .wdprep-box-green  { background:#f0fdf4; color:#166534; }
+  .wdprep-box-amber  { background:#fffbeb; border-left:3px solid #f59e0b; color:#78350f; }
+  .wdprep-box-blue   { background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; }
+  .wdprep-box-purple { background:#faf5ff; color:#6b21a8; }
+  .wdprep-radio-card { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; margin-bottom:8px; font-size:13px; transition:border-color .15s,background .15s; }
+  .wdprep-radio-card:hover { border-color:#93c5fd; }
+  .wdprep-radio-card.selected { border-color:var(--primary); background:#eff6ff; }
 </style>
 </head>
 <body>
@@ -2301,17 +2323,17 @@ registerMobileTooltipDismiss();
 <!-- 인출준비 및 시작 마법사 모달 -->
 <div class="modal-backdrop" id="withdrawalPrepModal" onclick="handleWdPrepBackdropClick(event)"
      style="align-items:flex-start;overflow-y:auto;padding:16px;z-index:1200">
-  <div class="modal" style="max-width:860px;max-height:none;overflow-y:visible;margin:auto">
-    <div class="modal-header" style="flex-shrink:0">
+  <div class="modal" style="max-width:820px;margin:auto;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0;margin-bottom:0">
       <div>
-        <h3>🚀 인출준비 및 시작 — 1단계</h3>
-        <div id="wdPrepSubtitle" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+        <h3 style="font-size:16px;margin:0">🚀 인출준비 및 시작</h3>
+        <div id="wdPrepSubtitle" style="font-size:12px;color:var(--muted);margin-top:3px"></div>
       </div>
       <button class="close-btn" onclick="closeWithdrawalPrepModal()">×</button>
     </div>
-    <div id="wdPrepStepBar" style="display:flex;gap:12px;margin-bottom:16px;flex-shrink:0;flex-wrap:wrap"></div>
-    <div id="wdPrepContent" style="min-height:200px"></div>
-    <div class="modal-actions" style="flex-shrink:0;margin-top:16px">
+    <div id="wdPrepStepBar" style="margin:16px 0 4px"></div>
+    <div id="wdPrepContent" style="min-height:160px"></div>
+    <div class="modal-actions" style="flex-shrink:0;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
       <button id="wdPrepPrevBtn" class="btn-secondary" onclick="wdPrepGoStep(wdPrepCurrentStep-1)">← 이전</button>
       <button id="wdPrepNextBtn" class="btn-primary" onclick="wdPrepGoStep(wdPrepCurrentStep+1)">다음 →</button>
     </div>
@@ -3161,7 +3183,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.380';
+const APP_VERSION = 'MyPM v0.381';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -13925,22 +13947,29 @@ function handleWdPrepBackdropClick(e) {
 function wdPrepGoStep(step) {
   if (step < 1 || step > 4) return;
   wdPrepCurrentStep = step;
+
+  // 스텝 인디케이터
   const bar = document.getElementById('wdPrepStepBar');
   if (bar) {
+    bar.className = 'wdprep-stepbar';
     bar.innerHTML = WD_PREP_STEPS.map((label, i) => {
-      const n = i + 1;
-      const active = n === step;
+      const n      = i + 1;
       const done   = n < step;
-      const color  = done ? '#22c55e' : active ? 'var(--primary)' : '#94a3b8';
-      const fw     = active ? 700 : 400;
-      return `<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:${color};font-weight:${fw}">` +
-        `<span style="width:20px;height:20px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">${done ? '✓' : n}</span>` +
-        `${label}${n < 4 ? '<span style="color:#cbd5e1;margin-left:6px">›</span>' : ''}` +
-        `</div>`;
+      const active = n === step;
+      const circBg = done ? '#22c55e' : active ? 'var(--primary)' : '#e2e8f0';
+      const circFg = (done || active) ? '#fff' : '#94a3b8';
+      const lblColor  = done ? '#22c55e' : active ? 'var(--primary)' : '#94a3b8';
+      const lblWeight = active ? 600 : 400;
+      const circle  = `<div class="wdprep-step-circle" style="background:${circBg};color:${circFg}">${done ? '✓' : n}</div>`;
+      const lbl     = `<div class="wdprep-step-label" style="color:${lblColor};font-weight:${lblWeight}">${label}</div>`;
+      const conn    = n < 4 ? `<div class="wdprep-connector${done ? ' done' : ''}"></div>` : '';
+      return `<div class="wdprep-step">${circle}${lbl}</div>${conn}`;
     }).join('');
   }
+
   const content = document.getElementById('wdPrepContent');
   if (content) content.innerHTML = wdPrepRenderStep(step);
+
   const prevBtn = document.getElementById('wdPrepPrevBtn');
   const nextBtn = document.getElementById('wdPrepNextBtn');
   if (prevBtn) prevBtn.style.display = step === 1 ? 'none' : '';
@@ -13976,34 +14005,34 @@ function wdPrepStep1Html() {
     return { name: a.name, val, anse: comp.anse, dc: comp.dcPrincipal, other: comp.regular };
   }).filter(r => r.val > 0 || r.anse > 0);
 
-  let html = `<p style="font-size:13px;color:var(--muted);margin-bottom:10px">현재 포트폴리오의 각 계좌 평가금액과 세액공제 납입 누계를 확인합니다.</p>` +
-    `<div style="overflow-x:auto"><table class="data-table" style="width:100%;font-size:13px">` +
-    `<thead><tr>` +
-    `<th style="text-align:left">계좌</th>` +
-    `<th style="text-align:right">현재 평가금액</th>` +
-    `<th style="text-align:right">세액공제 납입액<br><span style="font-weight:400;font-size:11px">(인출 시 연금소득세)</span></th>` +
-    `<th style="text-align:right">DC 퇴직급여<br><span style="font-weight:400;font-size:11px">(퇴직소득세)</span></th>` +
-    `<th style="text-align:right">비세액공제 납입액<br><span style="font-weight:400;font-size:11px">(인출 시 비과세)</span></th>` +
-    `</tr></thead><tbody>`;
+  let tbody = '';
   if (rows.length === 0) {
-    html += `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">잔액이 있는 계좌가 없습니다</td></tr>`;
+    tbody = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">잔액이 있는 계좌가 없습니다</td></tr>`;
   } else {
     rows.forEach(r => {
-      html += `<tr>` +
+      tbody += `<tr>` +
         `<td><b>${r.name}</b></td>` +
-        `<td style="text-align:right"><b>${fmt(mv(r.val))}만원</b></td>` +
-        `<td style="text-align:right">${mv(r.anse) > 0 ? fmt(mv(r.anse))+'만원' : '-'}</td>` +
-        `<td style="text-align:right">${mv(r.dc) > 0 ? fmt(mv(r.dc))+'만원' : '-'}</td>` +
-        `<td style="text-align:right">${mv(r.other) > 0 ? fmt(mv(r.other))+'만원' : '-'}</td>` +
+        `<td><b>${fmt(mv(r.val))}만원</b></td>` +
+        `<td>${mv(r.anse) > 0 ? fmt(mv(r.anse))+'만원' : '<span style="color:#94a3b8">—</span>'}</td>` +
+        `<td>${mv(r.dc)   > 0 ? fmt(mv(r.dc))  +'만원' : '<span style="color:#94a3b8">—</span>'}</td>` +
+        `<td>${mv(r.other)> 0 ? fmt(mv(r.other))+'만원' : '<span style="color:#94a3b8">—</span>'}</td>` +
         `</tr>`;
     });
   }
-  html += `</tbody></table></div>` +
-    `<div style="margin-top:10px;padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534">` +
-    `💡 <b>세액공제 납입액</b>은 개인연금·IRP에 납입 후 세액공제 혜택을 받은 금액입니다. 인출 시 연금소득세(3.3~5.5%)가 부과됩니다. ` +
-    `<b>비세액공제 납입액</b>은 이미 세금을 낸 돈이므로 인출 시 비과세입니다.` +
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">현재 포트폴리오의 계좌별 평가금액과 세액공제 납입 누계를 확인합니다.</p>` +
+    `<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">` +
+    `<table class="wdprep-table">` +
+    `<thead><tr>` +
+    `<th>계좌</th>` +
+    `<th>현재 평가금액</th>` +
+    `<th>세액공제 납입액<br><span style="font-weight:400;color:#94a3b8">(연금소득세 대상)</span></th>` +
+    `<th>DC 퇴직급여<br><span style="font-weight:400;color:#94a3b8">(퇴직소득세 대상)</span></th>` +
+    `<th>비세액공제 납입액<br><span style="font-weight:400;color:#94a3b8">(비과세 인출 가능)</span></th>` +
+    `</tr></thead><tbody>${tbody}</tbody></table></div>` +
+    `<div class="wdprep-box wdprep-box-green">` +
+    `💡 <b>세액공제 납입액</b>은 납입 시 세액공제를 받은 금액으로, 인출 시 연금소득세(3.3~5.5%)가 부과됩니다. ` +
+    `<b>비세액공제 납입액</b>은 이미 세금을 낸 돈이므로 인출 시 비과세 인출이 가능합니다.` +
     `</div>`;
-  return html;
 }
 
 function wdPrepStep2Html() {
@@ -14012,79 +14041,95 @@ function wdPrepStep2Html() {
   const mv  = v => Math.round(v / 10_000);
   const fmt = n => n.toLocaleString();
 
+  const BADGE = {
+    keep:    { bg:'#f1f5f9', color:'#475569', text:'현행 유지' },
+    main:    { bg:'#dbeafe', color:'#1d4ed8', text:'주 계좌 유지' },
+    merge:   { bg:'#fef9c3', color:'#92400e', text:'통합 권장' },
+    irp:     { bg:'#ede9fe', color:'#5b21b6', text:'IRP 이전 예정' },
+    isa:     { bg:'#dcfce7', color:'#166534', text:'만기 시 이전' },
+  };
+  const badge = (type) => {
+    const b = BADGE[type];
+    return `<span style="background:${b.bg};color:${b.color};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap">${b.text}</span>`;
+  };
+
   const proposals = accounts.map(a => {
     const id   = a.id;
     const val  = computeAccountValue(id);
     const comp = computeAccComponents(id, currentYear);
-    let action = '현행 유지', reason = '';
+    let badgeType = 'keep', reason = '';
     if (id === 'dc' || id === 'wife_dc') {
-      action = '현재 유지 (퇴직 시 IRP로 이전)';
-      reason = '재직 중 이전 불가. 퇴직 시 IRP로 이전하면 퇴직소득세 절감 효과.';
+      badgeType = 'irp';
+      reason = '재직 중 이전 불가. 퇴직 시 IRP로 이전하면 퇴직소득세 절감.';
     } else if (id === 'isa' || id === 'wife_isa') {
-      action = '만기 시 연금계좌로 이전 권장';
+      badgeType = 'isa';
       reason = 'ISA 만기 후 연금계좌 이전 시 추가 세액공제 혜택 (최대 300만원).';
     } else if (id === 'pension2' && computeAccountValue('pension1') > 0) {
-      action = '개인연금1로 통합 권장';
-      reason = '계좌 수 최소화로 관리 단순화. 통합 전 세액공제확인서 발급 필수.';
+      badgeType = 'merge';
+      reason = '개인연금1로 통합 → 계좌 단순화. 통합 전 세액공제확인서 발급 필수.';
     } else if (id === 'wife_pension2' && computeAccountValue('wife_pension1') > 0) {
-      action = '아내 개인연금1로 통합 권장';
-      reason = '계좌 수 최소화로 관리 단순화. 통합 전 세액공제확인서 발급 필수.';
+      badgeType = 'merge';
+      reason = '아내 개인연금1로 통합 → 계좌 단순화. 세액공제확인서 발급 필수.';
     } else if (id === 'pension1' || id === 'wife_pension1') {
-      action = '주 인출계좌로 유지';
-      reason = '연금수령 시 가장 유연 (분할 수령 용이). 인출 1순위 권장.';
+      badgeType = 'main';
+      reason = '분할 수령에 가장 유연. 인출 1순위 권장.';
     } else if (id === 'irp' || id === 'wife_irp') {
-      action = 'DC 이전 수령 계좌로 유지';
-      reason = 'DC 퇴직급여 이전 후 연금수령. 인출 2순위.';
+      badgeType = 'keep';
+      reason = 'DC 퇴직급여 이전 수령 계좌. 인출 2순위.';
     }
-    return { name: a.name, val: mv(val), anse: mv(comp.anse), action, reason };
+    return { name: a.name, val: mv(val), anse: mv(comp.anse), badgeType, reason };
   }).filter(p => p.val > 0 || p.anse > 0);
 
-  let html = `<p style="font-size:13px;color:var(--muted);margin-bottom:10px">계좌 수를 최소화하고 세금을 최적화하기 위한 통합 제안입니다.</p>` +
-    `<div style="overflow-x:auto"><table class="data-table" style="width:100%;font-size:12px">` +
-    `<thead><tr>` +
-    `<th style="text-align:left">계좌</th>` +
-    `<th style="text-align:right">평가금액(만원)</th>` +
-    `<th style="text-align:right">세액공제납입(만원)</th>` +
-    `<th>통합/처리 제안</th>` +
-    `<th>이유</th>` +
-    `</tr></thead><tbody>`;
+  let tbody = '';
   proposals.forEach(p => {
-    html += `<tr>` +
+    tbody += `<tr>` +
       `<td><b>${p.name}</b></td>` +
-      `<td style="text-align:right">${fmt(p.val)}</td>` +
-      `<td style="text-align:right">${p.anse > 0 ? fmt(p.anse) : '-'}</td>` +
-      `<td style="color:var(--primary);font-weight:600;white-space:nowrap">${p.action}</td>` +
-      `<td style="font-size:11px;color:var(--muted)">${p.reason}</td>` +
+      `<td>${fmt(p.val)}</td>` +
+      `<td>${p.anse > 0 ? fmt(p.anse) : '<span style="color:#94a3b8">—</span>'}</td>` +
+      `<td style="text-align:left">${badge(p.badgeType)}</td>` +
+      `<td style="text-align:left;font-size:11px;color:var(--muted)">${p.reason}</td>` +
       `</tr>`;
   });
-  if (proposals.length === 0) {
-    html += `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">해당 계좌가 없습니다</td></tr>`;
-  }
-  html += `</tbody></table></div>` +
-    `<div style="margin-top:12px;padding:8px 12px;background:#fef9c3;border-radius:8px;font-size:12px;color:#713f12">` +
+  if (!tbody) tbody = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">해당 계좌가 없습니다</td></tr>`;
+
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">계좌 수를 최소화하고 세금을 최적화하기 위한 통합 제안입니다.</p>` +
+    `<div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">` +
+    `<table class="wdprep-table">` +
+    `<thead><tr>` +
+    `<th>계좌</th><th>평가금액(만원)</th><th>세액공제납입(만원)</th><th style="text-align:left">처리 제안</th><th style="text-align:left">이유</th>` +
+    `</tr></thead><tbody>${tbody}</tbody></table></div>` +
+    `<div class="wdprep-box wdprep-box-amber">` +
     `⚠️ 계좌 통합 전 반드시 <b>국세청 홈택스에서 '연금보험료 등 소득 세액공제 확인서'를 발급</b>받아 각 계좌의 세액공제 납입액을 공식 확인하세요. (다음 단계에서 안내)` +
     `</div>`;
-  return html;
 }
 
 function wdPrepStep3Html() {
+  const steps = [
+    ['<b>국세청 홈택스</b> 접속 후 공동인증서 또는 간편인증 로그인',
+     '🔗 <a href="https://www.hometax.go.kr" target="_blank" rel="noopener" style="color:#3b82f6;font-size:12px">www.hometax.go.kr</a>'],
+    ['<b>My홈택스</b> → <b>연말정산·세금신고</b> → <b>소득·세액공제 자료 조회</b>', ''],
+    ['<b>연금보험료 등 소득세액공제 확인서</b> 선택', ''],
+    ['조회 연도 선택(납입 전체 기간) → <b>PDF 저장 또는 출력</b>', ''],
+  ];
+  const stepItems = steps.map((s, i) =>
+    `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;${i < steps.length-1 ? 'border-bottom:1px solid #dbeafe' : ''}">` +
+    `<div style="width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</div>` +
+    `<div style="font-size:13px;color:#1e3a8a;line-height:1.6">${s[0]}${s[1] ? '<br>'+s[1] : ''}</div>` +
+    `</div>`
+  ).join('');
+
   return `<p style="font-size:13px;color:var(--muted);margin-bottom:14px">계좌 통합 전에 각 계좌의 공식 세액공제 납입 이력을 확인해야 합니다.</p>` +
-    `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin-bottom:12px">` +
-    `<div style="font-size:14px;font-weight:700;color:#1e40af;margin-bottom:10px">📄 연금보험료 등 소득 세액공제 확인서 발급 방법</div>` +
-    `<ol style="font-size:13px;line-height:2.2;padding-left:20px;color:#1e3a5f;margin:0">` +
-    `<li><b>국세청 홈택스</b> 접속 후 공동인증서 또는 간편인증 로그인<br>` +
-    `<span style="font-size:12px;color:#3b82f6">🔗 <a href="https://www.hometax.go.kr" target="_blank" rel="noopener" style="color:#3b82f6">www.hometax.go.kr</a></span></li>` +
-    `<li><b>My홈택스</b> → <b>연말정산·세금신고</b> → <b>소득·세액공제 자료 조회</b></li>` +
-    `<li><b>연금보험료 등 소득세액공제 확인서</b> 클릭</li>` +
-    `<li>조회 연도 선택(납입 전체 기간) → <b>PDF 저장 또는 출력</b></li>` +
-    `</ol></div>` +
-    `<div style="background:#f0fdf4;border-radius:8px;padding:12px;font-size:13px;color:#166534;margin-bottom:10px">` +
+    `<div class="wdprep-box wdprep-box-blue" style="margin-top:0;margin-bottom:12px">` +
+    `<div style="font-size:14px;font-weight:700;margin-bottom:8px">📄 연금보험료 등 소득 세액공제 확인서 발급 방법</div>` +
+    stepItems +
+    `</div>` +
+    `<div class="wdprep-box wdprep-box-green">` +
     `<b>✅ 이 서류에서 확인할 내용</b><br>` +
     `• 각 연금계좌(개인연금·IRP)별 <b>세액공제 받은 납입액 연도별 합계</b><br>` +
     `• 이 금액이 앞 단계 표의 '세액공제 납입액'과 일치하는지 대조<br>` +
     `• 불일치 시 앱의 입금 기록(세액공제 항목) 수정 후 다시 확인` +
     `</div>` +
-    `<div style="padding:8px 12px;background:#faf5ff;border-radius:8px;font-size:12px;color:#581c87">` +
+    `<div class="wdprep-box wdprep-box-purple">` +
     `💡 이 서류는 계좌 통합 시 금융기관에 제출하며, 향후 인출 시 과세 기준 자료로도 활용됩니다.` +
     `</div>`;
 }
@@ -14101,26 +14146,43 @@ function wdPrepStep4Html() {
   });
   const fmt = n => Math.round(n / 10_000).toLocaleString();
 
-  let radios = sorted.map(a => {
-    const checked  = saved === a.id;
-    const bdr      = checked ? 'border-color:var(--primary);background:#eff6ff' : 'border-color:#e2e8f0';
-    return `<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid;${bdr};border-radius:8px;cursor:pointer;margin-bottom:6px;font-size:13px">` +
-      `<input type="radio" name="wdPrepPrimaryAcc" value="${a.id}" ${checked ? 'checked' : ''} onchange="wdPrepSelectAccount(this.value)" style="accent-color:var(--primary)">` +
-      `<span><b>${a.name}</b> · 현재 ${fmt(computeAccountValue(a.id))}만원</span>` +
+  const rankInfo = {
+    pension1: '1순위', wife_pension1: '1순위',
+    irp: '2순위', wife_irp: '2순위',
+    pension2: '3순위', wife_pension2: '3순위',
+  };
+  const taxInfo = {
+    pension1: '연금소득세 3.3~5.5%', wife_pension1: '연금소득세 3.3~5.5%',
+    irp: '연금소득세 3.3~5.5%', wife_irp: '연금소득세 3.3~5.5%',
+    pension2: '연금소득세 3.3~5.5%', wife_pension2: '연금소득세 3.3~5.5%',
+  };
+
+  let cards = sorted.map(a => {
+    const isSelected = saved === a.id;
+    const rank = rankInfo[a.id] || '';
+    const tax  = taxInfo[a.id]  || '';
+    return `<label class="wdprep-radio-card${isSelected ? ' selected' : ''}">` +
+      `<input type="radio" name="wdPrepPrimaryAcc" value="${a.id}" ${isSelected ? 'checked' : ''} onchange="wdPrepSelectAccount(this.value)" style="accent-color:var(--primary);flex-shrink:0">` +
+      `<div style="flex:1;min-width:0">` +
+      `<div style="font-size:13px;font-weight:600">${a.name}` +
+      (rank ? `<span style="margin-left:8px;font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:20px;font-weight:600">${rank}</span>` : '') +
+      `</div>` +
+      `<div style="font-size:12px;color:var(--muted);margin-top:2px">현재 ${fmt(computeAccountValue(a.id))}만원${tax ? ' · '+tax : ''}</div>` +
+      `</div>` +
       `</label>`;
   }).join('');
 
-  if (!radios) radios = `<p style="color:var(--muted)">연금계좌 잔액이 없습니다.</p>`;
+  if (!cards) cards = `<p style="color:var(--muted)">연금계좌 잔액이 없습니다.</p>`;
 
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:10px">계좌 통합 후 가장 먼저 인출할 주 계좌를 선택하세요.</p>` +
-    `<div style="background:#eff6ff;border-radius:8px;padding:10px 14px;font-size:12px;color:#1e40af;margin-bottom:14px">` +
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">계좌 통합 후 가장 먼저 인출할 주 계좌를 선택하세요.</p>` +
+    `<div class="wdprep-box wdprep-box-blue" style="margin-top:0;margin-bottom:14px">` +
     `<b>📌 권장 인출 순서</b><br>` +
-    `1순위: 개인연금 계좌 — 가장 유연, 연금소득세 3.3~5.5%<br>` +
-    `2순위: IRP — DC 이전 후 사용, 연금소득세 동일<br>` +
-    `3순위: DC 퇴직급여 — 퇴직소득세 별도 적용` +
+    `<b>1순위</b> 개인연금 — 분할 수령에 가장 유연, 연금소득세 3.3~5.5%<br>` +
+    `<b>2순위</b> IRP — DC 퇴직급여 이전 후 사용<br>` +
+    `<b>3순위</b> DC 퇴직급여 — 퇴직소득세 별도 적용` +
     `</div>` +
-    `<div style="margin-bottom:12px">${radios}</div>` +
-    `<div id="wdPrepAccSaved" style="display:none;padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:13px;color:#166534">` +
+    `<div style="margin-bottom:10px">${cards}</div>` +
+    `<div id="wdPrepAccSaved" style="display:none" class="wdprep-box wdprep-box-green">` +
     `✅ 인출용 주 계좌가 저장되었습니다.` +
     `</div>`;
 }
