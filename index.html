@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.385';
+const APP_VERSION = 'MyPM v0.386';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14115,7 +14115,7 @@ function wdPrepStep2Html() {
       const anseMv = mv(comp.anse);
       return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #e2e8f0;font-size:12px">
         <span style="font-weight:600;white-space:nowrap">${getAccName(id)}</span>
-        <span style="color:#64748b;white-space:nowrap">${fmt(mv(comp.total))}만원 · 안세공 ${anseMv > 0 ? fmt(anseMv) : '0'}만원</span>
+        <span style="color:#64748b;white-space:nowrap">${fmt(mv(comp.total))}백만원 · 안세공 ${anseMv > 0 ? fmt(anseMv) : '0'}백만원</span>
       </div>`;
     }).join('');
     const pp1SrcAnse = autoResult.pp1Ids.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
@@ -14127,24 +14127,24 @@ function wdPrepStep2Html() {
         <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin-bottom:6px">원래 계좌</div>
         ${autoResult.pp1Ids.length ? srcRows(autoResult.pp1Ids) : '<div style="font-size:12px;color:var(--muted)">없음</div>'}
         <div style="margin-top:6px;font-size:11px;color:#64748b;text-align:right;padding-top:4px;border-top:1px solid #e2e8f0">
-          합산 ${fmt(pp1Total)}만원 · 안세공 ${fmt(mv(pp1SrcAnse))}만원
+          합산 ${fmt(pp1Total)}백만원 · 안세공 ${fmt(mv(pp1SrcAnse))}백만원
         </div>
       </div>
       <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
       <div style="flex:1;min-width:180px;border:2px solid #22c55e;border-radius:8px;padding:10px 12px;background:#f0fdf4">
-        <div style="font-weight:700;font-size:13px;color:#166534">🏦 개인연금1 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp1Total)}만원)</span></div>
+        <div style="font-weight:700;font-size:13px;color:#166534">🏦 개인연금1 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp1Total)}백만원)</span></div>
         <div style="margin-top:8px">
-          <div style="font-size:11px;color:#166534;margin-bottom:3px">배정할 안세공 (만원) <span style="font-size:10px;color:#15803d">← 여기서 조정</span></div>
+          <div style="font-size:11px;color:#166534;margin-bottom:3px">배정할 안세공 (백만원) <span style="font-size:10px;color:#15803d">← 여기서 조정</span></div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <input type="number" id="${pp1InputId}" min="0" max="${pp1Total}" step="100" value="${defPP1Anse}"
+            <input type="number" id="${pp1InputId}" min="0" max="${pp1Total}" step="10" value="${defPP1Anse}"
               style="width:95px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;background:#fff"
               oninput="wdPrepStep2UpdatePreview()">
-            <span style="font-size:11px;color:#166534">/ ${fmt(pp1Total)}만원</span>
+            <span style="font-size:11px;color:#166534">/ ${fmt(pp1Total)}백만원</span>
             <button onclick="document.getElementById('${pp1InputId}').value=0;wdPrepStep2UpdatePreview()"
               style="font-size:10px;padding:3px 7px;border:1px solid #86efac;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer">최적(0)</button>
           </div>
         </div>
-        <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">비세액공제: ${fmt(pp1Reg0)}만원</div>
+        <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">비세액공제: ${fmt(pp1Reg0)}백만원</div>
       </div>
     </div>`;
 
@@ -14154,17 +14154,17 @@ function wdPrepStep2Html() {
         <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin-bottom:6px">원래 계좌</div>
         ${srcRows(autoResult.pp2Ids)}
         <div style="margin-top:6px;font-size:11px;color:#64748b;text-align:right;padding-top:4px;border-top:1px solid #e2e8f0">
-          합산 ${fmt(pp2Total)}만원 · 안세공 ${fmt(mv(pp2SrcAnse))}만원
+          합산 ${fmt(pp2Total)}백만원 · 안세공 ${fmt(mv(pp2SrcAnse))}백만원
         </div>
       </div>
       <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
       <div style="flex:1;min-width:180px;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;background:#f8fafc">
-        <div style="font-weight:700;font-size:13px;color:#334155">🏦 개인연금2 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp2Total)}만원)</span></div>
+        <div style="font-weight:700;font-size:13px;color:#334155">🏦 개인연금2 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp2Total)}백만원)</span></div>
         <div style="margin-top:8px;font-size:11px;color:#475569">
-          안세공: <span id="${pp2AnseId}" style="font-weight:700">${fmt(pp2Anse0)}</span>만원
+          안세공: <span id="${pp2AnseId}" style="font-weight:700">${fmt(pp2Anse0)}</span>백만원
           <span style="font-size:10px;color:#94a3b8">(= 총안세공 − 개인연금1 배정)</span>
         </div>
-        <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">비세액공제: ${fmt(pp2Reg0)}만원</div>
+        <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">비세액공제: ${fmt(pp2Reg0)}백만원</div>
       </div>
     </div>`;
 
@@ -14320,9 +14320,9 @@ function wdPrepStep2UpdatePreview() {
     const pp1Reg    = Math.max(0, pp1Total  - pp1AnseMv);
     const pp2Anse   = Math.max(0, totalAnse - pp1AnseMv);
     const pp2Reg    = Math.max(0, pp2Total  - pp2Anse);
-    set(pp1RegId,  `비세액공제: ${fmt(pp1Reg)}만원`);
+    set(pp1RegId,  `비세액공제: ${fmt(pp1Reg)}백만원`);
     set(pp2AnseId, fmt(pp2Anse));
-    set(pp2RegId,  `비세액공제: ${fmt(pp2Reg)}만원`);
+    set(pp2RegId,  `비세액공제: ${fmt(pp2Reg)}백만원`);
   };
 
   upd(myAutoResult,   'wdPrepMyPP1Anse',   'wdPrepMyPP1Reg',   'wdPrepMyPP2Anse',   'wdPrepMyPP2Reg');
