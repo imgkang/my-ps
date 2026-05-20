@@ -3137,7 +3137,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.377';
+const APP_VERSION = 'MyPM v0.378';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -9143,6 +9143,28 @@ function saveWdPlan() {
   if (typeof applyWithdrawalTabVisibility === 'function') applyWithdrawalTabVisibility();
 }
 
+// 인출계획 구간1 시작연도의 최소값: 본인/아내 중 한 명이 55세 되는 연도.
+// 양쪽 모두 생년 미설정이면 null → 검증 skip.
+function getMinPeriodStartYear() {
+  const my   = Number(appSettings.myBirthYear) || 0;
+  const wife = (appSettings.hasWife && Number(appSettings.wifeBirthYear)) || 0;
+  let earliestBY = 0;
+  if (my > 0 && wife > 0) earliestBY = Math.min(my, wife);
+  else if (my > 0)        earliestBY = my;
+  else if (wife > 0)      earliestBY = wife;
+  return earliestBY > 0 ? earliestBY + 55 : null;
+}
+function _minStartHint() {
+  const min = getMinPeriodStartYear();
+  if (!min) return '';
+  const my   = Number(appSettings.myBirthYear) || 0;
+  const wife = (appSettings.hasWife && Number(appSettings.wifeBirthYear)) || 0;
+  const who = (my > 0 && wife > 0)
+    ? (my <= wife ? '본인' : (appSettings.wifeTitle || '아내'))
+    : (my > 0 ? '본인' : (appSettings.wifeTitle || '아내'));
+  return `최소 ${min}년 (${who} 55세)`;
+}
+
 function openWithdrawalModal() {
   _wdScrollSyncDone = false;
   loadWdFormValues();
@@ -11592,13 +11614,16 @@ function renderWdPeriodCard(idx, period, hasWife, endYr) {
         <input id="wdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${period.wifeRatio || 50}">
       </div>
     </div>` : '';
+  const _wdMinYr = (idx === 0) ? (getMinPeriodStartYear() || 2020) : 2020;
+  const _wdHint  = (idx === 0) ? _minStartHint() : '';
   return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--bg)">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <strong style="font-size:13px">구간 ${idx+1}</strong>
-      <input id="wdP${idx}_start" type="number" min="2020" max="2080" value="${period.startYear || ''}"
+      <input id="wdP${idx}_start" type="number" min="${_wdMinYr}" max="2080" value="${period.startYear || ''}"
              style="width:70px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:12px">년
       <span style="font-size:11px;color:var(--muted)">(~${endYr || '?'}년 자동)</span>
+      ${_wdHint ? `<span style="font-size:11px;color:var(--muted)">· ${_wdHint}</span>` : ''}
     </div>
     <button onclick="removeWdPeriod(${idx})" style="background:none;border:1px solid #f87171;color:#ef4444;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">✕ 삭제</button>
   </div>
@@ -11715,6 +11740,12 @@ function applyWdSettings() {
   const startYear = (periods.length > 0 ? periods[0].startYear : 0) || currentYear + 2;
   if (startYear < currentYear) {
     alert(`구간1 시작연도(은퇴연도)는 현재 연도(${currentYear}) 이상이어야 합니다.`);
+    return;
+  }
+  // 55세 룰: 본인/아내 중 한 명이 55세 이상이 되는 연도여야 함
+  const _minYr55 = getMinPeriodStartYear();
+  if (_minYr55 && startYear < _minYr55) {
+    alert(`구간1 시작연도는 본인/아내 중 한 명이 55세 이상이어야 합니다.\n최소 ${_minYr55}년 부터 가능합니다.`);
     return;
   }
   for (let i = 0; i < periods.length; i++) {
@@ -12357,14 +12388,17 @@ function renderQuickPeriodCard(idx, period, hasWife, endYr) {
     ? `<span style="color:var(--muted);font-size:11px">아내 <input id="qwdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}" style="width:40px;${inStyle}" oninput="saveQuickWdPlan()">%</span>`
     : `<span style="color:var(--muted);font-size:11px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`;
   const wcLabel = wc === 'topup' ? '부족분충당' : wc === 'ratio' ? '일정비율' : '고정금액';
+  const _qwdMinYr = (idx === 0) ? (getMinPeriodStartYear() || 2000) : 2000;
+  const _qwdHint  = (idx === 0) ? _minStartHint() : '';
   return `<div style="border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;margin-bottom:5px;background:#fff;font-size:11px">
     <!-- 행1: 구간정보 + 타입 + 공적연금 + 총인출/인출율 + 삭제 -->
     <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
       <span style="font-weight:600;color:#334155;min-width:34px">구간${idx+1}</span>
-      <input id="qwdP${idx}_start" type="number" min="2000" max="2100" step="1" value="${p.startYear||''}"
+      <input id="qwdP${idx}_start" type="number" min="${_qwdMinYr}" max="2100" step="1" value="${p.startYear||''}"
              style="width:60px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
              oninput="onQwdStartYearChange(${idx})">년
       <span id="qwdP${idx}_endYrLbl" style="color:var(--muted)">(~${endYr}년)</span>
+      ${_qwdHint ? `<span style="font-size:10px;color:var(--muted)">· ${_qwdHint}</span>` : ''}
       <button id="qwdP${idx}_typeBt" data-type="${isFix?'fixed':'pct'}" onclick="cycleQwdType(${idx})" style="${btnAct}">${isFix?'고정가치':'인출율'}</button>
       <button id="qwdP${idx}_pensionMode" data-mode="${p.publicPensionMode||'include'}" onclick="toggleQwdPensionMode(${idx})" style="${pnStyle}">${(p.publicPensionMode||'include')==='include'?'공적연금포함':'공적연금가산'}</button>
       <span id="qwdP${idx}_totalAmtSpan" style="display:${isFix?'inline-flex':'none'};align-items:center;gap:2px;color:var(--muted)">총인출 <input id="qwdP${idx}_totalAmt" type="number" min="0" step="1" value="${p.totalAmount||0}" style="width:52px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>
@@ -12485,7 +12519,20 @@ function cycleQwdWifeContrib(idx) {
   saveQuickWdPlan();
 }
 function onQwdStartYearChange(idx) {
-  const newStart = Number(document.getElementById(`qwdP${idx}_start`)?.value) || 0;
+  const input = document.getElementById(`qwdP${idx}_start`);
+  const newStart = Number(input?.value) || 0;
+
+  // 구간1: 본인/아내 중 한 명이 55세 이상이어야 함
+  if (idx === 0 && newStart > 0) {
+    const minYr = getMinPeriodStartYear();
+    if (minYr && newStart < minYr) {
+      alert(`구간1 시작연도는 본인/아내 중 한 명이 55세 이상이어야 합니다.\n최소 ${minYr}년 부터 가능합니다.`);
+      const prev = Number(wdPlan.periods?.[0]?.startYear) || minYr;
+      if (input) input.value = prev;
+      return; // 저장하지 않음
+    }
+  }
+
   if (idx > 0 && newStart > 0) {
     const prevLbl = document.getElementById(`qwdP${idx-1}_endYrLbl`);
     if (prevLbl) prevLbl.textContent = `(~${newStart - 1}년)`;
