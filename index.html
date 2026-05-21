@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.397';
+const APP_VERSION = 'MyPM v0.398';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14041,9 +14041,9 @@ function wdPrepStep1Html() {
         name:    getAccName(a.id),
         val:     mv(val),
         anse:    mv(seGong),
-        pension: isDC ? mv(Math.max(0, comp.total - comp.dcPrincipal)) : mv(comp.anse),
+        pension: isDC ? mv(Math.max(0, comp.total - comp.dcPrincipal)) : mv(comp.regular),
         retire:  isDC ? mv(comp.dcPrincipal) : 0,
-        taxFree: isDC ? 0 : mv(comp.regular),
+        taxFree: isDC ? 0 : mv(comp.anse),
       };
     }).filter(Boolean);
   }
