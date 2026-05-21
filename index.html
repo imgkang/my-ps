@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.393';
+const APP_VERSION = 'MyPM v0.394';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14170,9 +14170,10 @@ function wdPrepStep2Html() {
 
     const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
     const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
-    const pp1AnseMv   = pp1Ids.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
     const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
-    const cappedPP1   = Math.min(defPP1Anse, pp1AnseMv);
+    const minPP1Anse  = Math.max(0, totalAnseMv - pp2TotalMv);   // PP2 anse ≤ PP2 잔액
+    const maxPP1Anse  = Math.min(pp1TotalMv, totalAnseMv);        // PP1 anse ≤ PP1 잔액
+    const cappedPP1   = Math.max(minPP1Anse, Math.min(maxPP1Anse, defPP1Anse));
     const pp1Reg0     = Math.max(0, pp1TotalMv  - cappedPP1);
     const pp2Anse0    = Math.max(0, totalAnseMv - cappedPP1);
     const pp2Reg0     = Math.max(0, pp2TotalMv  - pp2Anse0);
@@ -14222,12 +14223,14 @@ function wdPrepStep2Html() {
           <div>
             <div style="font-size:11px;color:#166534;margin-bottom:3px">배정 안세공 (백만원) <span style="font-size:10px;color:#15803d">← 조정 가능</span></div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <input type="number" id="${pp1InputId}" min="0" max="${pp1AnseMv}" step="10" value="${cappedPP1}"
+              <input type="number" id="${pp1InputId}" min="${minPP1Anse}" max="${maxPP1Anse}" step="10" value="${cappedPP1}"
                 style="width:90px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;background:#fff"
                 oninput="wdPrepStep2UpdatePreview()">
-              <span style="font-size:11px;color:#166534">/ 최대 ${fmt(pp1AnseMv)}백만원</span>
-              <button onclick="document.getElementById('${pp1InputId}').value=0;wdPrepStep2UpdatePreview()"
-                style="font-size:10px;padding:3px 7px;border:1px solid #86efac;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer">최적(0)</button>
+              <span style="font-size:11px;color:#166534">유효: ${fmt(minPP1Anse)}~${fmt(maxPP1Anse)}백만원</span>
+              ${minPP1Anse === 0
+                ? `<button onclick="document.getElementById('${pp1InputId}').value=0;wdPrepStep2UpdatePreview()"
+                    style="font-size:10px;padding:3px 7px;border:1px solid #86efac;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer">최적(0)</button>`
+                : `<span style="font-size:10px;color:#dc2626;font-weight:600">※ 최소 ${fmt(minPP1Anse)}백만원</span>`}
             </div>
           </div>
           <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">비세액공제: ${fmt(pp1Reg0)}백만원</div>
@@ -14403,6 +14406,22 @@ function wdPrepToggleBucket(accId, who, targetBucket) {
       _wdStep2Ctx.wifePP1Ids = _wdStep2Ctx.wifePP1Ids.filter(id => id !== accId);
     }
   }
+  // 배분 변경 후 savedAnse를 새 유효 범위로 클램프
+  const _clampAnse = (pp1Ids, pp2Ids, allNonDcIds, savedKey) => {
+    const mv2 = v => Math.round(v / 1_000_000);
+    const c = _wdStep2Ctx.comps;
+    const pp1T = pp1Ids.reduce((s, id) => s + mv2(c[id]?.total||0), 0);
+    const pp2T = pp2Ids.reduce((s, id) => s + mv2(c[id]?.total||0), 0);
+    const totA = allNonDcIds.reduce((s, id) => s + mv2(c[id]?.anse||0), 0);
+    const minA = Math.max(0, totA - pp2T);
+    const maxA = Math.min(pp1T, totA);
+    _wdStep2Ctx[savedKey] = Math.max(minA, Math.min(maxA, _wdStep2Ctx[savedKey] || 0));
+  };
+  _clampAnse(_wdStep2Ctx.myPP1Ids, _wdStep2Ctx.myPP2Ids,
+             MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)), 'savedMyPP1Anse');
+  if (appSettings.hasWife)
+    _clampAnse(_wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids,
+               WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)), 'savedWifePP1Anse');
   const content = document.getElementById('wdPrepContent');
   if (content) content.innerHTML = wdPrepStep2Html();
 }
@@ -14439,11 +14458,13 @@ function wdPrepStep2UpdatePreview() {
   const upd = (pp1Ids, pp2Ids, allNonDcIds, pp1InputId, pp1RegId, pp2AnseId, pp2RegId) => {
     const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
     const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
-    const pp1AnseMv   = pp1Ids.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
     const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
+    const minAnseMv   = Math.max(0, totalAnseMv - pp2TotalMv);
+    const maxAnseMv   = Math.min(pp1TotalMv, totalAnseMv);
     const inp = document.getElementById(pp1InputId);
     if (!inp) return;
-    const inputVal = Math.max(0, Math.min(Number(inp.value) || 0, pp1AnseMv));
+    const inputVal = Math.max(minAnseMv, Math.min(maxAnseMv, Number(inp.value) || 0));
+    inp.value = inputVal;
     const pp1Reg   = Math.max(0, pp1TotalMv  - inputVal);
     const pp2Anse  = Math.max(0, totalAnseMv - inputVal);
     const pp2Reg   = Math.max(0, pp2TotalMv  - pp2Anse);
