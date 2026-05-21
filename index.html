@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.401';
+const APP_VERSION = 'MyPM v0.402';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14765,20 +14765,47 @@ function wdPrepExecuteConsolidate() {
 }
 
 function wdPrepStep5Html() {
-  const wt = getWifeTitle();
+  const wt  = getWifeTitle();
+  const ctx  = _wdStep2Ctx;
+  const comps = ctx?.comps || {};
+
+  // Compute anse for each consolidated account using Step 3 배정 values
+  const mvToW = mv => mv * 1_000_000;
+  function consAnse(dstKey) {
+    if (!ctx) return 0;
+    if (dstKey === 'my_1') {
+      const allIds = [...(ctx.myPP1Ids||[]), ...(ctx.myPP2Ids||[])];
+      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
+      return mvToW(Math.min(ctx.savedMyPP1Anse || 0, totalAnseMv));
+    } else if (dstKey === 'my_2') {
+      const allIds = [...(ctx.myPP1Ids||[]), ...(ctx.myPP2Ids||[])];
+      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
+      const pp1Anse = mvToW(Math.min(ctx.savedMyPP1Anse || 0, totalAnseMv));
+      return Math.max(0, mvToW(totalAnseMv) - pp1Anse);
+    } else if (dstKey === 'wife_1') {
+      const allIds = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])];
+      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
+      return mvToW(Math.min(ctx.savedWifePP1Anse || 0, totalAnseMv));
+    } else if (dstKey === 'wife_2') {
+      const allIds = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])];
+      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
+      const pp1Anse = mvToW(Math.min(ctx.savedWifePP1Anse || 0, totalAnseMv));
+      return Math.max(0, mvToW(totalAnseMv) - pp1Anse);
+    }
+    return 0;
+  }
+
   const consDsts = [
-    { id: 'wdcons_my_1',   label: `개인통합1(나)` },
-    { id: 'wdcons_my_2',   label: `개인통합2(나)` },
-    { id: 'wdcons_wife_1', label: `개인통합1(${wt})` },
-    { id: 'wdcons_wife_2', label: `개인통합2(${wt})` },
+    { id: 'wdcons_my_1',   label: `개인통합1(나)`,     dstKey: 'my_1' },
+    { id: 'wdcons_my_2',   label: `개인통합2(나)`,     dstKey: 'my_2' },
+    { id: 'wdcons_wife_1', label: `개인통합1(${wt})`,  dstKey: 'wife_1' },
+    { id: 'wdcons_wife_2', label: `개인통합2(${wt})`,  dstKey: 'wife_2' },
   ].filter(d => computeAccountValue(d.id) > 0 ||
     depositData.transactions.some(t => t.accId === d.id));
   const fmtW = v => Math.round(v / 10_000).toLocaleString() + '만원';
-  const rows = consDsts.map(({ id, label }) => {
-    const total = computeAccountValue(id);
-    const anse  = Math.max(0, depositData.transactions
-      .filter(t => t.accId === id)
-      .reduce((s, t) => s + (Number(t.anse) || 0), 0));
+  const rows = consDsts.map(({ id, label, dstKey }) => {
+    const total   = computeAccountValue(id);
+    const anse    = consAnse(dstKey);
     const regular = Math.max(0, total - anse);
     return `<tr>
       <td style="padding:7px 10px;font-size:13px;font-weight:600">${label}</td>
