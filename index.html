@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.396';
+const APP_VERSION = 'MyPM v0.397';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14021,15 +14021,26 @@ function wdPrepStep1Html() {
   const wifeAccs = allActive.filter(a => WIFE_ACC_IDS.includes(a.id));
 
   function buildRows(accounts) {
+    const endDate = `${currentYear}-12-31`;
     return accounts.map(a => {
       const val  = computeAccountValue(a.id);
       const comp = computeAccComponents(a.id, currentYear);
       if (val <= 0) return null;
       const isDC = DC_ACC_IDS.has(a.id);
+      // 세공액 = 입금원금 - 안세공 (세액공제 받은 납입액)
+      let seGong = 0;
+      if (!isDC) {
+        const txns = depositData.transactions.filter(t => t.accId === a.id && t.date <= endDate);
+        const depositPrin = txns
+            .filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
+            .reduce((s, t) => s + Number(t.amount), 0);
+        const anseSum = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+        seGong = Math.max(0, depositPrin - anseSum);
+      }
       return {
         name:    getAccName(a.id),
         val:     mv(val),
-        anse:    mv(comp.anse),                                          // 세공액 = 세액공제 납입액
+        anse:    mv(seGong),
         pension: isDC ? mv(Math.max(0, comp.total - comp.dcPrincipal)) : mv(comp.anse),
         retire:  isDC ? mv(comp.dcPrincipal) : 0,
         taxFree: isDC ? 0 : mv(comp.regular),
