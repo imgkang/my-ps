@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.395';
+const APP_VERSION = 'MyPM v0.396';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14252,7 +14252,7 @@ function wdPrepStep2Html() {
                 : `<span style="font-size:10px;color:#dc2626;font-weight:600">※ 최소 ${fmt(minPP1Anse)}백만원</span>`}
             </div>
           </div>
-          <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">비세액공제: ${fmt(pp1Reg0)}백만원</div>
+          <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">연금소득세재원: ${fmt(pp1Reg0)}백만원</div>
         </div>
         <div style="flex:1;min-width:155px;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;background:#f8fafc">
           <div style="font-weight:700;font-size:13px;color:#334155;margin-bottom:2px">🏦 개인통합2
@@ -14263,7 +14263,7 @@ function wdPrepStep2Html() {
             안세공: <span id="${pp2AnseId}" style="font-weight:700">${fmt(pp2Anse0)}</span>백만원
             <span style="font-size:10px;color:#94a3b8">(= 총안세공 − 통합1 배정)</span>
           </div>
-          <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">비세액공제: ${fmt(pp2Reg0)}백만원</div>
+          <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">연금소득세재원: ${fmt(pp2Reg0)}백만원</div>
         </div>
       </div>`;
   }
@@ -14493,9 +14493,9 @@ function wdPrepStep2UpdatePreview() {
     const pp1Reg   = Math.max(0, pp1TotalMv  - inputVal);
     const pp2Anse  = Math.max(0, totalAnseMv - inputVal);
     const pp2Reg   = Math.max(0, pp2TotalMv  - pp2Anse);
-    set(pp1RegId,  `비세액공제: ${fmt(pp1Reg)}백만원`);
+    set(pp1RegId,  `연금소득세재원: ${fmt(pp1Reg)}백만원`);
     set(pp2AnseId, fmt(pp2Anse));
-    set(pp2RegId,  `비세액공제: ${fmt(pp2Reg)}백만원`);
+    set(pp2RegId,  `연금소득세재원: ${fmt(pp2Reg)}백만원`);
   };
 
   upd(myPP1Ids, myPP2Ids, myAllNonDc,
