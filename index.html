@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.403';
+const APP_VERSION = 'MyPM v0.404';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14189,12 +14189,16 @@ function wdPrepStep2Html() {
       myAutoResult, wifeAutoResult,
       myPP1Ids:    myAutoResult   ? [...myAutoResult.pp1Ids]   : myAllNonDc.filter(id => mv(comps[id]?.total||0) > 0),
       myPP2Ids:    myAutoResult   ? [...myAutoResult.pp2Ids]   : [],
+      myKeepIds:   [],
       wifePP1Ids:  wifeAutoResult ? [...wifeAutoResult.pp1Ids] : wifeAllNonDc.filter(id => mv(comps[id]?.total||0) > 0),
       wifePP2Ids:  wifeAutoResult ? [...wifeAutoResult.pp2Ids] : [],
+      wifeKeepIds: [],
       savedMyPP1Anse:   c ? mv(c.myPP1Anse)   : 0,
       savedWifePP1Anse: c ? mv(c.wifePP1Anse) : 0,
     };
   } else {
+    if (!_wdStep2Ctx.myKeepIds)   _wdStep2Ctx.myKeepIds   = [];
+    if (!_wdStep2Ctx.wifeKeepIds) _wdStep2Ctx.wifeKeepIds = [];
     _wdStep2Ctx.comps          = comps;
     _wdStep2Ctx.myAutoResult   = myAutoResult;
     _wdStep2Ctx.wifeAutoResult = wifeAutoResult;
@@ -14207,13 +14211,14 @@ function wdPrepStep2Html() {
   const defMyPP1Anse   = _wdStep2Ctx.savedMyPP1Anse   ?? 0;
   const defWifePP1Anse = _wdStep2Ctx.savedWifePP1Anse ?? 0;
 
-  function renderPersonSection(allNonDcIds, pp1Ids, pp2Ids, who, pp1InputId, pp1RegId, pp2AnseId, pp2RegId, defPP1Anse) {
+  function renderPersonSection(allNonDcIds, pp1Ids, pp2Ids, keepIds, who, pp1InputId, pp1RegId, pp2AnseId, pp2RegId, defPP1Anse) {
     const visIds = allNonDcIds.filter(id => mv(comps[id]?.total||0) > 0 || mv(comps[id]?.anse||0) > 0);
     if (visIds.length === 0) return `<div class="wdprep-box wdprep-box-amber">잔액이 있는 비DC 계좌가 없습니다.</div>`;
 
+    const consolidatingIds = allNonDcIds.filter(id => !keepIds.includes(id));
     const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
     const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
-    const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
+    const totalAnseMv = consolidatingIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
     const minPP1Anse  = Math.max(0, totalAnseMv - pp2TotalMv);   // PP2 anse ≤ PP2 잔액
     const maxPP1Anse  = Math.min(pp1TotalMv, totalAnseMv);        // PP1 anse ≤ PP1 잔액
     const cappedPP1   = Math.max(minPP1Anse, Math.min(maxPP1Anse, defPP1Anse));
@@ -14230,11 +14235,14 @@ function wdPrepStep2Html() {
       const anseMv = mv(comp.anse);
       const inPP1  = pp1Ids.includes(id);
       const inPP2  = pp2Ids.includes(id);
+      const inKeep = keepIds.includes(id);
       const border = idx < visIds.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : '';
       const b1 = inPP1 ? 'background:#dcfce7;border-color:#22c55e;color:#166534'
                        : 'background:#f8fafc;border-color:#cbd5e1;color:#94a3b8';
       const b2 = inPP2 ? 'background:#dbeafe;border-color:#3b82f6;color:#1d4ed8'
                        : 'background:#f8fafc;border-color:#cbd5e1;color:#94a3b8';
+      const bk = inKeep ? 'background:#fef3c7;border-color:#f59e0b;color:#92400e'
+                        : 'background:#f8fafc;border-color:#cbd5e1;color:#94a3b8';
       return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;${border}flex-wrap:wrap">
         <div style="font-size:12px">
           <span style="font-weight:600">${getAccName(id)}</span>
@@ -14245,6 +14253,8 @@ function wdPrepStep2Html() {
             style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${b1}">→ 통합1</button>
           <button onclick="wdPrepToggleBucket('${id}','${who}',2)"
             style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${b2}">→ 통합2</button>
+          <button onclick="wdPrepToggleBucket('${id}','${who}',0)"
+            style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${bk}">유지</button>
         </div>
       </div>`;
     }).join('');
@@ -14295,7 +14305,7 @@ function wdPrepStep2Html() {
   let flowHtml = '';
   if (myAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px">본인 · ${baseYear}년말 기준</div>`;
-    flowHtml += renderPersonSection(myAllNonDc, myPP1Ids, myPP2Ids, 'my',
+    flowHtml += renderPersonSection(myAllNonDc, myPP1Ids, myPP2Ids, _wdStep2Ctx.myKeepIds, 'my',
       'wdPrepMyPP1Anse', 'wdPrepMyPP1Reg', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg', defMyPP1Anse);
   } else {
     flowHtml += `<div class="wdprep-box wdprep-box-amber">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
@@ -14303,7 +14313,7 @@ function wdPrepStep2Html() {
   if (appSettings.hasWife && wifeAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     const wt = getWifeTitle();
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin:16px 0 8px">${wt} · ${baseYear}년말 기준</div>`;
-    flowHtml += renderPersonSection(wifeAllNonDc, wifePP1Ids, wifePP2Ids, 'wife',
+    flowHtml += renderPersonSection(wifeAllNonDc, wifePP1Ids, wifePP2Ids, _wdStep2Ctx.wifeKeepIds, 'wife',
       'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg', defWifePP1Anse);
   }
 
@@ -14415,21 +14425,28 @@ function wdPrepStep4Html() {
 
   // 통합 요약: 모든 srcId → 신규 통합계좌
   const pairs = [];
+  const keepPairs = [];
   if (ctx) {
     (ctx.myPP1Ids || []).forEach(id => pairs.push({ who:'본인', src: id, dstKey:'my_1', dstName: dstNames.my_1 }));
     (ctx.myPP2Ids || []).forEach(id => pairs.push({ who:'본인', src: id, dstKey:'my_2', dstName: dstNames.my_2 }));
+    (ctx.myKeepIds || []).forEach(id => keepPairs.push({ who:'본인', src: id }));
     if (hasWife) {
       (ctx.wifePP1Ids || []).forEach(id => pairs.push({ who: wt, src: id, dstKey:'wife_1', dstName: dstNames.wife_1 }));
       (ctx.wifePP2Ids || []).forEach(id => pairs.push({ who: wt, src: id, dstKey:'wife_2', dstName: dstNames.wife_2 }));
+      (ctx.wifeKeepIds || []).forEach(id => keepPairs.push({ who: wt, src: id }));
     }
   }
 
-  const summaryRows = pairs.length
-    ? pairs.map(p => `<tr><td style="padding:5px 8px;font-size:12px;color:#64748b">${p.who}</td>` +
-        `<td style="padding:5px 8px;font-size:12px;font-weight:600">${getAccName(p.src)}</td>` +
-        `<td style="padding:5px 8px;font-size:12px;color:#94a3b8">→</td>` +
-        `<td style="padding:5px 8px;font-size:12px;font-weight:600;color:#166534">${p.dstName}</td></tr>`).join('')
-    : `<tr><td colspan="4" style="padding:8px;font-size:12px;color:#94a3b8">통합할 계좌가 없습니다 (3단계로 돌아가 배분을 확인하세요)</td></tr>`;
+  const mergeRows = pairs.map(p => `<tr><td style="padding:5px 8px;font-size:12px;color:#64748b">${p.who}</td>` +
+      `<td style="padding:5px 8px;font-size:12px;font-weight:600">${getAccName(p.src)}</td>` +
+      `<td style="padding:5px 8px;font-size:12px;color:#94a3b8">→</td>` +
+      `<td style="padding:5px 8px;font-size:12px;font-weight:600;color:#166534">${p.dstName}</td></tr>`).join('');
+  const keepRows = keepPairs.map(p => `<tr style="background:#fffbeb"><td style="padding:5px 8px;font-size:12px;color:#64748b">${p.who}</td>` +
+      `<td style="padding:5px 8px;font-size:12px;font-weight:600">${getAccName(p.src)}</td>` +
+      `<td style="padding:5px 8px;font-size:12px;color:#94a3b8"></td>` +
+      `<td style="padding:5px 8px;font-size:12px;font-weight:600;color:#92400e">유지</td></tr>`).join('');
+  const summaryRows = (mergeRows + keepRows) ||
+    `<tr><td colspan="4" style="padding:8px;font-size:12px;color:#94a3b8">통합할 계좌가 없습니다 (3단계로 돌아가 배분을 확인하세요)</td></tr>`;
 
   const myHasMerge   = ctx && ((ctx.myPP1Ids||[]).length > 0 || (ctx.myPP2Ids||[]).length > 0);
   const wifeHasMerge = ctx && hasWife && ((ctx.wifePP1Ids||[]).length > 0 || (ctx.wifePP2Ids||[]).length > 0);
@@ -14498,37 +14515,36 @@ function wdPrepToggleBucket(accId, who, targetBucket) {
   const wifeEl = document.getElementById('wdPrepWifePP1Anse');
   if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
   if (who === 'my') {
-    if (targetBucket === 1) {
-      _wdStep2Ctx.myPP1Ids = [...new Set([..._wdStep2Ctx.myPP1Ids, accId])];
-      _wdStep2Ctx.myPP2Ids = _wdStep2Ctx.myPP2Ids.filter(id => id !== accId);
-    } else {
-      _wdStep2Ctx.myPP2Ids = [...new Set([..._wdStep2Ctx.myPP2Ids, accId])];
-      _wdStep2Ctx.myPP1Ids = _wdStep2Ctx.myPP1Ids.filter(id => id !== accId);
-    }
+    _wdStep2Ctx.myPP1Ids  = _wdStep2Ctx.myPP1Ids.filter(id => id !== accId);
+    _wdStep2Ctx.myPP2Ids  = _wdStep2Ctx.myPP2Ids.filter(id => id !== accId);
+    _wdStep2Ctx.myKeepIds = (_wdStep2Ctx.myKeepIds || []).filter(id => id !== accId);
+    if (targetBucket === 1)      _wdStep2Ctx.myPP1Ids  = [..._wdStep2Ctx.myPP1Ids,  accId];
+    else if (targetBucket === 2) _wdStep2Ctx.myPP2Ids  = [..._wdStep2Ctx.myPP2Ids,  accId];
+    else                         _wdStep2Ctx.myKeepIds = [..._wdStep2Ctx.myKeepIds, accId];
   } else {
-    if (targetBucket === 1) {
-      _wdStep2Ctx.wifePP1Ids = [...new Set([..._wdStep2Ctx.wifePP1Ids, accId])];
-      _wdStep2Ctx.wifePP2Ids = _wdStep2Ctx.wifePP2Ids.filter(id => id !== accId);
-    } else {
-      _wdStep2Ctx.wifePP2Ids = [...new Set([..._wdStep2Ctx.wifePP2Ids, accId])];
-      _wdStep2Ctx.wifePP1Ids = _wdStep2Ctx.wifePP1Ids.filter(id => id !== accId);
-    }
+    _wdStep2Ctx.wifePP1Ids  = _wdStep2Ctx.wifePP1Ids.filter(id => id !== accId);
+    _wdStep2Ctx.wifePP2Ids  = _wdStep2Ctx.wifePP2Ids.filter(id => id !== accId);
+    _wdStep2Ctx.wifeKeepIds = (_wdStep2Ctx.wifeKeepIds || []).filter(id => id !== accId);
+    if (targetBucket === 1)      _wdStep2Ctx.wifePP1Ids  = [..._wdStep2Ctx.wifePP1Ids,  accId];
+    else if (targetBucket === 2) _wdStep2Ctx.wifePP2Ids  = [..._wdStep2Ctx.wifePP2Ids,  accId];
+    else                         _wdStep2Ctx.wifeKeepIds = [..._wdStep2Ctx.wifeKeepIds, accId];
   }
-  // 배분 변경 후 savedAnse를 새 유효 범위로 클램프
-  const _clampAnse = (pp1Ids, pp2Ids, allNonDcIds, savedKey) => {
+  // 배분 변경 후 savedAnse를 새 유효 범위로 클램프 (keep 계좌 제외)
+  const _clampAnse = (pp1Ids, pp2Ids, keepIds, allNonDcIds, savedKey) => {
     const mv2 = v => Math.round(v / 1_000_000);
     const c = _wdStep2Ctx.comps;
+    const consolidating = allNonDcIds.filter(id => !keepIds.includes(id));
     const pp1T = pp1Ids.reduce((s, id) => s + mv2(c[id]?.total||0), 0);
     const pp2T = pp2Ids.reduce((s, id) => s + mv2(c[id]?.total||0), 0);
-    const totA = allNonDcIds.reduce((s, id) => s + mv2(c[id]?.anse||0), 0);
+    const totA = consolidating.reduce((s, id) => s + mv2(c[id]?.anse||0), 0);
     const minA = Math.max(0, totA - pp2T);
     const maxA = Math.min(pp1T, totA);
     _wdStep2Ctx[savedKey] = Math.max(minA, Math.min(maxA, _wdStep2Ctx[savedKey] || 0));
   };
-  _clampAnse(_wdStep2Ctx.myPP1Ids, _wdStep2Ctx.myPP2Ids,
+  _clampAnse(_wdStep2Ctx.myPP1Ids, _wdStep2Ctx.myPP2Ids, _wdStep2Ctx.myKeepIds || [],
              MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)), 'savedMyPP1Anse');
   if (appSettings.hasWife)
-    _clampAnse(_wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids,
+    _clampAnse(_wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids, _wdStep2Ctx.wifeKeepIds || [],
                WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)), 'savedWifePP1Anse');
   const content = document.getElementById('wdPrepContent');
   if (content) content.innerHTML = wdPrepStep2Html();
@@ -14541,12 +14557,14 @@ function wdPrepResetBuckets(who) {
   const wifeEl = document.getElementById('wdPrepWifePP1Anse');
   if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
   if (who === 'my' && _wdStep2Ctx.myAutoResult) {
-    _wdStep2Ctx.myPP1Ids = [..._wdStep2Ctx.myAutoResult.pp1Ids];
-    _wdStep2Ctx.myPP2Ids = [..._wdStep2Ctx.myAutoResult.pp2Ids];
+    _wdStep2Ctx.myPP1Ids  = [..._wdStep2Ctx.myAutoResult.pp1Ids];
+    _wdStep2Ctx.myPP2Ids  = [..._wdStep2Ctx.myAutoResult.pp2Ids];
+    _wdStep2Ctx.myKeepIds = [];
     _wdStep2Ctx.savedMyPP1Anse = 0;
   } else if (who === 'wife' && _wdStep2Ctx.wifeAutoResult) {
-    _wdStep2Ctx.wifePP1Ids = [..._wdStep2Ctx.wifeAutoResult.pp1Ids];
-    _wdStep2Ctx.wifePP2Ids = [..._wdStep2Ctx.wifeAutoResult.pp2Ids];
+    _wdStep2Ctx.wifePP1Ids  = [..._wdStep2Ctx.wifeAutoResult.pp1Ids];
+    _wdStep2Ctx.wifePP2Ids  = [..._wdStep2Ctx.wifeAutoResult.pp2Ids];
+    _wdStep2Ctx.wifeKeepIds = [];
     _wdStep2Ctx.savedWifePP1Anse = 0;
   }
   const content = document.getElementById('wdPrepContent');
