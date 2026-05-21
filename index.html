@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.392';
+const APP_VERSION = 'MyPM v0.393';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -13936,6 +13936,7 @@ function openWithdrawalPrepModal() {
   const subtitle = document.getElementById('wdPrepSubtitle');
   if (subtitle) subtitle.textContent = `${startYear - 1}년부터 인출준비 시작 권장 · ${startYear}년 인출 시작 예정`;
   wdPrepCurrentStep = 1;
+  _wdStep2Ctx = null;
   wdPrepGoStep(1);
   document.getElementById('withdrawalPrepModal').classList.add('open');
 }
@@ -14132,103 +14133,134 @@ function wdPrepStep2Html() {
   if (!comps['pension1'])      comps['pension1']      = {..._zero};
   if (!comps['wife_pension1']) comps['wife_pension1'] = {..._zero};
 
-  const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
-  const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
+  const myAllNonDc   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
+  const wifeAllNonDc = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
+  const myAutoResult   = wdPrepComputeAutoConsolidate(myAllNonDc, comps);
+  const wifeAutoResult = wifeAllNonDc.length ? wdPrepComputeAutoConsolidate(wifeAllNonDc, comps) : null;
 
-  const myAutoResult   = wdPrepComputeAutoConsolidate(myNonDcIds, comps);
-  const wifeAutoResult = wifeNonDcIds.length ? wdPrepComputeAutoConsolidate(wifeNonDcIds, comps) : null;
-
-  _wdStep2Ctx = { myAutoResult, wifeAutoResult };
-
+  // 첫 렌더이면 자동 제안으로 초기화, 이후엔 사용자 배분 유지
   const c = wdConsolidated;
-  const defMyPP1Anse   = c ? mv(c.myPP1Anse)   : 0;
-  const defWifePP1Anse = c ? mv(c.wifePP1Anse) : 0;
-
-  function renderFlow(autoResult, prefix, pp1InputId, pp2AnseId, pp2RegId, pp1RegId, defPP1Anse) {
-    if (!autoResult) return `<div style="font-size:12px;color:var(--muted)">통합 제안 없음</div>`;
-    const pp1Total  = mv(autoResult.pp1Total);
-    const pp2Total  = mv(autoResult.pp2Total);
-    const totalAnse = mv(autoResult.totalAnse);
-    const pp1Reg0   = Math.max(0, pp1Total  - defPP1Anse);
-    const pp2Anse0  = Math.max(0, totalAnse - defPP1Anse);
-    const pp2Reg0   = Math.max(0, pp2Total  - pp2Anse0);
-
-    const srcRows = ids => ids.map(id => {
-      const comp = comps[id];
-      const anseMv = mv(comp.anse);
-      return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #e2e8f0;font-size:12px">
-        <span style="font-weight:600;white-space:nowrap">${getAccName(id)}</span>
-        <span style="color:#64748b;white-space:nowrap">${fmt(mv(comp.total))}백만원 · 안세공 ${anseMv > 0 ? fmt(anseMv) : '0'}백만원</span>
-      </div>`;
-    }).join('');
-    const pp1SrcAnse = autoResult.pp1Ids.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
-    const pp2SrcAnse = autoResult.pp2Ids.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
-
-    // PP1 (안세공 0 목표) 블록
-    const pp1Block = `<div style="display:flex;align-items:stretch;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:160px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:#f8fafc">
-        <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin-bottom:6px">원래 계좌</div>
-        ${autoResult.pp1Ids.length ? srcRows(autoResult.pp1Ids) : '<div style="font-size:12px;color:var(--muted)">없음</div>'}
-        <div style="margin-top:6px;font-size:11px;color:#64748b;text-align:right;padding-top:4px;border-top:1px solid #e2e8f0">
-          합산 ${fmt(pp1Total)}백만원 · 안세공 ${fmt(mv(pp1SrcAnse))}백만원
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
-      <div style="flex:1;min-width:180px;border:2px solid #22c55e;border-radius:8px;padding:10px 12px;background:#f0fdf4">
-        <div style="font-weight:700;font-size:13px;color:#166534">🏦 개인통합1 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp1Total)}백만원)</span></div>
-        <div style="margin-top:8px">
-          <div style="font-size:11px;color:#166534;margin-bottom:3px">배정할 안세공 (백만원) <span style="font-size:10px;color:#15803d">← 여기서 조정</span></div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <input type="number" id="${pp1InputId}" min="0" max="${pp1Total}" step="10" value="${defPP1Anse}"
-              style="width:95px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;background:#fff"
-              oninput="wdPrepStep2UpdatePreview()">
-            <span style="font-size:11px;color:#166534">/ ${fmt(pp1Total)}백만원</span>
-            <button onclick="document.getElementById('${pp1InputId}').value=0;wdPrepStep2UpdatePreview()"
-              style="font-size:10px;padding:3px 7px;border:1px solid #86efac;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer">최적(0)</button>
-          </div>
-        </div>
-        <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">비세액공제: ${fmt(pp1Reg0)}백만원</div>
-      </div>
-    </div>`;
-
-    // PP2 (안세공 보유) 블록
-    const pp2Block = `<div style="display:flex;align-items:stretch;gap:6px;flex-wrap:wrap">
-      <div style="flex:1;min-width:160px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:#f8fafc">
-        <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin-bottom:6px">원래 계좌</div>
-        ${srcRows(autoResult.pp2Ids)}
-        <div style="margin-top:6px;font-size:11px;color:#64748b;text-align:right;padding-top:4px;border-top:1px solid #e2e8f0">
-          합산 ${fmt(pp2Total)}백만원 · 안세공 ${fmt(mv(pp2SrcAnse))}백만원
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;color:var(--primary);font-size:20px;flex-shrink:0;padding:0 2px">→</div>
-      <div style="flex:1;min-width:180px;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;background:#f8fafc">
-        <div style="font-weight:700;font-size:13px;color:#334155">🏦 개인통합2 <span style="font-size:11px;font-weight:400">(통합 후 ${fmt(pp2Total)}백만원)</span></div>
-        <div style="margin-top:8px;font-size:11px;color:#475569">
-          안세공: <span id="${pp2AnseId}" style="font-weight:700">${fmt(pp2Anse0)}</span>백만원
-          <span style="font-size:10px;color:#94a3b8">(= 총안세공 − 개인통합1 배정)</span>
-        </div>
-        <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">비세액공제: ${fmt(pp2Reg0)}백만원</div>
-      </div>
-    </div>`;
-
-    return pp1Block + pp2Block;
+  if (!_wdStep2Ctx || _wdStep2Ctx.myPP1Ids === undefined) {
+    _wdStep2Ctx = {
+      comps,
+      myAutoResult, wifeAutoResult,
+      myPP1Ids:    myAutoResult   ? [...myAutoResult.pp1Ids]   : myAllNonDc.filter(id => mv(comps[id]?.total||0) > 0),
+      myPP2Ids:    myAutoResult   ? [...myAutoResult.pp2Ids]   : [],
+      wifePP1Ids:  wifeAutoResult ? [...wifeAutoResult.pp1Ids] : wifeAllNonDc.filter(id => mv(comps[id]?.total||0) > 0),
+      wifePP2Ids:  wifeAutoResult ? [...wifeAutoResult.pp2Ids] : [],
+      savedMyPP1Anse:   c ? mv(c.myPP1Anse)   : 0,
+      savedWifePP1Anse: c ? mv(c.wifePP1Anse) : 0,
+    };
+  } else {
+    _wdStep2Ctx.comps          = comps;
+    _wdStep2Ctx.myAutoResult   = myAutoResult;
+    _wdStep2Ctx.wifeAutoResult = wifeAutoResult;
   }
 
-  // 본인 플로우
+  const myPP1Ids   = _wdStep2Ctx.myPP1Ids;
+  const myPP2Ids   = _wdStep2Ctx.myPP2Ids;
+  const wifePP1Ids = _wdStep2Ctx.wifePP1Ids;
+  const wifePP2Ids = _wdStep2Ctx.wifePP2Ids;
+  const defMyPP1Anse   = _wdStep2Ctx.savedMyPP1Anse   ?? 0;
+  const defWifePP1Anse = _wdStep2Ctx.savedWifePP1Anse ?? 0;
+
+  function renderPersonSection(allNonDcIds, pp1Ids, pp2Ids, who, pp1InputId, pp1RegId, pp2AnseId, pp2RegId, defPP1Anse) {
+    const visIds = allNonDcIds.filter(id => mv(comps[id]?.total||0) > 0 || mv(comps[id]?.anse||0) > 0);
+    if (visIds.length === 0) return `<div class="wdprep-box wdprep-box-amber">잔액이 있는 비DC 계좌가 없습니다.</div>`;
+
+    const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
+    const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
+    const pp1AnseMv   = pp1Ids.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
+    const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
+    const cappedPP1   = Math.min(defPP1Anse, pp1AnseMv);
+    const pp1Reg0     = Math.max(0, pp1TotalMv  - cappedPP1);
+    const pp2Anse0    = Math.max(0, totalAnseMv - cappedPP1);
+    const pp2Reg0     = Math.max(0, pp2TotalMv  - pp2Anse0);
+    const pp1Names    = pp1Ids.filter(id => mv(comps[id]?.total||0) > 0 || mv(comps[id]?.anse||0) > 0).map(id => getAccName(id)).join(', ') || '없음';
+    const pp2Names    = pp2Ids.filter(id => mv(comps[id]?.total||0) > 0 || mv(comps[id]?.anse||0) > 0).map(id => getAccName(id)).join(', ') || '없음';
+
+    // 계좌별 토글 버튼 행
+    const accRows = visIds.map((id, idx) => {
+      const comp   = comps[id] || _zero;
+      const totMv  = mv(comp.total);
+      const anseMv = mv(comp.anse);
+      const inPP1  = pp1Ids.includes(id);
+      const inPP2  = pp2Ids.includes(id);
+      const border = idx < visIds.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : '';
+      const b1 = inPP1 ? 'background:#dcfce7;border-color:#22c55e;color:#166534'
+                       : 'background:#f8fafc;border-color:#cbd5e1;color:#94a3b8';
+      const b2 = inPP2 ? 'background:#dbeafe;border-color:#3b82f6;color:#1d4ed8'
+                       : 'background:#f8fafc;border-color:#cbd5e1;color:#94a3b8';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;${border}flex-wrap:wrap">
+        <div style="font-size:12px">
+          <span style="font-weight:600">${getAccName(id)}</span>
+          <span style="color:#64748b;margin-left:6px">${fmt(totMv)}백만원${anseMv > 0 ? ` · 안세공 <b>${fmt(anseMv)}</b>백만원` : ''}</span>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button onclick="wdPrepToggleBucket('${id}','${who}',1)"
+            style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${b1}">→ 통합1</button>
+          <button onclick="wdPrepToggleBucket('${id}','${who}',2)"
+            style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${b2}">→ 통합2</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px">
+        <div style="padding:7px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.04em">계좌 배분</span>
+          <button onclick="wdPrepResetBuckets('${who}')" style="font-size:10px;padding:2px 7px;border:1px solid #cbd5e1;border-radius:4px;background:#f1f5f9;color:#64748b;cursor:pointer">↺ 자동 제안으로 초기화</button>
+        </div>
+        ${accRows}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="flex:1;min-width:155px;border:2px solid #22c55e;border-radius:8px;padding:10px 12px;background:#f0fdf4">
+          <div style="font-weight:700;font-size:13px;color:#166534;margin-bottom:2px">🏦 개인통합1
+            <span style="font-size:11px;font-weight:400">${pp1TotalMv > 0 ? fmt(pp1TotalMv)+'백만원' : '—'}</span>
+          </div>
+          <div style="font-size:11px;color:#15803d;margin-bottom:6px">${pp1Names}</div>
+          <div>
+            <div style="font-size:11px;color:#166534;margin-bottom:3px">배정 안세공 (백만원) <span style="font-size:10px;color:#15803d">← 조정 가능</span></div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <input type="number" id="${pp1InputId}" min="0" max="${pp1AnseMv}" step="10" value="${cappedPP1}"
+                style="width:90px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;background:#fff"
+                oninput="wdPrepStep2UpdatePreview()">
+              <span style="font-size:11px;color:#166534">/ 최대 ${fmt(pp1AnseMv)}백만원</span>
+              <button onclick="document.getElementById('${pp1InputId}').value=0;wdPrepStep2UpdatePreview()"
+                style="font-size:10px;padding:3px 7px;border:1px solid #86efac;border-radius:4px;background:#dcfce7;color:#166534;cursor:pointer">최적(0)</button>
+            </div>
+          </div>
+          <div id="${pp1RegId}" style="font-size:11px;color:#166534;margin-top:5px">비세액공제: ${fmt(pp1Reg0)}백만원</div>
+        </div>
+        <div style="flex:1;min-width:155px;border:1.5px solid #cbd5e1;border-radius:8px;padding:10px 12px;background:#f8fafc">
+          <div style="font-weight:700;font-size:13px;color:#334155;margin-bottom:2px">🏦 개인통합2
+            <span style="font-size:11px;font-weight:400">${pp2TotalMv > 0 ? fmt(pp2TotalMv)+'백만원' : '—'}</span>
+          </div>
+          <div style="font-size:11px;color:#475569;margin-bottom:6px">${pp2Names}</div>
+          <div style="font-size:11px;color:#475569">
+            안세공: <span id="${pp2AnseId}" style="font-weight:700">${fmt(pp2Anse0)}</span>백만원
+            <span style="font-size:10px;color:#94a3b8">(= 총안세공 − 통합1 배정)</span>
+          </div>
+          <div id="${pp2RegId}" style="font-size:11px;color:#475569;margin-top:3px">비세액공제: ${fmt(pp2Reg0)}백만원</div>
+        </div>
+      </div>`;
+  }
+
   let flowHtml = '';
-  if (myAutoResult) {
+  if (myAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px">본인 · ${baseYear}년말 기준</div>`;
-    flowHtml += renderFlow(myAutoResult, 'my', 'wdPrepMyPP1Anse', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg', 'wdPrepMyPP1Reg', defMyPP1Anse);
+    flowHtml += renderPersonSection(myAllNonDc, myPP1Ids, myPP2Ids, 'my',
+      'wdPrepMyPP1Anse', 'wdPrepMyPP1Reg', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg', defMyPP1Anse);
   } else {
     flowHtml += `<div class="wdprep-box wdprep-box-amber">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
   }
-  if (wifeAutoResult && appSettings.hasWife) {
+  if (appSettings.hasWife && wifeAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     const wt = getWifeTitle();
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin:16px 0 8px">${wt} · ${baseYear}년말 기준</div>`;
-    flowHtml += renderFlow(wifeAutoResult, 'wife', 'wdPrepWifePP1Anse', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg', 'wdPrepWifePP1Reg', defWifePP1Anse);
+    flowHtml += renderPersonSection(wifeAllNonDc, wifePP1Ids, wifePP2Ids, 'wife',
+      'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg', defWifePP1Anse);
   }
 
-  // 세금 설명
   const secB = `<div class="wdprep-box wdprep-box-blue" style="margin-top:14px">
     <div style="font-weight:700;font-size:13px;margin-bottom:6px">💡 개인통합1 안세공을 0으로 만드는 이유</div>
     <div style="font-size:12px;line-height:1.9">
@@ -14240,7 +14272,6 @@ function wdPrepStep2Html() {
     </div>
   </div>`;
 
-  // 적용 버튼
   const alreadyApplied = !!(wdConsolidated && wdConsolidated.startYear === (wdPlan?.startYear || 0));
   const secD = `<div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <button onclick="wdPrepDoApply()" class="btn-primary" id="wdPrepApplyBtn" style="font-size:13px;padding:8px 20px">
@@ -14250,7 +14281,7 @@ function wdPrepStep2Html() {
     <span id="wdPrepAppliedMsg" style="display:none;font-size:12px;color:#166534;font-weight:600">✅ 적용되었습니다!</span>
   </div>`;
 
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">원래 계좌들이 통합 후 어디로 이동하는지 확인하고, 개인통합1의 안세공 배정을 조정하세요.</p>
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">각 계좌를 개인통합1 또는 개인통합2로 배분하고, 통합1의 안세공 배정을 조정하세요.</p>
     ${flowHtml}${secB}${secD}`;
 }
 
@@ -14349,33 +14380,83 @@ function wdPrepSelectAccount(accId) {
   if (el) { el.style.display = ''; setTimeout(() => { el.style.display = 'none'; }, 2000); }
 }
 
-function wdPrepStep2UpdatePreview() {
+function wdPrepToggleBucket(accId, who, targetBucket) {
   if (!_wdStep2Ctx) return;
-  const { myAutoResult, wifeAutoResult } = _wdStep2Ctx;
+  const myEl = document.getElementById('wdPrepMyPP1Anse');
+  if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
+  const wifeEl = document.getElementById('wdPrepWifePP1Anse');
+  if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
+  if (who === 'my') {
+    if (targetBucket === 1) {
+      _wdStep2Ctx.myPP1Ids = [...new Set([..._wdStep2Ctx.myPP1Ids, accId])];
+      _wdStep2Ctx.myPP2Ids = _wdStep2Ctx.myPP2Ids.filter(id => id !== accId);
+    } else {
+      _wdStep2Ctx.myPP2Ids = [...new Set([..._wdStep2Ctx.myPP2Ids, accId])];
+      _wdStep2Ctx.myPP1Ids = _wdStep2Ctx.myPP1Ids.filter(id => id !== accId);
+    }
+  } else {
+    if (targetBucket === 1) {
+      _wdStep2Ctx.wifePP1Ids = [...new Set([..._wdStep2Ctx.wifePP1Ids, accId])];
+      _wdStep2Ctx.wifePP2Ids = _wdStep2Ctx.wifePP2Ids.filter(id => id !== accId);
+    } else {
+      _wdStep2Ctx.wifePP2Ids = [...new Set([..._wdStep2Ctx.wifePP2Ids, accId])];
+      _wdStep2Ctx.wifePP1Ids = _wdStep2Ctx.wifePP1Ids.filter(id => id !== accId);
+    }
+  }
+  const content = document.getElementById('wdPrepContent');
+  if (content) content.innerHTML = wdPrepStep2Html();
+}
+
+function wdPrepResetBuckets(who) {
+  if (!_wdStep2Ctx) return;
+  const myEl = document.getElementById('wdPrepMyPP1Anse');
+  if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
+  const wifeEl = document.getElementById('wdPrepWifePP1Anse');
+  if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
+  if (who === 'my' && _wdStep2Ctx.myAutoResult) {
+    _wdStep2Ctx.myPP1Ids = [..._wdStep2Ctx.myAutoResult.pp1Ids];
+    _wdStep2Ctx.myPP2Ids = [..._wdStep2Ctx.myAutoResult.pp2Ids];
+    _wdStep2Ctx.savedMyPP1Anse = 0;
+  } else if (who === 'wife' && _wdStep2Ctx.wifeAutoResult) {
+    _wdStep2Ctx.wifePP1Ids = [..._wdStep2Ctx.wifeAutoResult.pp1Ids];
+    _wdStep2Ctx.wifePP2Ids = [..._wdStep2Ctx.wifeAutoResult.pp2Ids];
+    _wdStep2Ctx.savedWifePP1Anse = 0;
+  }
+  const content = document.getElementById('wdPrepContent');
+  if (content) content.innerHTML = wdPrepStep2Html();
+}
+
+function wdPrepStep2UpdatePreview() {
+  if (!_wdStep2Ctx?.comps) return;
+  const { comps, myPP1Ids, myPP2Ids, wifePP1Ids, wifePP2Ids } = _wdStep2Ctx;
   const M = 1_000_000;
   const mv = v => Math.round(v / M);
   const fmt = n => n.toLocaleString();
   const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  const myAllNonDc   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
+  const wifeAllNonDc = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
 
-  const upd = (autoResult, pp1InputId, pp1RegId, pp2AnseId, pp2RegId) => {
-    if (!autoResult) return;
-    const pp1Total  = mv(autoResult.pp1Total);
-    const totalAnse = mv(autoResult.totalAnse);
-    const pp2Total  = mv(autoResult.pp2Total);
+  const upd = (pp1Ids, pp2Ids, allNonDcIds, pp1InputId, pp1RegId, pp2AnseId, pp2RegId) => {
+    const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
+    const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
+    const pp1AnseMv   = pp1Ids.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
+    const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
     const inp = document.getElementById(pp1InputId);
     if (!inp) return;
-    const pp1AnseMv = Math.max(0, Math.min(Number(inp.value) || 0, pp1Total));
-    const pp1Reg    = Math.max(0, pp1Total  - pp1AnseMv);
-    const pp2Anse   = Math.max(0, totalAnse - pp1AnseMv);
-    const pp2Reg    = Math.max(0, pp2Total  - pp2Anse);
+    const inputVal = Math.max(0, Math.min(Number(inp.value) || 0, pp1AnseMv));
+    const pp1Reg   = Math.max(0, pp1TotalMv  - inputVal);
+    const pp2Anse  = Math.max(0, totalAnseMv - inputVal);
+    const pp2Reg   = Math.max(0, pp2TotalMv  - pp2Anse);
     set(pp1RegId,  `비세액공제: ${fmt(pp1Reg)}백만원`);
     set(pp2AnseId, fmt(pp2Anse));
     set(pp2RegId,  `비세액공제: ${fmt(pp2Reg)}백만원`);
   };
 
-  upd(myAutoResult,   'wdPrepMyPP1Anse',   'wdPrepMyPP1Reg',   'wdPrepMyPP2Anse',   'wdPrepMyPP2Reg');
-  if (appSettings.hasWife)
-    upd(wifeAutoResult, 'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg');
+  upd(myPP1Ids, myPP2Ids, myAllNonDc,
+      'wdPrepMyPP1Anse', 'wdPrepMyPP1Reg', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg');
+  if (appSettings.hasWife && wifePP1Ids)
+    upd(wifePP1Ids, wifePP2Ids, wifeAllNonDc,
+        'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg');
 }
 
 function wdPrepDoApply() {
@@ -14393,28 +14474,33 @@ function wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv) {
   if (!startYear) return;
   const baseYear = startYear - 1;
   const M = 1_000_000;
-  const mv = v => Math.round(v / M);
   const _zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
-  const comps = {};
-  for (const id of MY_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
-  if (appSettings.hasWife)
-    for (const id of WIFE_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
+  const comps = _wdStep2Ctx?.comps || (() => {
+    const c = {};
+    for (const id of MY_ACC_IDS) c[id] = computeAccComponents(id, baseYear);
+    if (appSettings.hasWife)
+      for (const id of WIFE_ACC_IDS) c[id] = computeAccComponents(id, baseYear);
+    return c;
+  })();
   if (!comps['pension1'])      comps['pension1']      = {..._zero};
   if (!comps['wife_pension1']) comps['wife_pension1'] = {..._zero};
   const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
   const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
-  const myAutoResult   = wdPrepComputeAutoConsolidate(myNonDcIds, comps);
-  const wifeAutoResult = wifeNonDcIds.length ? wdPrepComputeAutoConsolidate(wifeNonDcIds, comps) : null;
-  const myAnseTotal   = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-  const myRegTotal    = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-  const wifeAnseTotal = wifeNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-  const wifeRegTotal  = wifeNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-  const pp1MaxAnse = myAutoResult   ? mv(myAutoResult.pp1Total)   : 0;
-  const wp1MaxAnse = wifeAutoResult ? mv(wifeAutoResult.pp1Total) : 0;
+  const myAnseTotal   = myNonDcIds.reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
+  const myRegTotal    = myNonDcIds.reduce((s, id) => s + (comps[id]?.regular || 0), 0);
+  const wifeAnseTotal = wifeNonDcIds.reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
+  const wifeRegTotal  = wifeNonDcIds.reduce((s, id) => s + (comps[id]?.regular || 0), 0);
+  // 사용자가 배분한 PP1 계좌 목록 사용
+  const myPP1Ids   = _wdStep2Ctx?.myPP1Ids   || myNonDcIds;
+  const wifePP1Ids = _wdStep2Ctx?.wifePP1Ids || wifeNonDcIds;
+  const myPP1TotalWon   = myPP1Ids.reduce((s, id) => s + (comps[id]?.total || 0), 0);
+  const wifePP1TotalWon = wifePP1Ids.reduce((s, id) => s + (comps[id]?.total || 0), 0);
+  const pp1MaxAnse = Math.round(myPP1Ids.reduce((s, id) => s + (comps[id]?.anse||0), 0) / M);
+  const wp1MaxAnse = Math.round(wifePP1Ids.reduce((s, id) => s + (comps[id]?.anse||0), 0) / M);
   const pp1A = Math.min(Math.max(0, myPP1AnseMv),   pp1MaxAnse) * M;
-  const pp1R = Math.max(0, (myAutoResult   ? myAutoResult.pp1Total   : 0) - pp1A);
+  const pp1R = Math.max(0, myPP1TotalWon - pp1A);
   const wp1A = Math.min(Math.max(0, wifePP1AnseMv), wp1MaxAnse) * M;
-  const wp1R = Math.max(0, (wifeAutoResult ? wifeAutoResult.pp1Total : 0) - wp1A);
+  const wp1R = Math.max(0, wifePP1TotalWon - wp1A);
   wdConsolidated = {
     startYear:        wdPlan.startYear,
     myDCPrincipal:    (comps['dc']      || _zero).dcPrincipal,
