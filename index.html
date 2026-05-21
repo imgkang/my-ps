@@ -13999,6 +13999,17 @@ function wdPrepRenderStep(step) {
   return '';
 }
 
+function wdPrepAgeInfo(who) {
+  const birthYear = who === 'my'
+    ? Number(appSettings.myBirthYear)   || 0
+    : Number(appSettings.wifeBirthYear) || 0;
+  const currentYear = new Date().getFullYear();
+  if (!birthYear) return { eligible: true, age: null, yearsLeft: 0, birthYear: 0 };
+  const age      = currentYear - birthYear;
+  const eligible = age >= 55;
+  return { eligible, age, yearsLeft: eligible ? 0 : 55 - age, birthYear };
+}
+
 function wdPrepStep1Html() {
   const currentYear = new Date().getFullYear();
   const mv  = v => Math.round(v / 10_000);
@@ -14031,31 +14042,44 @@ function wdPrepStep1Html() {
 
   const sumF = (rows, f) => rows.reduce((s, r) => s + (r[f] || 0), 0);
 
-  function renderGroup(rows, label, rowBg, hdrBg, totalBg) {
+  function renderGroup(rows, label, rowBg, hdrBg, totalBg, eligible, ageInfo) {
     if (!rows.length) return '';
+    const ok = eligible !== false;
+    const eRowBg   = ok ? rowBg   : '#f1f5f9';
+    const eHdrBg   = ok ? hdrBg   : '#e2e8f0';
+    const eTotalBg = ok ? totalBg : '#d1d5db';
+    const fade     = ok ? '' : 'opacity:0.55;';
+
+    const eligBadge = ok
+      ? `<span style="margin-left:8px;font-size:10px;background:#dcfce7;color:#166534;padding:2px 7px;border-radius:9px;font-weight:700">✅ 인출 가능</span>`
+      : `<span style="margin-left:8px;font-size:10px;background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:9px;font-weight:700">⛔ 만 55세 미만 (현재 만 ${ageInfo?.age}세) — ${ageInfo?.yearsLeft}년 후 가능</span>`;
+
     const sVal     = sumF(rows, 'val');
     const sAnse    = sumF(rows, 'anse');
     const sPension = sumF(rows, 'pension');
     const sRetire  = sumF(rows, 'retire');
     const sTaxFree = sumF(rows, 'taxFree');
 
-    const hdrRow = `<tr style="background:${hdrBg}">
-      <td colspan="6" style="font-size:11px;font-weight:700;color:#475569;padding:5px 10px;letter-spacing:.05em;border-bottom:1px solid #e2e8f0">${label}</td>
+    const hdrRow = `<tr style="background:${eHdrBg}">
+      <td colspan="6" style="font-size:11px;font-weight:700;color:#475569;padding:5px 10px;letter-spacing:.05em;border-bottom:1px solid #e2e8f0">${label}${eligBadge}</td>
     </tr>`;
 
-    const dataRows = rows.map(r => `<tr style="background:${rowBg}">
+    const dataRows = rows.map(r => `<tr style="background:${eRowBg};${fade}">
       <td style="white-space:nowrap;font-weight:600">${r.name}</td>
       <td>${fmt(r.val)}</td>
-      <td style="color:#1d4ed8;font-weight:600">${r.anse > 0 ? fmt(r.anse) : dash}</td>
+      <td style="color:${ok ? '#1d4ed8' : '#9ca3af'};font-weight:600">${r.anse > 0 ? fmt(r.anse) : dash}</td>
       <td>${r.pension > 0 ? fmt(r.pension) : dash}</td>
       <td>${r.retire  > 0 ? fmt(r.retire)  : dash}</td>
       <td>${r.taxFree > 0 ? fmt(r.taxFree) : dash}</td>
     </tr>`).join('');
 
-    const totalRow = `<tr style="background:${totalBg};border-top:2px solid #cbd5e1">
+    const totalRow = `<tr style="background:${eTotalBg};border-top:2px solid #cbd5e1;${fade}">
       <td style="font-weight:700;font-size:12px;white-space:nowrap">${label} 합계</td>
       <td style="font-weight:700">${fmt(sVal)}</td>
-      <td><span style="background:#fef08a;color:#713f12;font-weight:800;font-size:13px;padding:3px 8px;border-radius:5px;display:inline-block;white-space:nowrap">▶ ${fmt(sAnse)}</span></td>
+      <td>${ok
+        ? `<span style="background:#fef08a;color:#713f12;font-weight:800;font-size:13px;padding:3px 8px;border-radius:5px;display:inline-block;white-space:nowrap">▶ ${fmt(sAnse)}</span>`
+        : `<span style="color:#9ca3af;font-weight:600">${fmt(sAnse)}</span>`
+      }</td>
       <td style="font-weight:600">${sPension > 0 ? fmt(sPension) : dash}</td>
       <td style="font-weight:600">${sRetire  > 0 ? fmt(sRetire)  : dash}</td>
       <td style="font-weight:600">${sTaxFree > 0 ? fmt(sTaxFree) : dash}</td>
@@ -14077,9 +14101,12 @@ function wdPrepStep1Html() {
     <th>비과세<br><span style="font-size:10px;font-weight:400">재원(만원)</span></th>
   </tr></thead>`;
 
+  const myAgeInfo   = wdPrepAgeInfo('my');
+  const wifeAgeInfo = wdPrepAgeInfo('wife');
+
   const tbody = `<tbody>
-    ${renderGroup(myRows, '본인', '#f0f9ff', '#dbeafe', '#bfdbfe')}
-    ${wifeRows.length ? renderGroup(wifeRows, getWifeTitle(), '#fdf4ff', '#ede9fe', '#ddd6fe') : ''}
+    ${renderGroup(myRows, '본인', '#f0f9ff', '#dbeafe', '#bfdbfe', myAgeInfo.eligible, myAgeInfo)}
+    ${wifeRows.length ? renderGroup(wifeRows, getWifeTitle(), '#fdf4ff', '#ede9fe', '#ddd6fe', wifeAgeInfo.eligible, wifeAgeInfo) : ''}
   </tbody>`;
 
   return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">계좌별 평가금액과 세금 재원을 확인합니다. <b>세공액 합계</b>가 인출 시 연금소득세 부과 기준입니다.</p>
@@ -14249,19 +14276,28 @@ function wdPrepStep2Html() {
       </div>`;
   }
 
+  const myAge2   = wdPrepAgeInfo('my');
+  const wifeAge2 = wdPrepAgeInfo('wife');
+
   let flowHtml = '';
-  if (myAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
+  if (!myAge2.eligible && myAge2.age !== null) {
+    flowHtml += `<div class="wdprep-box wdprep-box-amber">본인은 현재 만 ${myAge2.age}세 — 만 55세 이상(${(appSettings.myBirthYear||0)+55}년 이후)부터 계좌 통합 가능합니다.</div>`;
+  } else if (myAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px">본인 · ${baseYear}년말 기준</div>`;
     flowHtml += renderPersonSection(myAllNonDc, myPP1Ids, myPP2Ids, 'my',
       'wdPrepMyPP1Anse', 'wdPrepMyPP1Reg', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg', defMyPP1Anse);
   } else {
     flowHtml += `<div class="wdprep-box wdprep-box-amber">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
   }
-  if (appSettings.hasWife && wifeAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
+  if (appSettings.hasWife) {
     const wt = getWifeTitle();
-    flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin:16px 0 8px">${wt} · ${baseYear}년말 기준</div>`;
-    flowHtml += renderPersonSection(wifeAllNonDc, wifePP1Ids, wifePP2Ids, 'wife',
-      'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg', defWifePP1Anse);
+    if (!wifeAge2.eligible && wifeAge2.age !== null) {
+      flowHtml += `<div class="wdprep-box wdprep-box-amber" style="margin-top:12px">${wt}은(는) 현재 만 ${wifeAge2.age}세 — 만 55세 이상(${(appSettings.wifeBirthYear||0)+55}년 이후)부터 계좌 통합 가능합니다.</div>`;
+    } else if (wifeAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
+      flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin:16px 0 8px">${wt} · ${baseYear}년말 기준</div>`;
+      flowHtml += renderPersonSection(wifeAllNonDc, wifePP1Ids, wifePP2Ids, 'wife',
+        'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg', defWifePP1Anse);
+    }
   }
 
   const secB = `<div class="wdprep-box wdprep-box-blue" style="margin-top:14px">
@@ -14326,9 +14362,15 @@ function wdPrepStep3Html() {
 
 function wdPrepStep4Html() {
   const saved = localStorage.getItem('wd_prep_primary_account') || '';
-  const accounts = getActiveAccounts().filter(a =>
-    !['dc','wife_dc','isa','wife_isa','cash'].includes(a.id) && computeAccountValue(a.id) > 0
-  );
+  const myAge4   = wdPrepAgeInfo('my');
+  const wifeAge4 = wdPrepAgeInfo('wife');
+  const accounts = getActiveAccounts().filter(a => {
+    if (['dc','wife_dc','isa','wife_isa','cash'].includes(a.id)) return false;
+    if (computeAccountValue(a.id) <= 0) return false;
+    // 만 55세 미만인 사람의 계좌는 제외
+    if (WIFE_ACC_IDS.includes(a.id)) return wifeAge4.eligible;
+    return myAge4.eligible;
+  });
   const order = ['pension1','wife_pension1','irp','wife_irp','pension2','wife_pension2'];
   const sorted = [...accounts].sort((a, b) => {
     const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
