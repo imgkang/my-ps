@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.402';
+const APP_VERSION = 'MyPM v0.403';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14027,8 +14027,10 @@ function wdPrepStep1Html() {
   const dash = `<span style="color:#cbd5e1">—</span>`;
 
   const allActive = getActiveAccounts().filter(a => a.id !== 'cash');
-  const myAccs   = allActive.filter(a => MY_ACC_IDS.includes(a.id));
-  const wifeAccs = allActive.filter(a => WIFE_ACC_IDS.includes(a.id));
+  const myExtraIds   = new Set((appSettings.my?.extraAccounts   || []).map(e => e.id));
+  const wifeExtraIds = new Set((appSettings.wife?.extraAccounts || []).map(e => e.id));
+  const myAccs   = allActive.filter(a => MY_ACC_IDS.includes(a.id)   || myExtraIds.has(a.id));
+  const wifeAccs = allActive.filter(a => WIFE_ACC_IDS.includes(a.id) || wifeExtraIds.has(a.id));
 
   function buildRows(accounts) {
     const endDate = `${currentYear}-12-31`;
@@ -14750,6 +14752,41 @@ function wdPrepExecuteConsolidate() {
     });
   }
 
+  // Step 3 배정 안세공에 맞게 트랜잭션 anse 재배분
+  function applyAnseRedist(dstId, targetAnseW) {
+    const txns = depositData.transactions.filter(t => t.accId === dstId);
+    const curAnse = txns.reduce((s, t) => s + (Number(t.anse) || 0), 0);
+    if (Math.abs(curAnse - targetAnseW) < 1) return;
+    if (targetAnseW === 0) {
+      txns.forEach(t => { t.anse = 0; });
+    } else if (curAnse > 0) {
+      const scale = targetAnseW / curAnse;
+      txns.forEach(t => { if (t.anse) t.anse = Math.round(Number(t.anse) * scale); });
+    } else {
+      const lastDate = txns.reduce((d, t) => (t.date > d ? t.date : d), new Date().toISOString().slice(0, 10));
+      depositData.transactions.push({ id: `adj_${dstId}_${Date.now()}`, accId: dstId, date: lastDate, amount: 0, anse: targetAnseW, note: '안세공 재배정' });
+    }
+  }
+  const comps = ctx.comps || {};
+  if (runMy && ((ctx.myPP1Ids||[]).length || (ctx.myPP2Ids||[]).length)) {
+    const allMyIds = [...(ctx.myPP1Ids||[]), ...(ctx.myPP2Ids||[])];
+    const totalAnseW = allMyIds.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
+    const pp1AnseMv = Math.min(ctx.savedMyPP1Anse || 0, Math.floor(totalAnseW / 1_000_000));
+    const pp1AnseW  = pp1AnseMv * 1_000_000;
+    const pp2AnseW  = Math.max(0, totalAnseW - pp1AnseW);
+    if ((ctx.myPP1Ids||[]).length) applyAnseRedist('wdcons_my_1', pp1AnseW);
+    if ((ctx.myPP2Ids||[]).length) applyAnseRedist('wdcons_my_2', pp2AnseW);
+  }
+  if (runWife && ((ctx.wifePP1Ids||[]).length || (ctx.wifePP2Ids||[]).length)) {
+    const allWifeIds = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])];
+    const totalAnseW = allWifeIds.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
+    const pp1AnseMv = Math.min(ctx.savedWifePP1Anse || 0, Math.floor(totalAnseW / 1_000_000));
+    const pp1AnseW  = pp1AnseMv * 1_000_000;
+    const pp2AnseW  = Math.max(0, totalAnseW - pp1AnseW);
+    if ((ctx.wifePP1Ids||[]).length) applyAnseRedist('wdcons_wife_1', pp1AnseW);
+    if ((ctx.wifePP2Ids||[]).length) applyAnseRedist('wdcons_wife_2', pp2AnseW);
+  }
+
   saveAppSettings();
   saveHoldings();
   saveDeposits();
@@ -14773,26 +14810,14 @@ function wdPrepStep5Html() {
   const mvToW = mv => mv * 1_000_000;
   function consAnse(dstKey) {
     if (!ctx) return 0;
-    if (dstKey === 'my_1') {
-      const allIds = [...(ctx.myPP1Ids||[]), ...(ctx.myPP2Ids||[])];
-      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
-      return mvToW(Math.min(ctx.savedMyPP1Anse || 0, totalAnseMv));
-    } else if (dstKey === 'my_2') {
-      const allIds = [...(ctx.myPP1Ids||[]), ...(ctx.myPP2Ids||[])];
-      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
-      const pp1Anse = mvToW(Math.min(ctx.savedMyPP1Anse || 0, totalAnseMv));
-      return Math.max(0, mvToW(totalAnseMv) - pp1Anse);
-    } else if (dstKey === 'wife_1') {
-      const allIds = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])];
-      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
-      return mvToW(Math.min(ctx.savedWifePP1Anse || 0, totalAnseMv));
-    } else if (dstKey === 'wife_2') {
-      const allIds = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])];
-      const totalAnseMv = allIds.reduce((s, id) => s + Math.round((comps[id]?.anse||0)/1_000_000), 0);
-      const pp1Anse = mvToW(Math.min(ctx.savedWifePP1Anse || 0, totalAnseMv));
-      return Math.max(0, mvToW(totalAnseMv) - pp1Anse);
-    }
-    return 0;
+    const isPP1 = dstKey.endsWith('_1');
+    const person = dstKey.startsWith('my') ? 'my' : 'wife';
+    const allIds = [...(ctx[`${person}PP1Ids`]||[]), ...(ctx[`${person}PP2Ids`]||[])];
+    const totalAnseW = allIds.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
+    const savedMv = ctx[person === 'my' ? 'savedMyPP1Anse' : 'savedWifePP1Anse'] || 0;
+    const pp1AnseMv = Math.min(savedMv, Math.floor(totalAnseW / 1_000_000));
+    const pp1AnseW = pp1AnseMv * 1_000_000;
+    return isPP1 ? pp1AnseW : Math.max(0, totalAnseW - pp1AnseW);
   }
 
   const consDsts = [
