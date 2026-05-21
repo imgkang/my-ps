@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.390';
+const APP_VERSION = 'MyPM v0.391';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14270,10 +14270,15 @@ function wdPrepStep3Html() {
   ).join('');
 
   return `<p style="font-size:13px;color:var(--muted);margin-bottom:14px">계좌 통합 전에 각 계좌의 공식 세액공제 납입 이력을 확인해야 합니다.</p>` +
-    `<div class="wdprep-box wdprep-box-blue" style="margin-top:0;margin-bottom:12px">` +
-    `<div style="font-size:14px;font-weight:700;margin-bottom:8px">📄 연금보험료 등 소득 세액공제 확인서 발급 방법</div>` +
+    `<div style="border:1px solid #bfdbfe;border-radius:10px;overflow:hidden;margin-bottom:12px">` +
+    `<button onclick="(function(btn){const body=btn.nextElementSibling;const open=body.style.display!=='none';body.style.display=open?'none':'block';btn.querySelector('.wdp3-arrow').textContent=open?'▶':'▼';})(this)"` +
+    ` style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;background:#eff6ff;border:none;cursor:pointer;text-align:left">` +
+    `<span style="font-size:13px;font-weight:700;color:#1e40af">📄 연금보험료 등 소득 세액공제 확인서 발급 방법</span>` +
+    `<span class="wdp3-arrow" style="font-size:12px;color:#3b82f6;flex-shrink:0">▶</span>` +
+    `</button>` +
+    `<div style="display:none;padding:12px 14px;background:#f8fbff">` +
     stepItems +
-    `</div>` +
+    `</div></div>` +
     `<div class="wdprep-box wdprep-box-green">` +
     `<b>✅ 이 서류에서 확인할 내용</b><br>` +
     `• 각 연금계좌(개인연금·IRP)별 <b>세액공제 받은 납입액 연도별 합계</b><br>` +
