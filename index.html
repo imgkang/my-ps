@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.400';
+const APP_VERSION = 'MyPM v0.401';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3389,6 +3389,9 @@ function loadCashAccounts() {
       const parsed = JSON.parse(raw);
       const result = empty();
       for (const a of ACCOUNTS) result[a.id] = Number(parsed[a.id]) || 0;
+      for (const key of Object.keys(parsed)) {
+        if (!(key in result)) result[key] = Number(parsed[key]) || 0;
+      }
       return result;
     }
   } catch (e) {}
@@ -13913,7 +13916,7 @@ function computeAccComponents(accId, year) {
 }
 
 // ===== 인출준비 및 시작 마법사 =====
-const WD_PREP_STEPS = ['계좌 현황', '국세청 서류', '통합 제안', '인출 계좌 결정'];
+const WD_PREP_STEPS = ['계좌 현황', '국세청 서류', '통합 제안', '통합 실행', '통합 결과'];
 let wdPrepCurrentStep = 1;
 
 function checkWdPrepCondition() {
@@ -13951,7 +13954,7 @@ function handleWdPrepBackdropClick(e) {
 }
 
 function wdPrepGoStep(step) {
-  if (step < 1 || step > 4) return;
+  if (step < 1 || step > 5) return;
   wdPrepCurrentStep = step;
 
   // 스텝 인디케이터
@@ -13968,7 +13971,7 @@ function wdPrepGoStep(step) {
       const lblWeight = active ? 600 : 400;
       const circle  = `<div class="wdprep-step-circle" style="background:${circBg};color:${circFg}">${done ? '✓' : n}</div>`;
       const lbl     = `<div class="wdprep-step-label" style="color:${lblColor};font-weight:${lblWeight}">${label}</div>`;
-      const conn    = n < 4 ? `<div class="wdprep-connector${done ? ' done' : ''}"></div>` : '';
+      const conn    = n < 5 ? `<div class="wdprep-connector${done ? ' done' : ''}"></div>` : '';
       return `<div class="wdprep-step">${circle}${lbl}</div>${conn}`;
     }).join('');
   }
@@ -13980,10 +13983,15 @@ function wdPrepGoStep(step) {
   const nextBtn = document.getElementById('wdPrepNextBtn');
   if (prevBtn) prevBtn.style.display = step === 1 ? 'none' : '';
   if (nextBtn) {
-    if (step === 4) {
+    if (step === 5) {
+      nextBtn.style.display = '';
       nextBtn.textContent = '✔ 완료';
       nextBtn.onclick = wdPrepFinish;
+    } else if (step === 4) {
+      // Step 4는 내부 "지금 실행" 버튼으로만 진행
+      nextBtn.style.display = 'none';
     } else {
+      nextBtn.style.display = '';
       nextBtn.textContent = '다음 →';
       nextBtn.onclick = () => wdPrepGoStep(step + 1);
     }
@@ -13996,6 +14004,7 @@ function wdPrepRenderStep(step) {
     if (step === 2) return wdPrepStep3Html();
     if (step === 3) return wdPrepStep2Html();
     if (step === 4) return wdPrepStep4Html();
+    if (step === 5) return wdPrepStep5Html();
   } catch (e) { return `<p style="color:#ef4444">오류: ${e.message}</p>`; }
   return '';
 }
@@ -14394,26 +14403,22 @@ function wdPrepStep4PrimaryHtml() {
 }
 
 function wdPrepStep4Html() {
-  // 실행 완료 후 → 주 계좌 선택 화면
-  if (_wdStep4Done) {
-    return `<div class="wdprep-box wdprep-box-green" style="margin-bottom:16px">✅ 계좌 통합이 완료되었습니다!</div>` +
-      wdPrepStep4PrimaryHtml();
-  }
-
-  // 실행 전 → 통합 실행 확인 화면
   const ctx = _wdStep2Ctx;
   const hasWife = !!appSettings.hasWife;
+  const wt = getWifeTitle();
+  const dstNames = {
+    my_1: `개인통합1(나)`, my_2: `개인통합2(나)`,
+    wife_1: `개인통합1(${wt})`, wife_2: `개인통합2(${wt})`
+  };
 
-  // 통합 요약: src → dst 쌍 목록
+  // 통합 요약: 모든 srcId → 신규 통합계좌
   const pairs = [];
-  const DST_FOR_PP1 = { my: 'pension1', wife: 'wife_pension1' };
-  const DST_FOR_PP2 = { my: 'pension2', wife: 'wife_pension2' };
   if (ctx) {
-    (ctx.myPP1Ids || []).filter(id => id !== 'pension1').forEach(id => pairs.push({ who:'본인', src: id, dst: 'pension1' }));
-    (ctx.myPP2Ids || []).filter(id => id !== 'pension2').forEach(id => pairs.push({ who:'본인', src: id, dst: 'pension2' }));
+    (ctx.myPP1Ids || []).forEach(id => pairs.push({ who:'본인', src: id, dstKey:'my_1', dstName: dstNames.my_1 }));
+    (ctx.myPP2Ids || []).forEach(id => pairs.push({ who:'본인', src: id, dstKey:'my_2', dstName: dstNames.my_2 }));
     if (hasWife) {
-      (ctx.wifePP1Ids || []).filter(id => id !== 'wife_pension1').forEach(id => pairs.push({ who: getWifeTitle(), src: id, dst: 'wife_pension1' }));
-      (ctx.wifePP2Ids || []).filter(id => id !== 'wife_pension2').forEach(id => pairs.push({ who: getWifeTitle(), src: id, dst: 'wife_pension2' }));
+      (ctx.wifePP1Ids || []).forEach(id => pairs.push({ who: wt, src: id, dstKey:'wife_1', dstName: dstNames.wife_1 }));
+      (ctx.wifePP2Ids || []).forEach(id => pairs.push({ who: wt, src: id, dstKey:'wife_2', dstName: dstNames.wife_2 }));
     }
   }
 
@@ -14421,15 +14426,15 @@ function wdPrepStep4Html() {
     ? pairs.map(p => `<tr><td style="padding:5px 8px;font-size:12px;color:#64748b">${p.who}</td>` +
         `<td style="padding:5px 8px;font-size:12px;font-weight:600">${getAccName(p.src)}</td>` +
         `<td style="padding:5px 8px;font-size:12px;color:#94a3b8">→</td>` +
-        `<td style="padding:5px 8px;font-size:12px;font-weight:600;color:#166534">${getAccName(p.dst)}</td></tr>`).join('')
+        `<td style="padding:5px 8px;font-size:12px;font-weight:600;color:#166534">${p.dstName}</td></tr>`).join('')
     : `<tr><td colspan="4" style="padding:8px;font-size:12px;color:#94a3b8">통합할 계좌가 없습니다 (3단계로 돌아가 배분을 확인하세요)</td></tr>`;
 
-  const myHasMerge   = ctx && ((ctx.myPP1Ids||[]).some(id=>id!=='pension1') || (ctx.myPP2Ids||[]).some(id=>id!=='pension2'));
-  const wifeHasMerge = ctx && hasWife && ((ctx.wifePP1Ids||[]).some(id=>id!=='wife_pension1') || (ctx.wifePP2Ids||[]).some(id=>id!=='wife_pension2'));
+  const myHasMerge   = ctx && ((ctx.myPP1Ids||[]).length > 0 || (ctx.myPP2Ids||[]).length > 0);
+  const wifeHasMerge = ctx && hasWife && ((ctx.wifePP1Ids||[]).length > 0 || (ctx.wifePP2Ids||[]).length > 0);
 
   const personChecks = [
     myHasMerge   ? `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="wdExecMy"   checked style="width:15px;height:15px"> 본인 통합 실행</label>` : '',
-    wifeHasMerge ? `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="wdExecWife" checked style="width:15px;height:15px"> ${getWifeTitle()} 통합 실행</label>` : '',
+    wifeHasMerge ? `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="wdExecWife" checked style="width:15px;height:15px"> ${wt} 통합 실행</label>` : '',
   ].filter(Boolean).join('');
 
   return `
@@ -14642,6 +14647,18 @@ function wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv) {
   renderWithdrawalPlan();
 }
 
+function wdConsGetOrCreate(person, num) {
+  const wt  = getWifeTitle();
+  const id   = `wdcons_${person}_${num}`;
+  const name = `개인통합${num}(${person === 'my' ? '나' : wt})`;
+  const cfg  = appSettings[person === 'my' ? 'my' : 'wife'];
+  if (!cfg.extraAccounts) cfg.extraAccounts = [];
+  if (!cfg.extraAccounts.find(e => e.id === id))
+    cfg.extraAccounts.push({ id, name, active: true });
+  if (!(id in cashAccounts)) cashAccounts[id] = 0;
+  return id;
+}
+
 function wdPrepExecuteConsolidate() {
   const runMy   = document.getElementById('wdExecMy')?.checked ?? true;
   const runWife = document.getElementById('wdExecWife')?.checked ?? false;
@@ -14649,21 +14666,33 @@ function wdPrepExecuteConsolidate() {
   const ctx = _wdStep2Ctx;
   if (!ctx) return;
 
+  // 신규 통합계좌 생성 및 pairs 구성 (ALL srcIds 포함)
   const pairs = [];
   if (runMy) {
-    (ctx.myPP1Ids || []).filter(id => id !== 'pension1').forEach(id => pairs.push({ src: id, dst: 'pension1' }));
-    (ctx.myPP2Ids || []).filter(id => id !== 'pension2').forEach(id => pairs.push({ src: id, dst: 'pension2' }));
+    if ((ctx.myPP1Ids||[]).length) {
+      const dst1 = wdConsGetOrCreate('my', 1);
+      (ctx.myPP1Ids).forEach(id => pairs.push({ src: id, dst: dst1 }));
+    }
+    if ((ctx.myPP2Ids||[]).length) {
+      const dst2 = wdConsGetOrCreate('my', 2);
+      (ctx.myPP2Ids).forEach(id => pairs.push({ src: id, dst: dst2 }));
+    }
   }
   if (runWife) {
-    (ctx.wifePP1Ids || []).filter(id => id !== 'wife_pension1').forEach(id => pairs.push({ src: id, dst: 'wife_pension1' }));
-    (ctx.wifePP2Ids || []).filter(id => id !== 'wife_pension2').forEach(id => pairs.push({ src: id, dst: 'wife_pension2' }));
+    if ((ctx.wifePP1Ids||[]).length) {
+      const dst1 = wdConsGetOrCreate('wife', 1);
+      (ctx.wifePP1Ids).forEach(id => pairs.push({ src: id, dst: dst1 }));
+    }
+    if ((ctx.wifePP2Ids||[]).length) {
+      const dst2 = wdConsGetOrCreate('wife', 2);
+      (ctx.wifePP2Ids).forEach(id => pairs.push({ src: id, dst: dst2 }));
+    }
   }
   if (!pairs.length) { alert('통합할 계좌가 없습니다.'); return; }
 
   if (mode === 'cash') {
     for (const { src } of pairs) {
-      const hasHolding = holdings.some(h => (h.accounts?.[src]?.qty || 0) > 0);
-      if (hasHolding) {
+      if (holdings.some(h => (h.accounts?.[src]?.qty || 0) > 0)) {
         alert(`[${getAccName(src)}]에 아직 보유 주식이 있습니다.\n먼저 모두 매도한 후 진행하세요.`);
         return;
       }
@@ -14673,7 +14702,7 @@ function wdPrepExecuteConsolidate() {
   if (!confirm(`선택한 계좌를 통합하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
 
   for (const { src, dst } of pairs) {
-    // 보유종목 처리
+    // 보유종목
     holdings.forEach(h => {
       if (!h.accounts) return;
       const s = h.accounts[src];
@@ -14721,6 +14750,7 @@ function wdPrepExecuteConsolidate() {
     });
   }
 
+  saveAppSettings();
   saveHoldings();
   saveDeposits();
   persistCashAccounts();
@@ -14731,8 +14761,48 @@ function wdPrepExecuteConsolidate() {
   renderPrincipalTable();
   renderEvalTable();
 
-  _wdStep4Done = true;
-  wdPrepRenderStep(4);
+  wdPrepGoStep(5);
+}
+
+function wdPrepStep5Html() {
+  const wt = getWifeTitle();
+  const consDsts = [
+    { id: 'wdcons_my_1',   label: `개인통합1(나)` },
+    { id: 'wdcons_my_2',   label: `개인통합2(나)` },
+    { id: 'wdcons_wife_1', label: `개인통합1(${wt})` },
+    { id: 'wdcons_wife_2', label: `개인통합2(${wt})` },
+  ].filter(d => computeAccountValue(d.id) > 0 ||
+    depositData.transactions.some(t => t.accId === d.id));
+  const fmtW = v => Math.round(v / 10_000).toLocaleString() + '만원';
+  const rows = consDsts.map(({ id, label }) => {
+    const total = computeAccountValue(id);
+    const anse  = Math.max(0, depositData.transactions
+      .filter(t => t.accId === id)
+      .reduce((s, t) => s + (Number(t.anse) || 0), 0));
+    const regular = Math.max(0, total - anse);
+    return `<tr>
+      <td style="padding:7px 10px;font-size:13px;font-weight:600">${label}</td>
+      <td style="padding:7px 10px;font-size:13px;text-align:right">${fmtW(total)}</td>
+      <td style="padding:7px 10px;font-size:13px;text-align:right;color:#64748b">${fmtW(anse)}</td>
+      <td style="padding:7px 10px;font-size:13px;text-align:right;color:#64748b">${fmtW(regular)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="wdprep-box wdprep-box-green" style="margin-bottom:16px">
+    ✅ 계좌 통합이 완료되었습니다! 새로운 통합계좌로 모든 데이터가 이전되었습니다.
+  </div>
+  <div style="margin-bottom:16px">
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">통합 결과</div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:left">계좌</th>
+        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:right">전체액</th>
+        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:right">안세공</th>
+        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:right">연금세재원</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" style="padding:8px;color:#94a3b8;text-align:center">통합된 계좌가 없습니다</td></tr>'}</tbody>
+    </table>
+  </div>
+  ${wdPrepStep4PrimaryHtml()}`;
 }
 
 function wdPrepFinish() {
