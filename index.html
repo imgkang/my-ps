@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.389';
+const APP_VERSION = 'MyPM v0.390';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -13913,7 +13913,7 @@ function computeAccComponents(accId, year) {
 }
 
 // ===== 인출준비 및 시작 마법사 =====
-const WD_PREP_STEPS = ['계좌 현황', '통합 제안', '국세청 서류', '인출 계좌 결정'];
+const WD_PREP_STEPS = ['계좌 현황', '국세청 서류', '통합 제안', '인출 계좌 결정'];
 let wdPrepCurrentStep = 1;
 
 function checkWdPrepCondition() {
@@ -13991,8 +13991,8 @@ function wdPrepGoStep(step) {
 function wdPrepRenderStep(step) {
   try {
     if (step === 1) return wdPrepStep1Html();
-    if (step === 2) return wdPrepStep2Html();
-    if (step === 3) return wdPrepStep3Html();
+    if (step === 2) return wdPrepStep3Html();
+    if (step === 3) return wdPrepStep2Html();
     if (step === 4) return wdPrepStep4Html();
   } catch (e) { return `<p style="color:#ef4444">오류: ${e.message}</p>`; }
   return '';
