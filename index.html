@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.398';
+const APP_VERSION = 'MyPM v0.399';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3844,8 +3844,8 @@ function saveTxn() {
       const oldAccId = t.accId;
       const oldAmount = t.amount;
       t.accId = accId; t.date = date; t.amount = signedAmount;
-      // 계좌이전 거래의 anse(차감 음수 포함)는 보존
-      if (!t.transfer) t.anse = anse || undefined;
+      // transfer-from의 anse는 보존, transfer-to는 편집 허용 (ISA→연금 이전 후 수정용)
+      if (!t.transfer || t.transfer.role === 'to') t.anse = anse || undefined;
       // 현금 역방향 반영 (구 계좌 원래 금액 차감, 신 계좌 새 금액 가산)
       cashAccounts[oldAccId] = (cashAccounts[oldAccId] || 0) - oldAmount;
       cashAccounts[accId]    = (cashAccounts[accId]    || 0) + signedAmount;
@@ -3989,7 +3989,7 @@ function saveTransferTxn() {
   const trAnse = trAnseRaw === '' ? 0 : Number(trAnseRaw.replace(/[^\d]/g, ''));
   const anseRemain = anseRemainRaw === '' ? fromAnse : Number(anseRemainRaw.replace(/[^\d]/g, ''));
   if (isNaN(trAnse) || trAnse < 0) { alert('이전할 안세공은 0 이상이어야 합니다.'); return; }
-  if (trAnse > fromAnse) { alert(`이전할 안세공(${trAnse.toLocaleString()})이 현재 안세공(${fromAnse.toLocaleString()})보다 클 수 없습니다.`); return; }
+  if (trAnse > trPrin) { alert(`이전할 안세공(${trAnse.toLocaleString()})이 이전 원금(${trPrin.toLocaleString()})을 초과할 수 없습니다.`); return; }
   if (isNaN(anseRemain) || anseRemain < 0) { alert('이전 후 남는 안세공은 0 이상이어야 합니다.'); return; }
   if (anseRemain > fromAnse) { alert(`이전 후 남는 안세공(${anseRemain.toLocaleString()})이 현재 안세공(${fromAnse.toLocaleString()})보다 클 수 없습니다.`); return; }
   const fromAnseDelta = Math.round(fromAnse - anseRemain);
