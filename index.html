@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.406';
+const APP_VERSION = 'MyPM v0.407';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14324,14 +14324,14 @@ function wdPrepStep2Html() {
   }
 
   let flowHtml = '';
-  if (myAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
+  if (myAllIds.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px">본인 · ${baseYear}년말 기준</div>`;
     flowHtml += renderPersonSection(myAllIds, myPP1Ids, myPP2Ids, _wdStep2Ctx.myKeepIds, 'my',
       'wdPrepMyPP1Anse', 'wdPrepMyPP1Reg', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg', defMyPP1Anse);
   } else {
     flowHtml += `<div class="wdprep-box wdprep-box-amber">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
   }
-  if (appSettings.hasWife && wifeAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
+  if (appSettings.hasWife && wifeAllIds.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     const wt = getWifeTitle();
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin:16px 0 8px">${wt} · ${baseYear}년말 기준</div>`;
     flowHtml += renderPersonSection(wifeAllIds, wifePP1Ids, wifePP2Ids, _wdStep2Ctx.wifeKeepIds, 'wife',
