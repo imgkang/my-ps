@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.407';
+const APP_VERSION = 'MyPM v0.408';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14233,7 +14233,7 @@ function wdPrepStep2Html() {
     if (visIds.length === 0) return `<div class="wdprep-box wdprep-box-amber">잔액이 있는 계좌가 없습니다.</div>`;
     if (visIds.length <= 1) return `<div class="wdprep-box wdprep-box-amber">계좌가 1개여서 통합이 필요하지 않습니다.</div>`;
 
-    const consolidatingIds = allNonDcIds.filter(id => !keepIds.includes(id));
+    const consolidatingIds = allIds.filter(id => !keepIds.includes(id));
     const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
     const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
     const totalAnseMv = consolidatingIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
