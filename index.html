@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.410';
+const APP_VERSION = 'MyPM v0.411';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7110,8 +7110,10 @@ function renderPrincipalTable() {
   const currentYear = new Date().getFullYear();
 
   const _allAccs = getActiveAccounts();
-  const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
-  const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
+  const _myExtraSet   = new Set((appSettings.my?.extraAccounts   || []).map(e => e.id));
+  const _wifeExtraSet = new Set((appSettings.wife?.extraAccounts || []).map(e => e.id));
+  const _activeMyIds   = _allAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id)   || _myExtraSet.has(id));
+  const _activeWifeIds = _allAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || _wifeExtraSet.has(id));
 
   const myRetireYr   = wdPlan?.periods?.[0]?.startYear || 9999;
   const wifeRetireYr = myRetireYr;
@@ -7315,8 +7317,10 @@ function renderEvalTable() {
   };
 
   const _evalAllAccs    = getActiveAccounts();
-  const _evalMyIds      = _evalAllAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
-  const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
+  const _evalMyExtraSet   = new Set((appSettings.my?.extraAccounts   || []).map(e => e.id));
+  const _evalWifeExtraSet = new Set((appSettings.wife?.extraAccounts || []).map(e => e.id));
+  const _evalMyIds      = _evalAllAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id)   || _evalMyExtraSet.has(id));
+  const _evalWifeIds    = _evalAllAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || _evalWifeExtraSet.has(id));
   const _evalAllIds     = [..._evalMyIds, ..._evalWifeIds];
   const _eBothRetireYr  = _evalWifeIds.length ? Math.max(_eMyRetireYr, _eWifeRetireYr) : _eMyRetireYr;
   const years = allYears;
@@ -7764,8 +7768,10 @@ function renderAnnualCharts() {
   const projRate = (Number((document.getElementById('projRate') || {}).value) || annualPlan.projRate || 7) / 100;
 
   const activeAccs = getActiveAccounts();
-  const myIds   = activeAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id) || (id.startsWith('extra_') && !id.startsWith('wife_extra_')));
-  const wifeIds = activeAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || id.startsWith('wife_extra_'));
+  const _wdMyExtraSet   = new Set((appSettings.my?.extraAccounts   || []).map(e => e.id));
+  const _wdWifeExtraSet = new Set((appSettings.wife?.extraAccounts || []).map(e => e.id));
+  const myIds   = activeAccs.map(a => a.id).filter(id => MY_ACC_IDS.includes(id)   || _wdMyExtraSet.has(id));
+  const wifeIds = activeAccs.map(a => a.id).filter(id => WIFE_ACC_IDS.includes(id) || _wdWifeExtraSet.has(id));
   const allIds  = [...myIds, ...wifeIds];
 
   // 원금 누적 (백만원)
@@ -14840,6 +14846,21 @@ function wdPrepExecuteConsolidate() {
     const pp2AnseW  = Math.max(0, totalAnseW - pp1AnseW);
     if ((ctx.wifePP1Ids||[]).length) applyAnseRedist('wdcons_wife_1', pp1AnseW);
     if ((ctx.wifePP2Ids||[]).length) applyAnseRedist('wdcons_wife_2', pp2AnseW);
+  }
+
+  // 잔액 없고 기록 없는 소스 계좌 자동 비활성화
+  for (const { src } of pairs) {
+    if (computeAccountValue(src) > 0) continue;
+    if (depositData.transactions.some(t => t.accId === src)) continue;
+    if (MY_ACC_IDS.includes(src)) {
+      appSettings.my.activeAccIds = (appSettings.my.activeAccIds||[]).filter(id => id !== src);
+    } else if (WIFE_ACC_IDS.includes(src)) {
+      appSettings.wife.activeAccIds = (appSettings.wife.activeAccIds||[]).filter(id => id !== src);
+    } else {
+      const myExtra = (appSettings.my?.extraAccounts||[]).find(e => e.id === src);
+      if (myExtra) myExtra.active = false;
+      else { const wEx = (appSettings.wife?.extraAccounts||[]).find(e => e.id === src); if (wEx) wEx.active = false; }
+    }
   }
 
   saveAppSettings();
