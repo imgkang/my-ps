@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.416';
+const APP_VERSION = 'MyPM v0.417';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14379,17 +14379,8 @@ function wdPrepStep2Html() {
     </div>
   </div>`;
 
-  const alreadyApplied = !!(wdConsolidated && wdConsolidated.startYear === (wdPlan?.startYear || 0));
-  const secD = `<div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <button onclick="wdPrepDoApply()" class="btn-primary" id="wdPrepApplyBtn" style="font-size:13px;padding:8px 20px">
-      📥 인출 시뮬레이션에 적용
-    </button>
-    ${alreadyApplied ? `<span style="font-size:12px;color:#166534;font-weight:600">✅ 현재 적용 중</span>` : ''}
-    <span id="wdPrepAppliedMsg" style="display:none;font-size:12px;color:#166534;font-weight:600">✅ 적용되었습니다!</span>
-  </div>`;
-
   return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">각 계좌를 개인통합1 또는 개인통합2로 배분하고, 통합1의 안세공 배정을 조정하세요.</p>
-    ${flowHtml}${secB}${secD}`;
+    ${flowHtml}${secB}`;
 }
 
 function wdPrepStep3Html() {
@@ -14664,15 +14655,6 @@ function wdPrepStep2UpdatePreview() {
         'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg');
 }
 
-function wdPrepDoApply() {
-  const myPP1AnseMv   = Number(document.getElementById('wdPrepMyPP1Anse')?.value)   || 0;
-  const wifePP1AnseMv = Number(document.getElementById('wdPrepWifePP1Anse')?.value) || 0;
-  wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv);
-  const btn = document.getElementById('wdPrepApplyBtn');
-  const msg = document.getElementById('wdPrepAppliedMsg');
-  if (btn) btn.textContent = '✅ 적용됨';
-  if (msg) { msg.style.display = ''; setTimeout(() => { if (msg) msg.style.display = 'none'; }, 2500); }
-}
 
 function wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv) {
   const startYear = wdPlan?.periods?.[0]?.startYear;
