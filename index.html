@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.404';
+const APP_VERSION = 'MyPM v0.405';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14124,7 +14124,7 @@ function wdPrepStep1Html() {
     ${wifeRows.length ? renderGroup(wifeRows, getWifeTitle(), '#fdf4ff', '#ede9fe', '#ddd6fe', wifeAgeInfo.eligible, wifeAgeInfo) : ''}
   </tbody>`;
 
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">계좌별 평가금액과 세금 재원을 확인합니다. <b>세공액 합계</b>가 인출 시 연금소득세 부과 기준입니다.</p>
+  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">계좌별 평가금액과 세금 재원을 확인합니다. <b>연금소득세재원</b>은 소득 및 세액공제를 받은 금액과 운용수익입니다.</p>
     <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
       <table class="wdprep-table">${thead}${tbody}</table>
     </div>
