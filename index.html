@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.408';
+const APP_VERSION = 'MyPM v0.409';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3240,15 +3240,21 @@ const DC_ACC_IDS   = new Set(['dc', 'wife_dc']);
 function getWifeTitle() { return (typeof appSettings !== 'undefined' && appSettings.wifeTitle) || '아내'; }
 function getAccName(id) {
   const acc = ACCOUNTS.find(a => a.id === id);
+  let name;
   if (acc) {
     const t = getWifeTitle();
-    return t === '아내' ? acc.name : acc.name.replace(/^아내/, t);
+    name = t === '아내' ? acc.name : acc.name.replace(/^아내/, t);
+  } else {
+    const myExtra = (appSettings.my?.extraAccounts || []).find(e => e.id === id);
+    if (myExtra) name = myExtra.name;
+    else {
+      const wifeExtra = (appSettings.wife?.extraAccounts || []).find(e => e.id === id);
+      name = wifeExtra ? wifeExtra.name : id;
+    }
   }
-  const myExtra = (appSettings.my?.extraAccounts || []).find(e => e.id === id);
-  if (myExtra) return myExtra.name;
-  const wifeExtra = (appSettings.wife?.extraAccounts || []).find(e => e.id === id);
-  if (wifeExtra) return wifeExtra.name;
-  return id;
+  const started = (appSettings.my?.wdStartedAccIds||[]).includes(id) ||
+                  (appSettings.wife?.wdStartedAccIds||[]).includes(id);
+  return started ? name + ' 🍇' : name;
 }
 
 // ===== 앱 설정 =====
@@ -3270,6 +3276,7 @@ function getDefaultPersonCfg(isWife) {
     activeAccIds:   isWife ? ['wife_pension1'] : ['pension1'],
     extraAccounts:  [],
     withdrawalAccIds: [],
+    wdStartedAccIds: [],
     np:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 100, delayYears: 0, earlyYears: 0 },
     gp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, earlyYears: 0 },
     sp:  { use: false, startYear: cy+7, startMonth: 1, monthlyManwon: 0, delayYears: 0, earlyYears: 0 },
@@ -3289,6 +3296,7 @@ function _deepMergePersonCfg(def, saved) {
   r.activeAccIds  = Array.isArray(saved.activeAccIds)  ? saved.activeAccIds  : def.activeAccIds;
   r.extraAccounts = Array.isArray(saved.extraAccounts) ? saved.extraAccounts : def.extraAccounts;
   r.withdrawalAccIds = Array.isArray(saved.withdrawalAccIds) ? saved.withdrawalAccIds : def.withdrawalAccIds;
+  r.wdStartedAccIds  = Array.isArray(saved.wdStartedAccIds)  ? saved.wdStartedAccIds  : def.wdStartedAccIds;
   return r;
 }
 
@@ -3792,7 +3800,8 @@ function updateTxnAnseVisibility() {
 function openTxnEditor(editId) {
   editingTxnId = editId || null;
   const selAcc = document.getElementById('txnAccount');
-  selAcc.innerHTML = getActiveAccounts().map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  const _wdStarted = new Set([...(appSettings.my?.wdStartedAccIds||[]), ...(appSettings.wife?.wdStartedAccIds||[])]);
+  selAcc.innerHTML = getActiveAccounts().filter(a => !_wdStarted.has(a.id)).map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
   const titleEl = document.getElementById('txnEditorTitle');
   if (editId) {
     const t = depositData.transactions.find(x => x.id === editId);
@@ -13916,7 +13925,7 @@ function computeAccComponents(accId, year) {
 }
 
 // ===== 인출준비 및 시작 마법사 =====
-const WD_PREP_STEPS = ['계좌 현황', '국세청 서류', '통합 제안', '통합 실행', '통합 결과'];
+const WD_PREP_STEPS = ['계좌 현황', '국세청 서류', '통합 제안', '통합 실행', '인출계좌선택'];
 let wdPrepCurrentStep = 1;
 
 function checkWdPrepCondition() {
@@ -14848,59 +14857,117 @@ function wdPrepExecuteConsolidate() {
 }
 
 function wdPrepStep5Html() {
-  const wt  = getWifeTitle();
-  const ctx  = _wdStep2Ctx;
-  const comps = ctx?.comps || {};
+  const wt        = getWifeTitle();
+  const ctx       = _wdStep2Ctx;
+  const comps     = ctx?.comps || {};
+  const startYear = wdPlan?.startYear || new Date().getFullYear();
+  const baseYear  = startYear - 1;
+  const fmtW = v => Math.round(v / 10_000).toLocaleString() + '만원';
 
-  // Compute anse for each consolidated account using Step 3 배정 values
-  const mvToW = mv => mv * 1_000_000;
   function consAnse(dstKey) {
     if (!ctx) return 0;
-    const isPP1 = dstKey.endsWith('_1');
-    const person = dstKey.startsWith('my') ? 'my' : 'wife';
-    const allIds = [...(ctx[`${person}PP1Ids`]||[]), ...(ctx[`${person}PP2Ids`]||[])];
-    const totalAnseW = allIds.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
-    const savedMv = ctx[person === 'my' ? 'savedMyPP1Anse' : 'savedWifePP1Anse'] || 0;
-    const pp1AnseMv = Math.min(savedMv, Math.floor(totalAnseW / 1_000_000));
-    const pp1AnseW = pp1AnseMv * 1_000_000;
-    return isPP1 ? pp1AnseW : Math.max(0, totalAnseW - pp1AnseW);
+    const isPP1   = dstKey.endsWith('_1');
+    const person  = dstKey.startsWith('my') ? 'my' : 'wife';
+    const allIds  = [...(ctx[`${person}PP1Ids`]||[]), ...(ctx[`${person}PP2Ids`]||[])];
+    const totW    = allIds.reduce((s, id) => s + (comps[id]?.anse || 0), 0);
+    const sv      = ctx[person === 'my' ? 'savedMyPP1Anse' : 'savedWifePP1Anse'] || 0;
+    const pp1W    = Math.min(sv, Math.floor(totW / 1_000_000)) * 1_000_000;
+    return isPP1 ? pp1W : Math.max(0, totW - pp1W);
   }
 
-  const consDsts = [
-    { id: 'wdcons_my_1',   label: `개인통합1(나)`,     dstKey: 'my_1' },
-    { id: 'wdcons_my_2',   label: `개인통합2(나)`,     dstKey: 'my_2' },
-    { id: 'wdcons_wife_1', label: `개인통합1(${wt})`,  dstKey: 'wife_1' },
-    { id: 'wdcons_wife_2', label: `개인통합2(${wt})`,  dstKey: 'wife_2' },
-  ].filter(d => computeAccountValue(d.id) > 0 ||
-    depositData.transactions.some(t => t.accId === d.id));
-  const fmtW = v => Math.round(v / 10_000).toLocaleString() + '만원';
-  const rows = consDsts.map(({ id, label, dstKey }) => {
-    const total   = computeAccountValue(id);
-    const anse    = consAnse(dstKey);
-    const regular = Math.max(0, total - anse);
-    return `<tr>
-      <td style="padding:7px 10px;font-size:13px;font-weight:600">${label}</td>
-      <td style="padding:7px 10px;font-size:13px;text-align:right">${fmtW(total)}</td>
-      <td style="padding:7px 10px;font-size:13px;text-align:right;color:#64748b">${fmtW(anse)}</td>
-      <td style="padding:7px 10px;font-size:13px;text-align:right;color:#64748b">${fmtW(regular)}</td>
-    </tr>`;
-  }).join('');
-  return `<div class="wdprep-box wdprep-box-green" style="margin-bottom:16px">
-    ✅ 계좌 통합이 완료되었습니다! 새로운 통합계좌로 모든 데이터가 이전되었습니다.
-  </div>
-  <div style="margin-bottom:16px">
-    <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">통합 결과</div>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-      <thead><tr style="background:#f8fafc">
-        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:left">계좌</th>
-        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:right">전체액</th>
-        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:right">안세공</th>
-        <th style="padding:7px 10px;font-size:11px;color:#64748b;text-align:right">연금세재원</th>
-      </tr></thead>
-      <tbody>${rows || '<tr><td colspan="4" style="padding:8px;color:#94a3b8;text-align:center">통합된 계좌가 없습니다</td></tr>'}</tbody>
-    </table>
-  </div>
-  ${wdPrepStep4PrimaryHtml()}`;
+  const consAnseMap = {
+    'wdcons_my_1': () => consAnse('my_1'),   'wdcons_my_2': () => consAnse('my_2'),
+    'wdcons_wife_1': () => consAnse('wife_1'), 'wdcons_wife_2': () => consAnse('wife_2'),
+  };
+
+  function getAccAnse(id) {
+    return consAnseMap[id] ? consAnseMap[id]() : computeAccComponents(id, baseYear).anse;
+  }
+
+  function renderPersonSection(who, sectionLabel) {
+    const allAcc = getActiveAccounts().filter(a =>
+      who === 'my'
+        ? MY_ACC_IDS.includes(a.id) || (appSettings.my?.extraAccounts||[]).some(e => e.id === a.id)
+        : WIFE_ACC_IDS.includes(a.id) || (appSettings.wife?.extraAccounts||[]).some(e => e.id === a.id)
+    );
+    const visible = allAcc.filter(a => computeAccountValue(a.id) > 0);
+    if (visible.length === 0) return '';
+
+    const birthYear = who === 'my' ? (appSettings.myBirthYear||0) : (appSettings.wifeBirthYear||0);
+    const age       = birthYear ? startYear - birthYear : null;
+    const canStart  = !birthYear || age >= 55;
+    const started   = appSettings[who]?.wdStartedAccIds || [];
+
+    const ageNote = !canStart
+      ? `<div style="font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 10px;margin-bottom:8px">
+           ⛔ ${startYear}년 기준 만 ${age}세 — 만 55세부터 인출 시작 가능
+         </div>`
+      : '';
+
+    const rows = visible.map(a => {
+      const total = computeAccountValue(a.id);
+      const anse  = getAccAnse(a.id);
+      const reg   = Math.max(0, total - anse);
+      const isOn  = started.includes(a.id);
+      let btn;
+      if (!canStart) {
+        btn = `<button disabled style="font-size:11px;padding:4px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#f1f5f9;color:#94a3b8;cursor:not-allowed">⛔ 만 55세 미만</button>`;
+      } else if (isOn) {
+        btn = `<button onclick="wdStartAccToggle('${a.id}')" style="font-size:11px;padding:4px 10px;border:1px solid #f59e0b;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:700;cursor:pointer">🍇 인출 중</button>`;
+      } else {
+        btn = `<button onclick="wdStartAccToggle('${a.id}')" style="font-size:11px;padding:4px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#475569;cursor:pointer">인출 시작</button>`;
+      }
+      return `<tr style="border-bottom:1px solid #f1f5f9">
+        <td style="padding:7px 8px;font-size:12px;font-weight:600">${getAccName(a.id)}</td>
+        <td style="padding:7px 8px;font-size:12px;text-align:right">${fmtW(total)}</td>
+        <td style="padding:7px 8px;font-size:12px;text-align:right;color:#64748b">${fmtW(anse)}</td>
+        <td style="padding:7px 8px;font-size:12px;text-align:right;color:#64748b">${fmtW(reg)}</td>
+        <td style="padding:7px 8px;text-align:center">${btn}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin-bottom:6px">${sectionLabel}</div>
+      ${ageNote}
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:7px 8px;font-size:11px;color:#64748b;text-align:left">계좌</th>
+          <th style="padding:7px 8px;font-size:11px;color:#64748b;text-align:right">전체액</th>
+          <th style="padding:7px 8px;font-size:11px;color:#64748b;text-align:right">안세공</th>
+          <th style="padding:7px 8px;font-size:11px;color:#64748b;text-align:right">연금세재원</th>
+          <th style="padding:7px 8px;font-size:11px;color:#64748b;text-align:center">인출 시작</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  const hasConsolidation = ['wdcons_my_1','wdcons_my_2','wdcons_wife_1','wdcons_wife_2']
+    .some(id => computeAccountValue(id) > 0);
+  const successBox = hasConsolidation
+    ? `<div class="wdprep-box wdprep-box-green" style="margin-bottom:16px">
+         ✅ 계좌 통합이 완료되었습니다! 새로운 통합계좌로 모든 데이터가 이전되었습니다.
+       </div>`
+    : '';
+
+  return `${successBox}
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      인출을 시작할 계좌를 선택하세요. 🍇 인출 중인 계좌는 입출금에서 입금·출금이 제한되며, 인출기록에서 관리됩니다.
+    </p>
+    ${renderPersonSection('my', '본인')}
+    ${appSettings.hasWife ? renderPersonSection('wife', wt) : ''}
+    ${wdPrepStep4PrimaryHtml()}`;
+}
+
+function wdStartAccToggle(accId) {
+  const isMyBuiltin = MY_ACC_IDS.includes(accId);
+  const isMyExtra   = (appSettings.my?.extraAccounts||[]).some(e => e.id === accId);
+  const cfg = (isMyBuiltin || isMyExtra) ? appSettings.my : appSettings.wife;
+  if (!cfg.wdStartedAccIds) cfg.wdStartedAccIds = [];
+  const arr = cfg.wdStartedAccIds;
+  cfg.wdStartedAccIds = arr.includes(accId) ? arr.filter(id => id !== accId) : [...arr, accId];
+  saveAppSettings();
+  wdPrepRenderStep(5);
 }
 
 function wdPrepFinish() {
