@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.405';
+const APP_VERSION = 'MyPM v0.406';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14176,32 +14176,49 @@ function wdPrepStep2Html() {
   if (!comps['pension1'])      comps['pension1']      = {..._zero};
   if (!comps['wife_pension1']) comps['wife_pension1'] = {..._zero};
 
-  const myAllNonDc   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
-  const wifeAllNonDc = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
-  const myAutoResult   = wdPrepComputeAutoConsolidate(myAllNonDc, comps);
-  const wifeAutoResult = wifeAllNonDc.length ? wdPrepComputeAutoConsolidate(wifeAllNonDc, comps) : null;
+  const myAllIds   = MY_ACC_IDS;
+  const wifeAllIds = appSettings.hasWife ? WIFE_ACC_IDS : [];
+  const myNonDcIds   = myAllIds.filter(id => !DC_ACC_IDS.has(id));
+  const wifeNonDcIds = wifeAllIds.filter(id => !DC_ACC_IDS.has(id));
+  const myAutoResult   = wdPrepComputeAutoConsolidate(myNonDcIds, comps);
+  const wifeAutoResult = wifeNonDcIds.length ? wdPrepComputeAutoConsolidate(wifeNonDcIds, comps) : null;
+
+  // 잔액 있는 계좌 수 (DC 포함)
+  const myActiveCount   = myAllIds.filter(id => mv(comps[id]?.total||0) > 0).length;
+  const wifeActiveCount = wifeAllIds.filter(id => mv(comps[id]?.total||0) > 0).length;
 
   // 첫 렌더이면 자동 제안으로 초기화, 이후엔 사용자 배분 유지
   const c = wdConsolidated;
+  const myDcKeep   = myAllIds.filter(id => DC_ACC_IDS.has(id) && mv(comps[id]?.total||0) > 0);
+  const wifeDcKeep = wifeAllIds.filter(id => DC_ACC_IDS.has(id) && mv(comps[id]?.total||0) > 0);
   if (!_wdStep2Ctx || _wdStep2Ctx.myPP1Ids === undefined) {
     _wdStep2Ctx = {
       comps,
       myAutoResult, wifeAutoResult,
-      myPP1Ids:    myAutoResult   ? [...myAutoResult.pp1Ids]   : myAllNonDc.filter(id => mv(comps[id]?.total||0) > 0),
+      myPP1Ids:    myAutoResult   ? [...myAutoResult.pp1Ids]   : myNonDcIds.filter(id => mv(comps[id]?.total||0) > 0),
       myPP2Ids:    myAutoResult   ? [...myAutoResult.pp2Ids]   : [],
-      myKeepIds:   [],
-      wifePP1Ids:  wifeAutoResult ? [...wifeAutoResult.pp1Ids] : wifeAllNonDc.filter(id => mv(comps[id]?.total||0) > 0),
+      myKeepIds:   [...myDcKeep],    // DC 기본값: 유지
+      wifePP1Ids:  wifeAutoResult ? [...wifeAutoResult.pp1Ids] : wifeNonDcIds.filter(id => mv(comps[id]?.total||0) > 0),
       wifePP2Ids:  wifeAutoResult ? [...wifeAutoResult.pp2Ids] : [],
-      wifeKeepIds: [],
+      wifeKeepIds: [...wifeDcKeep],  // DC 기본값: 유지
       savedMyPP1Anse:   c ? mv(c.myPP1Anse)   : 0,
       savedWifePP1Anse: c ? mv(c.wifePP1Anse) : 0,
     };
   } else {
-    if (!_wdStep2Ctx.myKeepIds)   _wdStep2Ctx.myKeepIds   = [];
-    if (!_wdStep2Ctx.wifeKeepIds) _wdStep2Ctx.wifeKeepIds = [];
+    if (!_wdStep2Ctx.myKeepIds)   _wdStep2Ctx.myKeepIds   = [...myDcKeep];
+    if (!_wdStep2Ctx.wifeKeepIds) _wdStep2Ctx.wifeKeepIds = [...wifeDcKeep];
     _wdStep2Ctx.comps          = comps;
     _wdStep2Ctx.myAutoResult   = myAutoResult;
     _wdStep2Ctx.wifeAutoResult = wifeAutoResult;
+  }
+
+  // 양쪽 모두 계좌 1개 이하 → Step 3 통합 불가, Step 4로 안내
+  if (myActiveCount <= 1 && (!appSettings.hasWife || wifeActiveCount <= 1)) {
+    return `<div class="wdprep-box wdprep-box-amber" style="text-align:center;padding:20px 16px">
+      <div style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:8px">💡 통합이 필요하지 않습니다</div>
+      <div style="font-size:12px;color:#78350f;margin-bottom:14px">계좌가 1개 이하여서 통합 단계를 건너뜁니다.</div>
+      <button onclick="wdPrepGoStep(4)" style="padding:8px 20px;font-size:13px;font-weight:700;background:#f59e0b;color:#fff;border:none;border-radius:8px;cursor:pointer">다음 단계로 →</button>
+    </div>`;
   }
 
   const myPP1Ids   = _wdStep2Ctx.myPP1Ids;
@@ -14211,9 +14228,10 @@ function wdPrepStep2Html() {
   const defMyPP1Anse   = _wdStep2Ctx.savedMyPP1Anse   ?? 0;
   const defWifePP1Anse = _wdStep2Ctx.savedWifePP1Anse ?? 0;
 
-  function renderPersonSection(allNonDcIds, pp1Ids, pp2Ids, keepIds, who, pp1InputId, pp1RegId, pp2AnseId, pp2RegId, defPP1Anse) {
-    const visIds = allNonDcIds.filter(id => mv(comps[id]?.total||0) > 0 || mv(comps[id]?.anse||0) > 0);
-    if (visIds.length === 0) return `<div class="wdprep-box wdprep-box-amber">잔액이 있는 비DC 계좌가 없습니다.</div>`;
+  function renderPersonSection(allIds, pp1Ids, pp2Ids, keepIds, who, pp1InputId, pp1RegId, pp2AnseId, pp2RegId, defPP1Anse) {
+    const visIds = allIds.filter(id => mv(comps[id]?.total||0) > 0 || mv(comps[id]?.anse||0) > 0);
+    if (visIds.length === 0) return `<div class="wdprep-box wdprep-box-amber">잔액이 있는 계좌가 없습니다.</div>`;
+    if (visIds.length <= 1) return `<div class="wdprep-box wdprep-box-amber">계좌가 1개여서 통합이 필요하지 않습니다.</div>`;
 
     const consolidatingIds = allNonDcIds.filter(id => !keepIds.includes(id));
     const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
@@ -14233,6 +14251,7 @@ function wdPrepStep2Html() {
       const comp   = comps[id] || _zero;
       const totMv  = mv(comp.total);
       const anseMv = mv(comp.anse);
+      const isDC   = DC_ACC_IDS.has(id);
       const inPP1  = pp1Ids.includes(id);
       const inPP2  = pp2Ids.includes(id);
       const inKeep = keepIds.includes(id);
@@ -14243,9 +14262,11 @@ function wdPrepStep2Html() {
                        : 'background:#f8fafc;border-color:#cbd5e1;color:#94a3b8';
       const bk = inKeep ? 'background:#fef3c7;border-color:#f59e0b;color:#92400e'
                         : 'background:#f8fafc;border-color:#cbd5e1;color:#94a3b8';
+      const bkLabel = isDC ? '유지 (권장)' : '유지';
+      const dcBadge = isDC ? `<span style="font-size:10px;background:#fef3c7;color:#b45309;border-radius:3px;padding:1px 4px;margin-left:5px;font-weight:600">DC</span>` : '';
       return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;${border}flex-wrap:wrap">
         <div style="font-size:12px">
-          <span style="font-weight:600">${getAccName(id)}</span>
+          <span style="font-weight:600">${getAccName(id)}</span>${dcBadge}
           <span style="color:#64748b;margin-left:6px">${fmt(totMv)}백만원${anseMv > 0 ? ` · 안세공 <b>${fmt(anseMv)}</b>백만원` : ''}</span>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
@@ -14254,7 +14275,7 @@ function wdPrepStep2Html() {
           <button onclick="wdPrepToggleBucket('${id}','${who}',2)"
             style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${b2}">→ 통합2</button>
           <button onclick="wdPrepToggleBucket('${id}','${who}',0)"
-            style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${bk}">유지</button>
+            style="padding:4px 9px;font-size:11px;border-radius:5px;border:1.5px solid;cursor:pointer;font-weight:700;${bk}">${bkLabel}</button>
         </div>
       </div>`;
     }).join('');
@@ -14305,7 +14326,7 @@ function wdPrepStep2Html() {
   let flowHtml = '';
   if (myAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px">본인 · ${baseYear}년말 기준</div>`;
-    flowHtml += renderPersonSection(myAllNonDc, myPP1Ids, myPP2Ids, _wdStep2Ctx.myKeepIds, 'my',
+    flowHtml += renderPersonSection(myAllIds, myPP1Ids, myPP2Ids, _wdStep2Ctx.myKeepIds, 'my',
       'wdPrepMyPP1Anse', 'wdPrepMyPP1Reg', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg', defMyPP1Anse);
   } else {
     flowHtml += `<div class="wdprep-box wdprep-box-amber">비DC 계좌 조합이 없어 자동 통합을 제안할 수 없습니다.</div>`;
@@ -14313,7 +14334,7 @@ function wdPrepStep2Html() {
   if (appSettings.hasWife && wifeAllNonDc.some(id => mv(comps[id]?.total||0) + mv(comps[id]?.anse||0) > 0)) {
     const wt = getWifeTitle();
     flowHtml += `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.06em;margin:16px 0 8px">${wt} · ${baseYear}년말 기준</div>`;
-    flowHtml += renderPersonSection(wifeAllNonDc, wifePP1Ids, wifePP2Ids, _wdStep2Ctx.wifeKeepIds, 'wife',
+    flowHtml += renderPersonSection(wifeAllIds, wifePP1Ids, wifePP2Ids, _wdStep2Ctx.wifeKeepIds, 'wife',
       'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg', defWifePP1Anse);
   }
 
@@ -14478,6 +14499,9 @@ function wdPrepStep4Html() {
         </tr></thead>
         <tbody>${summaryRows}</tbody>
       </table>
+      ${pairs.some(p => DC_ACC_IDS.has(p.src)) ? `<div class="wdprep-box" style="background:#fefce8;border-color:#fde047;margin-top:8px;font-size:12px;color:#713f12">
+        ⚠️ DC 계좌 포함 시 해당 통합계좌 인출 순서: <b>비과세재원 → 퇴직금 → 운용수익</b>
+      </div>` : ''}
     </div>
 
     ${personChecks ? `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc">
@@ -14542,10 +14566,10 @@ function wdPrepToggleBucket(accId, who, targetBucket) {
     _wdStep2Ctx[savedKey] = Math.max(minA, Math.min(maxA, _wdStep2Ctx[savedKey] || 0));
   };
   _clampAnse(_wdStep2Ctx.myPP1Ids, _wdStep2Ctx.myPP2Ids, _wdStep2Ctx.myKeepIds || [],
-             MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)), 'savedMyPP1Anse');
+             MY_ACC_IDS, 'savedMyPP1Anse');
   if (appSettings.hasWife)
     _clampAnse(_wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids, _wdStep2Ctx.wifeKeepIds || [],
-               WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)), 'savedWifePP1Anse');
+               WIFE_ACC_IDS, 'savedWifePP1Anse');
   const content = document.getElementById('wdPrepContent');
   if (content) content.innerHTML = wdPrepStep2Html();
 }
@@ -14556,15 +14580,18 @@ function wdPrepResetBuckets(who) {
   if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
   const wifeEl = document.getElementById('wdPrepWifePP1Anse');
   if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
+  const _mv = v => Math.round(v / 1_000_000);
   if (who === 'my' && _wdStep2Ctx.myAutoResult) {
     _wdStep2Ctx.myPP1Ids  = [..._wdStep2Ctx.myAutoResult.pp1Ids];
     _wdStep2Ctx.myPP2Ids  = [..._wdStep2Ctx.myAutoResult.pp2Ids];
-    _wdStep2Ctx.myKeepIds = [];
+    const dcKeep = MY_ACC_IDS.filter(id => DC_ACC_IDS.has(id) && _mv(_wdStep2Ctx.comps[id]?.total||0) > 0);
+    _wdStep2Ctx.myKeepIds = [...dcKeep];
     _wdStep2Ctx.savedMyPP1Anse = 0;
   } else if (who === 'wife' && _wdStep2Ctx.wifeAutoResult) {
     _wdStep2Ctx.wifePP1Ids  = [..._wdStep2Ctx.wifeAutoResult.pp1Ids];
     _wdStep2Ctx.wifePP2Ids  = [..._wdStep2Ctx.wifeAutoResult.pp2Ids];
-    _wdStep2Ctx.wifeKeepIds = [];
+    const dcKeep = WIFE_ACC_IDS.filter(id => DC_ACC_IDS.has(id) && _mv(_wdStep2Ctx.comps[id]?.total||0) > 0);
+    _wdStep2Ctx.wifeKeepIds = [...dcKeep];
     _wdStep2Ctx.savedWifePP1Anse = 0;
   }
   const content = document.getElementById('wdPrepContent');
@@ -14578,13 +14605,14 @@ function wdPrepStep2UpdatePreview() {
   const mv = v => Math.round(v / M);
   const fmt = n => n.toLocaleString();
   const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
-  const myAllNonDc   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
-  const wifeAllNonDc = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
+  const myKeepIds   = _wdStep2Ctx.myKeepIds   || [];
+  const wifeKeepIds = _wdStep2Ctx.wifeKeepIds || [];
 
-  const upd = (pp1Ids, pp2Ids, allNonDcIds, pp1InputId, pp1RegId, pp2AnseId, pp2RegId) => {
+  const upd = (pp1Ids, pp2Ids, keepIds, allIds, pp1InputId, pp1RegId, pp2AnseId, pp2RegId) => {
+    const consolidating = allIds.filter(id => !keepIds.includes(id));
     const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
     const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total||0), 0);
-    const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
+    const totalAnseMv = consolidating.reduce((s, id) => s + mv(comps[id]?.anse||0), 0);
     const minAnseMv   = Math.max(0, totalAnseMv - pp2TotalMv);
     const maxAnseMv   = Math.min(pp1TotalMv, totalAnseMv);
     const inp = document.getElementById(pp1InputId);
@@ -14599,10 +14627,10 @@ function wdPrepStep2UpdatePreview() {
     set(pp2RegId,  `연금소득세재원: ${fmt(pp2Reg)}백만원`);
   };
 
-  upd(myPP1Ids, myPP2Ids, myAllNonDc,
+  upd(myPP1Ids, myPP2Ids, myKeepIds, MY_ACC_IDS,
       'wdPrepMyPP1Anse', 'wdPrepMyPP1Reg', 'wdPrepMyPP2Anse', 'wdPrepMyPP2Reg');
   if (appSettings.hasWife && wifePP1Ids)
-    upd(wifePP1Ids, wifePP2Ids, wifeAllNonDc,
+    upd(wifePP1Ids, wifePP2Ids, wifeKeepIds, WIFE_ACC_IDS,
         'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg');
 }
 
