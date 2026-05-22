@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.411';
+const APP_VERSION = 'MyPM v0.412';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3445,7 +3445,7 @@ function loadDeposits() {
           ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {}),
           ...(t.autoFromPlan ? { autoFromPlan: t.autoFromPlan } : {})
         }))
-        .filter(t => t.accId && t.date && (t.amount !== 0 || t.anse) && ACCOUNTS.find(a => a.id === t.accId));
+        .filter(t => t.accId && t.date && (t.amount !== 0 || t.anse));
       return { transactions: txns };
     }
 
@@ -4625,7 +4625,7 @@ function importFromFile(event) {
               ...(Number(t.anse) ? { anse: Number(t.anse) } : {}),
               ...(t.transfer && typeof t.transfer === 'object' ? { transfer: t.transfer } : {})
             }))
-            .filter(t => t.accId && t.date && (t.amount !== 0 || t.anse) && ACCOUNTS.find(a => a.id === t.accId));
+            .filter(t => t.accId && t.date && (t.amount !== 0 || t.anse));
         } else if (Array.isArray(src.deposits.years) && src.deposits.entries) {
           // 구형식 → 신형식 변환
           for (const acc of ACCOUNTS) {
