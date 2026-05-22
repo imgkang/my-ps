@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.412';
+const APP_VERSION = 'MyPM v0.413';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4296,8 +4296,9 @@ function computeAccountValue(accId) {
 }
 
 function openAccountDetail(accId) {
-  const acc = ACCOUNTS.find(a => a.id === accId);
-  if (!acc) return;
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  if (!activeIds.has(accId)) return;
+  const accName = getAccName(accId);
 
   const items = holdings
     .filter(h => h.accounts && h.accounts[accId] && h.accounts[accId].qty > 0)
@@ -4324,7 +4325,7 @@ function openAccountDetail(accId) {
   const totalProfitRate = profitBase > 0 ? (totalProfit / profitBase) * 100 : null;
   const accDayChange = items.reduce((s, x) => s + x.dayChange, 0);
 
-  document.getElementById('detailTitle').textContent = '💼 ' + acc.name;
+  document.getElementById('detailTitle').textContent = '💼 ' + accName;
   document.getElementById('detailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${formatKRW(accCash)}`;
 
   const profitSign = totalProfit >= 0 ? '+' : '';
