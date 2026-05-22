@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.414';
+const APP_VERSION = 'MyPM v0.415';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14197,11 +14197,17 @@ function wdPrepStep2Html() {
   for (const id of MY_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
   if (appSettings.hasWife)
     for (const id of WIFE_ACC_IDS) comps[id] = computeAccComponents(id, baseYear);
+
+  // 활성화된 통합계좌도 소스 후보에 포함 (재통합 지원)
+  const myWdConsIds   = (appSettings.my?.extraAccounts   || []).filter(e => e.active !== false && e.id.startsWith('wdcons_my_')).map(e => e.id);
+  const wifeWdConsIds = (appSettings.wife?.extraAccounts || []).filter(e => e.active !== false && e.id.startsWith('wdcons_wife_')).map(e => e.id);
+  for (const id of [...myWdConsIds, ...wifeWdConsIds]) comps[id] = computeAccComponents(id, baseYear);
+
   if (!comps['pension1'])      comps['pension1']      = {..._zero};
   if (!comps['wife_pension1']) comps['wife_pension1'] = {..._zero};
 
-  const myAllIds   = MY_ACC_IDS;
-  const wifeAllIds = appSettings.hasWife ? WIFE_ACC_IDS : [];
+  const myAllIds   = [...MY_ACC_IDS,   ...myWdConsIds];
+  const wifeAllIds = appSettings.hasWife ? [...WIFE_ACC_IDS, ...wifeWdConsIds] : [];
   const myNonDcIds   = myAllIds.filter(id => !DC_ACC_IDS.has(id));
   const wifeNonDcIds = wifeAllIds.filter(id => !DC_ACC_IDS.has(id));
   const myAutoResult   = wdPrepComputeAutoConsolidate(myNonDcIds, comps);
@@ -14740,23 +14746,35 @@ function wdPrepExecuteConsolidate() {
 
   // 신규 통합계좌 생성 및 pairs 구성 (ALL srcIds 포함)
   const pairs = [];
+  // 재통합 지원: 기존 wdcons_* 번호 다음부터 사용
+  const _nextConsNum = (person) => {
+    const cfg = appSettings[person === 'my' ? 'my' : 'wife'];
+    const nums = (cfg.extraAccounts || [])
+      .filter(e => e.id.startsWith(`wdcons_${person}_`))
+      .map(e => parseInt(e.id.replace(`wdcons_${person}_`, '')))
+      .filter(n => !isNaN(n));
+    return nums.length ? Math.max(...nums) + 1 : 1;
+  };
+  const myBase   = runMy   ? _nextConsNum('my')   : 0;
+  const wifeBase = runWife ? _nextConsNum('wife') : 0;
+
   if (runMy) {
     if ((ctx.myPP1Ids||[]).length) {
-      const dst1 = wdConsGetOrCreate('my', 1);
+      const dst1 = wdConsGetOrCreate('my', myBase);
       (ctx.myPP1Ids).forEach(id => pairs.push({ src: id, dst: dst1 }));
     }
     if ((ctx.myPP2Ids||[]).length) {
-      const dst2 = wdConsGetOrCreate('my', 2);
+      const dst2 = wdConsGetOrCreate('my', myBase + 1);
       (ctx.myPP2Ids).forEach(id => pairs.push({ src: id, dst: dst2 }));
     }
   }
   if (runWife) {
     if ((ctx.wifePP1Ids||[]).length) {
-      const dst1 = wdConsGetOrCreate('wife', 1);
+      const dst1 = wdConsGetOrCreate('wife', wifeBase);
       (ctx.wifePP1Ids).forEach(id => pairs.push({ src: id, dst: dst1 }));
     }
     if ((ctx.wifePP2Ids||[]).length) {
-      const dst2 = wdConsGetOrCreate('wife', 2);
+      const dst2 = wdConsGetOrCreate('wife', wifeBase + 1);
       (ctx.wifePP2Ids).forEach(id => pairs.push({ src: id, dst: dst2 }));
     }
   }
