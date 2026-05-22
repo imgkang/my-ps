@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.409';
+const APP_VERSION = 'MyPM v0.410';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14967,7 +14967,8 @@ function wdStartAccToggle(accId) {
   const arr = cfg.wdStartedAccIds;
   cfg.wdStartedAccIds = arr.includes(accId) ? arr.filter(id => id !== accId) : [...arr, accId];
   saveAppSettings();
-  wdPrepRenderStep(5);
+  const content = document.getElementById('wdPrepContent');
+  if (content) content.innerHTML = wdPrepRenderStep(5);
 }
 
 function wdPrepFinish() {
