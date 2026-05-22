@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.415';
+const APP_VERSION = 'MyPM v0.416';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -11433,6 +11433,7 @@ function saveSettingsModal() {
     myBirthYear:   n('cfg_myBirthYear'),
     myBirthMonth:  n('cfg_myBirthMonth') || 1,
     hasWife,
+    wdChartPV: appSettings.wdChartPV || {},
     wifeTitle:      hasWife ? wifeTitle : appSettings.wifeTitle,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
@@ -12912,7 +12913,7 @@ function _wdGetOrCreateTooltip() {
 function _wdShowChartInfo(chart, dataIndex) {
   const chartN = parseInt((chart.canvas.id || '').replace('wdChart', '')) || 1;
   const yr = chart.data.labels[dataIndex];
-  const unit = _wdChartPV[chartN] ? '백만원 (현재가치)' : '백만원';
+  const unit = (appSettings.wdChartPV || {})[chartN] ? '백만원 (현재가치)' : '백만원';
   const rows = chart.data.datasets.map(ds => {
     const v = Math.round(ds.data[dataIndex] || 0).toLocaleString('ko-KR');
     const bg = ds.backgroundColor, bc = ds.borderColor;
@@ -12940,7 +12941,7 @@ function _wdExternalTooltip(context) {
   }
   _wdActiveTooltipChartId = chart.canvas.id;
   const chartN = parseInt((chart.canvas.id || '').replace('wdChart', '')) || 1;
-  const unit = _wdChartPV[chartN] ? '백만원(현재가치)' : '백만원';
+  const unit = (appSettings.wdChartPV || {})[chartN] ? '백만원(현재가치)' : '백만원';
   const title = (tooltip.title || []).join(', ');
   const rows = (tooltip.dataPoints || []).map(dp => {
     const bg = dp.dataset.backgroundColor;
@@ -12962,8 +12963,7 @@ function _wdExternalTooltip(context) {
   el.style.top  = y + 'px';
   el.style.opacity = '1';
 }
-// alias: appSettings.wdChartPV 를 직접 가리키도록. toggleWdChartPV 에서 saveAppSettings.
-const _wdChartPV = appSettings.wdChartPV;
+
 function _wdSyncPVBtn(n) {
   const on = !!appSettings.wdChartPV[n];
   const btn = document.getElementById(`wdChart${n}PVBtn`);
@@ -12990,10 +12990,10 @@ function renderWdCharts(sim) {
   const round = v => Math.round(v / M);
   const inf = (wdPlan.inflation || 2.2) / 100;
   const todayYear = new Date().getFullYear();
-  const pvAdj = (n, arr) => _wdChartPV[n]
+  const pvAdj = (n, arr) => (appSettings.wdChartPV || {})[n]
     ? arr.map((v, i) => Math.round(v / Math.pow(1 + inf, years[i] - todayYear)))
     : arr;
-  const unitLbl = n => _wdChartPV[n] ? '백만원(현재가치)' : '백만원';
+  const unitLbl = n => (appSettings.wdChartPV || {})[n] ? '백만원(현재가치)' : '백만원';
   const _wTitle = getWifeTitle();
   const ch2TitleEl = document.getElementById('wdChart2Title');
   const ch2Container = ch2TitleEl?.parentElement?.parentElement;
