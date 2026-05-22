@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.413';
+const APP_VERSION = 'MyPM v0.414';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -6726,7 +6726,9 @@ function getActiveAccounts() {
 function getActiveWifeAccIds() {
   if (!appSettings.hasWife) return [];
   const wifeActive = appSettings.wife?.activeAccIds || WIFE_ACC_IDS;
-  return WIFE_ACC_IDS.filter(id => wifeActive.includes(id));
+  const fixed  = WIFE_ACC_IDS.filter(id => wifeActive.includes(id));
+  const extras = (appSettings.wife?.extraAccounts || []).filter(e => e.active !== false).map(e => e.id);
+  return [...fixed, ...extras];
 }
 
 function loadAnnualPlan() {
@@ -11879,6 +11881,8 @@ function computeAccStartBal(accId, startYear) {
   }
 
   let base = getGroupYearEndWon([accId], lastRecYear) || 0;
+  // 신규 extraAccount는 monthlyRecords에 없음 → 현재 포트폴리오 가치로 폴백
+  if (base === 0) { const cv = computeAccountValue(accId); if (cv > 0) base = cv; }
 
   // lastRecYear === currentYear: 최신 record 이후 currentYear 입금분을 base 에 추가
   if (currentYear === lastRecYear) {
@@ -11989,14 +11993,16 @@ function computeWithdrawalSim() {
   const myB20 = ((myPersonCfg.pensionBenefit20y  ?? wp.pensionBenefit20y ?? 60)) / 100;
   const myB30 = ((myPersonCfg.pensionBenefit30y  ?? wp.pensionBenefit30y ?? 50)) / 100;
   const activeMyIds = MY_ACC_IDS.filter(id => (appSettings.my?.activeAccIds || MY_ACC_IDS).includes(id));
-  const activeWifeIds = getActiveWifeAccIds();
+  const activeWifeIds = getActiveWifeAccIds();  // 이미 wife extraAccounts 포함
+  const myExtraIds   = (appSettings.my?.extraAccounts || []).filter(e => e.active !== false).map(e => e.id);
+  const wifeExtraIds = activeWifeIds.filter(id => !WIFE_ACC_IDS.includes(id));
+  const wifeExtraSet = new Set(wifeExtraIds);
   // Always include pension1/pension2 (and wife equivalents) so consolidation targets are in scope
   const allAccIds = [...new Set([
-    ...activeMyIds, 'pension1', 'pension2',
+    ...activeMyIds, 'pension1', 'pension2', ...myExtraIds,
     ...activeWifeIds, ...(appSettings.hasWife ? ['wife_pension1', 'wife_pension2'] : [])
   ])];
-  // 통합 후 생성된 pension2도 인출 대상에 포함 (activeMyIds에는 없을 수 있음)
-  const myWithdrawIds = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
+  const myWithdrawIds = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id) && !wifeExtraSet.has(id));
   const endDate = `${startYear - 1}-12-31`;
 
   // 초기 잔액 계산 (통합 모드 or 개별 계산)
@@ -12221,7 +12227,7 @@ function computeWithdrawalSim() {
       } else if (activePeriod.type === 'pct') {
         // 인출율 모드: 각자 자기 계좌에서 %만큼
         const myBal   = myWithdrawIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
-        const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id));
+        const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id) || wifeExtraSet.has(id));
         const wifeBal = wifeIds.reduce((s, id) => s + Math.max(0, state[id].total), 0);
         const pctRawMy   = myBal  * (activePeriod.pct || 4) / 100;
         const pctRawWife = appSettings.hasWife && yr >= startYear ? wifeBal * (activePeriod.pct || 4) / 100 : 0;
@@ -12308,7 +12314,7 @@ function computeWithdrawalSim() {
           if (basicRem <= 0 || rem <= 0 || snapAnse[id] > 0 || DC_ACC_IDS.has(id)) continue;
           const take = Math.min(state[id].regular, basicRem, rem);
           if (take > 0) {
-            const pt = take * getPTR(id.startsWith('wife_') ? wifeBY : myBY, yr);
+            const pt = take * getPTR((id.startsWith('wife_') || wifeExtraSet.has(id)) ? wifeBY : myBY, yr);
             withdrawals[yr][id].regularOut += take; withdrawals[yr][id].pensionTax += pt;
             state[id].regular -= take; state[id].total -= take; totalPT += pt; rem -= take; basicRem -= take;
           }
@@ -12333,7 +12339,7 @@ function computeWithdrawalSim() {
           if (rem <= 0) break;
           const take = Math.min(state[id].regular, rem);
           if (take > 0) {
-            const pt = take * getPTR(id.startsWith('wife_') ? wifeBY : myBY, yr);
+            const pt = take * getPTR((id.startsWith('wife_') || wifeExtraSet.has(id)) ? wifeBY : myBY, yr);
             withdrawals[yr][id].regularOut += take; withdrawals[yr][id].pensionTax += pt;
             state[id].regular -= take; state[id].total -= take; totalPT += pt; rem -= take;
           }
@@ -12415,7 +12421,7 @@ function computeWithdrawalSim() {
     balances[yr] = {};
     for (const accId of allAccIds) balances[yr][accId] = { ...state[accId] };
   }
-  return { years, withdrawals, balances, summary, initState, allAccIds, startYear };
+  return { years, withdrawals, balances, summary, initState, allAccIds, startYear, wifeExtraIds };
 }
 
 function loadQuickWdValues() {
@@ -12978,7 +12984,8 @@ function toggleWdChartPV(n) {
 
 function renderWdCharts(sim) {
   _wdSyncAllPVBtns();
-  const { years, balances, summary, allAccIds, withdrawals, initState } = sim;
+  const { years, balances, summary, allAccIds, withdrawals, initState, wifeExtraIds } = sim;
+  const wifeExtraSet = new Set(wifeExtraIds || []);
   const M = 1_000_000;
   const round = v => Math.round(v / M);
   const inf = (wdPlan.inflation || 2.2) / 100;
@@ -13008,7 +13015,7 @@ function renderWdCharts(sim) {
 
   // Chart 2 데이터
   const myBals = years.map(yr => balances[yr] === null ? 0 :
-    Math.round(allAccIds.filter(id => !WIFE_ACC_IDS.includes(id)).reduce((s, id) => s + (balances[yr][id]?.total || 0), 0) / M));
+    Math.round(allAccIds.filter(id => !WIFE_ACC_IDS.includes(id) && !wifeExtraSet.has(id)).reduce((s, id) => s + (balances[yr][id]?.total || 0), 0) / M));
   const wifeBals = years.map(yr => balances[yr] === null ? 0 :
     Math.round(getActiveWifeAccIds().reduce((s, id) => s + (balances[yr][id]?.total || 0), 0) / M));
 
@@ -13259,7 +13266,7 @@ function renderWdWithdrawTable(sim) {
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
   const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
-  const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
+  const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : getAccName(id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
   const blankTd = `<td style="background:#f3f4f6;padding:0"></td>`;
@@ -13350,16 +13357,16 @@ function renderWdWithdrawTable(sim) {
 }
 
 function renderWdBalanceTable(sim) {
-  const { years, balances, initState, allAccIds, startYear } = sim;
+  const { years, balances, initState, allAccIds, startYear, wifeExtraIds } = sim;
+  const wifeExtraSet = new Set(wifeExtraIds || []);
   const wp = wdPlan;
-  const accMap = Object.fromEntries(ACCOUNTS.map(a => [a.id, getAccName(a.id)]));
   const _wt = getWifeTitle();
   const consNameMap = { dc:'퇴직연금(나)', pension1:'개인통합1(나)', pension2:'개인통합2(나)',
     wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인통합1(${_wt})`, wife_pension2:`개인통합2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
   const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
-  const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : (accMap[id] || id);
+  const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : getAccName(id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const mc = (won) => {
     const v = Math.round(won / 1_000_000);
@@ -13392,7 +13399,7 @@ function renderWdBalanceTable(sim) {
   for (const accId of dispAccIds) {
     const nm = accName(accId);
     const init = initState[accId];
-    const isWife = WIFE_ACC_IDS.includes(accId);
+    const isWife = WIFE_ACC_IDS.includes(accId) || wifeExtraSet.has(accId);
 
     if (DC_ACC_IDS.has(accId)) {
       h += `<tr class="wd-acc-row wd-dc"><td rowspan="2">${nm}</td>
@@ -13410,14 +13417,14 @@ function renderWdBalanceTable(sim) {
     h += '</tr>';
   }
 
-  const myAccIds   = dispAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
+  const myAccIds   = dispAccIds.filter(id => !WIFE_ACC_IDS.includes(id) && !wifeExtraSet.has(id));
   const totalInit  = dispAccIds.reduce((s, id) => s + initState[id].total, 0);
   h += `<tr class="wd-total-row"><td>총 잔액</td><td></td><td class="wd-init">${mv(totalInit)}</td>`;
   for (const yr of years) {
     if (balances[yr] === null) { h += blankTd; continue; }
     const myTotal   = myAccIds.reduce((s, id) => s + balances[yr][id].total, 0);
     const wifeTotal = yr >= startYear
-      ? dispAccIds.filter(id => WIFE_ACC_IDS.includes(id)).reduce((s, id) => s + balances[yr][id].total, 0) : 0;
+      ? dispAccIds.filter(id => WIFE_ACC_IDS.includes(id) || wifeExtraSet.has(id)).reduce((s, id) => s + balances[yr][id].total, 0) : 0;
     const totalContent = mc(myTotal + wifeTotal);
     if (typeof totalContent === 'string' && totalContent.includes('color:#9ca3af')) {
       h += `<td>${totalContent}</td>`;
@@ -13743,7 +13750,8 @@ function _publicPensionFormula(cfg, valueWon, yr, inf, label, cy, kind) {
 
 function buildCellInfoLines(type, yr, accId) {
   if (!_lastWdSim) return '';
-  const { summary, withdrawals, balances, allAccIds, startYear } = _lastWdSim;
+  const { summary, withdrawals, balances, allAccIds, startYear, wifeExtraIds } = _lastWdSim;
+  const wifeExtraSet = new Set(wifeExtraIds || []);
   const s = summary[yr];
   if (!s) return '';
   const wp = wdPlan;
@@ -13798,8 +13806,8 @@ function buildCellInfoLines(type, yr, accId) {
       const accPT = withdrawals[yr]?.[accId]?.pensionTax || 0;
       const effRate = regularOut > 0 ? accPT / regularOut : 0;
       const tax = Math.round(accPT);
-      const isWife = accId.startsWith('wife_');
-      const personIds = allAccIds.filter(id => isWife === WIFE_ACC_IDS.includes(id));
+      const isWife = WIFE_ACC_IDS.includes(accId) || wifeExtraSet.has(accId);
+      const personIds = allAccIds.filter(id => isWife === (WIFE_ACC_IDS.includes(id) || wifeExtraSet.has(id)));
       const personTotalReg = personIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
       const birthYear = isWife ? (wp.wifeBirthYear||0) : (wp.myBirthYear||0);
       const age = birthYear ? yr - birthYear : 0;
@@ -13845,8 +13853,8 @@ function buildCellInfoLines(type, yr, accId) {
     case 'pension-tax': {
       const totalRegOut = allAccIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
       const effRate = totalRegOut > 0 ? s.pensionTax / totalRegOut : 0;
-      const myIds   = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
-      const wifeIds = allAccIds.filter(id =>  WIFE_ACC_IDS.includes(id));
+      const myIds   = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id) && !wifeExtraSet.has(id));
+      const wifeIds = allAccIds.filter(id =>  WIFE_ACC_IDS.includes(id) || wifeExtraSet.has(id));
       const myReg   = myIds.reduce((a, id)   => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
       const wifeReg = wifeIds.reduce((a, id) => a + (withdrawals[yr]?.[id]?.regularOut||0), 0);
       const myPT    = myIds.reduce((a, id)   => a + (withdrawals[yr]?.[id]?.pensionTax||0), 0);
@@ -13896,9 +13904,9 @@ function buildCellInfoLines(type, yr, accId) {
         `${yr}년말 잔액 <b>${wr(bal)}</b>${out > 0 ? ` (해당연도 인출 ${wr(out)})` : ''}`);
     }
     case 'bal-total': {
-      const myAcc = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id));
+      const myAcc = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id) && !wifeExtraSet.has(id));
       const myTotal = myAcc.reduce((a, id) => a + (balances[yr]?.[id]?.total||0), 0);
-      const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id));
+      const wifeIds = allAccIds.filter(id => WIFE_ACC_IDS.includes(id) || wifeExtraSet.has(id));
       const wifeTotal = yr >= startYear ? wifeIds.reduce((a, id) => a + (balances[yr]?.[id]?.total||0), 0) : 0;
       return row('전체 잔액',
         `나 ${wr(myTotal)}${wifeTotal > 0 ? ` + 배우자 ${wr(wifeTotal)}` : ''} = <b>${wr(myTotal + wifeTotal)}</b>`);
