@@ -1346,6 +1346,10 @@ registerMobileTooltipDismiss();
   .wdprep-radio-card { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; margin-bottom:8px; font-size:13px; transition:border-color .15s,background .15s; }
   .wdprep-radio-card:hover { border-color:#93c5fd; }
   .wdprep-radio-card.selected { border-color:var(--primary); background:#eff6ff; }
+  .wdprep-tabbar { display:flex; border-bottom:2px solid var(--border); gap:0; }
+  .wdprep-tab { padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:none; color:#94a3b8; border-bottom:2.5px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; white-space:nowrap; }
+  .wdprep-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+  .wdprep-tab:hover:not(.active) { color:#475569; }
 </style>
 </head>
 <body>
@@ -2332,13 +2336,12 @@ registerMobileTooltipDismiss();
         </div>
         <button class="close-btn" onclick="closeWithdrawalPrepModal()">×</button>
       </div>
-      <div id="wdPrepStepBar" style="margin:14px 0 0"></div>
+      <div id="wdPrepTabBar" style="margin:14px 0 0"></div>
     </div>
     <div id="wdPrepContent" style="flex:1;overflow-y:auto;min-height:0;padding-top:14px"></div>
-    <div style="flex-shrink:0;padding-top:12px;margin-top:4px;border-top:1px solid var(--border)">
+    <div id="wdPrepFooter" style="flex-shrink:0;padding-top:12px;margin-top:4px;border-top:1px solid var(--border)">
       <div class="modal-actions">
-        <button id="wdPrepPrevBtn" class="btn-secondary" onclick="wdPrepGoStep(wdPrepCurrentStep-1)">← 이전</button>
-        <button id="wdPrepNextBtn" class="btn-primary" onclick="wdPrepGoStep(wdPrepCurrentStep+1)">다음 →</button>
+        <button id="wdPrepActionBtn" class="btn-primary"></button>
       </div>
     </div>
   </div>
@@ -3187,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.419';
+const APP_VERSION = 'MyPM v0.420';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -13939,9 +13942,9 @@ function computeAccComponents(accId, year) {
   return { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
 }
 
-// ===== 인출준비 및 시작 마법사 =====
-const WD_PREP_STEPS = ['계좌 현황', '국세청 서류', '통합 제안', '통합 실행', '인출계좌선택'];
-let wdPrepCurrentStep = 1;
+// ===== 인출준비 및 시작 탭 =====
+const WD_PREP_TABS = ['계좌현황', '계좌통합실행', '인출계좌선택'];
+let wdPrepCurrentTab = 1;
 
 function checkWdPrepCondition() {
   const startYear = wdPlan?.periods?.[0]?.startYear;
@@ -13962,10 +13965,10 @@ function openWithdrawalPrepModal() {
   if (!startYear) { alert('인출계획의 구간1 시작연도를 먼저 설정해 주세요.'); return; }
   const subtitle = document.getElementById('wdPrepSubtitle');
   if (subtitle) subtitle.textContent = `${startYear - 1}년부터 인출준비 시작 권장 · ${startYear}년 인출 시작 예정`;
-  wdPrepCurrentStep = 1;
+  wdPrepCurrentTab = 1;
   _wdStep2Ctx = null;
   _wdStep4Done = false;
-  wdPrepGoStep(1);
+  wdPrepGoTab(1);
   document.getElementById('withdrawalPrepModal').classList.add('open');
 }
 
@@ -13977,59 +13980,44 @@ function handleWdPrepBackdropClick(e) {
   if (e.target.id === 'withdrawalPrepModal') closeWithdrawalPrepModal();
 }
 
-function wdPrepGoStep(step) {
-  if (step < 1 || step > 5) return;
-  wdPrepCurrentStep = step;
+function wdPrepGoTab(tab) {
+  if (tab < 1 || tab > 3) return;
+  wdPrepCurrentTab = tab;
 
-  // 스텝 인디케이터
-  const bar = document.getElementById('wdPrepStepBar');
+  const bar = document.getElementById('wdPrepTabBar');
   if (bar) {
-    bar.className = 'wdprep-stepbar';
-    bar.innerHTML = WD_PREP_STEPS.map((label, i) => {
-      const n      = i + 1;
-      const done   = n < step;
-      const active = n === step;
-      const circBg = done ? '#22c55e' : active ? 'var(--primary)' : '#e2e8f0';
-      const circFg = (done || active) ? '#fff' : '#94a3b8';
-      const lblColor  = done ? '#22c55e' : active ? 'var(--primary)' : '#94a3b8';
-      const lblWeight = active ? 600 : 400;
-      const circle  = `<div class="wdprep-step-circle" style="background:${circBg};color:${circFg}">${done ? '✓' : n}</div>`;
-      const lbl     = `<div class="wdprep-step-label" style="color:${lblColor};font-weight:${lblWeight}">${label}</div>`;
-      const conn    = n < 5 ? `<div class="wdprep-connector${done ? ' done' : ''}"></div>` : '';
-      return `<div class="wdprep-step">${circle}${lbl}</div>${conn}`;
+    bar.className = 'wdprep-tabbar';
+    bar.innerHTML = WD_PREP_TABS.map((label, i) => {
+      const n = i + 1;
+      return `<button class="wdprep-tab${n === tab ? ' active' : ''}" onclick="wdPrepGoTab(${n})">${label}</button>`;
     }).join('');
   }
 
   const content = document.getElementById('wdPrepContent');
-  if (content) content.innerHTML = wdPrepRenderStep(step);
+  if (content) content.innerHTML = wdPrepRenderTab(tab);
 
-  const prevBtn = document.getElementById('wdPrepPrevBtn');
-  const nextBtn = document.getElementById('wdPrepNextBtn');
-  if (prevBtn) prevBtn.style.display = step === 1 ? 'none' : '';
-  if (nextBtn) {
-    if (step === 5) {
-      nextBtn.style.display = '';
-      nextBtn.textContent = '✔ 완료';
-      nextBtn.onclick = wdPrepFinish;
-    } else if (step === 4) {
-      nextBtn.style.display = '';
-      nextBtn.textContent = '🚀 지금 실행';
-      nextBtn.onclick = wdPrepExecuteConsolidate;
+  const footer    = document.getElementById('wdPrepFooter');
+  const actionBtn = document.getElementById('wdPrepActionBtn');
+  if (footer && actionBtn) {
+    if (tab === 2) {
+      footer.style.display = '';
+      actionBtn.textContent = '🚀 지금 실행';
+      actionBtn.onclick = wdPrepExecuteConsolidate;
+    } else if (tab === 3) {
+      footer.style.display = '';
+      actionBtn.textContent = '✔ 완료';
+      actionBtn.onclick = wdPrepFinish;
     } else {
-      nextBtn.style.display = '';
-      nextBtn.textContent = '다음 →';
-      nextBtn.onclick = () => wdPrepGoStep(step + 1);
+      footer.style.display = 'none';
     }
   }
 }
 
-function wdPrepRenderStep(step) {
+function wdPrepRenderTab(tab) {
   try {
-    if (step === 1) return wdPrepStep1Html();
-    if (step === 2) return wdPrepStep3Html();
-    if (step === 3) return wdPrepStep2Html();
-    if (step === 4) return wdPrepStep4Html();
-    if (step === 5) return wdPrepStep5Html();
+    if (tab === 1) return wdPrepStep1Html();
+    if (tab === 2) return wdPrepTab2Html();
+    if (tab === 3) return wdPrepStep5Html();
   } catch (e) { return `<p style="color:#ef4444">오류: ${e.message}</p>`; }
   return '';
 }
@@ -14243,12 +14231,11 @@ function wdPrepStep2Html() {
     _wdStep2Ctx.wifeAutoResult = wifeAutoResult;
   }
 
-  // 양쪽 모두 계좌 1개 이하 → Step 3 통합 불가, Step 4로 안내
+  // 양쪽 모두 계좌 1개 이하 → 통합 불필요
   if (myActiveCount <= 1 && (!appSettings.hasWife || wifeActiveCount <= 1)) {
     return `<div class="wdprep-box wdprep-box-amber" style="text-align:center;padding:20px 16px">
       <div style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:8px">💡 통합이 필요하지 않습니다</div>
-      <div style="font-size:12px;color:#78350f;margin-bottom:14px">계좌가 1개 이하여서 통합 단계를 건너뜁니다.</div>
-      <button onclick="wdPrepGoStep(4)" style="padding:8px 20px;font-size:13px;font-weight:700;background:#f59e0b;color:#fff;border:none;border-radius:8px;cursor:pointer">다음 단계로 →</button>
+      <div style="font-size:12px;color:#78350f">계좌가 1개 이하여서 배분 설정을 건너뜁니다. 아래 실행 섹션을 확인하세요.</div>
     </div>`;
   }
 
@@ -14418,6 +14405,36 @@ function wdPrepStep3Html() {
     `<div class="wdprep-box wdprep-box-purple">` +
     `💡 이 서류는 계좌 통합 시 금융기관에 제출하며, 향후 인출 시 과세 기준 자료로도 활용됩니다.` +
     `</div>`;
+}
+
+function wdPrepTab2Html() {
+  const secLabel = (text) =>
+    `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin:18px 0 8px;text-transform:uppercase">${text}</div>`;
+
+  // 국세청 서류 — 접힌 카드
+  const taxDocBody = wdPrepStep3Html();
+  const taxDocCard =
+    `<div style="border:1px solid #bfdbfe;border-radius:10px;overflow:hidden;margin-bottom:4px">` +
+    `<button onclick="(function(b){const d=b.nextElementSibling;const o=d.style.display!=='none';` +
+    `d.style.display=o?'none':'block';b.querySelector('.wdpt-arr').textContent=o?'▶':'▼'})(this)"` +
+    ` style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#eff6ff;border:none;cursor:pointer;text-align:left">` +
+    `<span style="font-size:13px;font-weight:700;color:#1e40af">📄 국세청 서류 확인</span>` +
+    `<span class="wdpt-arr" style="font-size:12px;color:#3b82f6;flex-shrink:0">▶</span>` +
+    `</button>` +
+    `<div style="display:none;padding:12px 14px;background:#f8fbff">${taxDocBody}</div>` +
+    `</div>`;
+
+  // 계좌 배분 설정
+  const proposalHtml = wdPrepStep2Html();
+
+  // 통합 실행 설정
+  const execHtml = wdPrepStep4Html();
+
+  return taxDocCard +
+    secLabel('계좌 배분 및 안세공 설정') +
+    proposalHtml +
+    secLabel('통합 실행') +
+    execHtml;
 }
 
 function wdPrepStep4PrimaryHtml() {
@@ -14878,7 +14895,7 @@ function wdPrepExecuteConsolidate() {
   renderPrincipalTable();
   renderEvalTable();
 
-  wdPrepGoStep(5);
+  wdPrepGoTab(3);
 }
 
 function wdPrepStep5Html() {
@@ -14993,7 +15010,7 @@ function wdStartAccToggle(accId) {
   cfg.wdStartedAccIds = arr.includes(accId) ? arr.filter(id => id !== accId) : [...arr, accId];
   saveAppSettings();
   const content = document.getElementById('wdPrepContent');
-  if (content) content.innerHTML = wdPrepRenderStep(5);
+  if (content) content.innerHTML = wdPrepStep5Html();
 }
 
 function wdPrepFinish() {
