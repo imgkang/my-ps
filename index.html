@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.426';
+const APP_VERSION = 'MyPM v0.427';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7574,7 +7574,7 @@ function _calcMplanTotals(p) {
   const todayYM = today.getFullYear() * 12 + today.getMonth() + 1;
   const startYM = p.startYear * 12 + p.startMonth;
   const endYM   = p.endYear   * 12 + p.endMonth;
-  const amt = (p.monthlyAmt || 0) + (p.monthlyAnse || 0);
+  const amt = (p.monthlyAmt || 0);
   if (p.frequency === 'annual') {
     const totalP     = Math.max(0, p.endYear - p.startYear + 1);
     const remainingP = Math.max(0, p.endYear - Math.max(p.startYear, today.getFullYear()) + 1);
