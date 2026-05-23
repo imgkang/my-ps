@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.421';
+const APP_VERSION = 'MyPM v0.422';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14145,21 +14145,26 @@ function wdPrepStep1Html() {
 }
 
 // 세공액 기반 통합1 기본 안세공 계산
-function computeDefaultPP1Anse(pp1Ids, pp2Ids, allNonDcIds, comps) {
+function computeDefaultPP1Anse(pp1Ids, pp2Ids, allNonDcIds, comps, endDate) {
   const M = 1_000_000;
   const mv = v => Math.round(v / M);
-  const totalSeGongMv = allNonDcIds.reduce((s, id) => {
-    const txns = depositData.transactions.filter(t => t.accId === id);
-    const dep  = txns.filter(t => Number(t.amount) > 0).reduce((s2, t) => s2 + Number(t.amount), 0);
-    const anseS = Math.max(0, txns.reduce((s2, t) => s2 + (Number(t.anse) || 0), 0));
-    return s + mv(Math.max(0, dep - anseS));
-  }, 0);
-  const pp1TotalMv  = pp1Ids.reduce((s, id) => s + mv(comps[id]?.total || 0), 0);
-  const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total || 0), 0);
-  const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse || 0), 0);
-  const rawAnseMv   = Math.max(0, pp1TotalMv - totalSeGongMv);
+  const getDA = ids => ids.reduce((acc, id) => {
+    const txns = depositData.transactions.filter(
+      t => t.accId === id && (!endDate || t.date <= endDate));
+    const dep   = txns.filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
+                       .reduce((s, t) => s + Number(t.amount), 0);
+    const anseS = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+    return { dep: acc.dep + dep, anseS: acc.anseS + anseS };
+  }, { dep: 0, anseS: 0 });
+  const allDA         = getDA(allNonDcIds);
+  const totalSeGongMv = mv(Math.max(0, allDA.dep - allDA.anseS));
+  const pp1DA         = getDA(pp1Ids);
+  const pp1DepPrinMv  = mv(Math.max(0, pp1DA.dep));
+  const pp2TotalMv    = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total || 0), 0);
+  const totalAnseMv   = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse || 0), 0);
+  const rawAnseMv     = Math.max(0, pp1DepPrinMv - totalSeGongMv);
   const minA = Math.max(0, totalAnseMv - pp2TotalMv);
-  const maxA = Math.min(pp1TotalMv, totalAnseMv);
+  const maxA = Math.min(pp1DepPrinMv, totalAnseMv);
   return Math.max(minA, Math.min(maxA, rawAnseMv));
 }
 
@@ -14372,11 +14377,11 @@ function wdPrepStep2Html() {
       savedMyPP1Anse:   c ? mv(c.myPP1Anse)   : computeDefaultPP1Anse(
         myAutoResult   ? myAutoResult.pp1Ids   : myNonDcIds.filter(id => mv(comps[id]?.total||0) > 0),
         myAutoResult   ? myAutoResult.pp2Ids   : [],
-        myNonDcIds, comps),
+        myNonDcIds, comps, baseYear + '-12-31'),
       savedWifePP1Anse: c ? mv(c.wifePP1Anse) : computeDefaultPP1Anse(
         wifeAutoResult ? wifeAutoResult.pp1Ids : wifeNonDcIds.filter(id => mv(comps[id]?.total||0) > 0),
         wifeAutoResult ? wifeAutoResult.pp2Ids : [],
-        wifeNonDcIds, comps),
+        wifeNonDcIds, comps, baseYear + '-12-31'),
     };
   } else {
     if (!_wdStep2Ctx.myKeepIds)   _wdStep2Ctx.myKeepIds   = [...myDcKeep];
@@ -14767,6 +14772,8 @@ function wdPrepResetBuckets(who) {
   const wifeEl = document.getElementById('wdPrepWifePP1Anse');
   if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
   const _mv = v => Math.round(v / 1_000_000);
+  const _startYear = wdPlan?.periods?.[0]?.startYear || (new Date().getFullYear() + 1);
+  const _endDate   = (_startYear - 1) + '-12-31';
   if (who === 'my' && _wdStep2Ctx.myAutoResult) {
     _wdStep2Ctx.myPP1Ids  = [..._wdStep2Ctx.myAutoResult.pp1Ids];
     _wdStep2Ctx.myPP2Ids  = [..._wdStep2Ctx.myAutoResult.pp2Ids];
@@ -14774,7 +14781,7 @@ function wdPrepResetBuckets(who) {
     _wdStep2Ctx.myKeepIds = [...dcKeep];
     _wdStep2Ctx.savedMyPP1Anse = computeDefaultPP1Anse(
       _wdStep2Ctx.myPP1Ids, _wdStep2Ctx.myPP2Ids,
-      [..._wdStep2Ctx.myPP1Ids, ..._wdStep2Ctx.myPP2Ids], _wdStep2Ctx.comps);
+      [..._wdStep2Ctx.myPP1Ids, ..._wdStep2Ctx.myPP2Ids], _wdStep2Ctx.comps, _endDate);
   } else if (who === 'wife' && _wdStep2Ctx.wifeAutoResult) {
     _wdStep2Ctx.wifePP1Ids  = [..._wdStep2Ctx.wifeAutoResult.pp1Ids];
     _wdStep2Ctx.wifePP2Ids  = [..._wdStep2Ctx.wifeAutoResult.pp2Ids];
@@ -14782,7 +14789,7 @@ function wdPrepResetBuckets(who) {
     _wdStep2Ctx.wifeKeepIds = [...dcKeep];
     _wdStep2Ctx.savedWifePP1Anse = computeDefaultPP1Anse(
       _wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids,
-      [..._wdStep2Ctx.wifePP1Ids, ..._wdStep2Ctx.wifePP2Ids], _wdStep2Ctx.comps);
+      [..._wdStep2Ctx.wifePP1Ids, ..._wdStep2Ctx.wifePP2Ids], _wdStep2Ctx.comps, _endDate);
   }
   const content = document.getElementById('wdPrepContent');
   if (content) content.innerHTML = wdPrepStep2Html();
