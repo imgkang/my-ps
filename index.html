@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.422';
+const APP_VERSION = 'MyPM v0.423';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -13982,6 +13982,12 @@ function handleWdPrepBackdropClick(e) {
 
 function wdPrepGoTab(tab) {
   if (tab < 1 || tab > 2) return;
+  if (_wdStep2Ctx) {
+    const myEl = document.getElementById('wdPrepMyPP1Anse');
+    if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
+    const wifeEl = document.getElementById('wdPrepWifePP1Anse');
+    if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
+  }
   wdPrepCurrentTab = tab;
 
   const bar = document.getElementById('wdPrepTabBar');
@@ -14144,28 +14150,13 @@ function wdPrepStep1Html() {
     </div>`;
 }
 
-// 세공액 기반 통합1 기본 안세공 계산
+// PP2가 anse를 모두 흡수 가능하면 PP1 anse=0, 불가하면 PP1이 초과분 담당
 function computeDefaultPP1Anse(pp1Ids, pp2Ids, allNonDcIds, comps, endDate) {
   const M = 1_000_000;
   const mv = v => Math.round(v / M);
-  const getDA = ids => ids.reduce((acc, id) => {
-    const txns = depositData.transactions.filter(
-      t => t.accId === id && (!endDate || t.date <= endDate));
-    const dep   = txns.filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
-                       .reduce((s, t) => s + Number(t.amount), 0);
-    const anseS = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
-    return { dep: acc.dep + dep, anseS: acc.anseS + anseS };
-  }, { dep: 0, anseS: 0 });
-  const allDA         = getDA(allNonDcIds);
-  const totalSeGongMv = mv(Math.max(0, allDA.dep - allDA.anseS));
-  const pp1DA         = getDA(pp1Ids);
-  const pp1DepPrinMv  = mv(Math.max(0, pp1DA.dep));
-  const pp2TotalMv    = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total || 0), 0);
-  const totalAnseMv   = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse || 0), 0);
-  const rawAnseMv     = Math.max(0, pp1DepPrinMv - totalSeGongMv);
-  const minA = Math.max(0, totalAnseMv - pp2TotalMv);
-  const maxA = Math.min(pp1DepPrinMv, totalAnseMv);
-  return Math.max(minA, Math.min(maxA, rawAnseMv));
+  const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total || 0), 0);
+  const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse || 0), 0);
+  return Math.max(0, totalAnseMv - pp2TotalMv);
 }
 
 function wdPrepTab1Html() {
@@ -14816,6 +14807,10 @@ function wdPrepStep2UpdatePreview() {
     if (!inp) return;
     const inputVal = Math.max(minAnseMv, Math.min(maxAnseMv, Number(inp.value) || 0));
     inp.value = inputVal;
+    if (_wdStep2Ctx) {
+      if (pp1InputId === 'wdPrepMyPP1Anse')   _wdStep2Ctx.savedMyPP1Anse   = inputVal;
+      if (pp1InputId === 'wdPrepWifePP1Anse') _wdStep2Ctx.savedWifePP1Anse = inputVal;
+    }
     const pp1Reg   = Math.max(0, pp1TotalMv  - inputVal);
     const pp2Anse  = Math.max(0, totalAnseMv - inputVal);
     const pp2Reg   = Math.max(0, pp2TotalMv  - pp2Anse);
