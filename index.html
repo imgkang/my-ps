@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.423';
+const APP_VERSION = 'MyPM v0.424';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14186,11 +14186,16 @@ function wdPrepTab1Html() {
       const isDC = DC_ACC_IDS.has(a.id);
       let seGong = 0;
       if (!isDC) {
-        const txns = depositData.transactions.filter(t => t.accId === a.id && t.date <= endDate);
-        const depositPrin = txns.filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
-          .reduce((s, t) => s + Number(t.amount), 0);
-        const anseSum = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
-        seGong = Math.max(0, depositPrin - anseSum);
+        const _accMeta = [...(appSettings.my?.extraAccounts||[]), ...(appSettings.wife?.extraAccounts||[])].find(e => e.id === a.id);
+        if (_accMeta?.origSeGong != null) {
+          seGong = _accMeta.origSeGong;
+        } else {
+          const txns = depositData.transactions.filter(t => t.accId === a.id && t.date <= endDate);
+          const depositPrin = txns.filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
+            .reduce((s, t) => s + Number(t.amount), 0);
+          const anseSum = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+          seGong = Math.max(0, depositPrin - anseSum);
+        }
       }
       const isOn = started.includes(a.id);
       const isISA = ['isa', 'wife_isa'].includes(a.id);
@@ -14944,6 +14949,20 @@ function wdPrepExecuteConsolidate() {
 
   if (!confirm(`선택한 계좌를 통합하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
 
+  // 통합 전 소스 계좌 세공액 합산 (transactions 이동 전)
+  const _startYr  = wdPlan?.periods?.[0]?.startYear || (new Date().getFullYear() + 1);
+  const _endDate  = (_startYr - 1) + '-12-31';
+  const _accSeGongW = id => {
+    if (DC_ACC_IDS.has(id)) return 0;
+    const txns = depositData.transactions.filter(t => t.accId === id && t.date <= _endDate);
+    const dep  = txns.filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
+                      .reduce((s, t) => s + Number(t.amount), 0);
+    const ans  = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+    return Math.max(0, dep - ans);
+  };
+  const myTotalSeGongW   = [...(ctx.myPP1Ids||[]),   ...(ctx.myPP2Ids||[])  ].reduce((s, id) => s + _accSeGongW(id), 0);
+  const wifeTotalSeGongW = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])].reduce((s, id) => s + _accSeGongW(id), 0);
+
   for (const { src, dst } of pairs) {
     // 보유종목
     holdings.forEach(h => {
@@ -15017,6 +15036,12 @@ function wdPrepExecuteConsolidate() {
     const pp2AnseW  = Math.max(0, totalAnseW - pp1AnseW);
     if ((ctx.myPP1Ids||[]).length) applyAnseRedist('wdcons_my_1', pp1AnseW);
     if ((ctx.myPP2Ids||[]).length) applyAnseRedist('wdcons_my_2', pp2AnseW);
+    const _myPP1TotalW = (ctx.myPP1Ids||[]).reduce((s, id) => s + (comps[id]?.total||0), 0);
+    const _myPP1RegW   = Math.max(0, _myPP1TotalW - pp1AnseW);
+    const _myPP1Seg    = Math.max(0, Math.min(myTotalSeGongW, _myPP1RegW));
+    const _myExtra     = appSettings.my?.extraAccounts || [];
+    if ((ctx.myPP1Ids||[]).length) { const m = _myExtra.find(e => e.id === `wdcons_my_${myBase}`);   if (m) m.origSeGong = _myPP1Seg; }
+    if ((ctx.myPP2Ids||[]).length) { const m = _myExtra.find(e => e.id === `wdcons_my_${myBase+1}`); if (m) m.origSeGong = Math.max(0, myTotalSeGongW - _myPP1Seg); }
   }
   if (runWife && ((ctx.wifePP1Ids||[]).length || (ctx.wifePP2Ids||[]).length)) {
     const allWifeIds = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])];
@@ -15026,6 +15051,12 @@ function wdPrepExecuteConsolidate() {
     const pp2AnseW  = Math.max(0, totalAnseW - pp1AnseW);
     if ((ctx.wifePP1Ids||[]).length) applyAnseRedist('wdcons_wife_1', pp1AnseW);
     if ((ctx.wifePP2Ids||[]).length) applyAnseRedist('wdcons_wife_2', pp2AnseW);
+    const _wifePP1TotalW = (ctx.wifePP1Ids||[]).reduce((s, id) => s + (comps[id]?.total||0), 0);
+    const _wifePP1RegW   = Math.max(0, _wifePP1TotalW - pp1AnseW);
+    const _wifePP1Seg    = Math.max(0, Math.min(wifeTotalSeGongW, _wifePP1RegW));
+    const _wifeExtra     = appSettings.wife?.extraAccounts || [];
+    if ((ctx.wifePP1Ids||[]).length) { const m = _wifeExtra.find(e => e.id === `wdcons_wife_${wifeBase}`);   if (m) m.origSeGong = _wifePP1Seg; }
+    if ((ctx.wifePP2Ids||[]).length) { const m = _wifeExtra.find(e => e.id === `wdcons_wife_${wifeBase+1}`); if (m) m.origSeGong = Math.max(0, wifeTotalSeGongW - _wifePP1Seg); }
   }
 
   // 잔액 없고 기록 없는 소스 계좌 자동 비활성화
