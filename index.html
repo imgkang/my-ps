@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.418';
+const APP_VERSION = 'MyPM v0.419';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14447,13 +14447,7 @@ function wdPrepStep4PrimaryHtml() {
       (rank ? `<span style="margin-left:8px;font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:20px;font-weight:600">${rank}</span>` : '') +
       `</div><div style="font-size:12px;color:var(--muted);margin-top:2px">현재 ${fmt(computeAccountValue(a.id))}만원${tax ? ' · '+tax : ''}</div></div></label>`;
   }).join('');
-  if (!cards) cards = `<p style="color:var(--muted)">연금계좌 잔액이 없습니다.</p>`;
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">가장 먼저 인출할 주 계좌를 선택하세요.</p>` +
-    `<div class="wdprep-box wdprep-box-blue" style="margin-top:0;margin-bottom:14px"><b>📌 권장 인출 순서</b><br>` +
-    `<b>1순위</b> 개인연금 — 분할 수령에 가장 유연, 연금소득세 3.3~5.5%<br>` +
-    `<b>2순위</b> IRP — DC 퇴직급여 이전 후 사용<br>` +
-    `<b>3순위</b> DC 퇴직급여 — 퇴직소득세 별도 적용</div>` +
-    `<div style="margin-bottom:10px">${cards}</div>` +
+  return `<div style="margin-bottom:10px">${cards}</div>` +
     `<div id="wdPrepAccSaved" style="display:none" class="wdprep-box wdprep-box-green">✅ 인출용 주 계좌가 저장되었습니다.</div>`;
 }
 
