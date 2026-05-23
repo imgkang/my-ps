@@ -1346,6 +1346,10 @@ registerMobileTooltipDismiss();
   .wdprep-radio-card { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; margin-bottom:8px; font-size:13px; transition:border-color .15s,background .15s; }
   .wdprep-radio-card:hover { border-color:#93c5fd; }
   .wdprep-radio-card.selected { border-color:var(--primary); background:#eff6ff; }
+  .wdprep-tabbar { display:flex; border-bottom:2px solid var(--border); gap:0; }
+  .wdprep-tab { padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:none; color:#94a3b8; border-bottom:2.5px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; white-space:nowrap; }
+  .wdprep-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+  .wdprep-tab:hover:not(.active) { color:#475569; }
 </style>
 </head>
 <body>
@@ -2332,13 +2336,12 @@ registerMobileTooltipDismiss();
         </div>
         <button class="close-btn" onclick="closeWithdrawalPrepModal()">×</button>
       </div>
-      <div id="wdPrepStepBar" style="margin:14px 0 0"></div>
+      <div id="wdPrepTabBar" style="margin:14px 0 0"></div>
     </div>
     <div id="wdPrepContent" style="flex:1;overflow-y:auto;min-height:0;padding-top:14px"></div>
-    <div style="flex-shrink:0;padding-top:12px;margin-top:4px;border-top:1px solid var(--border)">
+    <div id="wdPrepFooter" style="flex-shrink:0;padding-top:12px;margin-top:4px;border-top:1px solid var(--border)">
       <div class="modal-actions">
-        <button id="wdPrepPrevBtn" class="btn-secondary" onclick="wdPrepGoStep(wdPrepCurrentStep-1)">← 이전</button>
-        <button id="wdPrepNextBtn" class="btn-primary" onclick="wdPrepGoStep(wdPrepCurrentStep+1)">다음 →</button>
+        <button id="wdPrepActionBtn" class="btn-primary"></button>
       </div>
     </div>
   </div>
@@ -3187,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.415';
+const APP_VERSION = 'MyPM v0.425';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7566,6 +7569,23 @@ let _editingMplanId = null;
 let _pendingDeletePlanId = null;
 let _pendingEditPlanData = null;
 
+function _calcMplanTotals(p) {
+  const today = new Date();
+  const todayYM = today.getFullYear() * 12 + today.getMonth() + 1;
+  const startYM = p.startYear * 12 + p.startMonth;
+  const endYM   = p.endYear   * 12 + p.endMonth;
+  const amt = (p.monthlyAmt || 0) + (p.monthlyAnse || 0);
+  if (p.frequency === 'annual') {
+    const totalP     = Math.max(0, p.endYear - p.startYear + 1);
+    const remainingP = Math.max(0, p.endYear - Math.max(p.startYear, today.getFullYear()) + 1);
+    return { total: totalP * amt, remaining: remainingP * amt };
+  } else {
+    const totalP     = Math.max(0, endYM - startYM + 1);
+    const remainingP = Math.max(0, endYM - Math.max(startYM, todayYM) + 1);
+    return { total: totalP * amt, remaining: remainingP * amt };
+  }
+}
+
 function renderMonthlyPlanList() {
   updateMplanCountBadge();
   const wrap = document.getElementById('monthlyPlanList');
@@ -7575,6 +7595,7 @@ function renderMonthlyPlanList() {
   const rows = plans.map(p => {
     const freq = p.frequency === 'annual' ? '연' : '월';
     const editing = p.id === _editingMplanId;
+    const totals = _calcMplanTotals(p);
     return `<tr${editing ? ' style="background:var(--highlight-bg,#fffbe6)"' : ''}>
       <td>${getAccName(p.accId)}</td>
       <td style="text-align:center">${freq}적립</td>
@@ -7582,12 +7603,14 @@ function renderMonthlyPlanList() {
       <td style="text-align:right">${(p.monthlyAnse||0) > 0 ? (p.monthlyAnse).toLocaleString('ko-KR')+'만원' : '-'}</td>
       <td>${p.startYear}년 ${p.startMonth}월 ${p.startDay || 1}일</td>
       <td>${p.endYear}년 ${p.endMonth}월 ${p.endDay || 1}일</td>
+      <td style="text-align:right">${totals.total.toLocaleString('ko-KR')} 만원</td>
+      <td style="text-align:right;color:${totals.remaining > 0 ? 'var(--accent,#1976d2)' : 'var(--muted)'}">${totals.remaining.toLocaleString('ko-KR')} 만원</td>
       <td style="white-space:nowrap">
         <button class="tbl-icon-btn" onclick="startEditMonthlyPlan('${p.id}')" title="편집">✏️</button>
         <button class="tbl-icon-btn" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑️</button>
       </td>
     </tr>`;}).join('');
-  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th>총적립금</th><th>남은적립금</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function startEditMonthlyPlan(id) {
@@ -11433,6 +11456,7 @@ function saveSettingsModal() {
     myBirthYear:   n('cfg_myBirthYear'),
     myBirthMonth:  n('cfg_myBirthMonth') || 1,
     hasWife,
+    wdChartPV: appSettings.wdChartPV || {},
     wifeTitle:      hasWife ? wifeTitle : appSettings.wifeTitle,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
@@ -12912,7 +12936,7 @@ function _wdGetOrCreateTooltip() {
 function _wdShowChartInfo(chart, dataIndex) {
   const chartN = parseInt((chart.canvas.id || '').replace('wdChart', '')) || 1;
   const yr = chart.data.labels[dataIndex];
-  const unit = _wdChartPV[chartN] ? '백만원 (현재가치)' : '백만원';
+  const unit = (appSettings.wdChartPV || {})[chartN] ? '백만원 (현재가치)' : '백만원';
   const rows = chart.data.datasets.map(ds => {
     const v = Math.round(ds.data[dataIndex] || 0).toLocaleString('ko-KR');
     const bg = ds.backgroundColor, bc = ds.borderColor;
@@ -12940,7 +12964,7 @@ function _wdExternalTooltip(context) {
   }
   _wdActiveTooltipChartId = chart.canvas.id;
   const chartN = parseInt((chart.canvas.id || '').replace('wdChart', '')) || 1;
-  const unit = _wdChartPV[chartN] ? '백만원(현재가치)' : '백만원';
+  const unit = (appSettings.wdChartPV || {})[chartN] ? '백만원(현재가치)' : '백만원';
   const title = (tooltip.title || []).join(', ');
   const rows = (tooltip.dataPoints || []).map(dp => {
     const bg = dp.dataset.backgroundColor;
@@ -12962,8 +12986,7 @@ function _wdExternalTooltip(context) {
   el.style.top  = y + 'px';
   el.style.opacity = '1';
 }
-// alias: appSettings.wdChartPV 를 직접 가리키도록. toggleWdChartPV 에서 saveAppSettings.
-const _wdChartPV = appSettings.wdChartPV;
+
 function _wdSyncPVBtn(n) {
   const on = !!appSettings.wdChartPV[n];
   const btn = document.getElementById(`wdChart${n}PVBtn`);
@@ -12990,10 +13013,10 @@ function renderWdCharts(sim) {
   const round = v => Math.round(v / M);
   const inf = (wdPlan.inflation || 2.2) / 100;
   const todayYear = new Date().getFullYear();
-  const pvAdj = (n, arr) => _wdChartPV[n]
+  const pvAdj = (n, arr) => (appSettings.wdChartPV || {})[n]
     ? arr.map((v, i) => Math.round(v / Math.pow(1 + inf, years[i] - todayYear)))
     : arr;
-  const unitLbl = n => _wdChartPV[n] ? '백만원(현재가치)' : '백만원';
+  const unitLbl = n => (appSettings.wdChartPV || {})[n] ? '백만원(현재가치)' : '백만원';
   const _wTitle = getWifeTitle();
   const ch2TitleEl = document.getElementById('wdChart2Title');
   const ch2Container = ch2TitleEl?.parentElement?.parentElement;
@@ -13939,9 +13962,9 @@ function computeAccComponents(accId, year) {
   return { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
 }
 
-// ===== 인출준비 및 시작 마법사 =====
-const WD_PREP_STEPS = ['계좌 현황', '국세청 서류', '통합 제안', '통합 실행', '인출계좌선택'];
-let wdPrepCurrentStep = 1;
+// ===== 인출준비 및 시작 탭 =====
+const WD_PREP_TABS = ['계좌현황 및 인출계좌선택', '계좌통합실행'];
+let wdPrepCurrentTab = 1;
 
 function checkWdPrepCondition() {
   const startYear = wdPlan?.periods?.[0]?.startYear;
@@ -13962,10 +13985,10 @@ function openWithdrawalPrepModal() {
   if (!startYear) { alert('인출계획의 구간1 시작연도를 먼저 설정해 주세요.'); return; }
   const subtitle = document.getElementById('wdPrepSubtitle');
   if (subtitle) subtitle.textContent = `${startYear - 1}년부터 인출준비 시작 권장 · ${startYear}년 인출 시작 예정`;
-  wdPrepCurrentStep = 1;
+  wdPrepCurrentTab = 1;
   _wdStep2Ctx = null;
   _wdStep4Done = false;
-  wdPrepGoStep(1);
+  wdPrepGoTab(1);
   document.getElementById('withdrawalPrepModal').classList.add('open');
 }
 
@@ -13977,58 +14000,47 @@ function handleWdPrepBackdropClick(e) {
   if (e.target.id === 'withdrawalPrepModal') closeWithdrawalPrepModal();
 }
 
-function wdPrepGoStep(step) {
-  if (step < 1 || step > 5) return;
-  wdPrepCurrentStep = step;
+function wdPrepGoTab(tab) {
+  if (tab < 1 || tab > 2) return;
+  if (_wdStep2Ctx) {
+    const myEl = document.getElementById('wdPrepMyPP1Anse');
+    if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
+    const wifeEl = document.getElementById('wdPrepWifePP1Anse');
+    if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
+  }
+  wdPrepCurrentTab = tab;
 
-  // 스텝 인디케이터
-  const bar = document.getElementById('wdPrepStepBar');
+  const bar = document.getElementById('wdPrepTabBar');
   if (bar) {
-    bar.className = 'wdprep-stepbar';
-    bar.innerHTML = WD_PREP_STEPS.map((label, i) => {
-      const n      = i + 1;
-      const done   = n < step;
-      const active = n === step;
-      const circBg = done ? '#22c55e' : active ? 'var(--primary)' : '#e2e8f0';
-      const circFg = (done || active) ? '#fff' : '#94a3b8';
-      const lblColor  = done ? '#22c55e' : active ? 'var(--primary)' : '#94a3b8';
-      const lblWeight = active ? 600 : 400;
-      const circle  = `<div class="wdprep-step-circle" style="background:${circBg};color:${circFg}">${done ? '✓' : n}</div>`;
-      const lbl     = `<div class="wdprep-step-label" style="color:${lblColor};font-weight:${lblWeight}">${label}</div>`;
-      const conn    = n < 5 ? `<div class="wdprep-connector${done ? ' done' : ''}"></div>` : '';
-      return `<div class="wdprep-step">${circle}${lbl}</div>${conn}`;
+    bar.className = 'wdprep-tabbar';
+    bar.innerHTML = WD_PREP_TABS.map((label, i) => {
+      const n = i + 1;
+      return `<button class="wdprep-tab${n === tab ? ' active' : ''}" onclick="wdPrepGoTab(${n})">${label}</button>`;
     }).join('');
   }
 
   const content = document.getElementById('wdPrepContent');
-  if (content) content.innerHTML = wdPrepRenderStep(step);
+  if (content) content.innerHTML = wdPrepRenderTab(tab);
 
-  const prevBtn = document.getElementById('wdPrepPrevBtn');
-  const nextBtn = document.getElementById('wdPrepNextBtn');
-  if (prevBtn) prevBtn.style.display = step === 1 ? 'none' : '';
-  if (nextBtn) {
-    if (step === 5) {
-      nextBtn.style.display = '';
-      nextBtn.textContent = '✔ 완료';
-      nextBtn.onclick = wdPrepFinish;
-    } else if (step === 4) {
-      // Step 4는 내부 "지금 실행" 버튼으로만 진행
-      nextBtn.style.display = 'none';
+  const footer    = document.getElementById('wdPrepFooter');
+  const actionBtn = document.getElementById('wdPrepActionBtn');
+  if (footer && actionBtn) {
+    if (tab === 2) {
+      footer.style.display = '';
+      actionBtn.textContent = '🚀 지금 실행';
+      actionBtn.onclick = wdPrepExecuteConsolidate;
     } else {
-      nextBtn.style.display = '';
-      nextBtn.textContent = '다음 →';
-      nextBtn.onclick = () => wdPrepGoStep(step + 1);
+      footer.style.display = '';
+      actionBtn.textContent = '✔ 완료';
+      actionBtn.onclick = wdPrepFinish;
     }
   }
 }
 
-function wdPrepRenderStep(step) {
+function wdPrepRenderTab(tab) {
   try {
-    if (step === 1) return wdPrepStep1Html();
-    if (step === 2) return wdPrepStep3Html();
-    if (step === 3) return wdPrepStep2Html();
-    if (step === 4) return wdPrepStep4Html();
-    if (step === 5) return wdPrepStep5Html();
+    if (tab === 1) return wdPrepTab1Html();
+    if (tab === 2) return wdPrepTab2Html();
   } catch (e) { return `<p style="color:#ef4444">오류: ${e.message}</p>`; }
   return '';
 }
@@ -14158,6 +14170,153 @@ function wdPrepStep1Html() {
     </div>`;
 }
 
+// PP2가 anse를 모두 흡수 가능하면 PP1 anse=0, 불가하면 PP1이 초과분 담당
+function computeDefaultPP1Anse(pp1Ids, pp2Ids, allNonDcIds, comps, endDate) {
+  const M = 1_000_000;
+  const mv = v => Math.round(v / M);
+  const pp2TotalMv  = pp2Ids.reduce((s, id) => s + mv(comps[id]?.total || 0), 0);
+  const totalAnseMv = allNonDcIds.reduce((s, id) => s + mv(comps[id]?.anse || 0), 0);
+  return Math.max(0, totalAnseMv - pp2TotalMv);
+}
+
+function wdPrepTab1Html() {
+  const currentYear = new Date().getFullYear();
+  const mv   = v => Math.round(v / 10_000);
+  const fmt  = n => n.toLocaleString();
+  const dash = `<span style="color:#cbd5e1">—</span>`;
+
+  const allActive = getActiveAccounts().filter(a => a.id !== 'cash');
+  const myExtraIds   = new Set((appSettings.my?.extraAccounts   || []).map(e => e.id));
+  const wifeExtraIds = new Set((appSettings.wife?.extraAccounts || []).map(e => e.id));
+  const myAccs   = allActive.filter(a => MY_ACC_IDS.includes(a.id)   || myExtraIds.has(a.id));
+  const wifeAccs = allActive.filter(a => WIFE_ACC_IDS.includes(a.id) || wifeExtraIds.has(a.id));
+
+  const myAgeInfo   = wdPrepAgeInfo('my');
+  const wifeAgeInfo = wdPrepAgeInfo('wife');
+
+  function buildRows(accounts, who) {
+    const endDate = `${currentYear}-12-31`;
+    const started = appSettings[who]?.wdStartedAccIds || [];
+    const ageInfo = who === 'my' ? myAgeInfo : wifeAgeInfo;
+    const canStart = ageInfo.eligible;
+    return accounts.map(a => {
+      const val  = computeAccountValue(a.id);
+      const comp = computeAccComponents(a.id, currentYear);
+      if (val <= 0) return null;
+      const isDC = DC_ACC_IDS.has(a.id);
+      let seGong = 0;
+      if (!isDC) {
+        const _accMeta = [...(appSettings.my?.extraAccounts||[]), ...(appSettings.wife?.extraAccounts||[])].find(e => e.id === a.id);
+        if (_accMeta?.origSeGong != null) {
+          seGong = _accMeta.origSeGong;
+        } else {
+          const txns = depositData.transactions.filter(t => t.accId === a.id && t.date <= endDate);
+          const depositPrin = txns.filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
+            .reduce((s, t) => s + Number(t.amount), 0);
+          const anseSum = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+          seGong = Math.max(0, depositPrin - anseSum);
+        }
+      }
+      const isOn = started.includes(a.id);
+      const isISA = ['isa', 'wife_isa'].includes(a.id);
+      let btn;
+      if (isDC || isISA) {
+        btn = dash;
+      } else if (!canStart) {
+        btn = `<button disabled style="font-size:11px;padding:4px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#f1f5f9;color:#94a3b8;cursor:not-allowed">⛔ 만 55세 미만</button>`;
+      } else if (isOn) {
+        btn = `<button onclick="wdStartAccToggle('${a.id}')" style="font-size:11px;padding:4px 10px;border:1px solid #f59e0b;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:700;cursor:pointer">🍇 인출 중</button>`;
+      } else {
+        btn = `<button onclick="wdStartAccToggle('${a.id}')" style="font-size:11px;padding:4px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#475569;cursor:pointer">인출 시작</button>`;
+      }
+      return {
+        id: a.id,
+        name:    getAccName(a.id),
+        val:     mv(val),
+        anse:    mv(seGong),
+        pension: isDC ? mv(Math.max(0, comp.total - comp.dcPrincipal)) : mv(comp.regular),
+        retire:  isDC ? mv(comp.dcPrincipal) : 0,
+        taxFree: isDC ? 0 : mv(comp.anse),
+        btn,
+      };
+    }).filter(Boolean);
+  }
+
+  const myRows   = buildRows(myAccs, 'my');
+  const wifeRows = buildRows(wifeAccs, 'wife');
+
+  const sumF = (rows, f) => rows.reduce((s, r) => s + (r[f] || 0), 0);
+
+  function renderGroup(rows, label, rowBg, hdrBg, totalBg, ageInfo) {
+    if (!rows.length) return '';
+    const ok = ageInfo.eligible;
+    const eligBadge = ok
+      ? `<span style="margin-left:8px;font-size:10px;background:#dcfce7;color:#166534;padding:2px 7px;border-radius:9px;font-weight:700">✅ 인출 가능</span>`
+      : `<span style="margin-left:8px;font-size:10px;background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:9px;font-weight:700">⛔ 만 55세 미만 (현재 만 ${ageInfo?.age}세) — ${ageInfo?.yearsLeft}년 후 가능</span>`;
+
+    const sVal = sumF(rows, 'val'), sAnse = sumF(rows, 'anse');
+    const sPension = sumF(rows, 'pension'), sRetire = sumF(rows, 'retire'), sTaxFree = sumF(rows, 'taxFree');
+
+    const hdrRow = `<tr style="background:${hdrBg}">
+      <td colspan="7" style="font-size:11px;font-weight:700;color:#475569;padding:5px 10px;letter-spacing:.05em;border-bottom:1px solid #e2e8f0">${label}${eligBadge}</td>
+    </tr>`;
+    const dataRows = rows.map(r => `<tr style="background:${rowBg}">
+      <td style="white-space:nowrap;font-weight:600">${r.name}</td>
+      <td>${fmt(r.val)}</td>
+      <td style="color:#1d4ed8;font-weight:600">${r.anse > 0 ? fmt(r.anse) : dash}</td>
+      <td>${r.pension > 0 ? fmt(r.pension) : dash}</td>
+      <td>${r.retire  > 0 ? fmt(r.retire)  : dash}</td>
+      <td>${r.taxFree > 0 ? fmt(r.taxFree) : dash}</td>
+      <td style="text-align:center">${r.btn}</td>
+    </tr>`).join('');
+    const totalRow = `<tr style="background:${totalBg};border-top:2px solid #cbd5e1">
+      <td style="font-weight:700;font-size:12px;white-space:nowrap">${label} 합계</td>
+      <td style="font-weight:700">${fmt(sVal)}</td>
+      <td><span style="background:#fef08a;color:#713f12;font-weight:800;font-size:13px;padding:3px 8px;border-radius:5px;display:inline-block;white-space:nowrap">▶ ${fmt(sAnse)}</span></td>
+      <td style="font-weight:600">${sPension > 0 ? fmt(sPension) : dash}</td>
+      <td style="font-weight:600">${sRetire  > 0 ? fmt(sRetire)  : dash}</td>
+      <td style="font-weight:600">${sTaxFree > 0 ? fmt(sTaxFree) : dash}</td>
+      <td></td>
+    </tr>`;
+    return hdrRow + dataRows + totalRow;
+  }
+
+  if (!myRows.length && !wifeRows.length) {
+    return `<p style="color:var(--muted);text-align:center;padding:24px">잔액이 있는 계좌가 없습니다.</p>`;
+  }
+
+  const hasConsolidation = ['wdcons_my_1','wdcons_my_2','wdcons_wife_1','wdcons_wife_2']
+    .some(id => computeAccountValue(id) > 0);
+  const successBox = hasConsolidation
+    ? `<div class="wdprep-box wdprep-box-green" style="margin-bottom:12px">✅ 계좌 통합이 완료되었습니다! 새로운 통합계좌로 모든 데이터가 이전되었습니다.</div>`
+    : '';
+
+  const thead = `<thead><tr>
+    <th style="text-align:left;min-width:80px">계좌</th>
+    <th>평가금액<br><span style="font-size:10px;font-weight:400">(만원)</span></th>
+    <th style="color:#1d4ed8;min-width:72px">세공액<br><span style="font-size:10px;font-weight:400;color:#64748b">(소득 및 세액공제액)</span></th>
+    <th>연금소득세<br><span style="font-size:10px;font-weight:400">재원(만원)</span></th>
+    <th>퇴직소득세<br><span style="font-size:10px;font-weight:400">재원(만원)</span></th>
+    <th>비과세<br><span style="font-size:10px;font-weight:400">재원(만원)</span></th>
+    <th style="min-width:80px">인출 시작</th>
+  </tr></thead>`;
+
+  const tbody = `<tbody>
+    ${renderGroup(myRows, '본인', '#f0f9ff', '#dbeafe', '#bfdbfe', myAgeInfo)}
+    ${wifeRows.length ? renderGroup(wifeRows, getWifeTitle(), '#fdf4ff', '#ede9fe', '#ddd6fe', wifeAgeInfo) : ''}
+  </tbody>`;
+
+  return `${successBox}
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
+      <table class="wdprep-table">${thead}${tbody}</table>
+    </div>
+    <div class="wdprep-box wdprep-box-green" style="margin-top:10px">
+      💡 <b>세공액</b>: 세액공제 혜택을 받은 누적 납입액 (연금계좌 소득·세액 공제액). 인출 시 <b>연금소득세(3.3~5.5%)</b> 부과.<br>
+      <b>비과세 재원</b>: 세액공제 없이 납입한 금액. 인출 시 세금 없음. DC 계좌에는 비과세 재원이 없습니다.
+    </div>
+    ${wdPrepStep4PrimaryHtml()}`;
+}
+
 let _wdStep2Ctx = null;
 let _wdStep4Done = false;
 
@@ -14231,8 +14390,14 @@ function wdPrepStep2Html() {
       wifePP1Ids:  wifeAutoResult ? [...wifeAutoResult.pp1Ids] : wifeNonDcIds.filter(id => mv(comps[id]?.total||0) > 0),
       wifePP2Ids:  wifeAutoResult ? [...wifeAutoResult.pp2Ids] : [],
       wifeKeepIds: [...wifeDcKeep],  // DC 기본값: 유지
-      savedMyPP1Anse:   c ? mv(c.myPP1Anse)   : 0,
-      savedWifePP1Anse: c ? mv(c.wifePP1Anse) : 0,
+      savedMyPP1Anse:   c ? mv(c.myPP1Anse)   : computeDefaultPP1Anse(
+        myAutoResult   ? myAutoResult.pp1Ids   : myNonDcIds.filter(id => mv(comps[id]?.total||0) > 0),
+        myAutoResult   ? myAutoResult.pp2Ids   : [],
+        myNonDcIds, comps, baseYear + '-12-31'),
+      savedWifePP1Anse: c ? mv(c.wifePP1Anse) : computeDefaultPP1Anse(
+        wifeAutoResult ? wifeAutoResult.pp1Ids : wifeNonDcIds.filter(id => mv(comps[id]?.total||0) > 0),
+        wifeAutoResult ? wifeAutoResult.pp2Ids : [],
+        wifeNonDcIds, comps, baseYear + '-12-31'),
     };
   } else {
     if (!_wdStep2Ctx.myKeepIds)   _wdStep2Ctx.myKeepIds   = [...myDcKeep];
@@ -14242,12 +14407,11 @@ function wdPrepStep2Html() {
     _wdStep2Ctx.wifeAutoResult = wifeAutoResult;
   }
 
-  // 양쪽 모두 계좌 1개 이하 → Step 3 통합 불가, Step 4로 안내
+  // 양쪽 모두 계좌 1개 이하 → 통합 불필요
   if (myActiveCount <= 1 && (!appSettings.hasWife || wifeActiveCount <= 1)) {
     return `<div class="wdprep-box wdprep-box-amber" style="text-align:center;padding:20px 16px">
       <div style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:8px">💡 통합이 필요하지 않습니다</div>
-      <div style="font-size:12px;color:#78350f;margin-bottom:14px">계좌가 1개 이하여서 통합 단계를 건너뜁니다.</div>
-      <button onclick="wdPrepGoStep(4)" style="padding:8px 20px;font-size:13px;font-weight:700;background:#f59e0b;color:#fff;border:none;border-radius:8px;cursor:pointer">다음 단계로 →</button>
+      <div style="font-size:12px;color:#78350f">계좌가 1개 이하여서 배분 설정을 건너뜁니다. 아래 실행 섹션을 확인하세요.</div>
     </div>`;
   }
 
@@ -14379,17 +14543,7 @@ function wdPrepStep2Html() {
     </div>
   </div>`;
 
-  const alreadyApplied = !!(wdConsolidated && wdConsolidated.startYear === (wdPlan?.startYear || 0));
-  const secD = `<div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <button onclick="wdPrepDoApply()" class="btn-primary" id="wdPrepApplyBtn" style="font-size:13px;padding:8px 20px">
-      📥 인출 시뮬레이션에 적용
-    </button>
-    ${alreadyApplied ? `<span style="font-size:12px;color:#166534;font-weight:600">✅ 현재 적용 중</span>` : ''}
-    <span id="wdPrepAppliedMsg" style="display:none;font-size:12px;color:#166534;font-weight:600">✅ 적용되었습니다!</span>
-  </div>`;
-
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">각 계좌를 개인통합1 또는 개인통합2로 배분하고, 통합1의 안세공 배정을 조정하세요.</p>
-    ${flowHtml}${secB}${secD}`;
+  return `${flowHtml}${secB}`;
 }
 
 function wdPrepStep3Html() {
@@ -14407,8 +14561,7 @@ function wdPrepStep3Html() {
     `</div>`
   ).join('');
 
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:14px">계좌 통합 전에 각 계좌의 공식 세액공제 납입 이력을 확인해야 합니다.</p>` +
-    `<div style="border:1px solid #bfdbfe;border-radius:10px;overflow:hidden;margin-bottom:12px">` +
+  return `<div style="border:1px solid #bfdbfe;border-radius:10px;overflow:hidden;margin-bottom:12px">` +
     `<button onclick="(function(btn){const body=btn.nextElementSibling;const open=body.style.display!=='none';body.style.display=open?'none':'block';btn.querySelector('.wdp3-arrow').textContent=open?'▶':'▼';})(this)"` +
     ` style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;background:#eff6ff;border:none;cursor:pointer;text-align:left">` +
     `<span style="font-size:13px;font-weight:700;color:#1e40af">📄 연금보험료 등 소득 세액공제 확인서 발급 방법</span>` +
@@ -14426,6 +14579,36 @@ function wdPrepStep3Html() {
     `<div class="wdprep-box wdprep-box-purple">` +
     `💡 이 서류는 계좌 통합 시 금융기관에 제출하며, 향후 인출 시 과세 기준 자료로도 활용됩니다.` +
     `</div>`;
+}
+
+function wdPrepTab2Html() {
+  const secLabel = (text) =>
+    `<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.05em;margin:18px 0 8px;text-transform:uppercase">${text}</div>`;
+
+  // 국세청 서류 — 접힌 카드
+  const taxDocBody = wdPrepStep3Html();
+  const taxDocCard =
+    `<div style="border:1px solid #bfdbfe;border-radius:10px;overflow:hidden;margin-bottom:4px">` +
+    `<button onclick="(function(b){const d=b.nextElementSibling;const o=d.style.display!=='none';` +
+    `d.style.display=o?'none':'block';b.querySelector('.wdpt-arr').textContent=o?'▶':'▼'})(this)"` +
+    ` style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#eff6ff;border:none;cursor:pointer;text-align:left">` +
+    `<span style="font-size:13px;font-weight:700;color:#1e40af">📄 국세청 서류 확인</span>` +
+    `<span class="wdpt-arr" style="font-size:12px;color:#3b82f6;flex-shrink:0">▶</span>` +
+    `</button>` +
+    `<div style="display:none;padding:12px 14px;background:#f8fbff">${taxDocBody}</div>` +
+    `</div>`;
+
+  // 계좌 배분 설정
+  const proposalHtml = wdPrepStep2Html();
+
+  // 통합 실행 설정
+  const execHtml = wdPrepStep4Html();
+
+  return taxDocCard +
+    secLabel('계좌 배분 및 안세공 설정') +
+    proposalHtml +
+    secLabel('통합 실행') +
+    execHtml;
 }
 
 function wdPrepStep4PrimaryHtml() {
@@ -14455,13 +14638,7 @@ function wdPrepStep4PrimaryHtml() {
       (rank ? `<span style="margin-left:8px;font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:20px;font-weight:600">${rank}</span>` : '') +
       `</div><div style="font-size:12px;color:var(--muted);margin-top:2px">현재 ${fmt(computeAccountValue(a.id))}만원${tax ? ' · '+tax : ''}</div></div></label>`;
   }).join('');
-  if (!cards) cards = `<p style="color:var(--muted)">연금계좌 잔액이 없습니다.</p>`;
-  return `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">가장 먼저 인출할 주 계좌를 선택하세요.</p>` +
-    `<div class="wdprep-box wdprep-box-blue" style="margin-top:0;margin-bottom:14px"><b>📌 권장 인출 순서</b><br>` +
-    `<b>1순위</b> 개인연금 — 분할 수령에 가장 유연, 연금소득세 3.3~5.5%<br>` +
-    `<b>2순위</b> IRP — DC 퇴직급여 이전 후 사용<br>` +
-    `<b>3순위</b> DC 퇴직급여 — 퇴직소득세 별도 적용</div>` +
-    `<div style="margin-bottom:10px">${cards}</div>` +
+  return `<div style="margin-bottom:10px">${cards}</div>` +
     `<div id="wdPrepAccSaved" style="display:none" class="wdprep-box wdprep-box-green">✅ 인출용 주 계좌가 저장되었습니다.</div>`;
 }
 
@@ -14553,7 +14730,7 @@ function wdPrepStep4Html() {
       </label>
     </div>
 
-    ${pairs.length ? `<button onclick="wdPrepExecuteConsolidate()" style="width:100%;padding:10px;font-size:14px;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer">🚀 지금 실행</button>` : ''}`;
+    `;
 }
 
 function wdPrepSelectAccount(accId) {
@@ -14611,18 +14788,24 @@ function wdPrepResetBuckets(who) {
   const wifeEl = document.getElementById('wdPrepWifePP1Anse');
   if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
   const _mv = v => Math.round(v / 1_000_000);
+  const _startYear = wdPlan?.periods?.[0]?.startYear || (new Date().getFullYear() + 1);
+  const _endDate   = (_startYear - 1) + '-12-31';
   if (who === 'my' && _wdStep2Ctx.myAutoResult) {
     _wdStep2Ctx.myPP1Ids  = [..._wdStep2Ctx.myAutoResult.pp1Ids];
     _wdStep2Ctx.myPP2Ids  = [..._wdStep2Ctx.myAutoResult.pp2Ids];
     const dcKeep = MY_ACC_IDS.filter(id => DC_ACC_IDS.has(id) && _mv(_wdStep2Ctx.comps[id]?.total||0) > 0);
     _wdStep2Ctx.myKeepIds = [...dcKeep];
-    _wdStep2Ctx.savedMyPP1Anse = 0;
+    _wdStep2Ctx.savedMyPP1Anse = computeDefaultPP1Anse(
+      _wdStep2Ctx.myPP1Ids, _wdStep2Ctx.myPP2Ids,
+      [..._wdStep2Ctx.myPP1Ids, ..._wdStep2Ctx.myPP2Ids], _wdStep2Ctx.comps, _endDate);
   } else if (who === 'wife' && _wdStep2Ctx.wifeAutoResult) {
     _wdStep2Ctx.wifePP1Ids  = [..._wdStep2Ctx.wifeAutoResult.pp1Ids];
     _wdStep2Ctx.wifePP2Ids  = [..._wdStep2Ctx.wifeAutoResult.pp2Ids];
     const dcKeep = WIFE_ACC_IDS.filter(id => DC_ACC_IDS.has(id) && _mv(_wdStep2Ctx.comps[id]?.total||0) > 0);
     _wdStep2Ctx.wifeKeepIds = [...dcKeep];
-    _wdStep2Ctx.savedWifePP1Anse = 0;
+    _wdStep2Ctx.savedWifePP1Anse = computeDefaultPP1Anse(
+      _wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids,
+      [..._wdStep2Ctx.wifePP1Ids, ..._wdStep2Ctx.wifePP2Ids], _wdStep2Ctx.comps, _endDate);
   }
   const content = document.getElementById('wdPrepContent');
   if (content) content.innerHTML = wdPrepStep2Html();
@@ -14649,6 +14832,10 @@ function wdPrepStep2UpdatePreview() {
     if (!inp) return;
     const inputVal = Math.max(minAnseMv, Math.min(maxAnseMv, Number(inp.value) || 0));
     inp.value = inputVal;
+    if (_wdStep2Ctx) {
+      if (pp1InputId === 'wdPrepMyPP1Anse')   _wdStep2Ctx.savedMyPP1Anse   = inputVal;
+      if (pp1InputId === 'wdPrepWifePP1Anse') _wdStep2Ctx.savedWifePP1Anse = inputVal;
+    }
     const pp1Reg   = Math.max(0, pp1TotalMv  - inputVal);
     const pp2Anse  = Math.max(0, totalAnseMv - inputVal);
     const pp2Reg   = Math.max(0, pp2TotalMv  - pp2Anse);
@@ -14664,15 +14851,6 @@ function wdPrepStep2UpdatePreview() {
         'wdPrepWifePP1Anse', 'wdPrepWifePP1Reg', 'wdPrepWifePP2Anse', 'wdPrepWifePP2Reg');
 }
 
-function wdPrepDoApply() {
-  const myPP1AnseMv   = Number(document.getElementById('wdPrepMyPP1Anse')?.value)   || 0;
-  const wifePP1AnseMv = Number(document.getElementById('wdPrepWifePP1Anse')?.value) || 0;
-  wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv);
-  const btn = document.getElementById('wdPrepApplyBtn');
-  const msg = document.getElementById('wdPrepAppliedMsg');
-  if (btn) btn.textContent = '✅ 적용됨';
-  if (msg) { msg.style.display = ''; setTimeout(() => { if (msg) msg.style.display = 'none'; }, 2500); }
-}
 
 function wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv) {
   const startYear = wdPlan?.periods?.[0]?.startYear;
@@ -14791,6 +14969,20 @@ function wdPrepExecuteConsolidate() {
 
   if (!confirm(`선택한 계좌를 통합하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
 
+  // 통합 전 소스 계좌 세공액 합산 (transactions 이동 전)
+  const _startYr  = wdPlan?.periods?.[0]?.startYear || (new Date().getFullYear() + 1);
+  const _endDate  = (_startYr - 1) + '-12-31';
+  const _accSeGongW = id => {
+    if (DC_ACC_IDS.has(id)) return 0;
+    const txns = depositData.transactions.filter(t => t.accId === id && t.date <= _endDate);
+    const dep  = txns.filter(t => Number(t.amount) > 0 || t.transfer?.role === 'from')
+                      .reduce((s, t) => s + Number(t.amount), 0);
+    const ans  = Math.max(0, txns.reduce((s, t) => s + (Number(t.anse) || 0), 0));
+    return Math.max(0, dep - ans);
+  };
+  const myTotalSeGongW   = [...(ctx.myPP1Ids||[]),   ...(ctx.myPP2Ids||[])  ].reduce((s, id) => s + _accSeGongW(id), 0);
+  const wifeTotalSeGongW = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])].reduce((s, id) => s + _accSeGongW(id), 0);
+
   for (const { src, dst } of pairs) {
     // 보유종목
     holdings.forEach(h => {
@@ -14864,6 +15056,12 @@ function wdPrepExecuteConsolidate() {
     const pp2AnseW  = Math.max(0, totalAnseW - pp1AnseW);
     if ((ctx.myPP1Ids||[]).length) applyAnseRedist('wdcons_my_1', pp1AnseW);
     if ((ctx.myPP2Ids||[]).length) applyAnseRedist('wdcons_my_2', pp2AnseW);
+    const _myPP1TotalW = (ctx.myPP1Ids||[]).reduce((s, id) => s + (comps[id]?.total||0), 0);
+    const _myPP1RegW   = Math.max(0, _myPP1TotalW - pp1AnseW);
+    const _myPP1Seg    = Math.max(0, Math.min(myTotalSeGongW, _myPP1RegW));
+    const _myExtra     = appSettings.my?.extraAccounts || [];
+    if ((ctx.myPP1Ids||[]).length) { const m = _myExtra.find(e => e.id === `wdcons_my_${myBase}`);   if (m) m.origSeGong = _myPP1Seg; }
+    if ((ctx.myPP2Ids||[]).length) { const m = _myExtra.find(e => e.id === `wdcons_my_${myBase+1}`); if (m) m.origSeGong = Math.max(0, myTotalSeGongW - _myPP1Seg); }
   }
   if (runWife && ((ctx.wifePP1Ids||[]).length || (ctx.wifePP2Ids||[]).length)) {
     const allWifeIds = [...(ctx.wifePP1Ids||[]), ...(ctx.wifePP2Ids||[])];
@@ -14873,6 +15071,12 @@ function wdPrepExecuteConsolidate() {
     const pp2AnseW  = Math.max(0, totalAnseW - pp1AnseW);
     if ((ctx.wifePP1Ids||[]).length) applyAnseRedist('wdcons_wife_1', pp1AnseW);
     if ((ctx.wifePP2Ids||[]).length) applyAnseRedist('wdcons_wife_2', pp2AnseW);
+    const _wifePP1TotalW = (ctx.wifePP1Ids||[]).reduce((s, id) => s + (comps[id]?.total||0), 0);
+    const _wifePP1RegW   = Math.max(0, _wifePP1TotalW - pp1AnseW);
+    const _wifePP1Seg    = Math.max(0, Math.min(wifeTotalSeGongW, _wifePP1RegW));
+    const _wifeExtra     = appSettings.wife?.extraAccounts || [];
+    if ((ctx.wifePP1Ids||[]).length) { const m = _wifeExtra.find(e => e.id === `wdcons_wife_${wifeBase}`);   if (m) m.origSeGong = _wifePP1Seg; }
+    if ((ctx.wifePP2Ids||[]).length) { const m = _wifeExtra.find(e => e.id === `wdcons_wife_${wifeBase+1}`); if (m) m.origSeGong = Math.max(0, wifeTotalSeGongW - _wifePP1Seg); }
   }
 
   // 잔액 없고 기록 없는 소스 계좌 자동 비활성화
@@ -14901,7 +15105,7 @@ function wdPrepExecuteConsolidate() {
   renderPrincipalTable();
   renderEvalTable();
 
-  wdPrepGoStep(5);
+  wdPrepGoTab(1);
 }
 
 function wdPrepStep5Html() {
@@ -15016,7 +15220,7 @@ function wdStartAccToggle(accId) {
   cfg.wdStartedAccIds = arr.includes(accId) ? arr.filter(id => id !== accId) : [...arr, accId];
   saveAppSettings();
   const content = document.getElementById('wdPrepContent');
-  if (content) content.innerHTML = wdPrepRenderStep(5);
+  if (content) content.innerHTML = wdPrepTab1Html();
 }
 
 function wdPrepFinish() {
