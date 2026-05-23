@@ -3187,7 +3187,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.417';
+const APP_VERSION = 'MyPM v0.418';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -14012,8 +14012,9 @@ function wdPrepGoStep(step) {
       nextBtn.textContent = '✔ 완료';
       nextBtn.onclick = wdPrepFinish;
     } else if (step === 4) {
-      // Step 4는 내부 "지금 실행" 버튼으로만 진행
-      nextBtn.style.display = 'none';
+      nextBtn.style.display = '';
+      nextBtn.textContent = '🚀 지금 실행';
+      nextBtn.onclick = wdPrepExecuteConsolidate;
     } else {
       nextBtn.style.display = '';
       nextBtn.textContent = '다음 →';
@@ -14544,7 +14545,7 @@ function wdPrepStep4Html() {
       </label>
     </div>
 
-    ${pairs.length ? `<button onclick="wdPrepExecuteConsolidate()" style="width:100%;padding:10px;font-size:14px;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer">🚀 지금 실행</button>` : ''}`;
+    `;
 }
 
 function wdPrepSelectAccount(accId) {
