@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.425';
+const APP_VERSION = 'MyPM v0.426';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7592,10 +7592,20 @@ function renderMonthlyPlanList() {
   if (!wrap) return;
   const plans = annualPlan.monthlyPlans || [];
   if (!plans.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:6px">등록된 적립식 계획이 없습니다.</div>'; return; }
+  let sumAmt = 0, sumAnse = 0, sumTotal = 0, sumRemaining = 0;
+  let minStart = null, maxEnd = null;
   const rows = plans.map(p => {
     const freq = p.frequency === 'annual' ? '연' : '월';
     const editing = p.id === _editingMplanId;
     const totals = _calcMplanTotals(p);
+    sumAmt += (p.monthlyAmt || 0);
+    sumAnse += (p.monthlyAnse || 0);
+    sumTotal += totals.total;
+    sumRemaining += totals.remaining;
+    const sd = new Date(p.startYear, (p.startMonth||1)-1, p.startDay||1);
+    const ed = new Date(p.endYear,   (p.endMonth||1)-1,   p.endDay||1);
+    if (!minStart || sd < minStart) minStart = sd;
+    if (!maxEnd   || ed > maxEnd)   maxEnd   = ed;
     return `<tr${editing ? ' style="background:var(--highlight-bg,#fffbe6)"' : ''}>
       <td>${getAccName(p.accId)}</td>
       <td style="text-align:center">${freq}적립</td>
@@ -7610,7 +7620,19 @@ function renderMonthlyPlanList() {
         <button class="tbl-icon-btn" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑️</button>
       </td>
     </tr>`;}).join('');
-  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th>총적립금</th><th>남은적립금</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  const fmtD = d => d ? `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일` : '-';
+  const sumRow = `<tr style="background:var(--highlight-bg,#f3f4f6);font-weight:600">
+    <td>합계</td>
+    <td></td>
+    <td style="text-align:right">${sumAmt.toLocaleString('ko-KR')} 만원</td>
+    <td style="text-align:right">${sumAnse > 0 ? sumAnse.toLocaleString('ko-KR')+'만원' : '-'}</td>
+    <td>${fmtD(minStart)}</td>
+    <td>${fmtD(maxEnd)}</td>
+    <td style="text-align:right">${sumTotal.toLocaleString('ko-KR')} 만원</td>
+    <td style="text-align:right;color:${sumRemaining > 0 ? 'var(--accent,#1976d2)' : 'var(--muted)'}">${sumRemaining.toLocaleString('ko-KR')} 만원</td>
+    <td></td>
+  </tr>`;
+  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th>총적립금</th><th>남은적립금</th><th></th></tr></thead><tbody>${rows}${sumRow}</tbody></table>`;
 }
 
 function startEditMonthlyPlan(id) {
