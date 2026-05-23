@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.424';
+const APP_VERSION = 'MyPM v0.425';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7569,6 +7569,23 @@ let _editingMplanId = null;
 let _pendingDeletePlanId = null;
 let _pendingEditPlanData = null;
 
+function _calcMplanTotals(p) {
+  const today = new Date();
+  const todayYM = today.getFullYear() * 12 + today.getMonth() + 1;
+  const startYM = p.startYear * 12 + p.startMonth;
+  const endYM   = p.endYear   * 12 + p.endMonth;
+  const amt = (p.monthlyAmt || 0) + (p.monthlyAnse || 0);
+  if (p.frequency === 'annual') {
+    const totalP     = Math.max(0, p.endYear - p.startYear + 1);
+    const remainingP = Math.max(0, p.endYear - Math.max(p.startYear, today.getFullYear()) + 1);
+    return { total: totalP * amt, remaining: remainingP * amt };
+  } else {
+    const totalP     = Math.max(0, endYM - startYM + 1);
+    const remainingP = Math.max(0, endYM - Math.max(startYM, todayYM) + 1);
+    return { total: totalP * amt, remaining: remainingP * amt };
+  }
+}
+
 function renderMonthlyPlanList() {
   updateMplanCountBadge();
   const wrap = document.getElementById('monthlyPlanList');
@@ -7578,6 +7595,7 @@ function renderMonthlyPlanList() {
   const rows = plans.map(p => {
     const freq = p.frequency === 'annual' ? '연' : '월';
     const editing = p.id === _editingMplanId;
+    const totals = _calcMplanTotals(p);
     return `<tr${editing ? ' style="background:var(--highlight-bg,#fffbe6)"' : ''}>
       <td>${getAccName(p.accId)}</td>
       <td style="text-align:center">${freq}적립</td>
@@ -7585,12 +7603,14 @@ function renderMonthlyPlanList() {
       <td style="text-align:right">${(p.monthlyAnse||0) > 0 ? (p.monthlyAnse).toLocaleString('ko-KR')+'만원' : '-'}</td>
       <td>${p.startYear}년 ${p.startMonth}월 ${p.startDay || 1}일</td>
       <td>${p.endYear}년 ${p.endMonth}월 ${p.endDay || 1}일</td>
+      <td style="text-align:right">${totals.total.toLocaleString('ko-KR')} 만원</td>
+      <td style="text-align:right;color:${totals.remaining > 0 ? 'var(--accent,#1976d2)' : 'var(--muted)'}">${totals.remaining.toLocaleString('ko-KR')} 만원</td>
       <td style="white-space:nowrap">
         <button class="tbl-icon-btn" onclick="startEditMonthlyPlan('${p.id}')" title="편집">✏️</button>
         <button class="tbl-icon-btn" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑️</button>
       </td>
     </tr>`;}).join('');
-  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th>총적립금</th><th>남은적립금</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function startEditMonthlyPlan(id) {
