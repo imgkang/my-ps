@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.429';
+const APP_VERSION = 'MyPM v0.430';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12070,10 +12070,9 @@ function computeWithdrawalSim() {
   if (!startYear) return null;
   const retireAge = wp.retireAge || 60;
   const myBirthYear = appSettings.myBirthYear || wp.myBirthYear || 0;
-  // 테이블/그래프 시작연도: 생년월일 + 그래프 시작나이 기준으로 고정
-  const displayStartYear = myBirthYear > 0
-    ? myBirthYear + retireAge
-    : startYear;
+  // 테이블/그래프 시작연도: 인출 시작년도가 은퇴년도보다 이르면 그쪽부터 시작
+  const _baseDisplayYear = myBirthYear > 0 ? myBirthYear + retireAge : startYear;
+  const displayStartYear = (startYear > 0 && startYear < _baseDisplayYear) ? startYear : _baseDisplayYear;
   // 95세까지 고정 표시
   const endYear = myBirthYear > 0
     ? myBirthYear + 95
