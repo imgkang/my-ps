@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.427';
+const APP_VERSION = 'MyPM v0.428';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7677,6 +7677,54 @@ function _parseDateInput(value) {
   if (!y || !m || !d) return null;
   return { y, m, d };
 }
+let _pendingPastDepositAfterRender = null;
+
+function _calcPlanPendingDeposits(plan) {
+  const today = new Date();
+  const curY = today.getFullYear(), curM = today.getMonth() + 1;
+  const todayT = new Date(curY, curM - 1, today.getDate()).getTime();
+  const startY = plan.startYear || curY, startM = plan.startMonth || 1, startD = plan.startDay || 1;
+  const endY   = plan.endYear   || curY + 30, endM = plan.endMonth || 12, endD = plan.endDay || 1;
+  const amt    = (plan.monthlyAmt || 0) * 10000;
+  const anse   = (plan.monthlyAnse || 0) * 10000;
+  if (amt <= 0) return [];
+  const startT = new Date(startY, startM - 1, startD).getTime();
+  const endT   = new Date(endY, endM - 1, endD).getTime();
+  const lastY  = Math.min(endY, curY);
+  const result = [];
+  outer: for (let y = startY; y <= lastY; y++) {
+    const monthRange = plan.frequency === 'annual' ? [startM] : [1,2,3,4,5,6,7,8,9,10,11,12];
+    for (const m of monthRange) {
+      const t = new Date(y, m - 1, 1).getTime();
+      if (t < startT) continue;
+      if (t > endT)   break outer;
+      if (t > todayT) break outer;
+      const dateStr = `${y}-${String(m).padStart(2,'0')}-01`;
+      const exists = depositData.transactions.some(tx => tx.autoFromPlan === plan.id && tx.date === dateStr);
+      if (!exists) result.push({ date: dateStr, amount: amt, anse });
+    }
+  }
+  return result;
+}
+
+function _showPastDepositModal(plan, pending, afterRenderFn) {
+  _pendingPastDepositAfterRender = afterRenderFn || null;
+  const accName = getAccName(plan.accId);
+  const fmtD = s => { const [y, m, d] = s.split('-'); return `${y}년 ${Number(m)}월 ${Number(d)}일`; };
+  const first = pending[0].date, last = pending[pending.length - 1].date;
+  document.getElementById('pastDepositModalMsg').textContent =
+    `[${accName}] ${fmtD(first)} ~ ${fmtD(last)}, 총 ${pending.length}회 적립이 예정되어 있습니다.\n과거 기간 적립 기록을 추가하시겠습니까?`;
+  document.getElementById('pastDepositModal').style.display = 'flex';
+}
+
+function confirmPastDeposit(doAdd) {
+  document.getElementById('pastDepositModal').style.display = 'none';
+  const afterRender = _pendingPastDepositAfterRender;
+  _pendingPastDepositAfterRender = null;
+  if (doAdd) applyAutoDeposits();
+  if (afterRender) afterRender();
+}
+
 function addMonthlyPlan() {
   const accId = document.getElementById('mplanAcc').value;
   const frequency = document.getElementById('mplanFreq').value || 'monthly';
@@ -7703,15 +7751,19 @@ function addMonthlyPlan() {
     }
     applyEditPlan(newPlanData, false);
   } else {
-    annualPlan.monthlyPlans.push({ id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, startDay, endYear, endMonth, endDay });
+    const newPlan = { id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, startDay, endYear, endMonth, endDay };
+    annualPlan.monthlyPlans.push(newPlan);
     localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
     document.getElementById('mplanAmt').value = '';
     document.getElementById('mplanAnse').value = '';
-    renderMonthlyPlanList();
-    renderPrincipalTable();
-    renderEvalTable();
-    renderAnnualCharts();
-    applyAutoDeposits();
+    const renderAll = () => { renderMonthlyPlanList(); renderPrincipalTable(); renderEvalTable(); renderAnnualCharts(); };
+    const pending = _calcPlanPendingDeposits(newPlan);
+    if (pending.length > 0) {
+      _showPastDepositModal(newPlan, pending, renderAll);
+    } else {
+      applyAutoDeposits();
+      renderAll();
+    }
   }
 }
 
@@ -7743,8 +7795,13 @@ function applyEditPlan(planData, refreshRecords) {
   renderPrincipalTable();
   renderEvalTable();
   renderAnnualCharts();
-  applyAutoDeposits();
-  if (refreshRecords) renderDepositList();
+  const _editPending = _calcPlanPendingDeposits(planData);
+  if (_editPending.length > 0) {
+    _showPastDepositModal(planData, _editPending, refreshRecords ? () => renderDepositList() : null);
+  } else {
+    applyAutoDeposits();
+    if (refreshRecords) renderDepositList();
+  }
 }
 
 function closeEditPlanModal() {
@@ -15932,6 +15989,17 @@ if ('serviceWorker' in navigator) {
 </div>
 
 <!-- ===== 적립계획 수정 확인 모달 ===== -->
+<div class="modal-backdrop" id="pastDepositModal" style="z-index:1150;display:none" onclick="if(event.target.id==='pastDepositModal')confirmPastDeposit(false)">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <h3 style="margin-bottom:10px">과거 기간 적립</h3>
+    <p id="pastDepositModalMsg" style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;white-space:pre-line"></p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn-secondary" onclick="confirmPastDeposit(false)">건너뛰기</button>
+      <button class="btn-primary" onclick="confirmPastDeposit(true)">적립 추가</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="editPlanModal" style="z-index:1150;display:none" onclick="if(event.target.id==='editPlanModal')closeEditPlanModal()">
   <div class="modal" style="max-width:340px;text-align:center">
     <h3 style="margin-bottom:10px">적립계획 수정</h3>
