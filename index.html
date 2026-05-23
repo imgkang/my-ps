@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.428';
+const APP_VERSION = 'MyPM v0.429';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -7571,17 +7571,22 @@ let _pendingEditPlanData = null;
 
 function _calcMplanTotals(p) {
   const today = new Date();
+  const todayT = today.getTime();
   const todayYM = today.getFullYear() * 12 + today.getMonth() + 1;
   const startYM = p.startYear * 12 + p.startMonth;
   const endYM   = p.endYear   * 12 + p.endMonth;
   const amt = (p.monthlyAmt || 0);
   if (p.frequency === 'annual') {
-    const totalP     = Math.max(0, p.endYear - p.startYear + 1);
-    const remainingP = Math.max(0, p.endYear - Math.max(p.startYear, today.getFullYear()) + 1);
+    const totalP = Math.max(0, p.endYear - p.startYear + 1);
+    const depositThisYear = new Date(today.getFullYear(), (p.startMonth || 1) - 1, 1).getTime();
+    const firstRemainYear = depositThisYear <= todayT ? today.getFullYear() + 1 : today.getFullYear();
+    const remainingP = Math.max(0, p.endYear - Math.max(p.startYear, firstRemainYear) + 1);
     return { total: totalP * amt, remaining: remainingP * amt };
   } else {
-    const totalP     = Math.max(0, endYM - startYM + 1);
-    const remainingP = Math.max(0, endYM - Math.max(startYM, todayYM) + 1);
+    const totalP = Math.max(0, endYM - startYM + 1);
+    const depositThisMonth = new Date(today.getFullYear(), today.getMonth(), 1).getTime();
+    const firstRemainYM = depositThisMonth <= todayT ? todayYM + 1 : todayYM;
+    const remainingP = Math.max(0, endYM - Math.max(startYM, firstRemainYM) + 1);
     return { total: totalP * amt, remaining: remainingP * amt };
   }
 }
