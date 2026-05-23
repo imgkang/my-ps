@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.438';
+const APP_VERSION = 'MyPM v0.439';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12496,6 +12496,18 @@ function computeWithdrawalSim() {
     // 2-pass 보정용 상태 스냅샷 (목표액 구간에서만 사용)
     const _snap = {};
     for (const id of allAccIds) _snap[id] = { ...state[id] };
+
+    // DEBUG: 아내 인출 추적
+    if (yr <= startYear + 2) {
+      const _wifeIds = getActiveWifeAccIds();
+      console.log(`[WD-DEBUG yr=${yr}] myExtraIds=${JSON.stringify(myExtraIds)}`);
+      console.log(`[WD-DEBUG yr=${yr}] wifeExtraIds=${JSON.stringify(wifeExtraIds)}`);
+      console.log(`[WD-DEBUG yr=${yr}] myWithdrawIds=${JSON.stringify(myWithdrawIds)}`);
+      console.log(`[WD-DEBUG yr=${yr}] activeWifeIds=${JSON.stringify(_wifeIds)}`);
+      console.log(`[WD-DEBUG yr=${yr}] myRemaining=${myRemaining} wifeRemaining=${wifeRemaining}`);
+      _wifeIds.forEach(id => console.log(`[WD-DEBUG yr=${yr}] state[${id}]=`, JSON.stringify(state[id])));
+      myWithdrawIds.forEach(id => { if(state[id]?.total > 0) console.log(`[WD-DEBUG yr=${yr}] myState[${id}]=`, JSON.stringify(state[id])); });
+    }
 
     doWithdraw(myWithdrawIds, myRemaining, basic);
     applyPensionTaxThreshold(myWithdrawIds);
