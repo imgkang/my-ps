@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.433';
+const APP_VERSION = 'MyPM v0.434';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -11723,7 +11723,8 @@ function updateWdYearTimeline() {
       if (p.type === 'pct') {
         detail = `인출율 ${p.pct||4}%`;
       } else {
-        detail = `고정 ${p.totalAmount||0}만/월`;
+        const typeLabel = p.type === 'nominal' ? '고정금액' : '고정가치';
+        detail = `${typeLabel} ${p.totalAmount||0}만/월`;
         if (wt) {
           const mode = p.wifeContrib || 'fixed';
           if (mode === 'fixed') detail += ` · 아내고정 ${p.wifeAmount||0}만/월`;
@@ -11807,8 +11808,9 @@ function renderWdPeriodCard(idx, period, hasWife, endYr) {
     <button onclick="removeWdPeriod(${idx})" style="background:none;border:1px solid #f87171;color:#ef4444;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">✕ 삭제</button>
   </div>
   <div class="toggle-row" style="margin-bottom:8px">
-    <button id="wdP${idx}_fixed" class="toggle-btn" onclick="setWdPeriodType(${idx},'fixed')">고정가치</button>
-    <button id="wdP${idx}_pct"   class="toggle-btn" onclick="setWdPeriodType(${idx},'pct')">인출율%</button>
+    <button id="wdP${idx}_fixed"   class="toggle-btn" onclick="setWdPeriodType(${idx},'fixed')">고정가치</button>
+    <button id="wdP${idx}_nominal" class="toggle-btn" onclick="setWdPeriodType(${idx},'nominal')">고정금액</button>
+    <button id="wdP${idx}_pct"     class="toggle-btn" onclick="setWdPeriodType(${idx},'pct')">인출율%</button>
     <button id="wdP${idx}_pensionMode" class="toggle-btn"
             data-mode="${period.publicPensionMode || 'include'}"
             onclick="toggleWdPensionMode(${idx})"
@@ -11817,7 +11819,7 @@ function renderWdPeriodCard(idx, period, hasWife, endYr) {
   </div>
   <div id="wdP${idx}_fixedCfg">
     <div class="cfg-grid">
-      <label>총인출금액 (만원/월, ${new Date().getFullYear()}년 현재가치)</label>
+      <label id="wdP${idx}_fixedLabel">총인출금액 (만원/월, ${new Date().getFullYear()}년 현재가치)</label>
       <input id="wdP${idx}_totalAmt" type="number" min="0" step="1" value="${period.totalAmount || 0}">
     </div>${wifeContribSection}
   </div>
@@ -11865,13 +11867,20 @@ function setWdPeriodType(idx, type, noSync) {
     const periods = wdPlan.periods || [];
     if (periods[idx]) periods[idx].type = type;
   }
-  const isPct = type === 'pct';
-  document.getElementById(`wdP${idx}_fixed`)?.classList.toggle('active', !isPct);
-  document.getElementById(`wdP${idx}_pct`)?.classList.toggle('active',   isPct);
+  const isPct     = type === 'pct';
+  const isNominal = type === 'nominal';
+  const isFixed   = !isPct && !isNominal;
+  document.getElementById(`wdP${idx}_fixed`)?.classList.toggle('active', isFixed);
+  document.getElementById(`wdP${idx}_nominal`)?.classList.toggle('active', isNominal);
+  document.getElementById(`wdP${idx}_pct`)?.classList.toggle('active', isPct);
   const fc = document.getElementById(`wdP${idx}_fixedCfg`);
   const pc = document.getElementById(`wdP${idx}_pctCfg`);
   if (fc) fc.style.display = isPct ? 'none' : '';
   if (pc) pc.style.display = isPct ? '' : 'none';
+  const lbl = document.getElementById(`wdP${idx}_fixedLabel`);
+  if (lbl) lbl.textContent = isNominal
+    ? '총인출금액 (만원/월, 명목금액)'
+    : `총인출금액 (만원/월, ${new Date().getFullYear()}년 현재가치)`;
 }
 
 function setWdPeriodWifeContrib(idx, mode, noSync) {
@@ -12366,8 +12375,8 @@ function computeWithdrawalSim() {
         }
         target = pctRawMy + pctRawWife;
       } else {
-        // 고정금액 모드
-        const inflFactor      = Math.pow(1+inf, yr - todayYear);
+        // 고정가치/고정금액 모드 (nominal: inflFactor 미적용)
+        const inflFactor      = activePeriod.type === 'nominal' ? 1 : Math.pow(1+inf, yr - todayYear);
         const totalNetTarget  = (activePeriod.totalAmount || 0) * 120_000 * inflFactor;
         const wifeBasisAmt    = yr >= startYear ? wifeBasic : 0;
         const wifeContribMode = activePeriod.wifeContrib || 'fixed';
