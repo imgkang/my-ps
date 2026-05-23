@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.435';
+const APP_VERSION = 'MyPM v0.436';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -11902,14 +11902,15 @@ function setWdPeriodWifeContrib(idx, mode, noSync) {
 function readWdPeriodsFromForm() {
   return (wdPlan.periods || []).map((p, i) => {
     const n = id => Number(document.getElementById(id)?.value) || 0;
-    const isPct   = document.getElementById(`wdP${i}_pct`)?.classList.contains('active');
+    const isPct     = document.getElementById(`wdP${i}_pct`)?.classList.contains('active');
+    const isNominal = document.getElementById(`wdP${i}_nominal`)?.classList.contains('active');
     const contrib = ['fixed','topup','ratio'].find(m => {
       const btnId = m === 'fixed' ? `wdP${i}_fixed_w` : `wdP${i}_${m}`;
       return document.getElementById(btnId)?.classList.contains('active');
     }) || p.wifeContrib || 'fixed';
     return {
       startYear:         n(`wdP${i}_start`)    || p.startYear,
-      type:              isPct ? 'pct' : 'fixed',
+      type:              isPct ? 'pct' : isNominal ? 'nominal' : 'fixed',
       totalAmount:       n(`wdP${i}_totalAmt`) || p.totalAmount || 0,
       wifeAmount:        (() => { const el = document.getElementById(`wdP${i}_wifeAmt`); return el ? (parseFloat(el.value) || 0) : (p.wifeAmount ?? 0); })(),
       myAmount:          (() => { const el = document.getElementById(`wdP${i}_myAmt`);   return el ? (parseFloat(el.value) || 0) : (p.myAmount   ?? 0); })(),
