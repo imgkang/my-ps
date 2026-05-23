@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.437';
+const APP_VERSION = 'MyPM v0.438';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12201,7 +12201,7 @@ function computeWithdrawalSim() {
       const initEnd = isCurrentYearStart ? todayStr : endDate;
       const initYr  = startYear - 1;
       const total = isCurrentYearStart
-        ? (computeAccountValue(accId) || 0)
+        ? (computeAccountValue(accId) || computeAccStartBal(accId, initYr))
         : computeAccStartBal(accId, initYr);
       let anse;
       if (DC_ACC_IDS.has(accId)) {
