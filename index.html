@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.436';
+const APP_VERSION = 'MyPM v0.437';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12404,27 +12404,25 @@ function computeWithdrawalSim() {
           wifeRemaining          = pgNeeded * wifeR;
           myRemaining            = pgNeeded * (1 - wifeR);
         } else {
-          // 고정금액(fixed) 또는 본인 부족분 충당(topup): topup 계산 공통
-          let wifeNetTarget;
+          // 고정금액(fixed) / 부족분충당(topup): 사적 필요액을 설정대로 직접 배분
+          const netPrivateNeeded = Math.max(0, totalNetTarget - pubContrib);
+          let myNetNeeded, wifeNetNeeded;
           if (appSettings.hasWife && yr >= startYear) {
             if (wifeContribMode === 'topup') {
-              // 본인 고정금액 입력 → 아내 = total - 본인
               const myNetFixed = (activePeriod.myAmount || 0) * 120_000;
-              wifeNetTarget = Math.max(0, totalNetTarget - myNetFixed);
+              myNetNeeded   = Math.min(netPrivateNeeded, myNetFixed);
+              wifeNetNeeded = Math.max(0, netPrivateNeeded - myNetNeeded);
             } else {
-              // 아내 고정금액(fixed) 입력
-              wifeNetTarget = (activePeriod.wifeAmount || 0) * 120_000;
+              const wifeNetFixed = (activePeriod.wifeAmount || 0) * 120_000;
+              wifeNetNeeded = Math.min(netPrivateNeeded, wifeNetFixed);
+              myNetNeeded   = Math.max(0, netPrivateNeeded - wifeNetNeeded);
             }
           } else {
-            wifeNetTarget = 0;
+            myNetNeeded   = netPrivateNeeded;
+            wifeNetNeeded = 0;
           }
-          const extraNetNeeded  = Math.max(0, target - pubContrib - basicNet - wifeBasisNet);
-          const needExtra       = extraNetNeeded * grossMult;
-          const wifeGrossCap    = wifeNetTarget > 0 ? wifeNetTarget * grossMult
-            : (activePeriod.wifeContrib === 'fixed' && (activePeriod.wifeAmount || 0) === 0 ? 0 : wifeBasisAmt);
-          wifeRemaining         = Math.min(wifeGrossCap, wifeBasisAmt + needExtra);
-          const wifeExtraActual = Math.max(0, wifeRemaining - wifeBasisAmt);
-          myRemaining           = basic + (needExtra - wifeExtraActual);
+          myRemaining   = myNetNeeded   * grossMult;
+          wifeRemaining = wifeNetNeeded * grossMult;
         }
       }
     }
@@ -12531,7 +12529,12 @@ function computeWithdrawalSim() {
           myRemaining   = Math.max(0, myRemaining   + _corrGross * (1 - wifeR2));
           wifeRemaining = Math.max(0, wifeRemaining + _corrGross * wifeR2);
         } else {
-          myRemaining = Math.max(0, myRemaining + _corrGross);
+          // fixed/topup: 실제 인출 중인 쪽으로 보정
+          if (myRemaining === 0 && wifeRemaining > 0) {
+            wifeRemaining = Math.max(0, wifeRemaining + _corrGross);
+          } else {
+            myRemaining = Math.max(0, myRemaining + _corrGross);
+          }
         }
         doWithdraw(myWithdrawIds, myRemaining, basic);
         applyPensionTaxThreshold(myWithdrawIds);
