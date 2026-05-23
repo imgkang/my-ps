@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.431';
+const APP_VERSION = 'MyPM v0.432';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -11985,7 +11985,9 @@ function computeAccStartBal(accId, startYear) {
 
   // 실적이 startYear 이하면 그 연도의 실제값 사용 (연간계획 getGroupYearEndWon 과 동일 정렬)
   if (startYear <= lastRecYear) {
-    return (getGroupYearEndWon([accId], startYear) || 0);
+    const recVal = getGroupYearEndWon([accId], startYear);
+    if (recVal > 0) return recVal;
+    // 해당 계좌의 record가 없음 → 포트폴리오 / 계획 기반 계산으로 폴백
   }
 
   let base = getGroupYearEndWon([accId], lastRecYear) || 0;
@@ -12255,6 +12257,19 @@ function computeWithdrawalSim() {
       const s = state[accId];
       const gain = s.total * r;
       s.regular += gain; s.total += gain;
+    }
+
+    // 1.5. 적립계획 입금 (savings plan deposits for this year)
+    for (const accId of allAccIds) {
+      const s = state[accId];
+      const depositWon = getMonthlyPlanYearEndValueWon(accId, yr, r);
+      if (depositWon <= 0) continue;
+      const totalSimpleMw = getMonthlyPlanIncrManwon(accId, yr);
+      const anseSimpleMw  = getMonthlyPlanAnseIncrManwon(accId, yr);
+      const anseWon = totalSimpleMw > 0 ? depositWon * (anseSimpleMw / totalSimpleMw) : 0;
+      s.anse    += anseWon;
+      s.regular += depositWon - anseWon;
+      s.total   += depositWon;
     }
 
     // 2. 공적연금 (국민연금 + 공무원연금 + 사학연금, 물가연동, 시작월 반영)
