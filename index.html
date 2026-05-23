@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.432';
+const APP_VERSION = 'MyPM v0.433';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12185,10 +12185,14 @@ function computeWithdrawalSim() {
     }
   } else {
     const currentYear = new Date().getFullYear();
+    const todayStr = new Date().toISOString().slice(0, 10);
     for (const accId of allAccIds) {
-      const initEnd = endDate;
+      const isCurrentYearStart = startYear === currentYear;
+      const initEnd = isCurrentYearStart ? todayStr : endDate;
       const initYr  = startYear - 1;
-      const total = computeAccStartBal(accId, initYr);
+      const total = isCurrentYearStart
+        ? (computeAccountValue(accId) || 0)
+        : computeAccStartBal(accId, initYr);
       let anse;
       if (DC_ACC_IDS.has(accId)) {
         anse = 0;
@@ -13369,10 +13373,15 @@ function setupWdScrollSync() {
 }
 
 function buildWdTableHead(years, summary, extraCols = 3) {
+  const currYr = new Date().getFullYear();
   let h = '';
   for (const yr of years) {
     const hasnp = (summary[yr].myPublicInc||0) > 0 || (summary[yr].wifePublicInc||0) > 0;
-    h += `<th${hasnp ? ' style="color:#7c3aed;font-weight:800"' : ''}>${yr}</th>`;
+    const isCurr = yr === currYr;
+    const style = isCurr
+      ? `background:#fef3c7;color:${hasnp ? '#d97706' : '#92400e'};font-weight:800`
+      : (hasnp ? 'color:#7c3aed;font-weight:800' : '');
+    h += `<th${style ? ` style="${style}"` : ''}>${yr}</th>`;
   }
   return h;
 }
@@ -13398,11 +13407,13 @@ function renderWdWithdrawTable(sim) {
   const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
   const blankTd = `<td style="background:#f3f4f6;padding:0"></td>`;
   const cell = (yr, content) => yr < startYear ? blankTd : `<td>${content}</td>`;
+  const currYr = new Date().getFullYear();
   const tapCell = (yr, content, type, accId='') => {
     if (yr < startYear) return blankTd;
-    if (content === '' || content == null) return `<td></td>`;
+    const bg = yr === currYr ? 'background:#fffbeb;' : '';
+    if (content === '' || content == null) return `<td${bg ? ` style="${bg.slice(0,-1)}"` : ''}></td>`;
     const acc = accId ? ` data-acc="${accId}"` : '';
-    return `<td data-cell-type="${type}" data-yr="${yr}"${acc} onclick="wdShowCellInfo(event,this)" style="cursor:pointer">${content}</td>`;
+    return `<td data-cell-type="${type}" data-yr="${yr}"${acc} onclick="wdShowCellInfo(event,this)" style="${bg}cursor:pointer">${content}</td>`;
   };
 
   let h = `<table class="wd-table"><colgroup>
@@ -13508,18 +13519,20 @@ function renderWdBalanceTable(sim) {
 
   const blankTd = `<td style="background:#f3f4f6;padding:0"></td>`;
   const cell = (yr, content) => balances[yr] === null ? blankTd : `<td>${content}</td>`;
+  const currYrBal = new Date().getFullYear();
   const tapBalCell = (yr, type, accId, content, isWife) => {
     if (balances[yr] === null) return blankTd;
     if (isWife && yr < startYear) return `<td style="color:#e5e7eb">—</td>`;
     if (typeof content === 'string' && content.includes('color:#9ca3af')) return `<td>${content}</td>`;
-    return `<td data-cell-type="${type}" data-yr="${yr}" data-acc="${accId}" onclick="wdShowCellInfo(event,this)" style="cursor:pointer">${content}</td>`;
+    const bg = yr === currYrBal ? 'background:#fffbeb;' : '';
+    return `<td data-cell-type="${type}" data-yr="${yr}" data-acc="${accId}" onclick="wdShowCellInfo(event,this)" style="${bg}cursor:pointer">${content}</td>`;
   };
 
   let h = `<table class="wd-table"><colgroup>
     <col style="width:110px"><col style="width:46px"><col style="width:58px">`;
   for (const yr of years) h += `<col style="width:${balances[yr] === null ? '22px' : '50px'}">`;
   h += `</colgroup><thead><tr><th>계좌</th><th>구분</th><th>초기잔액</th>`;
-  for (const yr of years) h += `<th>${yr}</th>`;
+  for (const yr of years) h += `<th${yr === currYrBal ? ' style="background:#fef3c7;color:#92400e;font-weight:800"' : ''}>${yr}</th>`;
   h += '</tr>';
   const _myBY2 = appSettings.myBirthYear || wp.myBirthYear || 0;
   if (_myBY2) {
