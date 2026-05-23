@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.430';
+const APP_VERSION = 'MyPM v0.431';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -13371,7 +13371,13 @@ function renderWdWithdrawTable(sim) {
     wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인통합1(${_wt})`, wife_pension2:`개인통합2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
-  const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
+  const _simEnd = sim.years[sim.years.length - 1] || startYear;
+  const _hasPlanInPeriod = id => (annualPlan.monthlyPlans || []).some(p =>
+    p.accId === id && p.startYear <= _simEnd && p.endYear >= startYear
+  );
+  const dispAccIds = allAccIds.filter(id =>
+    (initState[id] && initState[id].total > 0) || _hasPlanInPeriod(id)
+  );
   const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : getAccName(id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const m  = (won) => { const v = Math.round(won / 1_000_000); return v > 0 ? v.toString() : ''; };
@@ -13471,7 +13477,13 @@ function renderWdBalanceTable(sim) {
     wife_dc:`퇴직연금(${_wt})`, wife_pension1:`개인통합1(${_wt})`, wife_pension2:`개인통합2(${_wt})` };
   const isConsolidated = !!(wdConsolidated && wdConsolidated.startYear === startYear);
   const isAutoConsolidated = !!(autoConsolidateLog && (autoConsolidateLog.my || autoConsolidateLog.wife));
-  const dispAccIds = allAccIds.filter(id => initState[id] && initState[id].total > 0);
+  const _simEnd = sim.years[sim.years.length - 1] || startYear;
+  const _hasPlanInPeriod = id => (annualPlan.monthlyPlans || []).some(p =>
+    p.accId === id && p.startYear <= _simEnd && p.endYear >= startYear
+  );
+  const dispAccIds = allAccIds.filter(id =>
+    (initState[id] && initState[id].total > 0) || _hasPlanInPeriod(id)
+  );
   const accName = id => ((isConsolidated || isAutoConsolidated) && consNameMap[id]) ? consNameMap[id] : getAccName(id);
   const mv = (won) => Math.round(won / 1_000_000).toString();
   const mc = (won) => {
