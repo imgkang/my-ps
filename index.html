@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.440';
+const APP_VERSION = 'MyPM v0.441';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12192,6 +12192,14 @@ function computeWithdrawalSim() {
       state['wife_pension1'] = { anse: wPP1A, dcPrincipal: 0, regular: wPP1R, total: wPP1A + wPP1R };
       state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,
                                   total: wifePP2Anse + wifePP2Regular };
+      // wdcons_wife 계좌가 있으면 wife_pension1/2 값을 해당 계좌로 이동 (doWithdraw가 wdcons 계좌를 사용하므로)
+      const _wdcWifeIds = wifeExtraIds.filter(id => id.startsWith('wdcons_wife_'));
+      if (_wdcWifeIds[0] && allAccIds.includes(_wdcWifeIds[0])) {
+        state[_wdcWifeIds[0]] = { ...state['wife_pension1'] }; state['wife_pension1'] = { ..._zero };
+      }
+      if (_wdcWifeIds[1] && allAccIds.includes(_wdcWifeIds[1])) {
+        state[_wdcWifeIds[1]] = { ...state['wife_pension2'] }; state['wife_pension2'] = { ..._zero };
+      }
     }
   } else {
     const currentYear = new Date().getFullYear();
@@ -12500,10 +12508,13 @@ function computeWithdrawalSim() {
     // DEBUG: 아내 인출 추적
     if (yr <= startYear + 2) {
       const _wifeIds = getActiveWifeAccIds();
+      const _apDbg = periodsWithEnd.find(p => yr >= p.startYear && yr <= p.derivedEndYear);
       console.log(`[WD-DEBUG yr=${yr}] myExtraIds=${JSON.stringify(myExtraIds)}`);
       console.log(`[WD-DEBUG yr=${yr}] wifeExtraIds=${JSON.stringify(wifeExtraIds)}`);
       console.log(`[WD-DEBUG yr=${yr}] myWithdrawIds=${JSON.stringify(myWithdrawIds)}`);
       console.log(`[WD-DEBUG yr=${yr}] activeWifeIds=${JSON.stringify(_wifeIds)}`);
+      console.log(`[WD-DEBUG yr=${yr}] activePeriod=`, JSON.stringify({ type: _apDbg?.type, wifeContrib: _apDbg?.wifeContrib, wifeAmount: _apDbg?.wifeAmount, totalAmount: _apDbg?.totalAmount, wifeRatio: _apDbg?.wifeRatio, publicPensionMode: _apDbg?.publicPensionMode }));
+      console.log(`[WD-DEBUG yr=${yr}] myPublicInc=${myPublicInc} wifePublicInc=${wifePublicInc} basic=${basic}`);
       console.log(`[WD-DEBUG yr=${yr}] myRemaining=${myRemaining} wifeRemaining=${wifeRemaining}`);
       _wifeIds.forEach(id => console.log(`[WD-DEBUG yr=${yr}] state[${id}]=`, JSON.stringify(state[id])));
       myWithdrawIds.forEach(id => { if(state[id]?.total > 0) console.log(`[WD-DEBUG yr=${yr}] myState[${id}]=`, JSON.stringify(state[id])); });
