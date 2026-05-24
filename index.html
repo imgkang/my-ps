@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.443';
+const APP_VERSION = 'MyPM v0.444';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12026,6 +12026,13 @@ function computeAccStartBal(accId, startYear) {
   let base = getGroupYearEndWon([accId], lastRecYear) || 0;
   // 신규 extraAccount는 monthlyRecords에 없음 → 현재 포트폴리오 가치로 폴백
   if (base === 0) { const cv = computeAccountValue(accId); if (cv > 0) base = cv; }
+  // 통합계좌 등이 최신 공통 스냅샷에 없을 경우: 계좌별 최신 기록 탐색 폴백
+  if (base === 0) {
+    const accRec = [...monthlyRecords]
+      .filter(r => Number(r.accounts?.[accId]) > 0)
+      .sort((a, b) => b.year - a.year || b.month - a.month || (b.day || 0) - (a.day || 0))[0];
+    if (accRec) base = Number(accRec.accounts[accId]) || 0;
+  }
 
   // lastRecYear === currentYear: 최신 record 이후 currentYear 입금분을 base 에 추가
   if (currentYear === lastRecYear) {
