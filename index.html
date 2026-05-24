@@ -3191,14 +3191,14 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.449';
+const APP_VERSION = 'MyPM v0.450';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
 window._wdLog = function(...args) {
   const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
   console.log(...args);
-  if (msg.includes('[WD-DEBUG')) {
+  if (msg.includes('[WD-')) {
     window._wdDebugLines.push(msg);
   }
 };
@@ -12083,6 +12083,7 @@ function autoConsolidateForSim(nonDcIds, state, pp1Key, pp2Key) {
 }
 
 function computeWithdrawalSim() {
+  window._wdDebugLines = []; // 매 실행마다 로그 초기화
   const wp = wdPlan;
   const todayYear = new Date().getFullYear();
   // Backward compat: auto-migrate old wdPlan without periods
