@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.448';
+const APP_VERSION = 'MyPM v0.449';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12617,6 +12617,13 @@ function computeWithdrawalSim() {
       _wdLog(`[WD-DEBUG yr=${yr}] myRemaining=${myRemaining} wifeRemaining=${wifeRemaining}`);
       _wifeIds.forEach(id => _wdLog(`[WD-DEBUG yr=${yr}] state[${id}]=`, JSON.stringify(state[id])));
       myWithdrawIds.forEach(id => { if(state[id]?.total > 0) _wdLog(`[WD-DEBUG yr=${yr}] myState[${id}]=`, JSON.stringify(state[id])); });
+      // initState 진단: wife 관련 계좌 모두 출력
+      if (yr === startYear) {
+        ['wife_pension1','wife_pension2','wdcons_wife_1','wdcons_wife_2'].forEach(id => {
+          _wdLog(`[WD-INIT2 yr=${yr}] initState[${id}].total=`, (initState[id]?.total ?? 'MISSING'));
+        });
+        _wdLog(`[WD-FIX2 yr=${yr}] wdConsolidated=`, wdConsolidated ? JSON.stringify({startYear: wdConsolidated.startYear, wifePP1Anse: wdConsolidated.wifePP1Anse, wifePP1Regular: wdConsolidated.wifePP1Regular}) : 'null');
+      }
     }
 
     doWithdraw(myWithdrawIds, myRemaining, basic);
