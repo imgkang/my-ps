@@ -3195,7 +3195,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.457';
+const APP_VERSION = 'MyPM v0.458';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12153,10 +12153,17 @@ function computeWithdrawalSim() {
   const myExtraIds   = (appSettings.my?.extraAccounts || []).filter(e => e.active !== false).map(e => e.id);
   const wifeExtraIds = activeWifeIds.filter(id => !WIFE_ACC_IDS.includes(id));
   const wifeExtraSet = new Set(wifeExtraIds);
+  // 실제 계좌통합으로 생성된 extra 계좌 미리 확인 (allAccIds 구성에 사용)
+  const _wdcMyNonDcIds   = myExtraIds.filter(id => id.startsWith('wdcons_my_'));
+  const _wdcWifeNonDcIds = appSettings.hasWife ? wifeExtraIds.filter(id => id.startsWith('wdcons_wife_')) : [];
   // Always include pension1/pension2 (and wife equivalents) so consolidation targets are in scope
+  // 단, 실제통합 계좌(wdcons_*) 가 있으면 원본 계좌를 제외하여 중복 방지
   const allAccIds = [...new Set([
-    ...activeMyIds, 'pension1', 'pension2', ...myExtraIds,
-    ...activeWifeIds, ...(appSettings.hasWife ? ['wife_pension1', 'wife_pension2'] : [])
+    ...activeMyIds,
+    ...(_wdcMyNonDcIds.length === 0 ? ['pension1', 'pension2'] : []),
+    ...myExtraIds,
+    ...activeWifeIds,
+    ...(appSettings.hasWife && _wdcWifeNonDcIds.length === 0 ? ['wife_pension1', 'wife_pension2'] : [])
   ])];
   const myWithdrawIds = allAccIds.filter(id => !WIFE_ACC_IDS.includes(id) && !wifeExtraSet.has(id));
   const endDate = `${startYear - 1}-12-31`;
@@ -12177,9 +12184,12 @@ function computeWithdrawalSim() {
     if (appSettings.hasWife) {
       for (const accId of WIFE_ACC_IDS) comps[accId] = computeAccComponents(accId, refYear);
       // wdcons_wife 추가 계좌도 포함 (아내 잔액이 여기에 직접 저장된 경우 처리)
-      for (const id of wifeExtraIds.filter(id => id.startsWith('wdcons_wife_')))
+      for (const id of _wdcWifeNonDcIds)
         comps[id] = computeAccComponents(id, refYear);
     }
+    // wdcons_my 추가 계좌도 포함 (본인 잔액이 여기에 직접 저장된 경우 처리)
+    for (const id of _wdcMyNonDcIds)
+      comps[id] = computeAccComponents(id, refYear);
     if (!comps['pension1'])      comps['pension1']      = { ..._zero };
     if (!comps['wife_pension1']) comps['wife_pension1'] = { ..._zero };
 
@@ -12195,18 +12205,19 @@ function computeWithdrawalSim() {
         }
       };
       overrideAnse(MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)));
+      overrideAnse(_wdcMyNonDcIds);
       if (appSettings.hasWife) {
         overrideAnse(WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)));
-        overrideAnse(wifeExtraIds.filter(id => id.startsWith('wdcons_wife_')));
+        overrideAnse(_wdcWifeNonDcIds);
       }
     }
 
-    // 3) fresh nonDC 총합 (wdcons_wife 추가 계좌 포함)
+    // 3) fresh nonDC 총합 (wdcons_my/wife 추가 계좌 포함)
     const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
     const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
-    const _wdcWifeNonDcIds = appSettings.hasWife ? wifeExtraIds.filter(id => id.startsWith('wdcons_wife_')) : [];
-    const totalMyAnse      = myNonDcIds.reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
-    const totalMyRegular   = myNonDcIds.reduce((s, id) => s + (comps[id]?.regular || 0), 0);
+    // _wdcMyNonDcIds, _wdcWifeNonDcIds 는 외부 스코프에서 이미 선언됨
+    const totalMyAnse      = [...myNonDcIds, ..._wdcMyNonDcIds].reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
+    const totalMyRegular   = [...myNonDcIds, ..._wdcMyNonDcIds].reduce((s, id) => s + (comps[id]?.regular || 0), 0);
     const totalWifeAnse    = [...wifeNonDcIds, ..._wdcWifeNonDcIds].reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
     const totalWifeRegular = [...wifeNonDcIds, ..._wdcWifeNonDcIds].reduce((s, id) => s + (comps[id]?.regular || 0), 0);
     // 4) 사용자의 pp1 배정 선택 (현재 총합 한도로 cap)
@@ -12237,9 +12248,15 @@ function computeWithdrawalSim() {
     const dcC = comps['dc'] || _zero;
     state['dc'] = { anse: 0, dcPrincipal: dcC.dcPrincipal, regular: dcC.regular,
                     total: dcC.dcPrincipal + dcC.regular };
-    state['pension1'] = { anse: myPP1A, dcPrincipal: 0, regular: myPP1R, total: myPP1A + myPP1R };
-    state['pension2'] = { anse: myPP2Anse, dcPrincipal: 0, regular: myPP2Regular,
-                          total: myPP2Anse + myPP2Regular };
+    if (_wdcMyNonDcIds.length > 0) {
+      // wdcons_my 계좌에 직접 pp1/pp2 배정 (pension1/2는 allAccIds에서 제외됨)
+      if (_wdcMyNonDcIds[0]) state[_wdcMyNonDcIds[0]] = { anse: myPP1A, dcPrincipal: 0, regular: myPP1R, total: myPP1A + myPP1R };
+      if (_wdcMyNonDcIds[1]) state[_wdcMyNonDcIds[1]] = { anse: myPP2Anse, dcPrincipal: 0, regular: myPP2Regular, total: myPP2Anse + myPP2Regular };
+    } else {
+      state['pension1'] = { anse: myPP1A, dcPrincipal: 0, regular: myPP1R, total: myPP1A + myPP1R };
+      state['pension2'] = { anse: myPP2Anse, dcPrincipal: 0, regular: myPP2Regular,
+                            total: myPP2Anse + myPP2Regular };
+    }
     if (appSettings.hasWife) {
       if (allAccIds.includes('wife_dc')) {
         const wdcC = comps['wife_dc'] || _zero;
