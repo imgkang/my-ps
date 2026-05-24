@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.444';
+const APP_VERSION = 'MyPM v0.445';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12202,6 +12202,15 @@ function computeWithdrawalSim() {
     const totalMyRegular   = myNonDcIds.reduce((s, id) => s + (comps[id]?.regular || 0), 0);
     const totalWifeAnse    = [...wifeNonDcIds, ..._wdcWifeNonDcIds].reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
     const totalWifeRegular = [...wifeNonDcIds, ..._wdcWifeNonDcIds].reduce((s, id) => s + (comps[id]?.regular || 0), 0);
+    // DEBUG: 아내 계좌 comps 및 저장된 wdConsolidated 값 출력
+    if (appSettings.hasWife) {
+      _wdLog(`[WD-INIT] stored c: wifePP1Anse=${c.wifePP1Anse} wifePP1Regular=${c.wifePP1Regular} totalWifeAnse=${c.totalWifeAnse} totalWifeRegular=${c.totalWifeRegular}`);
+      _wdLog(`[WD-INIT] fresh: totalWifeAnse=${totalWifeAnse} totalWifeRegular=${totalWifeRegular}`);
+      [...wifeNonDcIds, ..._wdcWifeNonDcIds].forEach(id => {
+        const hasRec = monthlyRecords.some(r => Number(r.accounts?.[id]) > 0);
+        _wdLog(`[WD-INIT] comps[${id}]=${JSON.stringify(comps[id])} hasRec=${hasRec} cv=${computeAccountValue(id)}`);
+      });
+    }
 
     // 4) 사용자의 pp1 배정 선택 (현재 총합 한도로 cap)
     const myPP1A = Math.min(Math.max(0, c.myPP1Anse    || 0), totalMyAnse);
