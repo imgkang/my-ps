@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.447';
+const APP_VERSION = 'MyPM v0.448';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12271,6 +12271,12 @@ function computeWithdrawalSim() {
       const total = isCurrentYearStart
         ? (computeAccountValue(accId) || computeAccStartBal(accId, initYr))
         : computeAccStartBal(accId, initYr);
+      if (appSettings.hasWife && (accId === 'wife_pension1' || accId === 'wife_pension2' || accId.startsWith('wdcons_wife_'))) {
+        const _cv = computeAccountValue(accId);
+        const _csb = computeAccStartBal(accId, startYear - 1);
+        const _hasRec = monthlyRecords.some(r => Number(r.accounts?.[accId]) > 0);
+        _wdLog(`[WD-ELSE] ${accId}: cv=${_cv} csb=${_csb} total=${total} hasRec=${_hasRec}`);
+      }
       let anse;
       if (DC_ACC_IDS.has(accId)) {
         anse = 0;
@@ -12301,6 +12307,9 @@ function computeWithdrawalSim() {
       const _wdcWifeIds = wifeExtraIds.filter(id => id.startsWith('wdcons_wife_'));
       if (_wdcWifeIds.length > 0) {
         const _wdcTotal = _wdcWifeIds.reduce((s, id) => s + (state[id]?.total || 0), 0);
+        const _wp1dbg = state['wife_pension1'];
+        const _wp2dbg = state['wife_pension2'];
+        _wdLog(`[WD-FIX] _wdcTotal=${_wdcTotal} wp1.total=${_wp1dbg?.total} wp2.total=${_wp2dbg?.total} wdcIds=${JSON.stringify(_wdcWifeIds)}`);
         if (_wdcTotal === 0) {
           const _wp1 = state['wife_pension1'];
           const _wp2 = state['wife_pension2'];
