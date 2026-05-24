@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.442';
+const APP_VERSION = 'MyPM v0.443';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12160,8 +12160,12 @@ function computeWithdrawalSim() {
     // 1) per-account components fresh 계산 (openConsolidateModal 과 동일)
     const comps = {};
     for (const accId of MY_ACC_IDS) comps[accId] = computeAccComponents(accId, refYear);
-    if (appSettings.hasWife)
+    if (appSettings.hasWife) {
       for (const accId of WIFE_ACC_IDS) comps[accId] = computeAccComponents(accId, refYear);
+      // wdcons_wife 추가 계좌도 포함 (아내 잔액이 여기에 직접 저장된 경우 처리)
+      for (const id of wifeExtraIds.filter(id => id.startsWith('wdcons_wife_')))
+        comps[id] = computeAccComponents(id, refYear);
+    }
     if (!comps['pension1'])      comps['pension1']      = { ..._zero };
     if (!comps['wife_pension1']) comps['wife_pension1'] = { ..._zero };
 
@@ -12177,16 +12181,20 @@ function computeWithdrawalSim() {
         }
       };
       overrideAnse(MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)));
-      if (appSettings.hasWife) overrideAnse(WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)));
+      if (appSettings.hasWife) {
+        overrideAnse(WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)));
+        overrideAnse(wifeExtraIds.filter(id => id.startsWith('wdcons_wife_')));
+      }
     }
 
-    // 3) fresh nonDC 총합
+    // 3) fresh nonDC 총합 (wdcons_wife 추가 계좌 포함)
     const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
     const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
-    const totalMyAnse      = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-    const totalMyRegular   = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-    const totalWifeAnse    = wifeNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-    const totalWifeRegular = wifeNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
+    const _wdcWifeNonDcIds = appSettings.hasWife ? wifeExtraIds.filter(id => id.startsWith('wdcons_wife_')) : [];
+    const totalMyAnse      = myNonDcIds.reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
+    const totalMyRegular   = myNonDcIds.reduce((s, id) => s + (comps[id]?.regular || 0), 0);
+    const totalWifeAnse    = [...wifeNonDcIds, ..._wdcWifeNonDcIds].reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
+    const totalWifeRegular = [...wifeNonDcIds, ..._wdcWifeNonDcIds].reduce((s, id) => s + (comps[id]?.regular || 0), 0);
 
     // 4) 사용자의 pp1 배정 선택 (현재 총합 한도로 cap)
     const myPP1A = Math.min(Math.max(0, c.myPP1Anse    || 0), totalMyAnse);
@@ -12198,7 +12206,7 @@ function computeWithdrawalSim() {
     const wifePP2Anse    = totalWifeAnse    - wPP1A;
     const wifePP2Regular = totalWifeRegular - wPP1R;
 
-    // 5) state 빌드
+    // 5) state 빌드: wdcons_wife 계좌가 있으면 pp1/pp2를 해당 계좌에 직접 배정
     for (const accId of allAccIds) state[accId] = { ..._zero };
     const dcC = comps['dc'] || _zero;
     state['dc'] = { anse: 0, dcPrincipal: dcC.dcPrincipal, regular: dcC.regular,
@@ -12212,16 +12220,16 @@ function computeWithdrawalSim() {
         state['wife_dc'] = { anse: 0, dcPrincipal: wdcC.dcPrincipal, regular: wdcC.regular,
                              total: wdcC.dcPrincipal + wdcC.regular };
       }
-      state['wife_pension1'] = { anse: wPP1A, dcPrincipal: 0, regular: wPP1R, total: wPP1A + wPP1R };
-      state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,
-                                  total: wifePP2Anse + wifePP2Regular };
-      // wdcons_wife 계좌가 있으면 wife_pension1/2 값을 해당 계좌로 이동 (doWithdraw가 wdcons 계좌를 사용하므로)
-      const _wdcWifeIds = wifeExtraIds.filter(id => id.startsWith('wdcons_wife_'));
-      if (_wdcWifeIds[0] && allAccIds.includes(_wdcWifeIds[0])) {
-        state[_wdcWifeIds[0]] = { ...state['wife_pension1'] }; state['wife_pension1'] = { ..._zero };
-      }
-      if (_wdcWifeIds[1] && allAccIds.includes(_wdcWifeIds[1])) {
-        state[_wdcWifeIds[1]] = { ...state['wife_pension2'] }; state['wife_pension2'] = { ..._zero };
+      const _wdcWifeIds = _wdcWifeNonDcIds;
+      if (_wdcWifeIds.length > 0) {
+        // wdcons_wife 계좌에 직접 pp1/pp2 배정 (wife_pension1/2는 zero 유지)
+        if (_wdcWifeIds[0]) state[_wdcWifeIds[0]] = { anse: wPP1A, dcPrincipal: 0, regular: wPP1R, total: wPP1A + wPP1R };
+        if (_wdcWifeIds[1]) state[_wdcWifeIds[1]] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular, total: wifePP2Anse + wifePP2Regular };
+      } else {
+        // wdcons_wife 없으면 기존대로 wife_pension1/2에 배정
+        state['wife_pension1'] = { anse: wPP1A, dcPrincipal: 0, regular: wPP1R, total: wPP1A + wPP1R };
+        state['wife_pension2'] = { anse: wifePP2Anse, dcPrincipal: 0, regular: wifePP2Regular,
+                                    total: wifePP2Anse + wifePP2Regular };
       }
     }
   } else {
