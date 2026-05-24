@@ -1620,6 +1620,11 @@ registerMobileTooltipDismiss();
           <button id="cfgShowWdrecPreviewOn"  class="toggle-btn" onclick="setCfgShowApp('WdrecPreview',true)">표시</button>
           <button id="cfgShowWdrecPreviewOff" class="toggle-btn" onclick="setCfgShowApp('WdrecPreview',false)">숨기기</button>
         </div>
+        <label title="인출계획 시뮬레이션 실행 후 디버그 로그 버튼을 표시합니다">📟 디버그 버튼</label>
+        <div class="toggle-row">
+          <button id="cfgShowWdDbgOn"  class="toggle-btn" onclick="setCfgShowApp('WdDbg',true)">표시</button>
+          <button id="cfgShowWdDbgOff" class="toggle-btn" onclick="setCfgShowApp('WdDbg',false)">숨기기</button>
+        </div>
       </div>
       <div class="cfg-section">💬 셀 정보 패널</div>
       <div class="cfg-grid">
@@ -2341,38 +2346,44 @@ registerMobileTooltipDismiss();
     <div id="wdPrepContent" style="flex:1;overflow-y:auto;min-height:0;padding-top:14px"></div>
     <div id="wdPrepFooter" style="flex-shrink:0;padding-top:12px;margin-top:4px;border-top:1px solid var(--border)">
       <div class="modal-actions">
+        <button class="btn-secondary" style="white-space:nowrap" onclick="closeWithdrawalPrepModal();openConsolidateModal()">📊 계좌 통합</button>
         <button id="wdPrepActionBtn" class="btn-primary"></button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 계좌 통합 모달 -->
+<!-- 계좌 통합 모달 (가상 시뮬레이션 / 실제 실행 통합) -->
 <div class="modal-backdrop" id="consolidateModal" onclick="handleConsBackdropClick(event)"
      style="align-items:flex-start;overflow-y:auto;padding:16px;z-index:1100">
-  <div class="modal modal-wide" style="max-width:920px;max-height:none;overflow-y:visible;margin:auto">
+  <div class="modal modal-wide" style="max-width:760px;max-height:none;overflow-y:visible;margin:auto">
     <div class="modal-header">
       <div>
-        <h2>📊 계좌 통합 및 정리</h2>
+        <h2>📊 계좌 통합</h2>
         <div class="modal-subtitle" id="consSubtitle"></div>
       </div>
       <button class="close-btn" onclick="closeConsolidateModal()">×</button>
     </div>
-    <div id="consAutoLogWrap" style="display:none;margin-bottom:12px"></div>
-    <div class="cons-wrap">
-      <div>
-        <div class="cons-section-title">현재 계좌 현황</div>
-        <div id="consLeftWrap"></div>
-      </div>
-      <div>
-        <div class="cons-section-title">수동 통합 설정</div>
-        <div id="consRightWrap"></div>
-      </div>
+    <!-- 모드 선택 -->
+    <div id="consModeBar" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="consModeVirtual" onclick="switchConsMode('virtual')"
+        style="flex:1;min-width:130px;padding:8px 12px;border-radius:8px;border:1.5px solid #6366f1;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;cursor:pointer">
+        🔮 가상 시뮬레이션</button>
+      <button id="consModeReal" onclick="switchConsMode('real')"
+        style="flex:1;min-width:130px;padding:8px 12px;border-radius:8px;border:1.5px solid #d1d5db;background:#f9fafb;color:#6b7280;font-size:13px;font-weight:600;cursor:pointer;display:none">
+        ⚡ 실제 실행</button>
+      <div id="consModeAgeHint" style="display:none;width:100%;font-size:11px;color:#9ca3af;padding:2px 4px">
+        ⚡ 실제 실행은 만 54세 이상일 때 표시됩니다</div>
     </div>
-    <div class="modal-actions">
-      <button class="btn-primary"   style="flex:2;white-space:nowrap" onclick="applyConsolidate()">✔ 적용하고 닫기</button>
-      <button class="btn-secondary" onclick="clearConsolidate()">↩ 통합 취소</button>
-      <button class="btn-secondary" style="flex:0;font-size:12px;padding:8px 10px;white-space:nowrap" onclick="closeConsolidateModal()">닫기</button>
+    <div id="consAutoLogWrap" style="display:none;margin-bottom:12px"></div>
+    <!-- 동적 콘텐츠 -->
+    <div id="consContent" style="overflow-y:auto;max-height:60vh"></div>
+    <!-- 액션 버튼 -->
+    <div class="modal-actions" style="margin-top:14px">
+      <button id="consApplyBtn"  class="btn-primary"   style="flex:2;white-space:nowrap" onclick="applyConsolidate()">✔ 가상 적용</button>
+      <button id="consExecBtn"   class="btn-primary"   style="flex:2;white-space:nowrap;display:none;background:#dc2626;border-color:#b91c1c" onclick="wdPrepExecuteConsolidate()">🚀 지금 실행</button>
+      <button id="consClearBtn"  class="btn-secondary"                                    onclick="clearConsolidate()">↩ 가상 취소</button>
+      <button class="btn-secondary" onclick="closeConsolidateModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -2387,7 +2398,7 @@ registerMobileTooltipDismiss();
     <div style="display:flex;gap:8px;align-items:center">
       <button id="wdPrepStartBtn" class="btn-primary" style="display:none;font-size:12px;padding:4px 12px" onclick="openWithdrawalPrepModal()">🚀 인출준비 및 시작</button>
       <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openWdSettingsModal()">⚙️ 인출설정</button>
-      <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합 및 정리</button>
+      <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합</button>
       <button id="wdDbgBtn" class="btn-secondary" style="font-size:11px;padding:3px 8px;display:none" onclick="showWdDebugPanel()">🔍 디버그</button>
     </div>
   </div>
@@ -3184,7 +3195,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.454';
+const APP_VERSION = 'MyPM v0.455';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -3324,7 +3335,7 @@ function getDefaultAppSettings() {
     myBirthYear: 0, myBirthMonth: 1,
     hasWife: false,
     wifeBirthYear: 0, wifeBirthMonth: 1,
-    showNonK: false, showKDeal: false,
+    showNonK: false, showKDeal: false, showWdDebugBtn: false,
     wdrecPreview: false,
     wdChartPV: { 1: false, 2: false, 3: false, 4: false, 5: false },
     my:   getDefaultPersonCfg(false),
@@ -11413,6 +11424,7 @@ function openSettingsModal() {
   setCfgShowApp('NonK',  s.showNonK  !== false);
   setCfgShowApp('KDeal', s.showKDeal !== false);
   setCfgShowApp('WdrecPreview', !!s.wdrecPreview);
+  setCfgShowApp('WdDbg', !!s.showWdDebugBtn);
   sv('cfg_cellInfoDuration', s.cellInfoDuration ?? 5);
   sv('cfg_npTaxRate',            wp.npTaxRate            ?? 4);
   sv('cfg_pensionTaxRateU70',  wp.pensionTaxRateU70  ?? 5.5);
@@ -11565,6 +11577,7 @@ function saveSettingsModal() {
     showKDeal: document.getElementById('cfgShowKDealOn')?.classList.contains('active') !== false
                && !document.getElementById('cfgShowKDealOff')?.classList.contains('active'),
     wdrecPreview: document.getElementById('cfgShowWdrecPreviewOn')?.classList.contains('active') === true,
+    showWdDebugBtn: document.getElementById('cfgShowWdDbgOn')?.classList.contains('active') === true,
     cellInfoDuration: nv('cfg_cellInfoDuration', 5),
     my:   buildPersonCfg('my'),
     wife: hasWife ? buildPersonCfg('wife') : appSettings.wife,
@@ -12930,7 +12943,7 @@ function renderWithdrawalPlan() {
   if (!sim) return;
   _lastWdSim = sim;
   const _dbgBtn = document.getElementById('wdDbgBtn');
-  if (_dbgBtn) _dbgBtn.style.display = window._wdDebugLines.length ? '' : 'none';
+  if (_dbgBtn) _dbgBtn.style.display = (appSettings.showWdDebugBtn && window._wdDebugLines.length) ? '' : 'none';
 
   // 각 step 을 try/catch 로 격리: 한 단계가 실패해도 다음 단계는 진행
   const safe = (name, fn) => { try { fn(); } catch (e) { console.error('[renderWithdrawalPlan]', name, e); } };
@@ -14209,7 +14222,7 @@ function computeAccComponents(accId, year) {
 }
 
 // ===== 인출준비 및 시작 탭 =====
-const WD_PREP_TABS = ['계좌현황 및 인출계좌선택', '계좌통합실행'];
+const WD_PREP_TABS = ['계좌현황 및 인출계좌선택'];
 let wdPrepCurrentTab = 1;
 
 function checkWdPrepCondition() {
@@ -14247,48 +14260,27 @@ function handleWdPrepBackdropClick(e) {
 }
 
 function wdPrepGoTab(tab) {
-  if (tab < 1 || tab > 2) return;
-  if (_wdStep2Ctx) {
-    const myEl = document.getElementById('wdPrepMyPP1Anse');
-    if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
-    const wifeEl = document.getElementById('wdPrepWifePP1Anse');
-    if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
-  }
-  wdPrepCurrentTab = tab;
+  if (tab < 1) return;
+  wdPrepCurrentTab = 1;
 
   const bar = document.getElementById('wdPrepTabBar');
-  if (bar) {
-    bar.className = 'wdprep-tabbar';
-    bar.innerHTML = WD_PREP_TABS.map((label, i) => {
-      const n = i + 1;
-      return `<button class="wdprep-tab${n === tab ? ' active' : ''}" onclick="wdPrepGoTab(${n})">${label}</button>`;
-    }).join('');
-  }
+  if (bar) bar.innerHTML = '';
 
   const content = document.getElementById('wdPrepContent');
-  if (content) content.innerHTML = wdPrepRenderTab(tab);
+  if (content) content.innerHTML = wdPrepRenderTab(1);
 
   const footer    = document.getElementById('wdPrepFooter');
   const actionBtn = document.getElementById('wdPrepActionBtn');
   if (footer && actionBtn) {
-    if (tab === 2) {
-      footer.style.display = '';
-      actionBtn.textContent = '🚀 지금 실행';
-      actionBtn.onclick = wdPrepExecuteConsolidate;
-    } else {
-      footer.style.display = '';
-      actionBtn.textContent = '✔ 완료';
-      actionBtn.onclick = wdPrepFinish;
-    }
+    footer.style.display = '';
+    actionBtn.textContent = '✔ 완료';
+    actionBtn.onclick = wdPrepFinish;
   }
 }
 
 function wdPrepRenderTab(tab) {
-  try {
-    if (tab === 1) return wdPrepTab1Html();
-    if (tab === 2) return wdPrepTab2Html();
-  } catch (e) { return `<p style="color:#ef4444">오류: ${e.message}</p>`; }
-  return '';
+  try { return wdPrepTab1Html(); }
+  catch (e) { return `<p style="color:#ef4444">오류: ${e.message}</p>`; }
 }
 
 function wdPrepAgeInfo(who) {
@@ -15357,7 +15349,9 @@ function wdPrepExecuteConsolidate() {
   renderPrincipalTable();
   renderEvalTable();
 
-  wdPrepGoTab(1);
+  closeConsolidateModal();
+  closeWithdrawalPrepModal();
+  alert('계좌 통합이 완료되었습니다.');
 }
 
 function wdPrepStep5Html() {
@@ -15480,64 +15474,74 @@ function wdPrepFinish() {
 }
 // ===== 인출준비 마법사 끝 =====
 
+let _consMode = 'virtual';
+
+function isRealConsolidateAvailable() {
+  const yr = new Date().getFullYear();
+  const myAge   = appSettings.myBirthYear   ? yr - appSettings.myBirthYear   : 0;
+  const wifeAge = appSettings.wifeBirthYear ? yr - appSettings.wifeBirthYear : 0;
+  return myAge >= 54 || (appSettings.hasWife && wifeAge >= 54);
+}
+
+function switchConsMode(mode) {
+  if (_wdStep2Ctx) {
+    const myEl = document.getElementById('wdPrepMyPP1Anse');
+    if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
+    const wifeEl = document.getElementById('wdPrepWifePP1Anse');
+    if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
+  }
+  _consMode = mode;
+  const isReal = mode === 'real';
+  const content = document.getElementById('consContent');
+  if (content) {
+    try { content.innerHTML = isReal ? wdPrepTab2Html() : wdPrepStep2Html(); }
+    catch (e) { content.innerHTML = `<p style="color:#ef4444">오류: ${e.message}</p>`; }
+  }
+  const vBtn = document.getElementById('consModeVirtual');
+  const rBtn = document.getElementById('consModeReal');
+  if (vBtn) { vBtn.style.background = isReal ? '#f9fafb' : '#eef2ff'; vBtn.style.color = isReal ? '#6b7280' : '#4338ca'; vBtn.style.borderColor = isReal ? '#d1d5db' : '#6366f1'; }
+  if (rBtn) { rBtn.style.background = isReal ? '#fef2f2' : '#f9fafb'; rBtn.style.color = isReal ? '#b91c1c' : '#6b7280'; rBtn.style.borderColor = isReal ? '#ef4444' : '#d1d5db'; }
+  const applyBtn = document.getElementById('consApplyBtn');
+  const execBtn  = document.getElementById('consExecBtn');
+  const clearBtn = document.getElementById('consClearBtn');
+  if (applyBtn) applyBtn.style.display = isReal ? 'none' : '';
+  if (execBtn)  execBtn.style.display  = isReal ? '' : 'none';
+  if (clearBtn) clearBtn.style.display = isReal ? 'none' : '';
+}
+
 function openConsolidateModal() {
   const wp = wdPlan;
   if (!wp.startYear) { alert('먼저 인출 계획의 본인 은퇴연도를 설정해 주세요.'); return; }
-  const baseYear         = wp.startYear - 1;
-  const wifeBaseYear     = baseYear;
+  const baseYear = wp.startYear - 1;
   document.getElementById('consSubtitle').textContent =
     `${baseYear}년말 예상 잔액 기준 → ${wp.startYear}년 인출 시작`;
 
-  const _consMyIds   = [...MY_ACC_IDS];
-  const _consWifeIds = appSettings.hasWife ? [...WIFE_ACC_IDS] : [];
-  const _zero = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+  _wdStep2Ctx = null;
+  _consMode = 'virtual';
 
-  const comps = {};
-  for (const accId of _consMyIds)   comps[accId] = computeAccComponents(accId, baseYear);
-  for (const accId of _consWifeIds) comps[accId] = computeAccComponents(accId, wifeBaseYear);
-  if (!comps['pension1'])      comps['pension1']      = { ..._zero };
-  if (!comps['wife_pension1']) comps['wife_pension1'] = { ..._zero };
+  const realAvailable = isRealConsolidateAvailable();
+  const realBtn  = document.getElementById('consModeReal');
+  const ageHint  = document.getElementById('consModeAgeHint');
+  if (realBtn)  realBtn.style.display  = realAvailable ? '' : 'none';
+  if (ageHint)  ageHint.style.display  = realAvailable ? 'none' : '';
 
-  // 미래 연도: 거래 대신 연간계획에 입력된 계좌별 안세공 값으로 덮어쓰기
-  {
-    const currentYear = new Date().getFullYear();
-    const overrideAnse = (accIds, refYear) => {
-      if (refYear <= currentYear) return;
-      for (const id of accIds) {
-        if (!comps[id]) continue;
-        const anseMv = getCellAnseManwon(id, refYear);
-        if (!anseMv) continue;
-        const newAnse = Math.min(anseMv * 1_000_000, comps[id].total);
-        comps[id] = { ...comps[id], anse: newAnse, regular: Math.max(0, comps[id].total - newAnse) };
-      }
-    };
-    overrideAnse(_consMyIds.filter(id => !DC_ACC_IDS.has(id)), baseYear);
-    overrideAnse(_consWifeIds.filter(id => !DC_ACC_IDS.has(id)), wifeBaseYear);
-  }
+  const vBtn = document.getElementById('consModeVirtual');
+  if (vBtn) { vBtn.style.background = '#eef2ff'; vBtn.style.color = '#4338ca'; vBtn.style.borderColor = '#6366f1'; }
+  if (realBtn) { realBtn.style.background = '#f9fafb'; realBtn.style.color = '#6b7280'; realBtn.style.borderColor = '#d1d5db'; }
 
-  const myNonDcIds   = _consMyIds.filter(id => !DC_ACC_IDS.has(id));
-  const wifeNonDcIds = _consWifeIds.filter(id => !DC_ACC_IDS.has(id));
-  const myAnseTotal      = myNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-  const myRegularTotal   = myNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-  const wifeAnseTotal    = wifeNonDcIds.reduce((s, id) => s + comps[id].anse, 0);
-  const wifeRegularTotal = wifeNonDcIds.reduce((s, id) => s + comps[id].regular, 0);
-
-  _consTotals = { baseYear, wifeBaseYear, comps, myAnseTotal, myRegularTotal,
-    wifeAnseTotal, wifeRegularTotal,
-    myDCPrincipal: (comps['dc'] || _zero).dcPrincipal, myDCRegular: (comps['dc'] || _zero).regular,
-    wifeDCPrincipal: (comps['wife_dc'] || _zero).dcPrincipal, wifeDCRegular: (comps['wife_dc'] || _zero).regular,
-    pp1Total: comps['pension1'].total, wifePP1Total: comps['wife_pension1'].total,
-    _consMyIds, _consWifeIds };
-
-  const mv = won => Math.round(won / 1_000_000);
-  const c = wdConsolidated;
-  const pp1Anse = c ? mv(c.myPP1Anse)    : mv(comps['pension1'].anse);
-  const wp1Anse = c ? mv(c.wifePP1Anse)  : mv(comps['wife_pension1'].anse);
-  const wp1Total = c ? mv(c.wifePP1Anse + c.wifePP1Regular) : mv(comps['wife_pension1'].total);
+  const applyBtn = document.getElementById('consApplyBtn');
+  const execBtn  = document.getElementById('consExecBtn');
+  const clearBtn = document.getElementById('consClearBtn');
+  if (applyBtn) applyBtn.style.display = '';
+  if (execBtn)  execBtn.style.display  = 'none';
+  if (clearBtn) clearBtn.style.display = '';
 
   renderConsAutoLog();
-  renderConsLeftTable(comps);
-  renderConsRightTable(pp1Anse, wp1Anse, wp1Total);
+  const content = document.getElementById('consContent');
+  if (content) {
+    try { content.innerHTML = wdPrepStep2Html(); }
+    catch (e) { content.innerHTML = `<p style="color:#ef4444">오류: ${e.message}</p>`; }
+  }
   document.getElementById('consolidateModal').classList.add('open');
 }
 function closeConsolidateModal() { document.getElementById('consolidateModal').classList.remove('open'); }
@@ -15692,37 +15696,16 @@ function updateConsWP2() {
 }
 
 function applyConsolidate() {
-  const t = _consTotals; if (!t) return;
-  const M = 1_000_000;
-  const nv = id => (Number(document.getElementById(id)?.value) || 0);
-  const mv = won => Math.round(won / M);
-
-  const pp1A = nv('cons_pp1_anse');
-  const pp1R = Math.max(0, mv(t.pp1Total) - pp1A);
-
-  const wp1TotNat = mv(t.wifePP1Total);
-  const wp1TotOvr = Math.min(nv('cons_wp1_total'), wp1TotNat);
-  const wp1A      = Math.min(nv('cons_wp1_anse'), wp1TotOvr);
-  const wp1R      = Math.max(0, wp1TotOvr - wp1A);
-
-  // Proportionally reduce wife pool by the freed amount
-  const freed  = wp1TotNat - wp1TotOvr;
-  const wP1AF  = wp1TotNat > 0 ? t.comps['wife_pension1'].anse / t.wifePP1Total : 0.5;
-  const adjWA  = Math.max(0, t.wifeAnseTotal    - Math.round(freed * wP1AF    * M));
-  const adjWR  = Math.max(0, t.wifeRegularTotal - Math.round(freed * (1 - wP1AF) * M));
-
-  wdConsolidated = {
-    startYear: wdPlan.startYear,
-    myDCPrincipal: t.myDCPrincipal, myDCRegular: t.myDCRegular,
-    wifeDCPrincipal: t.wifeDCPrincipal || 0, wifeDCRegular: t.wifeDCRegular || 0,
-    myPP1Anse: pp1A * M, myPP1Regular: pp1R * M,
-    totalMyAnse: t.myAnseTotal, totalMyRegular: t.myRegularTotal,
-    wifePP1Anse: wp1A * M, wifePP1Regular: wp1R * M,
-    totalWifeAnse: adjWA, totalWifeRegular: adjWR,
-  };
+  if (!_wdStep2Ctx) return;
+  const myEl = document.getElementById('wdPrepMyPP1Anse');
+  if (myEl) _wdStep2Ctx.savedMyPP1Anse = +myEl.value;
+  const wifeEl = document.getElementById('wdPrepWifePP1Anse');
+  if (wifeEl) _wdStep2Ctx.savedWifePP1Anse = +wifeEl.value;
+  wdPrepApplyConsolidate(
+    _wdStep2Ctx.savedMyPP1Anse || 0,
+    _wdStep2Ctx.savedWifePP1Anse || 0
+  );
   closeConsolidateModal();
-  _wdSelectedScenIdx = null;
-  renderWithdrawalPlan();
 }
 function clearConsolidate() {
   wdConsolidated = null;
