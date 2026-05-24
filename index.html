@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.445';
+const APP_VERSION = 'MyPM v0.446';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12215,12 +12215,25 @@ function computeWithdrawalSim() {
     // 4) 사용자의 pp1 배정 선택 (현재 총합 한도로 cap)
     const myPP1A = Math.min(Math.max(0, c.myPP1Anse    || 0), totalMyAnse);
     const myPP1R = Math.min(Math.max(0, c.myPP1Regular || 0), totalMyRegular);
-    const wPP1A  = Math.min(Math.max(0, c.wifePP1Anse    || 0), totalWifeAnse);
-    const wPP1R  = Math.min(Math.max(0, c.wifePP1Regular || 0), totalWifeRegular);
     const myPP2Anse    = totalMyAnse    - myPP1A;
     const myPP2Regular = totalMyRegular - myPP1R;
-    const wifePP2Anse    = totalWifeAnse    - wPP1A;
-    const wifePP2Regular = totalWifeRegular - wPP1R;
+    // 아내: fresh 계산이 0이지만 저장된 PP1 값이 있으면 직접 사용 (통합 후 기록 누락 대응)
+    const _freshWifeTotal  = totalWifeAnse + totalWifeRegular;
+    const _storedPP1Total  = (c.wifePP1Anse || 0) + (c.wifePP1Regular || 0);
+    let wPP1A, wPP1R, wifePP2Anse, wifePP2Regular;
+    if (_freshWifeTotal > 0) {
+      wPP1A = Math.min(Math.max(0, c.wifePP1Anse    || 0), totalWifeAnse);
+      wPP1R = Math.min(Math.max(0, c.wifePP1Regular || 0), totalWifeRegular);
+      wifePP2Anse    = totalWifeAnse    - wPP1A;
+      wifePP2Regular = totalWifeRegular - wPP1R;
+    } else if (_storedPP1Total > 0) {
+      wPP1A = c.wifePP1Anse    || 0;
+      wPP1R = c.wifePP1Regular || 0;
+      wifePP2Anse    = Math.max(0, (c.totalWifeAnse    || 0) - wPP1A);
+      wifePP2Regular = Math.max(0, (c.totalWifeRegular || 0) - wPP1R);
+    } else {
+      wPP1A = wPP1R = wifePP2Anse = wifePP2Regular = 0;
+    }
 
     // 5) state 빌드: wdcons_wife 계좌가 있으면 pp1/pp2를 해당 계좌에 직접 배정
     for (const accId of allAccIds) state[accId] = { ..._zero };
@@ -15094,10 +15107,16 @@ function wdPrepApplyConsolidate(myPP1AnseMv, wifePP1AnseMv) {
   if (!comps['wife_pension1']) comps['wife_pension1'] = {..._zero};
   const myNonDcIds   = MY_ACC_IDS.filter(id => !DC_ACC_IDS.has(id));
   const wifeNonDcIds = appSettings.hasWife ? WIFE_ACC_IDS.filter(id => !DC_ACC_IDS.has(id)) : [];
+  // wdcons_wife 계좌도 포함 (통합 실행 후 재실행 시 올바른 totalWifeAnse 저장을 위해)
+  const _wifeWdConsNonDc = appSettings.hasWife
+    ? (appSettings.wife?.extraAccounts || [])
+        .filter(e => e.active !== false && e.id.startsWith('wdcons_wife_') && !DC_ACC_IDS.has(e.id))
+        .map(e => e.id)
+    : [];
   const myAnseTotal   = myNonDcIds.reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
   const myRegTotal    = myNonDcIds.reduce((s, id) => s + (comps[id]?.regular || 0), 0);
-  const wifeAnseTotal = wifeNonDcIds.reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
-  const wifeRegTotal  = wifeNonDcIds.reduce((s, id) => s + (comps[id]?.regular || 0), 0);
+  const wifeAnseTotal = [...wifeNonDcIds, ..._wifeWdConsNonDc].reduce((s, id) => s + (comps[id]?.anse    || 0), 0);
+  const wifeRegTotal  = [...wifeNonDcIds, ..._wifeWdConsNonDc].reduce((s, id) => s + (comps[id]?.regular || 0), 0);
   // 사용자가 배분한 PP1 계좌 목록 사용
   const myPP1Ids   = _wdStep2Ctx?.myPP1Ids   || myNonDcIds;
   const wifePP1Ids = _wdStep2Ctx?.wifePP1Ids || wifeNonDcIds;
