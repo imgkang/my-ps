@@ -3195,7 +3195,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.456';
+const APP_VERSION = 'MyPM v0.457';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -14552,7 +14552,7 @@ function wdPrepTab1Html() {
       💡 <b>세공액</b>: 세액공제 혜택을 받은 누적 납입액 (연금계좌 소득·세액 공제액). 인출 시 <b>연금소득세(3.3~5.5%)</b> 부과.<br>
       <b>비과세 재원</b>: 세액공제 없이 납입한 금액. 인출 시 세금 없음. DC 계좌에는 비과세 재원이 없습니다.
     </div>
-    ${wdPrepStep4PrimaryHtml()}`;
+    `;
 }
 
 let _wdStep2Ctx = null;
@@ -14849,37 +14849,6 @@ function wdPrepTab2Html() {
     execHtml;
 }
 
-function wdPrepStep4PrimaryHtml() {
-  const saved = localStorage.getItem('wd_prep_primary_account') || '';
-  const myAge4   = wdPrepAgeInfo('my');
-  const wifeAge4 = wdPrepAgeInfo('wife');
-  const accounts = getActiveAccounts().filter(a => {
-    if (['dc','wife_dc','isa','wife_isa','cash'].includes(a.id)) return false;
-    if (computeAccountValue(a.id) <= 0) return false;
-    if (WIFE_ACC_IDS.includes(a.id)) return wifeAge4.eligible;
-    return myAge4.eligible;
-  });
-  const order = ['pension1','wife_pension1','irp','wife_irp','pension2','wife_pension2'];
-  const sorted = [...accounts].sort((a, b) => {
-    const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-  });
-  const fmt = n => Math.round(n / 10_000).toLocaleString();
-  const rankInfo = { pension1:'1순위', wife_pension1:'1순위', irp:'2순위', wife_irp:'2순위', pension2:'3순위', wife_pension2:'3순위' };
-  const taxInfo  = { pension1:'연금소득세 3.3~5.5%', wife_pension1:'연금소득세 3.3~5.5%', irp:'연금소득세 3.3~5.5%', wife_irp:'연금소득세 3.3~5.5%', pension2:'연금소득세 3.3~5.5%', wife_pension2:'연금소득세 3.3~5.5%' };
-  let cards = sorted.map(a => {
-    const isSelected = saved === a.id;
-    const rank = rankInfo[a.id] || '', tax = taxInfo[a.id] || '';
-    return `<label class="wdprep-radio-card${isSelected ? ' selected' : ''}">` +
-      `<input type="radio" name="wdPrepPrimaryAcc" value="${a.id}" ${isSelected ? 'checked' : ''} onchange="wdPrepSelectAccount(this.value)" style="accent-color:var(--primary);flex-shrink:0">` +
-      `<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${a.name}` +
-      (rank ? `<span style="margin-left:8px;font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:20px;font-weight:600">${rank}</span>` : '') +
-      `</div><div style="font-size:12px;color:var(--muted);margin-top:2px">현재 ${fmt(computeAccountValue(a.id))}만원${tax ? ' · '+tax : ''}</div></div></label>`;
-  }).join('');
-  return `<div style="margin-bottom:10px">${cards}</div>` +
-    `<div id="wdPrepAccSaved" style="display:none" class="wdprep-box wdprep-box-green">✅ 인출용 주 계좌가 저장되었습니다.</div>`;
-}
-
 function wdPrepStep4Html() {
   const ctx = _wdStep2Ctx;
   const hasWife = !!appSettings.hasWife;
@@ -14969,12 +14938,6 @@ function wdPrepStep4Html() {
     </div>
 
     `;
-}
-
-function wdPrepSelectAccount(accId) {
-  localStorage.setItem('wd_prep_primary_account', accId);
-  const el = document.getElementById('wdPrepAccSaved');
-  if (el) { el.style.display = ''; setTimeout(() => { el.style.display = 'none'; }, 2000); }
 }
 
 function wdPrepToggleBucket(accId, who, targetBucket) {
@@ -15458,7 +15421,7 @@ function wdPrepStep5Html() {
     </p>
     ${renderPersonSection('my', '본인')}
     ${appSettings.hasWife ? renderPersonSection('wife', wt) : ''}
-    ${wdPrepStep4PrimaryHtml()}`;
+    `;
 }
 
 function wdStartAccToggle(accId) {
