@@ -2388,6 +2388,7 @@ registerMobileTooltipDismiss();
       <button id="wdPrepStartBtn" class="btn-primary" style="display:none;font-size:12px;padding:4px 12px" onclick="openWithdrawalPrepModal()">🚀 인출준비 및 시작</button>
       <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openWdSettingsModal()">⚙️ 인출설정</button>
       <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합 및 정리</button>
+      <button id="wdDbgBtn" class="btn-secondary" style="font-size:11px;padding:3px 8px;display:none" onclick="showWdDebugPanel()">🔍 디버그</button>
     </div>
   </div>
 
@@ -3190,7 +3191,29 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.441';
+const APP_VERSION = 'MyPM v0.442';
+
+// 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
+window._wdDebugLines = [];
+window._wdLog = function(...args) {
+  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  console.log(...args);
+  if (msg.includes('[WD-DEBUG')) {
+    window._wdDebugLines.push(msg);
+  }
+};
+window.showWdDebugPanel = function() {
+  const existing = document.getElementById('_wdDbgPanel');
+  if (existing) { existing.remove(); return; }
+  const lines = window._wdDebugLines;
+  if (!lines.length) { alert('WD-DEBUG 로그 없음. 인출계획 시뮬레이션을 먼저 실행하세요.'); return; }
+  const panel = document.createElement('div');
+  panel.id = '_wdDbgPanel';
+  panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);color:#0f0;font-family:monospace;font-size:11px;padding:10px;overflow-y:auto;z-index:99999;white-space:pre-wrap;word-break:break-all';
+  panel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:#fff;font-size:14px">WD-DEBUG 로그</b><button onclick="document.getElementById('_wdDbgPanel').remove()" style="padding:6px 14px;font-size:13px;background:#e11;color:#fff;border:none;border-radius:6px">닫기</button></div>` + lines.map(l => `<div>${l}</div>`).join('');
+  document.body.appendChild(panel);
+};
+
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12509,15 +12532,15 @@ function computeWithdrawalSim() {
     if (yr <= startYear + 2) {
       const _wifeIds = getActiveWifeAccIds();
       const _apDbg = periodsWithEnd.find(p => yr >= p.startYear && yr <= p.derivedEndYear);
-      console.log(`[WD-DEBUG yr=${yr}] myExtraIds=${JSON.stringify(myExtraIds)}`);
-      console.log(`[WD-DEBUG yr=${yr}] wifeExtraIds=${JSON.stringify(wifeExtraIds)}`);
-      console.log(`[WD-DEBUG yr=${yr}] myWithdrawIds=${JSON.stringify(myWithdrawIds)}`);
-      console.log(`[WD-DEBUG yr=${yr}] activeWifeIds=${JSON.stringify(_wifeIds)}`);
-      console.log(`[WD-DEBUG yr=${yr}] activePeriod=`, JSON.stringify({ type: _apDbg?.type, wifeContrib: _apDbg?.wifeContrib, wifeAmount: _apDbg?.wifeAmount, totalAmount: _apDbg?.totalAmount, wifeRatio: _apDbg?.wifeRatio, publicPensionMode: _apDbg?.publicPensionMode }));
-      console.log(`[WD-DEBUG yr=${yr}] myPublicInc=${myPublicInc} wifePublicInc=${wifePublicInc} basic=${basic}`);
-      console.log(`[WD-DEBUG yr=${yr}] myRemaining=${myRemaining} wifeRemaining=${wifeRemaining}`);
-      _wifeIds.forEach(id => console.log(`[WD-DEBUG yr=${yr}] state[${id}]=`, JSON.stringify(state[id])));
-      myWithdrawIds.forEach(id => { if(state[id]?.total > 0) console.log(`[WD-DEBUG yr=${yr}] myState[${id}]=`, JSON.stringify(state[id])); });
+      _wdLog(`[WD-DEBUG yr=${yr}] myExtraIds=${JSON.stringify(myExtraIds)}`);
+      _wdLog(`[WD-DEBUG yr=${yr}] wifeExtraIds=${JSON.stringify(wifeExtraIds)}`);
+      _wdLog(`[WD-DEBUG yr=${yr}] myWithdrawIds=${JSON.stringify(myWithdrawIds)}`);
+      _wdLog(`[WD-DEBUG yr=${yr}] activeWifeIds=${JSON.stringify(_wifeIds)}`);
+      _wdLog(`[WD-DEBUG yr=${yr}] activePeriod=`, JSON.stringify({ type: _apDbg?.type, wifeContrib: _apDbg?.wifeContrib, wifeAmount: _apDbg?.wifeAmount, totalAmount: _apDbg?.totalAmount, wifeRatio: _apDbg?.wifeRatio, publicPensionMode: _apDbg?.publicPensionMode }));
+      _wdLog(`[WD-DEBUG yr=${yr}] myPublicInc=${myPublicInc} wifePublicInc=${wifePublicInc} basic=${basic}`);
+      _wdLog(`[WD-DEBUG yr=${yr}] myRemaining=${myRemaining} wifeRemaining=${wifeRemaining}`);
+      _wifeIds.forEach(id => _wdLog(`[WD-DEBUG yr=${yr}] state[${id}]=`, JSON.stringify(state[id])));
+      myWithdrawIds.forEach(id => { if(state[id]?.total > 0) _wdLog(`[WD-DEBUG yr=${yr}] myState[${id}]=`, JSON.stringify(state[id])); });
     }
 
     doWithdraw(myWithdrawIds, myRemaining, basic);
@@ -12528,8 +12551,8 @@ function computeWithdrawalSim() {
     // DEBUG: 1st pass 결과 확인
     if (yr <= startYear + 2) {
       const _wifeIds2 = getActiveWifeAccIds();
-      console.log(`[WD-DEBUG yr=${yr}] AFTER 1st doWithdraw:`);
-      _wifeIds2.forEach(id => console.log(`[WD-DEBUG yr=${yr}] wd1[${id}]=`, JSON.stringify(withdrawals[yr][id])));
+      _wdLog(`[WD-DEBUG yr=${yr}] AFTER 1st doWithdraw:`);
+      _wifeIds2.forEach(id => _wdLog(`[WD-DEBUG yr=${yr}] wd1[${id}]=`, JSON.stringify(withdrawals[yr][id])));
     }
 
     // 고정금액 구간에서 세후 실수령액 = target 2차 보정 (pct 모드는 gross 직접 계산이므로 불필요)
@@ -12542,7 +12565,7 @@ function computeWithdrawalSim() {
         ? (myPublicInc + wifePublicInc) * (1 - npTR) : 0;
       const _actualNet1 = _priv1 - totalRT - totalPT + _pubContrib2p;
       const _deficit = target - _actualNet1;
-      if (yr <= startYear + 2) console.log(`[WD-DEBUG yr=${yr}] 2pass: priv1=${_priv1} actualNet1=${_actualNet1} target=${target} deficit=${_deficit}`);
+      if (yr <= startYear + 2) _wdLog(`[WD-DEBUG yr=${yr}] 2pass: priv1=${_priv1} actualNet1=${_actualNet1} target=${target} deficit=${_deficit}`);
       if (Math.abs(_deficit) > 10000) {
         // 패스1 직후 나의 regularOut으로 한계세율 결정 (1500만원 초과 여부 반영)
         const myRegOut1 = myWithdrawIds.reduce((a, id) => a + withdrawals[yr][id].regularOut, 0);
@@ -12573,8 +12596,8 @@ function computeWithdrawalSim() {
         applyPensionTaxThreshold(getActiveWifeAccIds());
         if (yr <= startYear + 2) {
           const _wifeIds3 = getActiveWifeAccIds();
-          console.log(`[WD-DEBUG yr=${yr}] AFTER 2nd pass: myR=${myRemaining} wifeR=${wifeRemaining}`);
-          _wifeIds3.forEach(id => console.log(`[WD-DEBUG yr=${yr}] wd2[${id}]=`, JSON.stringify(withdrawals[yr][id])));
+          _wdLog(`[WD-DEBUG yr=${yr}] AFTER 2nd pass: myR=${myRemaining} wifeR=${wifeRemaining}`);
+          _wifeIds3.forEach(id => _wdLog(`[WD-DEBUG yr=${yr}] wd2[${id}]=`, JSON.stringify(withdrawals[yr][id])));
         }
       }
     }
@@ -12844,9 +12867,12 @@ function saveQuickWdPlan() {
 }
 
 function renderWithdrawalPlan() {
+  window._wdDebugLines = []; // 시뮬레이션 실행 시 로그 초기화
   const sim = computeWithdrawalSim();
   if (!sim) return;
   _lastWdSim = sim;
+  const _dbgBtn = document.getElementById('wdDbgBtn');
+  if (_dbgBtn) _dbgBtn.style.display = window._wdDebugLines.length ? '' : 'none';
 
   // 각 step 을 try/catch 로 격리: 한 단계가 실패해도 다음 단계는 진행
   const safe = (name, fn) => { try { fn(); } catch (e) { console.error('[renderWithdrawalPlan]', name, e); } };
