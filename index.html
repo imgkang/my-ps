@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.452';
+const APP_VERSION = 'MyPM v0.453';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -13309,7 +13309,7 @@ function renderWdCharts(sim) {
   };
   const activeAccIds = allAccIds.filter(id => initState[id].total > 0);
   const chart4Datasets = activeAccIds.map(id => ({
-    label: accShortNames[id] || id,
+    label: accShortNames[id] || getAccName(id),
     data: years.map(yr => round((withdrawals[yr][id]?.anseOut || 0) + (withdrawals[yr][id]?.dcOut || 0) + (withdrawals[yr][id]?.regularOut || 0))),
     backgroundColor: (accColors[id] || {}).bg || 'rgba(100,100,100,0.5)',
     borderColor: (accColors[id] || {}).border || '#666',
@@ -13341,7 +13341,7 @@ function renderWdCharts(sim) {
 
   // Chart 5 데이터: 계좌별 잔액 (스택 에어리어)
   const chart5Datasets = activeAccIds.map(id => ({
-    label: accShortNames[id] || id,
+    label: accShortNames[id] || getAccName(id),
     data: years.map(yr => balances[yr] === null ? 0 : round(balances[yr][id]?.total || 0)),
     backgroundColor: (accColors[id] || {}).bg || 'rgba(100,100,100,0.3)',
     borderColor: (accColors[id] || {}).border || '#666',
