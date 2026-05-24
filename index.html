@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.446';
+const APP_VERSION = 'MyPM v0.447';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12294,6 +12294,36 @@ function computeWithdrawalSim() {
         }
       }
       state[accId] = { anse, dcPrincipal, regular: Math.max(0, total - anse - dcPrincipal), total };
+    }
+    // wdcons_wife 계좌가 활성이지만 잔액=0이고 wife_pension1/2에 잔액이 있으면 이전
+    // (wdConsolidated 미저장 or 분실 상태에서 wdcons_wife 계좌만 활성인 경우)
+    if (appSettings.hasWife && wifeExtraIds.length > 0) {
+      const _wdcWifeIds = wifeExtraIds.filter(id => id.startsWith('wdcons_wife_'));
+      if (_wdcWifeIds.length > 0) {
+        const _wdcTotal = _wdcWifeIds.reduce((s, id) => s + (state[id]?.total || 0), 0);
+        if (_wdcTotal === 0) {
+          const _wp1 = state['wife_pension1'];
+          const _wp2 = state['wife_pension2'];
+          if ((_wp1?.total || 0) > 0 || (_wp2?.total || 0) > 0) {
+            if (_wdcWifeIds[0]) {
+              state[_wdcWifeIds[0]] = _wp1 ? { ..._wp1 } : { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+              state['wife_pension1'] = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+            }
+            if (_wdcWifeIds[1]) {
+              state[_wdcWifeIds[1]] = _wp2 ? { ..._wp2 } : { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+              state['wife_pension2'] = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+            } else if (_wdcWifeIds[0] && (_wp2?.total || 0) > 0) {
+              const cur = state[_wdcWifeIds[0]];
+              state[_wdcWifeIds[0]] = {
+                anse: cur.anse + (_wp2?.anse || 0), dcPrincipal: 0,
+                regular: cur.regular + (_wp2?.regular || 0),
+                total: cur.total + (_wp2?.total || 0)
+              };
+              state['wife_pension2'] = { anse: 0, dcPrincipal: 0, regular: 0, total: 0 };
+            }
+          }
+        }
+      }
     }
     // 자동 통합설정 적용
     autoConsolidateLog = { my: null, wife: null };
