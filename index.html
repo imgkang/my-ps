@@ -3191,7 +3191,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.450';
+const APP_VERSION = 'MyPM v0.451';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12343,7 +12343,14 @@ function computeWithdrawalSim() {
     }
     if (wp.wifeAutoConsolidate) {
       const wifeNonDcIds  = activeWifeIds.filter(id => !DC_ACC_IDS.has(id));
-      autoConsolidateLog.wife = autoConsolidateForSim(wifeNonDcIds, state, 'wife_pension1', 'wife_pension2');
+      // wdcons_wife 계좌가 활성이면 이미 통합 완료 상태 — pp1/pp2Key를 wdcons로 설정
+      const _wdcWifeActive = wifeNonDcIds.filter(id => id.startsWith('wdcons_wife_'));
+      if (_wdcWifeActive.length >= 2) {
+        autoConsolidateLog.wife = autoConsolidateForSim(wifeNonDcIds, state, _wdcWifeActive[0], _wdcWifeActive[1]);
+      } else if (_wdcWifeActive.length === 0) {
+        autoConsolidateLog.wife = autoConsolidateForSim(wifeNonDcIds, state, 'wife_pension1', 'wife_pension2');
+      }
+      // wdcons가 1개뿐이면 autoConsolidate 불필요 (이미 단일 계좌)
     }
   }
   const initState = {};
