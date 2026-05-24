@@ -3190,7 +3190,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.439';
+const APP_VERSION = 'MyPM v0.440';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -12514,6 +12514,13 @@ function computeWithdrawalSim() {
     doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
     applyPensionTaxThreshold(getActiveWifeAccIds());
 
+    // DEBUG: 1st pass 결과 확인
+    if (yr <= startYear + 2) {
+      const _wifeIds2 = getActiveWifeAccIds();
+      console.log(`[WD-DEBUG yr=${yr}] AFTER 1st doWithdraw:`);
+      _wifeIds2.forEach(id => console.log(`[WD-DEBUG yr=${yr}] wd1[${id}]=`, JSON.stringify(withdrawals[yr][id])));
+    }
+
     // 고정금액 구간에서 세후 실수령액 = target 2차 보정 (pct 모드는 gross 직접 계산이므로 불필요)
     const _activePeriod2p = yr >= startYear ? periodsWithEnd.find(p => yr >= p.startYear && yr <= p.derivedEndYear) : null;
     const _2passActive = yr >= startYear && (!_activePeriod2p || _activePeriod2p.type !== 'pct');
@@ -12524,6 +12531,7 @@ function computeWithdrawalSim() {
         ? (myPublicInc + wifePublicInc) * (1 - npTR) : 0;
       const _actualNet1 = _priv1 - totalRT - totalPT + _pubContrib2p;
       const _deficit = target - _actualNet1;
+      if (yr <= startYear + 2) console.log(`[WD-DEBUG yr=${yr}] 2pass: priv1=${_priv1} actualNet1=${_actualNet1} target=${target} deficit=${_deficit}`);
       if (Math.abs(_deficit) > 10000) {
         // 패스1 직후 나의 regularOut으로 한계세율 결정 (1500만원 초과 여부 반영)
         const myRegOut1 = myWithdrawIds.reduce((a, id) => a + withdrawals[yr][id].regularOut, 0);
@@ -12552,6 +12560,11 @@ function computeWithdrawalSim() {
         applyPensionTaxThreshold(myWithdrawIds);
         doWithdraw(getActiveWifeAccIds(), wifeRemaining, wifeBasic);
         applyPensionTaxThreshold(getActiveWifeAccIds());
+        if (yr <= startYear + 2) {
+          const _wifeIds3 = getActiveWifeAccIds();
+          console.log(`[WD-DEBUG yr=${yr}] AFTER 2nd pass: myR=${myRemaining} wifeR=${wifeRemaining}`);
+          _wifeIds3.forEach(id => console.log(`[WD-DEBUG yr=${yr}] wd2[${id}]=`, JSON.stringify(withdrawals[yr][id])));
+        }
       }
     }
 
