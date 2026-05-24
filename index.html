@@ -3195,7 +3195,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.455';
+const APP_VERSION = 'MyPM v0.456';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -15015,7 +15015,9 @@ function wdPrepToggleBucket(accId, who, targetBucket) {
   if (appSettings.hasWife)
     _clampAnse(_wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids, _wdStep2Ctx.wifeKeepIds || [],
                WIFE_ACC_IDS, 'savedWifePP1Anse');
-  const content = document.getElementById('wdPrepContent');
+  const _consModal = document.getElementById('consolidateModal');
+  const _inCons = _consModal && _consModal.classList.contains('open');
+  const content = document.getElementById(_inCons ? 'consContent' : 'wdPrepContent');
   if (content) content.innerHTML = wdPrepStep2Html();
 }
 
@@ -15045,7 +15047,9 @@ function wdPrepResetBuckets(who) {
       _wdStep2Ctx.wifePP1Ids, _wdStep2Ctx.wifePP2Ids,
       [..._wdStep2Ctx.wifePP1Ids, ..._wdStep2Ctx.wifePP2Ids], _wdStep2Ctx.comps, _endDate);
   }
-  const content = document.getElementById('wdPrepContent');
+  const _consModal = document.getElementById('consolidateModal');
+  const _inCons = _consModal && _consModal.classList.contains('open');
+  const content = document.getElementById(_inCons ? 'consContent' : 'wdPrepContent');
   if (content) content.innerHTML = wdPrepStep2Html();
 }
 
