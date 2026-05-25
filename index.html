@@ -3279,7 +3279,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.462';
+const APP_VERSION = 'MyPM v0.463';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -8251,7 +8251,12 @@ function divRecCodes(rec) {
 }
 function divRecTotal(rec) {
   if (divRecIsMisc(rec)) return divRecMiscTotal(rec);
-  return divRecCodes(rec).reduce((s, c) => s + divRecAmount(rec, c), 0);
+  const codes = divRecCodes(rec);
+  if (!codes.length) {
+    // 구버전 기타항목: rec.accounts에만 금액이 있는 경우
+    return Object.values(rec.accounts || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+  }
+  return codes.reduce((s, c) => s + divRecAmount(rec, c), 0);
 }
 
 function toggleDivForm(forceOpen) {
@@ -9459,12 +9464,16 @@ function renderDivMonthlyBreakdown() {
       const dayStr = rec.day ? String(rec.day).padStart(2, '0') + '일' : '-';
 
       if (divRecIsMisc(rec)) {
-        const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '기타';
+        const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '기타종목';
         const total = divRecMiscTotal(rec);
+        if (!total) return [];
         return [`<div class="div-month-item">
           <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
-          <div class="div-stock-badge" style="background:#9ca3af">📝</div>
-          <div class="div-item-info"><div class="div-item-name">${memo}</div></div>
+          <div class="div-stock-badge" style="background:#9ca3af">기타</div>
+          <div class="div-item-info">
+            <div class="div-item-name">기타종목</div>
+            ${memo && memo !== '기타종목' ? `<div class="div-item-sub">${memo}</div>` : ''}
+          </div>
           <div class="div-item-amount">${total.toLocaleString('ko-KR')} 원</div>
           <div style="display:flex;gap:4px;flex-shrink:0">
             <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
@@ -9473,7 +9482,24 @@ function renderDivMonthlyBreakdown() {
         </div>`];
       }
 
-      return divRecCodes(rec).map(code => {
+      const codes = divRecCodes(rec);
+      if (!codes.length) {
+        // 구버전 기타항목: rec.misc 없이 rec.accounts에만 금액이 있는 경우
+        const total = Object.values(rec.accounts || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+        if (!total) return [];
+        return [`<div class="div-month-item">
+          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+          <div class="div-stock-badge" style="background:#9ca3af">기타</div>
+          <div class="div-item-info"><div class="div-item-name">기타종목</div></div>
+          <div class="div-item-amount">${total.toLocaleString('ko-KR')} 원</div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+          </div>
+        </div>`];
+      }
+
+      return codes.map(code => {
         const amt = divRecAmount(rec, code);
         if (!amt) return '';
         const h = holdings.find(x => x.code === code);
@@ -9543,19 +9569,32 @@ function renderDivMonthlyBreakdownByAcc() {
     const rows = mRecs.flatMap(rec => {
       const dayStr = rec.day ? String(rec.day).padStart(2, '0') + '일' : '-';
 
-      if (divRecIsMisc(rec)) {
-        const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '기타';
-        const total = divRecMiscTotal(rec);
-        return [`<div class="div-month-item">
-          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
-          <div class="div-stock-badge" style="background:#9ca3af">📝</div>
-          <div class="div-item-info"><div class="div-item-name">${memo}</div></div>
-          <div class="div-item-amount">${total.toLocaleString('ko-KR')} 원</div>
-          <div style="display:flex;gap:4px;flex-shrink:0">
-            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-          </div>
-        </div>`];
+      // 기타항목(신규: rec.misc, 구버전: rec.accounts만 있고 종목 없는 경우) → 계좌별 분리
+      const isMisc = divRecIsMisc(rec);
+      const hasNoCodes = !isMisc && divRecCodes(rec).length === 0;
+      if (isMisc || hasNoCodes) {
+        const accAmounts = isMisc ? (rec.misc.accounts || {}) : (rec.accounts || {});
+        const memo = isMisc && rec.misc.memo ? rec.misc.memo : '';
+        return activeAccs.map((acc, i) => {
+          const amt = Number(accAmounts[acc.id]) || 0;
+          if (!amt) return '';
+          const color = _DIV_COLORS[i % _DIV_COLORS.length];
+          const accName = getAccName(acc.id);
+          const initial = (accName || acc.id).slice(0, 1).toUpperCase();
+          return `<div class="div-month-item">
+            <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+            <div class="div-stock-badge" style="background:${color}">${initial}</div>
+            <div class="div-item-info">
+              <div class="div-item-name">${accName}</div>
+              ${memo ? `<div class="div-item-sub">기타종목${memo !== '기타종목' ? ' · ' + memo : ''}</div>` : '<div class="div-item-sub">기타종목</div>'}
+            </div>
+            <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+              <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+            </div>
+          </div>`;
+        }).filter(Boolean);
       }
 
       return activeAccs.map((acc, i) => {
