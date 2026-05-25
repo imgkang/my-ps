@@ -456,6 +456,15 @@ registerMobileTooltipDismiss();
   .modal-records { max-width: 1200px; }
   .rec-chart-wrap { margin-bottom: 14px; }
   .rec-chart-wrap canvas { display: block; }
+  .rec-period-btns {
+    display: flex; justify-content: center; gap: 2px; margin-top: 10px; padding: 0 4px;
+  }
+  .rec-period-btn {
+    flex: 1; background: none; border: none; padding: 7px 0;
+    font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer;
+    border-radius: 8px; transition: all 0.15s; text-align: center;
+  }
+  .rec-period-btn.active { background: #f3f4f6; color: var(--text); }
   .rec-form-toggle {
     display: flex; align-items: center; gap: 8px; width: 100%;
     background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
@@ -896,31 +905,6 @@ registerMobileTooltipDismiss();
     margin-bottom: 8px; padding-bottom: 6px;
     border-bottom: 2px solid var(--primary);
   }
-  .div-records-wrap {
-    overflow: auto; max-height: 280px; border: 1px solid var(--border);
-    border-radius: 8px; margin-bottom: 16px;
-  }
-  .div-records-inner { min-width: max-content; }
-  .div-records-body {}
-  .div-table-header, .div-record-row {
-    display: grid; gap: 6px; padding: 7px 10px;
-    font-size: 12px; align-items: center;
-  }
-  .div-table-header {
-    position: sticky; top: 0; z-index: 3;
-    background: #f9fafb; font-weight: 600; color: var(--muted);
-    border-bottom: 1px solid var(--border); font-size: 11px;
-  }
-  .div-table-header > :first-child {
-    position: sticky; left: 0; z-index: 2; background: #f9fafb;
-  }
-  .div-record-row { border-bottom: 1px solid var(--border); }
-  .div-record-row > :first-child {
-    position: sticky; left: 0; z-index: 1; background: #fff;
-  }
-  .div-record-row:last-child { border-bottom: none; }
-  .div-record-row .amount { text-align: right; }
-  .div-record-row .total { text-align: right; font-weight: 700; color: #1e40af; }
   .div-empty { padding: 24px 20px; text-align: center; color: var(--muted); font-size: 13px; }
 
   /* 배당 연도 뷰 */
@@ -957,13 +941,6 @@ registerMobileTooltipDismiss();
   .div-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .div-item-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
   .div-item-amount { font-size: 13px; font-weight: 700; color: #1e40af; white-space: nowrap; flex-shrink: 0; }
-  .div-trend-details { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 10px; }
-  .div-trend-summary {
-    cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted);
-    padding: 4px 0; list-style: none; user-select: none;
-  }
-  .div-trend-summary::-webkit-details-marker { display: none; }
-  .div-trend-details[open] .div-trend-summary { color: var(--text); }
   .div-breakdown-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
   .div-toggle-btn {
     padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
@@ -2270,8 +2247,14 @@ registerMobileTooltipDismiss();
 
     <!-- 계좌 잔액 추이 차트 -->
     <div class="rec-chart-wrap" id="recChartWrap">
-      <div style="position:relative;height:180px"><canvas id="recChart"></canvas></div>
+      <div style="position:relative;height:200px"><canvas id="recChart"></canvas></div>
       <div id="recChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:30px 0">기록을 추가하면 차트가 표시됩니다</div>
+      <div class="rec-period-btns" id="recPeriodBtns">
+        <button class="rec-period-btn active" data-period="all" onclick="setRecChartPeriod('all')">ALL</button>
+        <button class="rec-period-btn" data-period="5y" onclick="setRecChartPeriod('5y')">5Y</button>
+        <button class="rec-period-btn" data-period="1y" onclick="setRecChartPeriod('1y')">1Y</button>
+        <button class="rec-period-btn" data-period="ytd" onclick="setRecChartPeriod('ytd')">올해</button>
+      </div>
     </div>
 
     <!-- 입력 폼 토글 버튼 -->
@@ -3243,35 +3226,6 @@ registerMobileTooltipDismiss();
       </div>
       <div id="divMonthlyBreakdown"></div>
 
-      <!-- 전체 추이 차트 + 상세 내역 표 (접이식) -->
-      <details class="div-trend-details">
-        <summary class="div-trend-summary">전체 추이 차트 / 상세 내역 보기 ▾</summary>
-        <div class="div-section-title" style="margin-top:12px">종목별 배당 추이</div>
-        <div id="divStockChartWrap" style="margin-bottom:10px">
-          <div style="position:relative;height:180px"><canvas id="divStockChart"></canvas></div>
-          <div id="divStockChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:20px 0">배당 기록을 추가하면 차트가 표시됩니다</div>
-        </div>
-        <div class="div-section-title" style="margin-top:16px">계좌별 배당 추이</div>
-        <div id="divAccChartWrap" style="margin-bottom:16px">
-          <div style="position:relative;height:160px"><canvas id="divAccChart"></canvas></div>
-          <div id="divAccChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:20px 0">배당 기록을 추가하면 차트가 표시됩니다</div>
-        </div>
-        <div class="div-section-title">종목별 배당 내역</div>
-        <div class="div-records-wrap">
-          <div class="div-records-inner">
-            <div class="div-table-header" id="divStockTableHeader"></div>
-            <div class="div-records-body"><div id="divStockRecordsList"></div></div>
-          </div>
-        </div>
-        <div class="div-section-title" style="margin-top:16px">계좌별 배당 내역</div>
-        <div class="div-records-wrap">
-          <div class="div-records-inner">
-            <div class="div-table-header" id="divAccTableHeader"></div>
-            <div class="div-records-body"><div id="divAccRecordsList"></div></div>
-          </div>
-        </div>
-      </details>
-
     </div>
 
 </div><!-- /panel-dividend -->
@@ -3279,7 +3233,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.463';
+const APP_VERSION = 'MyPM v0.465';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5478,14 +5432,35 @@ function saveMonthlyRecords() {
 }
 
 let _recChart = null;
+let _recChartPeriod = 'all';
+
+function setRecChartPeriod(period) {
+  _recChartPeriod = period;
+  document.querySelectorAll('.rec-period-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === period);
+  });
+  renderRecChart();
+}
 
 function renderRecChart() {
   const canvas = document.getElementById('recChart');
   const empty  = document.getElementById('recChartEmpty');
   if (!canvas) return;
   if (typeof Chart === 'undefined') { setTimeout(renderRecChart, 200); return; }
-  const series = buildChartSeries(null);
-  if (!series.evalData.length) {
+
+  const now = new Date();
+  const curYM = now.getFullYear() * 12 + now.getMonth() + 1;
+  let cutoffX = 0;
+  if (_recChartPeriod === 'ytd') cutoffX = now.getFullYear() * 12 + 1;
+  else if (_recChartPeriod === '1y') cutoffX = curYM - 11;
+  else if (_recChartPeriod === '5y') cutoffX = curYM - 59;
+
+  const activeAccs = getActiveAccounts();
+  const sorted = [...monthlyRecords]
+    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+    .filter(r => r.year * 12 + r.month >= cutoffX);
+
+  if (!sorted.length) {
     if (_recChart) { _recChart.destroy(); _recChart = null; }
     canvas.style.display = 'none';
     if (empty) empty.style.display = 'block';
@@ -5493,8 +5468,81 @@ function renderRecChart() {
   }
   canvas.style.display = '';
   if (empty) empty.style.display = 'none';
+
+  const evalData = sorted.map(r => ({
+    x: r.year * 12 + r.month,
+    y: Math.round(activeAccs.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0) / 100000) / 10
+  }));
+  const principalData = sorted.map(r => ({
+    x: r.year * 12 + r.month,
+    y: Math.round(activeAccs.reduce((s, a) => s + getAccountPrincipalAt(a.id, r.year, r.month), 0) / 100000) / 10
+  }));
+
+  const xVals = evalData.map(d => d.x);
+  const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
+  const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
+
+  const ctx2d = canvas.getContext('2d');
+  const h = canvas.offsetHeight || 200;
+  const gradEval = ctx2d.createLinearGradient(0, 0, 0, h);
+  gradEval.addColorStop(0, 'rgba(239,68,68,0.22)');
+  gradEval.addColorStop(1, 'rgba(239,68,68,0)');
+  const gradPrincipal = ctx2d.createLinearGradient(0, 0, 0, h);
+  gradPrincipal.addColorStop(0, 'rgba(156,163,175,0.2)');
+  gradPrincipal.addColorStop(1, 'rgba(156,163,175,0)');
+
   if (_recChart) { _recChart.destroy(); _recChart = null; }
-  _recChart = createLineChart(canvas.getContext('2d'), series);
+  _recChart = new Chart(ctx2d, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: '자산',
+          data: evalData,
+          borderColor: '#ef4444',
+          backgroundColor: gradEval,
+          fill: 'origin',
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          borderWidth: 2,
+          order: 2
+        },
+        {
+          label: '원금',
+          data: principalData,
+          borderColor: '#9ca3af',
+          backgroundColor: gradPrincipal,
+          fill: 'origin',
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          borderWidth: 1.5,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          ticks: { stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: false,
+          ticks: { callback: v => v + 'M', font: { size: 10 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
 }
 
 function toggleRecForm(forceOpen) {
@@ -5525,6 +5573,10 @@ function openRecordsModal() {
   if (cancelBtn) cancelBtn.style.display = 'none';
   const toggleBtn = document.getElementById('recFormToggleBtn');
   if (toggleBtn) { toggleBtn.textContent = '➕ 새 기록 추가'; toggleBtn.classList.remove('editing'); }
+  _recChartPeriod = 'all';
+  document.querySelectorAll('.rec-period-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === 'all');
+  });
   renderRecordsTableHeader();
   renderRecordsList();
   renderRecChart();
@@ -8279,7 +8331,6 @@ function toggleDivForm(forceOpen) {
   }
 }
 
-let _divStockChart = null, _divAccChart = null;
 let _divMonthlyChart = null;
 let _divSelectedYear = new Date().getFullYear();
 let _divBreakdownMode = 'stock'; // 'stock' | 'account'
@@ -8290,106 +8341,6 @@ const _DIV_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6'
 function divShortName(name, max = 8) {
   if (!name) return name;
   return name.length > max ? name.slice(0, max) + '…' : name;
-}
-
-function renderDivCharts() {
-  if (typeof Chart === 'undefined') { setTimeout(renderDivCharts, 200); return; }
-  const sorted = [...dividendRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-  const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2, '0')}`);
-
-  // 종목별 차트
-  const stockCanvas = document.getElementById('divStockChart');
-  const stockEmpty  = document.getElementById('divStockChartEmpty');
-  if (stockCanvas) {
-    if (!sorted.length) {
-      if (_divStockChart) { _divStockChart.destroy(); _divStockChart = null; }
-      stockCanvas.style.display = 'none';
-      if (stockEmpty) stockEmpty.style.display = 'block';
-    } else {
-      stockCanvas.style.display = '';
-      if (stockEmpty) stockEmpty.style.display = 'none';
-      const allCodes = [];
-      const codeFullNames = {};
-      for (const rec of dividendRecords) {
-        for (const code of divRecCodes(rec)) {
-          if (!allCodes.includes(code)) {
-            allCodes.push(code);
-            const h = holdings.find(x => x.code === code);
-            codeFullNames[code] = h ? h.name : code;
-          }
-        }
-      }
-      const stockDatasets = allCodes.map((code, i) => ({
-        label: divShortName(codeFullNames[code]),
-        data: sorted.map(r => Math.round(divRecAmount(r, code) / 10000)),
-        backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
-        borderWidth: 0,
-      }));
-      if (_divStockChart) { _divStockChart.destroy(); _divStockChart = null; }
-      _divStockChart = new Chart(stockCanvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: stockDatasets },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-            tooltip: { callbacks: {
-              label: c => `${divShortName(codeFullNames[allCodes[c.datasetIndex]])}: ${c.parsed.y.toLocaleString('ko-KR')} 만원`,
-              footer: items => `합계: ${items.reduce((s, c) => s + c.parsed.y, 0).toLocaleString('ko-KR')} 만원`
-            }}
-          },
-          scales: {
-            x: { stacked: true, ticks: { font: { size: 10 } } },
-            y: { stacked: true, title: { display: true, text: '배당금 (만원)' },
-              ticks: { callback: v => v.toLocaleString('ko-KR') } }
-          }
-        }
-      });
-    }
-  }
-
-  // 계좌별 차트
-  const accCanvas = document.getElementById('divAccChart');
-  const accEmpty  = document.getElementById('divAccChartEmpty');
-  if (accCanvas) {
-    if (!sorted.length) {
-      if (_divAccChart) { _divAccChart.destroy(); _divAccChart = null; }
-      accCanvas.style.display = 'none';
-      if (accEmpty) accEmpty.style.display = 'block';
-    } else {
-      accCanvas.style.display = '';
-      if (accEmpty) accEmpty.style.display = 'none';
-      const activeAccs = getActiveAccounts();
-      const accDatasets = activeAccs.map((acc, i) => ({
-        label: divShortName(getAccName(acc.id)),
-        data: sorted.map(r => Math.round((Number(r.accounts[acc.id]) || 0) / 10000)),
-        backgroundColor: _DIV_COLORS[i % _DIV_COLORS.length],
-        borderWidth: 0,
-      }));
-      if (_divAccChart) { _divAccChart.destroy(); _divAccChart = null; }
-      _divAccChart = new Chart(accCanvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: accDatasets },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-            tooltip: { callbacks: {
-              label: c => `${divShortName(getAccName(activeAccs[c.datasetIndex].id))}: ${c.parsed.y.toLocaleString('ko-KR')} 만원`,
-              footer: items => `합계: ${items.reduce((s, c) => s + c.parsed.y, 0).toLocaleString('ko-KR')} 만원`
-            }}
-          },
-          scales: {
-            x: { stacked: true, ticks: { font: { size: 10 } } },
-            y: { stacked: true, title: { display: true, text: '배당금 (만원)' },
-              ticks: { callback: v => v.toLocaleString('ko-KR') } }
-          }
-        }
-      });
-    }
-  }
 }
 
 function openDividendModal() {
@@ -8406,15 +8357,7 @@ function openDividendModal() {
   _divBreakdownMode = 'stock';
   document.getElementById('divToggleStock')?.classList.add('active');
   document.getElementById('divToggleAcc')?.classList.remove('active');
-  renderDividendLists();
-  renderDivCharts();
   renderDivYearView();
-  // details 열릴 때 추이 차트 재렌더
-  const det = document.getElementById('panel-dividend')?.querySelector('.div-trend-details');
-  if (det && !det._listenerRegistered) {
-    det._listenerRegistered = true;
-    det.addEventListener('toggle', () => { if (det.open) renderDivCharts(); });
-  }
   switchTab('dividend');
 }
 
@@ -8692,8 +8635,6 @@ function addMiscDividendRecord() {
     clearDivMiscInputs();
   }
   saveDividendRecords();
-  renderDividendLists();
-  renderDivCharts();
   renderDivYearView();
   renderTradeList();
 }
@@ -8906,8 +8847,6 @@ function applyDivImport() {
     });
   }
   saveDividendRecords();
-  renderDividendLists();
-  renderDivCharts();
   renderDivYearView();
   renderTradeList();
 
@@ -9091,8 +9030,6 @@ function addDividendRecord() {
     pushDividendCashAdj(newId, dateVal, accounts);
   }
   saveDividendRecords();
-  renderDividendLists();
-  renderDivCharts();
   renderDivYearView();
   renderTradeList();
   toggleDivForm(false);
@@ -9118,8 +9055,6 @@ function deleteDividendRecord(id) {
   }
   if (_divMiscEditingId === id) cancelDivMiscEdit();
   if (negAccs.length) alert(`⚠️ 배당금 차감 후 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
-  renderDividendLists();
-  renderDivCharts();
   renderDivYearView();
   renderTradeList();
 }
@@ -9195,140 +9130,6 @@ function cancelDivEdit() {
   if (cancelBtn) cancelBtn.style.display = 'none';
   if (_divMiscEditingId) cancelDivMiscEdit();
   toggleDivForm(false);
-}
-
-function renderDividendLists() {
-  renderDivStockRecordsList();
-  renderDivAccRecordsList();
-}
-
-function renderDivStockRecordsList() {
-  const header = document.getElementById('divStockTableHeader');
-  const list = document.getElementById('divStockRecordsList');
-  if (!header || !list) return;
-
-  if (!dividendRecords.length) {
-    header.style.gridTemplateColumns = '';
-    header.innerHTML = '';
-    list.innerHTML = '<div class="div-empty">아직 등록된 배당 기록이 없습니다.</div>';
-    return;
-  }
-
-  // collect all stock codes that appear across all records
-  const allCodes = [];
-  const codeNames = {};
-  for (const rec of dividendRecords) {
-    for (const code of divRecCodes(rec)) {
-      if (!allCodes.includes(code)) {
-        allCodes.push(code);
-        const h = holdings.find(x => x.code === code);
-        codeNames[code] = h ? h.name : code;
-      }
-    }
-  }
-
-  const cols = `90px ${allCodes.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 72px`;
-  header.style.gridTemplateColumns = cols;
-  header.innerHTML = `
-    <span>기록일</span>
-    ${allCodes.map(c => `<span style="text-align:right">${divShortName(codeNames[c])}<br><small>${c}</small></span>`).join('')}
-    <span style="text-align:right">합계</span>
-    <span></span>
-  `;
-
-  const sorted = [...dividendRecords].sort((a, b) => {
-    if (b.year !== a.year) return b.year - a.year;
-    if (b.month !== a.month) return b.month - a.month;
-    return (b.day || 0) - (a.day || 0);
-  });
-  const spanCount = Math.max(allCodes.length, 1);
-  list.innerHTML = sorted.map(rec => {
-    const dateStr = rec.day
-      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
-      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
-    if (divRecIsMisc(rec)) {
-      const total = divRecMiscTotal(rec);
-      const sign = total < 0 ? '-' : '';
-      const totalStr = `${sign}${Math.abs(total).toLocaleString('ko-KR')}`;
-      const skipBadge = rec.skipCash ? ` <small style="color:var(--muted)">[현금반영X]</small>` : '';
-      const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
-      return `
-        <div class="div-record-row" style="grid-template-columns:${cols}">
-          <span>${dateStr}</span>
-          <span style="grid-column: span ${spanCount};color:var(--muted)">📝 ${memo}${skipBadge}</span>
-          <span class="total">${totalStr}</span>
-          <span>
-            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-          </span>
-        </div>
-      `;
-    }
-    const total = allCodes.reduce((s, c) => s + divRecAmount(rec, c), 0);
-    const cells = allCodes.map(c => {
-      const v = divRecAmount(rec, c);
-      return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
-    }).join('');
-    return `
-      <div class="div-record-row" style="grid-template-columns:${cols}">
-        <span>${dateStr}</span>
-        ${cells}
-        <span class="total">${total.toLocaleString('ko-KR')}</span>
-        <span>
-          <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-          <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-        </span>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderDivAccRecordsList() {
-  const header = document.getElementById('divAccTableHeader');
-  const list = document.getElementById('divAccRecordsList');
-  if (!header || !list) return;
-
-  if (!dividendRecords.length) {
-    header.style.gridTemplateColumns = '';
-    header.innerHTML = '';
-    list.innerHTML = '<div class="div-empty">아직 등록된 배당 기록이 없습니다.</div>';
-    return;
-  }
-
-  const activeAccs = getActiveAccounts();
-  const cols = `90px ${activeAccs.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
-  header.style.gridTemplateColumns = cols;
-  header.innerHTML = `
-    <span>기록일</span>
-    ${activeAccs.map(a => `<span style="text-align:right">${getAccName(a.id)}</span>`).join('')}
-    <span style="text-align:right">합계</span>
-  `;
-
-  const sorted = [...dividendRecords].sort((a, b) => {
-    if (b.year !== a.year) return b.year - a.year;
-    if (b.month !== a.month) return b.month - a.month;
-    return (b.day || 0) - (a.day || 0);
-  });
-  list.innerHTML = sorted.map(rec => {
-    const total = activeAccs.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
-    const cells = activeAccs.map(a => {
-      const v = Number(rec.accounts[a.id]) || 0;
-      return `<span class="amount">${v ? v.toLocaleString('ko-KR') : '-'}</span>`;
-    }).join('');
-    const dateStr = rec.day
-      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
-      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
-    const miscPrefix = divRecIsMisc(rec)
-      ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}${rec.skipCash?' (현금반영X)':''}" style="color:var(--muted)">📝 </small>`
-      : '';
-    return `
-      <div class="div-record-row" style="grid-template-columns:${cols}">
-        <span>${miscPrefix}${dateStr}</span>
-        ${cells}
-        <span class="total">${total.toLocaleString('ko-KR')}</span>
-      </div>
-    `;
-  }).join('');
 }
 
 // ===== 배당 연도 뷰 =====
@@ -12035,7 +11836,7 @@ function saveSettingsModal() {
   else if (_activePanelNow === 'annual') { renderEvalTable(); setTimeout(renderAnnualCharts, 50); renderAccSummary(); }
   else if (_activePanelNow === 'records') { renderRecordsTableHeader(); renderRecordsList(); renderRecChart(); }
   else if (_activePanelNow === 'deposit') { renderDepositTotals(); renderDepositList(); renderDepositChart(); }
-  else if (_activePanelNow === 'dividend') { renderDividendLists(); renderDivCharts(); renderDivYearView(); }
+  else if (_activePanelNow === 'dividend') { renderDivYearView(); }
   else renderPortfolioChart();
 }
 
