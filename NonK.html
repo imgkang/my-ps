@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.460';
+const APP_VERSION = 'NonK v0.461';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1317,6 +1317,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = JSON.parse(localStorage.getItem('pension_app_settings_v1')) || {};
     if (s.showNonK  === false) document.querySelectorAll('a[href="NonK.html"]').forEach(e => e.style.display = 'none');
     if (s.showKDeal === false) document.querySelectorAll('a[href="KDeal.html"]').forEach(e => e.style.display = 'none');
+    if (s.allowZoom === false) {
+      const m = document.querySelector('meta[name="viewport"]');
+      if (m) m.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+    }
   } catch(_) {}
 });
 
