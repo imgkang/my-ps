@@ -3233,7 +3233,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.466';
+const APP_VERSION = 'MyPM v0.467';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5482,6 +5482,27 @@ function renderRecChart() {
   const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
   const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
 
+  // 올해: x축을 1월~12월 고정, 눈금을 "N월" 표시
+  const isYtd = _recChartPeriod === 'ytd';
+  const ytdBase = now.getFullYear() * 12;
+  const xAxisOpts = isYtd
+    ? {
+        type: 'linear',
+        min: ytdBase + 1,
+        max: ytdBase + 12,
+        ticks: {
+          stepSize: 1,
+          callback: v => Number.isInteger(v) ? (v - ytdBase) + '월' : '',
+          font: { size: 10 }
+        },
+        grid: { display: false }
+      }
+    : {
+        type: 'linear',
+        ticks: { stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
+        grid: { display: false }
+      };
+
   const ctx2d = canvas.getContext('2d');
   const h = canvas.offsetHeight || 200;
   const gradEval = ctx2d.createLinearGradient(0, 0, 0, h);
@@ -5530,11 +5551,7 @@ function renderRecChart() {
         tooltip: { enabled: false }
       },
       scales: {
-        x: {
-          type: 'linear',
-          ticks: { stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
-          grid: { display: false }
-        },
+        x: xAxisOpts,
         y: {
           beginAtZero: false,
           ticks: { callback: v => v + 'M', font: { size: 10 } },
