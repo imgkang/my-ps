@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.459';
+const APP_VERSION = 'NonK v0.460';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -3819,7 +3819,7 @@ nkRenderChart();
 nkRenderAccountButtons();
 nkRenderWatchlist();
 nkInitAutoRefresh();
-if (nkHoldings.length || nkWatchlist.length) nkRefreshAll();
+if (nkHoldings.length || nkWatchlist.length) setTimeout(() => nkRefreshAll(), 800);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
