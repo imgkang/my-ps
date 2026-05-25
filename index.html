@@ -456,6 +456,15 @@ registerMobileTooltipDismiss();
   .modal-records { max-width: 1200px; }
   .rec-chart-wrap { margin-bottom: 14px; }
   .rec-chart-wrap canvas { display: block; }
+  .rec-period-btns {
+    display: flex; justify-content: center; gap: 2px; margin-top: 10px; padding: 0 4px;
+  }
+  .rec-period-btn {
+    flex: 1; background: none; border: none; padding: 7px 0;
+    font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer;
+    border-radius: 8px; transition: all 0.15s; text-align: center;
+  }
+  .rec-period-btn.active { background: #f3f4f6; color: var(--text); }
   .rec-form-toggle {
     display: flex; align-items: center; gap: 8px; width: 100%;
     background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
@@ -2238,8 +2247,14 @@ registerMobileTooltipDismiss();
 
     <!-- 계좌 잔액 추이 차트 -->
     <div class="rec-chart-wrap" id="recChartWrap">
-      <div style="position:relative;height:180px"><canvas id="recChart"></canvas></div>
+      <div style="position:relative;height:200px"><canvas id="recChart"></canvas></div>
       <div id="recChartEmpty" style="display:none;text-align:center;color:var(--muted);font-size:12px;padding:30px 0">기록을 추가하면 차트가 표시됩니다</div>
+      <div class="rec-period-btns" id="recPeriodBtns">
+        <button class="rec-period-btn active" data-period="all" onclick="setRecChartPeriod('all')">ALL</button>
+        <button class="rec-period-btn" data-period="5y" onclick="setRecChartPeriod('5y')">5Y</button>
+        <button class="rec-period-btn" data-period="1y" onclick="setRecChartPeriod('1y')">1Y</button>
+        <button class="rec-period-btn" data-period="ytd" onclick="setRecChartPeriod('ytd')">올해</button>
+      </div>
     </div>
 
     <!-- 입력 폼 토글 버튼 -->
@@ -3218,7 +3233,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.464';
+const APP_VERSION = 'MyPM v0.465';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5417,14 +5432,35 @@ function saveMonthlyRecords() {
 }
 
 let _recChart = null;
+let _recChartPeriod = 'all';
+
+function setRecChartPeriod(period) {
+  _recChartPeriod = period;
+  document.querySelectorAll('.rec-period-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === period);
+  });
+  renderRecChart();
+}
 
 function renderRecChart() {
   const canvas = document.getElementById('recChart');
   const empty  = document.getElementById('recChartEmpty');
   if (!canvas) return;
   if (typeof Chart === 'undefined') { setTimeout(renderRecChart, 200); return; }
-  const series = buildChartSeries(null);
-  if (!series.evalData.length) {
+
+  const now = new Date();
+  const curYM = now.getFullYear() * 12 + now.getMonth() + 1;
+  let cutoffX = 0;
+  if (_recChartPeriod === 'ytd') cutoffX = now.getFullYear() * 12 + 1;
+  else if (_recChartPeriod === '1y') cutoffX = curYM - 11;
+  else if (_recChartPeriod === '5y') cutoffX = curYM - 59;
+
+  const activeAccs = getActiveAccounts();
+  const sorted = [...monthlyRecords]
+    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+    .filter(r => r.year * 12 + r.month >= cutoffX);
+
+  if (!sorted.length) {
     if (_recChart) { _recChart.destroy(); _recChart = null; }
     canvas.style.display = 'none';
     if (empty) empty.style.display = 'block';
@@ -5432,8 +5468,81 @@ function renderRecChart() {
   }
   canvas.style.display = '';
   if (empty) empty.style.display = 'none';
+
+  const evalData = sorted.map(r => ({
+    x: r.year * 12 + r.month,
+    y: Math.round(activeAccs.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0) / 100000) / 10
+  }));
+  const principalData = sorted.map(r => ({
+    x: r.year * 12 + r.month,
+    y: Math.round(activeAccs.reduce((s, a) => s + getAccountPrincipalAt(a.id, r.year, r.month), 0) / 100000) / 10
+  }));
+
+  const xVals = evalData.map(d => d.x);
+  const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
+  const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
+
+  const ctx2d = canvas.getContext('2d');
+  const h = canvas.offsetHeight || 200;
+  const gradEval = ctx2d.createLinearGradient(0, 0, 0, h);
+  gradEval.addColorStop(0, 'rgba(239,68,68,0.22)');
+  gradEval.addColorStop(1, 'rgba(239,68,68,0)');
+  const gradPrincipal = ctx2d.createLinearGradient(0, 0, 0, h);
+  gradPrincipal.addColorStop(0, 'rgba(156,163,175,0.2)');
+  gradPrincipal.addColorStop(1, 'rgba(156,163,175,0)');
+
   if (_recChart) { _recChart.destroy(); _recChart = null; }
-  _recChart = createLineChart(canvas.getContext('2d'), series);
+  _recChart = new Chart(ctx2d, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: '자산',
+          data: evalData,
+          borderColor: '#ef4444',
+          backgroundColor: gradEval,
+          fill: 'origin',
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          borderWidth: 2,
+          order: 2
+        },
+        {
+          label: '원금',
+          data: principalData,
+          borderColor: '#9ca3af',
+          backgroundColor: gradPrincipal,
+          fill: 'origin',
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          borderWidth: 1.5,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          ticks: { stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: false,
+          ticks: { callback: v => v + 'M', font: { size: 10 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
 }
 
 function toggleRecForm(forceOpen) {
@@ -5464,6 +5573,10 @@ function openRecordsModal() {
   if (cancelBtn) cancelBtn.style.display = 'none';
   const toggleBtn = document.getElementById('recFormToggleBtn');
   if (toggleBtn) { toggleBtn.textContent = '➕ 새 기록 추가'; toggleBtn.classList.remove('editing'); }
+  _recChartPeriod = 'all';
+  document.querySelectorAll('.rec-period-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === 'all');
+  });
   renderRecordsTableHeader();
   renderRecordsList();
   renderRecChart();
