@@ -1314,7 +1314,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.459';
+const APP_VERSION = 'KDeal v0.460';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4072,7 +4072,7 @@ kdRenderChart();
 kdRenderAccountButtons();
 kdRenderWatchlist();
 kdInitAutoRefresh();
-if (kdHoldings.length || kdWatchlist.length) kdRefreshAll();
+if (kdHoldings.length || kdWatchlist.length) setTimeout(() => kdRefreshAll(), 800);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
