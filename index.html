@@ -3233,7 +3233,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.465';
+const APP_VERSION = 'MyPM v0.466';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5895,40 +5895,47 @@ function xToYM(x) {
   return `${y}.${String(m).padStart(2, '0')}`;
 }
 
-// 공통 라인 차트 빌더 (평가금액: 연한 녹색 채움 / 원금: 진한 녹색 채움)
+// 공통 라인 차트 빌더 (자산: 빨간 선+그라디언트 / 원금: 회색 선+그라디언트)
 // X축: 선형 시간 비례 (1년 간격 = 12개월 간격의 12배)
 function createLineChart(ctx, series) {
   const xVals = series.evalData.map(d => d.x);
   const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
-  // 데이터 범위에 따라 눈금 간격 결정 (항상 3의 배수로 연 경계와 잘 맞도록)
   const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
+
+  const h = ctx.canvas.offsetHeight || 200;
+  const gradEval = ctx.createLinearGradient(0, 0, 0, h);
+  gradEval.addColorStop(0, 'rgba(239,68,68,0.22)');
+  gradEval.addColorStop(1, 'rgba(239,68,68,0)');
+  const gradPrincipal = ctx.createLinearGradient(0, 0, 0, h);
+  gradPrincipal.addColorStop(0, 'rgba(156,163,175,0.2)');
+  gradPrincipal.addColorStop(1, 'rgba(156,163,175,0)');
 
   return new Chart(ctx, {
     type: 'line',
     data: {
       datasets: [
         {
-          label: '평가총액',
+          label: '자산',
           data: series.evalData,
-          borderColor: '#86efac',
-          backgroundColor: 'rgba(187, 247, 208, 0.6)',
+          borderColor: '#ef4444',
+          backgroundColor: gradEval,
           fill: 'origin',
-          tension: 0.25,
-          pointRadius: 3,
-          pointHoverRadius: 5,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 0,
           borderWidth: 2,
           order: 2
         },
         {
-          label: '입금액(원금)',
+          label: '원금',
           data: series.principalData,
-          borderColor: '#15803d',
-          backgroundColor: 'rgba(34, 197, 94, 0.75)',
+          borderColor: '#9ca3af',
+          backgroundColor: gradPrincipal,
           fill: 'origin',
-          tension: 0.25,
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          borderWidth: 1.5,
           order: 1
         }
       ]
@@ -5936,28 +5943,20 @@ function createLineChart(ctx, series) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 14 } },
-        tooltip: {
-          callbacks: {
-            title: items => xToYM(items[0].parsed.x),
-            label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)} M`
-          }
-        }
+        legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
+        tooltip: { enabled: false }
       },
       scales: {
         x: {
           type: 'linear',
-          ticks: {
-            stepSize,
-            callback: v => Number.isInteger(v) ? xToYM(v) : ''
-          }
+          ticks: { stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
+          grid: { display: false }
         },
         y: {
-          title: { display: true, text: '금액 (백만원)' },
-          beginAtZero: true,
-          ticks: { callback: v => v.toLocaleString('ko-KR') }
+          beginAtZero: false,
+          ticks: { callback: v => v + 'M', font: { size: 10 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
         }
       }
     }
