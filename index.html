@@ -964,6 +964,13 @@ registerMobileTooltipDismiss();
   }
   .div-trend-summary::-webkit-details-marker { display: none; }
   .div-trend-details[open] .div-trend-summary { color: var(--text); }
+  .div-breakdown-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
+  .div-toggle-btn {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1.5px solid var(--border); background: transparent; color: var(--muted);
+    transition: all 0.15s;
+  }
+  .div-toggle-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
   /* 연간 계획 모달 */
   .annual-plan-wrap { }
@@ -3230,6 +3237,10 @@ registerMobileTooltipDismiss();
       </div>
 
       <!-- 월별 배당 내역 -->
+      <div class="div-breakdown-toggle">
+        <button id="divToggleStock" class="div-toggle-btn active" onclick="setDivBreakdownMode('stock')">종목별</button>
+        <button id="divToggleAcc"   class="div-toggle-btn"        onclick="setDivBreakdownMode('account')">계좌별</button>
+      </div>
       <div id="divMonthlyBreakdown"></div>
 
       <!-- 전체 추이 차트 + 상세 내역 표 (접이식) -->
@@ -3268,7 +3279,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.461';
+const APP_VERSION = 'MyPM v0.462';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -8266,6 +8277,7 @@ function toggleDivForm(forceOpen) {
 let _divStockChart = null, _divAccChart = null;
 let _divMonthlyChart = null;
 let _divSelectedYear = new Date().getFullYear();
+let _divBreakdownMode = 'stock'; // 'stock' | 'account'
 let _divEditingId = null;
 let _divFormShares = {}; // { code: { accId: qty } } — 폼 상태
 const _DIV_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
@@ -8386,6 +8398,9 @@ function openDividendModal() {
   // 선택 연도 초기화: 데이터가 있는 최신 연도
   const years = dividendRecords.map(r => r.year);
   _divSelectedYear = years.length ? Math.max(...years) : now.getFullYear();
+  _divBreakdownMode = 'stock';
+  document.getElementById('divToggleStock')?.classList.add('active');
+  document.getElementById('divToggleAcc')?.classList.remove('active');
   renderDividendLists();
   renderDivCharts();
   renderDivYearView();
@@ -9404,7 +9419,15 @@ function renderDivMonthlyChart() {
   });
 }
 
+function setDivBreakdownMode(mode) {
+  _divBreakdownMode = mode;
+  document.getElementById('divToggleStock')?.classList.toggle('active', mode === 'stock');
+  document.getElementById('divToggleAcc')?.classList.toggle('active', mode === 'account');
+  renderDivMonthlyBreakdown();
+}
+
 function renderDivMonthlyBreakdown() {
+  if (_divBreakdownMode === 'account') { renderDivMonthlyBreakdownByAcc(); return; }
   const wrap = document.getElementById('divMonthlyBreakdown');
   if (!wrap) return;
 
@@ -9492,6 +9515,74 @@ function renderDivMonthlyBreakdown() {
         <span class="div-month-hdr-total">${mTotal.toLocaleString('ko-KR')} 원</span>
       </div>
       ${rows}
+    </div>`;
+  }).join('');
+}
+
+function renderDivMonthlyBreakdownByAcc() {
+  const wrap = document.getElementById('divMonthlyBreakdown');
+  if (!wrap) return;
+
+  const yearRecs = dividendRecords
+    .filter(r => r.year === _divSelectedYear)
+    .sort((a, b) => b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0));
+
+  if (!yearRecs.length) {
+    wrap.innerHTML = '<div class="div-empty">해당 연도에 배당 기록이 없습니다.</div>';
+    return;
+  }
+
+  const activeAccs = getActiveAccounts();
+  const months = [...new Set(yearRecs.map(r => r.month))].sort((a, b) => b - a);
+  const MONTH_KR = ['','1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+  wrap.innerHTML = months.map(m => {
+    const mRecs = yearRecs.filter(r => r.month === m);
+    const mTotal = mRecs.reduce((s, r) => s + divRecTotal(r), 0);
+
+    const rows = mRecs.flatMap(rec => {
+      const dayStr = rec.day ? String(rec.day).padStart(2, '0') + '일' : '-';
+
+      if (divRecIsMisc(rec)) {
+        const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '기타';
+        const total = divRecMiscTotal(rec);
+        return [`<div class="div-month-item">
+          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+          <div class="div-stock-badge" style="background:#9ca3af">📝</div>
+          <div class="div-item-info"><div class="div-item-name">${memo}</div></div>
+          <div class="div-item-amount">${total.toLocaleString('ko-KR')} 원</div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+          </div>
+        </div>`];
+      }
+
+      return activeAccs.map((acc, i) => {
+        const amt = Number(rec.accounts && rec.accounts[acc.id]) || 0;
+        if (!amt) return '';
+        const color = _DIV_COLORS[i % _DIV_COLORS.length];
+        const accName = getAccName(acc.id);
+        const initial = (accName || acc.id).slice(0, 1).toUpperCase();
+        return `<div class="div-month-item">
+          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+          <div class="div-stock-badge" style="background:${color}">${initial}</div>
+          <div class="div-item-info"><div class="div-item-name">${accName}</div></div>
+          <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+          </div>
+        </div>`;
+      }).filter(Boolean);
+    }).join('');
+
+    return `<div class="div-month-group">
+      <div class="div-month-hdr">
+        <span>${MONTH_KR[m]}</span>
+        <span class="div-month-hdr-total">${mTotal.toLocaleString('ko-KR')} 원</span>
+      </div>
+      ${rows || '<div class="div-empty" style="padding:12px 0">계좌별 금액 정보가 없습니다.</div>'}
     </div>`;
   }).join('');
 }
