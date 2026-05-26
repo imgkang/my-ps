@@ -835,8 +835,8 @@
   .nkw-table tr:last-child td { border-bottom:none; }
   .nkw-name { font-weight:600; font-size:14px; }
   .nkw-ticker { font-size:11px; color:var(--muted); margin-top:1px; }
-  .nkw-pos { color:#e53935; }
-  .nkw-neg { color:#1e88e5; }
+  .nkw-pos { color:var(--plus); }
+  .nkw-neg { color:var(--minus); }
   .nkw-ac-wrap { position:relative; }
   .nkw-ac-list { display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:300; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.12); max-height:240px; overflow-y:auto; }
   .nkw-ac-list.open { display:block; }
@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.469';
+const APP_VERSION = 'NonK v0.470';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
