@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.470';
+const APP_VERSION = 'NonK v0.471';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1826,7 +1826,7 @@ function nkRender() {
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
         <td>${it.hasCost ? fmtUSDInt(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
-        <td>${it.avgPrice > 0 ? fmtUSDInt(it.avgPrice) : '-'}</td>
+        <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
         <td><strong>${fmtUSDInt(it.currentValue)}</strong></td>
         <td class="${pCls}">${it.hasCost ? fmtUSDIntSigned(it.profit) : '-'}</td>
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
