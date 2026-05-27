@@ -3306,7 +3306,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.482';
+const APP_VERSION = 'MyPM v0.483';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9391,8 +9391,10 @@ function editDividendRecord(id) {
   document.getElementById('divDate').value = `${rec.year}-${pad(rec.month)}-${pad(d)}`;
 
   // 기타항목 레코드면 기타항목 폼에 로드
-  if (divRecIsMisc(rec)) {
-    // 진행 중이던 종목 편집 상태 초기화
+  // (신규: rec.misc 존재 / 구버전: 종목 코드 없이 rec.accounts만 있는 경우)
+  const isMiscRec = divRecIsMisc(rec);
+  const isLegacyMisc = !isMiscRec && divRecCodes(rec).length === 0;
+  if (isMiscRec || isLegacyMisc) {
     _divEditingId = null;
     const stockSaveBtn = document.getElementById('divSaveBtn');
     if (stockSaveBtn) stockSaveBtn.textContent = '저장';
@@ -9405,10 +9407,11 @@ function editDividendRecord(id) {
     if (cancelBtn) cancelBtn.style.display = '';
     openDivRecModal('배당 기록 수정');
     toggleDivMiscForm(true);
-    document.getElementById('divMiscMemo').value = rec.misc.memo || '';
+    document.getElementById('divMiscMemo').value = (isMiscRec ? rec.misc.memo : '') || '';
     const sc = document.getElementById('divMiscSkipCash');
     if (sc) sc.checked = !!rec.skipCash;
-    renderDivMiscInputs(rec.misc.accounts || {});
+    const accValues = isMiscRec ? (rec.misc.accounts || rec.accounts || {}) : (rec.accounts || {});
+    renderDivMiscInputs(accValues);
     return;
   }
 
