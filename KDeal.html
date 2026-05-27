@@ -433,7 +433,7 @@
   }
   .detail-table th:first-child, .detail-table td:first-child {
     text-align: left; padding-left: 10px;
-    white-space: normal; width: 160px; min-width: 140px; max-width: 220px;
+    white-space: normal; width: 170px; min-width: 150px; max-width: 230px;
     position: sticky; left: 0; z-index: 1;
   }
   .detail-table th:first-child { background: #f9fafb; z-index: 2; }
@@ -1314,7 +1314,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.485';
+const APP_VERSION = 'KDeal v0.486';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1873,10 +1873,10 @@ function kdRender() {
           <div class="stock-code">${it.ticker}</div>
         </td>
         <td>
-          <div>${it.price > 0 ? fmtWon(it.price) : '-'}</div>
-          <div style="font-size:11px;margin-top:2px" class="${crCls}">${it.change ? (it.change > 0 ? '+' : '') + fmtWon(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
+          <div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price > 0 ? fmtWon(it.price) : '-'}</div>
+          <div class="${crCls}" style="font-size:13px;white-space:nowrap">${it.change ? (it.change > 0 ? '+' : '') + fmtWon(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
         </td>
-        <td class="${chCls}">${dayAmt ? fmtWonSigned(dayAmt) : '-'}</td>
+        <td class="${chCls}" style="font-size:14px">${dayAmt ? fmtWonSigned(dayAmt) : '-'}</td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
         <td>${it.hasCost ? formatMil(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();kdOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
