@@ -3292,7 +3292,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.478';
+const APP_VERSION = 'MyPM v0.479';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9794,6 +9794,7 @@ function renderDivMonthlyBreakdown() {
         </div>`];
       }
 
+      let isFirstShown = true;
       return codes.map(code => {
         const amt = divRecAmount(rec, code);
         if (!amt) return '';
@@ -9813,6 +9814,12 @@ function renderDivMonthlyBreakdown() {
           ? `${totalShares.toLocaleString('ko-KR')}주 · 주당 ${ps.toLocaleString('ko-KR')}원`
           : code;
         const initial = (name || code).slice(0, 1).toUpperCase();
+        const buttonsHtml = isFirstShown
+          ? `<div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+          </div>` : '';
+        isFirstShown = false;
 
         return `<div class="div-month-item">
           <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
@@ -9822,10 +9829,7 @@ function renderDivMonthlyBreakdown() {
             <div class="div-item-sub">${subText}</div>
           </div>
           <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
-          <div style="display:flex;gap:4px;flex-shrink:0">
-            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-          </div>
+          ${buttonsHtml}
         </div>`;
       }).filter(Boolean);
     }).join('');
@@ -9870,12 +9874,19 @@ function renderDivMonthlyBreakdownByAcc() {
       if (isMisc || hasNoCodes) {
         const accAmounts = isMisc ? (rec.misc.accounts || {}) : (rec.accounts || {});
         const memo = isMisc && rec.misc.memo ? rec.misc.memo : '';
+        let isFirstShown = true;
         return activeAccs.map((acc, i) => {
           const amt = Number(accAmounts[acc.id]) || 0;
           if (!amt) return '';
           const color = _DIV_COLORS[i % _DIV_COLORS.length];
           const accName = getAccName(acc.id);
           const initial = (accName || acc.id).slice(0, 1).toUpperCase();
+          const buttonsHtml = isFirstShown
+            ? `<div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+              <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+            </div>` : '';
+          isFirstShown = false;
           return `<div class="div-month-item">
             <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
             <div class="div-stock-badge" style="background:${color}">${initial}</div>
@@ -9884,29 +9895,30 @@ function renderDivMonthlyBreakdownByAcc() {
               ${memo ? `<div class="div-item-sub">기타종목${memo !== '기타종목' ? ' · ' + memo : ''}</div>` : '<div class="div-item-sub">기타종목</div>'}
             </div>
             <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
-            <div style="display:flex;gap:4px;flex-shrink:0">
-              <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-              <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-            </div>
+            ${buttonsHtml}
           </div>`;
         }).filter(Boolean);
       }
 
+      let isFirstShown = true;
       return activeAccs.map((acc, i) => {
         const amt = Number(rec.accounts && rec.accounts[acc.id]) || 0;
         if (!amt) return '';
         const color = _DIV_COLORS[i % _DIV_COLORS.length];
         const accName = getAccName(acc.id);
         const initial = (accName || acc.id).slice(0, 1).toUpperCase();
+        const buttonsHtml = isFirstShown
+          ? `<div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
+            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
+          </div>` : '';
+        isFirstShown = false;
         return `<div class="div-month-item">
           <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
           <div class="div-stock-badge" style="background:${color}">${initial}</div>
           <div class="div-item-info"><div class="div-item-name">${accName}</div></div>
           <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
-          <div style="display:flex;gap:4px;flex-shrink:0">
-            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-          </div>
+          ${buttonsHtml}
         </div>`;
       }).filter(Boolean);
     }).join('');
