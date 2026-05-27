@@ -793,6 +793,11 @@ registerMobileTooltipDismiss();
   .trade-type-btn.buy.active  { background:#fee2e2; color:#b91c1c; }
   .trade-type-btn.sell.active { background:#dbeafe; color:#1d4ed8; }
   .trade-type-btn:not(.active):hover { background:#e5e7eb; }
+  .trade-acc-card { border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:8px; }
+  .trade-acc-row { display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; transition:background 0.12s; }
+  .trade-acc-row:hover { background:#f9fafb; }
+  .trade-acc-badge { width:36px; height:36px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; }
+  .trade-acc-form { padding:12px 14px; border-top:1px solid var(--border); background:#f9fafb; }
   /* ? 도움말 아이콘 */
   .acc-help-icon {
     display:inline-flex; align-items:center; justify-content:center;
@@ -2884,54 +2889,45 @@ registerMobileTooltipDismiss();
       </div>
       <button class="close-btn" onclick="closeTradeModal()">×</button>
     </div>
-    <div class="txn-form">
-      <input type="hidden" id="tradeType" value="buy">
-      <label>
-        <span>구분</span>
-        <div class="trade-type-toggle">
-          <button class="trade-type-btn buy active" id="tradeBuyBtn" onclick="setTradeType('buy')">매수</button>
-          <button class="trade-type-btn sell" id="tradeSellBtn" onclick="setTradeType('sell')">매도</button>
+    <!-- 계좌별 보유 현황 + 확장식 거래 입력 -->
+    <div id="tradeAccList"></div>
+
+    <!-- 기존 폼 요소: saveTrade() 호환성 유지용, 숨김 -->
+    <div id="tradeOrigForm" style="display:none">
+      <div class="txn-form">
+        <input type="hidden" id="tradeType" value="buy">
+        <label>
+          <span>구분</span>
+          <div class="trade-type-toggle">
+            <button class="trade-type-btn buy active" id="tradeBuyBtn" onclick="setTradeType('buy')">매수</button>
+            <button class="trade-type-btn sell" id="tradeSellBtn" onclick="setTradeType('sell')">매도</button>
+          </div>
+        </label>
+        <label><span>계좌</span><select id="tradeAccount" onchange="onTradeAccountChange()"></select></label>
+        <label><span>날짜</span><input type="date" id="tradeDate"></label>
+        <label><span>종목</span><select id="tradeCode" onchange="onTradeCodeChange()"></select></label>
+        <label><span>수량</span><input type="text" id="tradeQty" inputmode="numeric" placeholder="매수/매도 수량" oninput="updateTradeTotal()"></label>
+        <label><span>단가 (원)</span><input type="text" id="tradePrice" inputmode="numeric" placeholder="체결 단가" oninput="updateTradeTotal()"></label>
+      </div>
+      <div id="tradeTotalBox" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:var(--muted)">거래금액</span>
+          <span id="tradeTotalAmt" style="font-weight:700;font-variant-numeric:tabular-nums">0 원</span>
         </div>
-      </label>
-      <label>
-        <span>계좌</span>
-        <select id="tradeAccount" onchange="onTradeAccountChange()"></select>
-      </label>
-      <label>
-        <span>날짜</span>
-        <input type="date" id="tradeDate">
-      </label>
-      <label>
-        <span>종목</span>
-        <select id="tradeCode" onchange="onTradeCodeChange()"></select>
-      </label>
-      <label>
-        <span>수량</span>
-        <input type="text" id="tradeQty" inputmode="numeric" placeholder="매수/매도 수량" oninput="updateTradeTotal()">
-      </label>
-      <label>
-        <span>단가 (원)</span>
-        <input type="text" id="tradePrice" inputmode="numeric" placeholder="체결 단가" oninput="updateTradeTotal()">
-      </label>
-    </div>
-    <div id="tradeTotalBox" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="color:var(--muted)">거래금액</span>
-        <span id="tradeTotalAmt" style="font-weight:700;font-variant-numeric:tabular-nums">0 원</span>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--muted)" id="tradeCashLabel">거래 후 현금</span>
+          <span id="tradeCashAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
+        <div id="tradeQtyAfterRow" style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="color:var(--muted)">거래 후 보유수</span>
+          <span id="tradeQtyAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
       </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:var(--muted)" id="tradeCashLabel">거래 후 현금</span>
-        <span id="tradeCashAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+      <div id="tradeWarnBox" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;font-size:12px;color:#b91c1c;margin-bottom:8px"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeTradeModal()">취소</button>
+        <button class="btn-primary" id="tradeSaveBtn" onclick="saveTrade()">저장</button>
       </div>
-      <div id="tradeQtyAfterRow" style="display:flex;justify-content:space-between;margin-top:4px">
-        <span style="color:var(--muted)">거래 후 보유수</span>
-        <span id="tradeQtyAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
-      </div>
-    </div>
-    <div id="tradeWarnBox" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;font-size:12px;color:#b91c1c;margin-bottom:8px"></div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeTradeModal()">취소</button>
-      <button class="btn-primary" id="tradeSaveBtn" onclick="saveTrade()">저장</button>
     </div>
   </div>
 </div>
@@ -3256,7 +3252,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.474';
+const APP_VERSION = 'MyPM v0.475';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6613,31 +6609,160 @@ function renderTradeList() {
 }
 
 // ===== 매수/매도 모달 =====
+let _tradeModalCode = null;
+
 function openTradeModal(code, type) {
   editingTradeId = null;
+  _tradeModalCode = code;
+  const h = holdings.find(x => x.code === code);
+  document.getElementById('tradeModalTitle').textContent = h ? h.name : code;
+  document.getElementById('tradeModalSubtitle').textContent =
+    h && h.price ? '현재가 ' + Number(h.price).toLocaleString('ko-KR') + ' 원' : '';
+  document.getElementById('tradeAccList').innerHTML = '';
+  document.getElementById('tradeModal').classList.add('open');
+  renderTradeAccList(code);
+}
 
-  const codeSel = document.getElementById('tradeCode');
-  codeSel.innerHTML = holdings.map(h =>
-    `<option value="${h.code}" ${h.code === code ? 'selected' : ''}>${escapeHtml(h.name)} (${h.code})</option>`
-  ).join('');
-  if (!holdings.length) {
-    codeSel.innerHTML = '<option value="">보유 종목 없음</option>';
-  }
-
-  const t = type || 'buy';
-  document.getElementById('tradeType').value = t;
-  document.getElementById('tradeBuyBtn').classList.toggle('active', t === 'buy');
-  document.getElementById('tradeSellBtn').classList.toggle('active', t === 'sell');
-
+function renderTradeAccList(code) {
+  const wrap = document.getElementById('tradeAccList');
+  if (!wrap) return;
+  const h = holdings.find(x => x.code === code);
+  const price = h ? (Number(h.price) || 0) : 0;
+  const accs = getActiveAccounts();
   const now = new Date();
   const pad = x => String(x).padStart(2, '0');
-  document.getElementById('tradeDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  document.getElementById('tradeQty').value = '';
-  document.getElementById('tradePrice').value = '';
-  document.getElementById('tradeWarnBox').style.display = 'none';
+  const today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
 
-  onTradeTypeChange();
-  document.getElementById('tradeModal').classList.add('open');
+  wrap.innerHTML = accs.map(acc => {
+    const accData = h && h.accounts && h.accounts[acc.id];
+    const qty = accData ? (Number(accData.qty) || 0) : 0;
+    const avg = accData ? (Number(accData.avgPrice) || 0) : 0;
+    const val = qty * price;
+    const profitAmt = qty * (price - avg);
+    const profit = avg > 0 ? (price - avg) / avg * 100 : 0;
+    const profitColor = profit >= 0 ? 'var(--plus)' : 'var(--minus)';
+    const accName = getAccName(acc.id);
+
+    return `<div class="trade-acc-card" id="tac_${acc.id}">
+      <div class="trade-acc-row" onclick="toggleAccTradeForm('${acc.id}','${code}')">
+        <div class="trade-acc-badge">${escapeHtml((accName||'').slice(0,2))}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px">${escapeHtml(accName)}</div>
+          <div style="font-size:12px;color:var(--muted)">
+            ${qty > 0 ? qty.toLocaleString('ko-KR')+'주 · '+avg.toLocaleString('ko-KR')+'원' : '보유 없음'}
+          </div>
+        </div>
+        ${qty > 0 ? `<div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:15px">${val.toLocaleString('ko-KR')}원</div>
+          <div style="font-size:12px;color:${profitColor}">
+            ${profitAmt >= 0 ? '+' : ''}${profitAmt.toLocaleString('ko-KR')}원
+            (${profit >= 0 ? '+' : ''}${profit.toFixed(2)}%)
+          </div>
+        </div>` : ''}
+      </div>
+      <div class="trade-acc-form" id="taf_${acc.id}" style="display:none">
+        <div class="trade-type-toggle" style="margin-bottom:10px">
+          <button class="trade-type-btn buy active" id="taf_buy_${acc.id}" onclick="setAccTradeType('${acc.id}','buy')">매수</button>
+          <button class="trade-type-btn sell" id="taf_sell_${acc.id}" onclick="setAccTradeType('${acc.id}','sell')">매도</button>
+        </div>
+        <div class="txn-form" style="gap:8px;margin-bottom:8px">
+          <label><span>날짜</span><input type="date" id="taf_date_${acc.id}" value="${today}"></label>
+          <label><span>수량</span><input type="text" inputmode="numeric" id="taf_qty_${acc.id}" placeholder="수량" oninput="updateAccTradeTotal('${acc.id}','${code}')"></label>
+          <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="taf_price_${acc.id}" placeholder="체결 단가" value="${price > 0 ? price.toLocaleString('ko-KR') : ''}" oninput="updateAccTradeTotal('${acc.id}','${code}')"></label>
+        </div>
+        <div id="taf_total_${acc.id}" style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:right;min-height:16px"></div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button class="btn-secondary" style="font-size:13px;padding:6px 14px" onclick="toggleAccTradeForm('${acc.id}','${code}')">취소</button>
+          <button class="btn-primary" style="font-size:13px;padding:6px 14px" onclick="saveAccTrade('${acc.id}','${code}')">저장</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAccTradeForm(accId, code) {
+  const formEl = document.getElementById('taf_' + accId);
+  if (!formEl) return;
+  const isOpen = formEl.style.display !== 'none';
+  document.querySelectorAll('.trade-acc-form').forEach(f => { f.style.display = 'none'; });
+  if (!isOpen) {
+    formEl.style.display = '';
+    const qtyEl = document.getElementById('taf_qty_' + accId);
+    if (qtyEl) qtyEl.focus();
+  }
+}
+
+function setAccTradeType(accId, type) {
+  document.getElementById('taf_buy_' + accId).classList.toggle('active', type === 'buy');
+  document.getElementById('taf_sell_' + accId).classList.toggle('active', type === 'sell');
+}
+
+function updateAccTradeTotal(accId, code) {
+  const qty   = Number((document.getElementById('taf_qty_'  + accId)?.value || '').replace(/[^\d]/g, '')) || 0;
+  const price = Number((document.getElementById('taf_price_'+ accId)?.value || '').replace(/[^\d]/g, '')) || 0;
+  const el    = document.getElementById('taf_total_' + accId);
+  if (el) el.textContent = qty && price ? '거래금액 ' + (qty * price).toLocaleString('ko-KR') + ' 원' : '';
+}
+
+function saveAccTrade(accId, code) {
+  const typeBtn = document.getElementById('taf_buy_' + accId);
+  const type    = typeBtn && typeBtn.classList.contains('active') ? 'buy' : 'sell';
+  const date    = document.getElementById('taf_date_'  + accId)?.value || '';
+  const qty     = Number((document.getElementById('taf_qty_'   + accId)?.value || '').replace(/[^\d]/g, ''));
+  const price   = Number((document.getElementById('taf_price_' + accId)?.value || '').replace(/[^\d]/g, ''));
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('날짜를 입력해 주세요.'); return; }
+  if (!qty  || qty  <= 0) { alert('수량을 입력해 주세요.');  return; }
+  if (!price|| price <= 0) { alert('단가를 입력해 주세요.'); return; }
+
+  const total = qty * price;
+  const currentCash = Number(cashAccounts[accId]) || 0;
+  const h = holdings.find(x => x.code === code);
+  if (!h) { alert('해당 종목을 찾을 수 없습니다.'); return; }
+  if (!h.accounts) h.accounts = {};
+
+  const accData = h.accounts[accId] || { qty: 0, avgPrice: 0 };
+  const curQty  = Number(accData.qty) || 0;
+  const curAvg  = Number(accData.avgPrice) || 0;
+
+  if (type === 'buy' && currentCash < total) {
+    alert(`현금이 부족합니다.\n필요: ${total.toLocaleString('ko-KR')}원\n현재: ${currentCash.toLocaleString('ko-KR')}원`);
+    return;
+  }
+  if (type === 'sell' && qty > curQty) {
+    alert(`보유 수량이 부족합니다.\n보유: ${curQty.toLocaleString('ko-KR')}주\n매도 요청: ${qty.toLocaleString('ko-KR')}주`);
+    return;
+  }
+
+  if (type === 'buy') {
+    const newQty = curQty + qty;
+    h.accounts[accId] = { qty: newQty, avgPrice: newQty > 0 ? Math.round((curQty * curAvg + qty * price) / newQty) : price };
+    cashAccounts[accId] = currentCash - total;
+  } else {
+    const newQty = curQty - qty;
+    h.accounts[accId] = { qty: newQty, avgPrice: curAvg };
+    if (newQty === 0) delete h.accounts[accId];
+    cashAccounts[accId] = currentCash + total;
+  }
+
+  const record = { id: generateTxnId(), date, type, accId, code, name: h.name, qty, price, total };
+  tradeRecords.push(record);
+  cashAdjRecords.push({
+    id: generateTxnId(), date, accId,
+    type: type === 'buy' ? 'sub' : 'add',
+    amount: total,
+    note: type === 'buy' ? '매수' : '매도',
+    tradeId: record.id
+  });
+
+  saveTradeRecords();
+  saveCashAdjRecords();
+  saveHoldings();
+  persistCashAccounts();
+  renderTradeFilterOptions();
+  renderTradeList();
+  render();
+  renderTradeAccList(code);
 }
 
 function closeTradeModal() {
