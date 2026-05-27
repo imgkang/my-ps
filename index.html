@@ -3124,128 +3124,10 @@ registerMobileTooltipDismiss();
     </div>
   </div>
 
-    <!-- 입력 폼 토글 버튼 -->
-    <button id="divFormToggleBtn" class="rec-form-toggle" onclick="toggleDivForm()">➕ 새 기록 추가</button>
+    <!-- 입력 폼 열기 버튼 -->
+    <button class="rec-form-toggle" onclick="openDivRecModal()">➕ 새 기록 추가</button>
 
-    <!-- 접히는 입력 폼 -->
-    <div id="divFormPanel" style="display:none">
-      <div class="records-input-card">
-        <div class="rec-date-row">
-          <label>기록일</label>
-          <input type="date" id="divDate">
-        </div>
-        <div style="overflow-x:auto">
-          <table class="div-stock-table">
-            <thead>
-              <tr>
-                <th>종목명</th>
-                <th>주당 배당금 (원)</th>
-                <th>보유 수량</th>
-                <th>총 배당금 (원)</th>
-              </tr>
-            </thead>
-            <tbody id="divStockInputs"></tbody>
-          </table>
-        </div>
-        <div class="div-grand-total">
-          <span>배당금 총합</span>
-          <strong id="divGrandTotal">0 원</strong>
-        </div>
-        <div class="records-input-actions">
-          <button class="btn-secondary" onclick="clearDividendInputs()">입력 초기화</button>
-          <button id="divCancelBtn" class="btn-secondary" style="display:none" onclick="cancelDivEdit()">취소</button>
-          <button id="divSaveBtn" class="btn-primary" onclick="addDividendRecord()">저장</button>
-        </div>
-      </div>
 
-      <!-- 기타항목 입력 (종목 없이 금액만) -->
-      <div class="records-input-card" style="margin-top:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleDivMiscForm()">
-          <div style="font-weight:600">📝 기타항목 (종목 없이 금액만)</div>
-          <button type="button" id="divMiscToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
-        </div>
-        <div id="divMiscBody" style="display:none;margin-top:10px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
-            계산값(주당 × 수량)이 실제 입금액과 다르거나, 종목 정보 없이 금액만 기록해야 할 때 사용합니다. 음수도 입력 가능합니다.
-          </div>
-          <div style="margin-bottom:8px">
-            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">메모</label>
-            <input type="text" id="divMiscMemo" placeholder="예: 4월 배당 조정 / 2024년 누락분" style="width:100%;padding:8px;box-sizing:border-box">
-          </div>
-          <div id="divMiscAccInputs" style="display:grid;gap:6px"></div>
-          <div class="div-grand-total" style="margin-top:8px">
-            <span>기타항목 합계</span>
-            <strong id="divMiscGrandTotal">0 원</strong>
-          </div>
-          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="divMiscSkipCash">
-            <span>포트폴리오 현금(예수금)에 반영하지 않음 <small style="color:var(--muted)">(과거에 이미 입금된 배당을 소급 기록할 때)</small></span>
-          </label>
-          <div class="records-input-actions" style="margin-top:8px">
-            <button class="btn-secondary" onclick="clearDivMiscInputs()">입력 초기화</button>
-            <button id="divMiscCancelBtn" class="btn-secondary" style="display:none" onclick="cancelDivMiscEdit()">취소</button>
-            <button id="divMiscSaveBtn" class="btn-primary" onclick="addMiscDividendRecord()">기타항목 추가</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 엑셀 표 일괄 가져오기 (기타항목 일괄 등록) -->
-      <div class="records-input-card" style="margin-top:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleDivImportForm()">
-          <div style="font-weight:600">📥 엑셀 표 일괄 가져오기 <small style="color:var(--muted);font-weight:400">(과거 배당 데이터를 한 번에 등록)</small></div>
-          <button type="button" id="divImportToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
-        </div>
-        <div id="divImportBody" style="display:none;margin-top:10px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
-            엑셀에서 <b>연도 / 월 / 계좌별 금액</b> 영역을 선택해 복사한 뒤 아래 칸에 붙여넣으세요. 결산·합계 행은 자동 제외, 모두 0인 행도 스킵됩니다. 등록되는 모든 행은 <b>현금(예수금)에 반영하지 않음</b>으로 저장됩니다.
-          </div>
-          <textarea id="divImportText" rows="8" placeholder="예시 (탭 또는 쉼표 구분):
-2023	1	0	0	10	0
-2023	2	373	0	7	20
-2023	3	217	148	9	0
-..." style="width:100%;box-sizing:border-box;padding:8px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px" oninput="onDivImportTextChange()"></textarea>
-
-          <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:8px;font-size:13px">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-              <span>단위:</span>
-              <select id="divImportUnit" onchange="renderDivImportPreview()" style="padding:4px 6px">
-                <option value="1000" selected>천원 (× 1,000)</option>
-                <option value="1">원</option>
-              </select>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-              <input type="checkbox" id="divImportFFill" checked onchange="renderDivImportPreview()">
-              <span>빈 연도 셀은 윗줄 연도 재사용</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-              <input type="checkbox" id="divImportHeader" checked onchange="renderDivImportPreview()">
-              <span>첫 행은 헤더로 인식 (자동 스킵)</span>
-            </label>
-          </div>
-
-          <div style="margin-top:8px">
-            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">메모 prefix <small>(저장될 메모: "{prefix} YYYY.MM")</small></label>
-            <input type="text" id="divImportMemoPrefix" value="엑셀 일괄" style="width:100%;padding:8px;box-sizing:border-box">
-          </div>
-
-          <div style="margin-top:10px">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">컬럼 매핑 <small>(붙여넣으면 자동 추정됩니다)</small></div>
-            <div id="divImportMapping" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px"></div>
-          </div>
-
-          <div id="divImportPreviewWrap" style="margin-top:10px;display:none">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">미리보기</div>
-            <div id="divImportPreview" style="max-height:240px;overflow:auto;border:1px solid var(--border,#ddd);border-radius:4px;padding:6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5"></div>
-            <div id="divImportSummary" style="margin-top:6px;font-size:12px;color:var(--muted)"></div>
-          </div>
-
-          <div class="records-input-actions" style="margin-top:8px">
-            <button class="btn-secondary" onclick="clearDivImportForm()">입력 초기화</button>
-            <button id="divImportApplyBtn" class="btn-primary" onclick="applyDivImport()" disabled>가져오기 시작</button>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div class="div-sections">
 
@@ -3289,10 +3171,142 @@ registerMobileTooltipDismiss();
 
 </div><!-- /panel-dividend -->
 
+<!-- 배당 기록 추가/수정 모달 -->
+<div class="modal-backdrop" id="divRecModal" onclick="handleDivRecModalBackdrop(event)">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div>
+        <h2 id="divRecModalTitle">배당 기록 추가</h2>
+      </div>
+      <button class="close-btn" onclick="closeDivRecModal()" aria-label="닫기">×</button>
+    </div>
+
+    <div class="rec-date-row" style="margin-bottom:12px">
+      <label>기록일</label>
+      <input type="date" id="divDate">
+    </div>
+
+    <!-- 종목별 배당 입력 -->
+    <div class="records-input-card">
+      <div style="overflow-x:auto">
+        <table class="div-stock-table">
+          <thead>
+            <tr>
+              <th>종목명</th>
+              <th>주당 배당금 (원)</th>
+              <th>보유 수량</th>
+              <th>총 배당금 (원)</th>
+            </tr>
+          </thead>
+          <tbody id="divStockInputs"></tbody>
+        </table>
+      </div>
+      <div class="div-grand-total">
+        <span>배당금 총합</span>
+        <strong id="divGrandTotal">0 원</strong>
+      </div>
+      <div class="records-input-actions">
+        <button class="btn-secondary" onclick="clearDividendInputs()">입력 초기화</button>
+        <button id="divCancelBtn" class="btn-secondary" style="display:none" onclick="cancelDivEdit()">취소</button>
+        <button id="divSaveBtn" class="btn-primary" onclick="addDividendRecord()">저장</button>
+      </div>
+    </div>
+
+    <!-- 기타항목 입력 (종목 없이 금액만) -->
+    <div class="records-input-card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleDivMiscForm()">
+        <div style="font-weight:600">📝 기타항목 (종목 없이 금액만)</div>
+        <button type="button" id="divMiscToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
+      </div>
+      <div id="divMiscBody" style="display:none;margin-top:10px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+          계산값(주당 × 수량)이 실제 입금액과 다르거나, 종목 정보 없이 금액만 기록해야 할 때 사용합니다. 음수도 입력 가능합니다.
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">메모</label>
+          <input type="text" id="divMiscMemo" placeholder="예: 4월 배당 조정 / 2024년 누락분" style="width:100%;padding:8px;box-sizing:border-box">
+        </div>
+        <div id="divMiscAccInputs" style="display:grid;gap:6px"></div>
+        <div class="div-grand-total" style="margin-top:8px">
+          <span>기타항목 합계</span>
+          <strong id="divMiscGrandTotal">0 원</strong>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="divMiscSkipCash">
+          <span>포트폴리오 현금(예수금)에 반영하지 않음 <small style="color:var(--muted)">(과거에 이미 입금된 배당을 소급 기록할 때)</small></span>
+        </label>
+        <div class="records-input-actions" style="margin-top:8px">
+          <button class="btn-secondary" onclick="clearDivMiscInputs()">입력 초기화</button>
+          <button id="divMiscCancelBtn" class="btn-secondary" style="display:none" onclick="cancelDivMiscEdit()">취소</button>
+          <button id="divMiscSaveBtn" class="btn-primary" onclick="addMiscDividendRecord()">기타항목 추가</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 엑셀 표 일괄 가져오기 -->
+    <div class="records-input-card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleDivImportForm()">
+        <div style="font-weight:600">📥 엑셀 표 일괄 가져오기 <small style="color:var(--muted);font-weight:400">(과거 배당 데이터를 한 번에 등록)</small></div>
+        <button type="button" id="divImportToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
+      </div>
+      <div id="divImportBody" style="display:none;margin-top:10px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+          엑셀에서 <b>연도 / 월 / 계좌별 금액</b> 영역을 선택해 복사한 뒤 아래 칸에 붙여넣으세요. 결산·합계 행은 자동 제외, 모두 0인 행도 스킵됩니다. 등록되는 모든 행은 <b>현금(예수금)에 반영하지 않음</b>으로 저장됩니다.
+        </div>
+        <textarea id="divImportText" rows="8" placeholder="예시 (탭 또는 쉼표 구분):
+2023	1	0	0	10	0
+2023	2	373	0	7	20
+2023	3	217	148	9	0
+..." style="width:100%;box-sizing:border-box;padding:8px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px" oninput="onDivImportTextChange()"></textarea>
+
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:8px;font-size:13px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <span>단위:</span>
+            <select id="divImportUnit" onchange="renderDivImportPreview()" style="padding:4px 6px">
+              <option value="1000" selected>천원 (× 1,000)</option>
+              <option value="1">원</option>
+            </select>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="divImportFFill" checked onchange="renderDivImportPreview()">
+            <span>빈 연도 셀은 윗줄 연도 재사용</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="divImportHeader" checked onchange="renderDivImportPreview()">
+            <span>첫 행은 헤더로 인식 (자동 스킵)</span>
+          </label>
+        </div>
+
+        <div style="margin-top:8px">
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">메모 prefix <small>(저장될 메모: "{prefix} YYYY.MM")</small></label>
+          <input type="text" id="divImportMemoPrefix" value="엑셀 일괄" style="width:100%;padding:8px;box-sizing:border-box">
+        </div>
+
+        <div style="margin-top:10px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">컬럼 매핑 <small>(붙여넣으면 자동 추정됩니다)</small></div>
+          <div id="divImportMapping" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px"></div>
+        </div>
+
+        <div id="divImportPreviewWrap" style="margin-top:10px;display:none">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">미리보기</div>
+          <div id="divImportPreview" style="max-height:240px;overflow:auto;border:1px solid var(--border,#ddd);border-radius:4px;padding:6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5"></div>
+          <div id="divImportSummary" style="margin-top:6px;font-size:12px;color:var(--muted)"></div>
+        </div>
+
+        <div class="records-input-actions" style="margin-top:8px">
+          <button class="btn-secondary" onclick="clearDivImportForm()">입력 초기화</button>
+          <button id="divImportApplyBtn" class="btn-primary" onclick="applyDivImport()" disabled>가져오기 시작</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /divRecModal -->
+
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.480';
+const APP_VERSION = 'MyPM v0.481';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4280,6 +4294,7 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('accountDetailModal').classList.contains('open')) { closeAccountDetail(); return; }
   if (document.getElementById('cashAccountModal').classList.contains('open')) { closeCashAccountModal(); return; }
   if (document.getElementById('wdrecModal')?.classList.contains('open')) { closeWdrecModal(); return; }
+  if (document.getElementById('divRecModal')?.classList.contains('open')) { closeDivRecModal(); return; }
   if (['records','dividend','deposit','annual','withdrawal','wdrec'].some(t => document.getElementById('panel-'+t)?.classList.contains('active'))) { switchTab('portfolio'); return; }
   if (document.getElementById('settingsModal').classList.contains('open')) { closeSettingsModal(); return; }
 });
@@ -8606,24 +8621,22 @@ function divRecTotal(rec) {
   return codes.reduce((s, c) => s + divRecAmount(rec, c), 0);
 }
 
-function toggleDivForm(forceOpen) {
-  const panel = document.getElementById('divFormPanel');
-  const btn   = document.getElementById('divFormToggleBtn');
-  if (!panel) return;
-  const shouldOpen = forceOpen !== undefined ? forceOpen : panel.style.display === 'none';
-  if (shouldOpen) {
-    panel.style.display = '';
-    if (btn) { btn.textContent = '✖ 닫기'; btn.classList.add('editing'); }
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  } else {
-    panel.style.display = 'none';
-    if (btn) { btn.textContent = '➕ 새 기록 추가'; btn.classList.remove('editing'); }
-    _divEditingId = null;
-    const saveBtn = document.getElementById('divSaveBtn');
-    if (saveBtn) saveBtn.textContent = '저장';
-    const cancelBtn = document.getElementById('divCancelBtn');
-    if (cancelBtn) cancelBtn.style.display = 'none';
-  }
+function openDivRecModal(title) {
+  document.getElementById('divRecModalTitle').textContent = title || '배당 기록 추가';
+  document.getElementById('divRecModal').classList.add('open');
+}
+
+function closeDivRecModal() {
+  document.getElementById('divRecModal').classList.remove('open');
+  _divEditingId = null;
+  const saveBtn = document.getElementById('divSaveBtn');
+  if (saveBtn) saveBtn.textContent = '저장';
+  const cancelBtn = document.getElementById('divCancelBtn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
+function handleDivRecModalBackdrop(e) {
+  if (e.target.id === 'divRecModal') closeDivRecModal();
 }
 
 let _divMonthlyChart = null;
@@ -8646,7 +8659,7 @@ function openDividendModal() {
   const pad = n => String(n).padStart(2, '0');
   document.getElementById('divDate').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   renderDivStockInputs({});
-  toggleDivForm(false);
+  closeDivRecModal();
   toggleDivMiscForm(false);
   cancelDivMiscEdit();
   // 선택 연도 초기화: 데이터가 있는 최신 연도
@@ -8947,6 +8960,7 @@ function addMiscDividendRecord() {
   saveDividendRecords();
   renderDivYearView();
   renderTradeList();
+  closeDivRecModal();
 }
 
 
@@ -9342,7 +9356,7 @@ function addDividendRecord() {
   saveDividendRecords();
   renderDivYearView();
   renderTradeList();
-  toggleDivForm(false);
+  closeDivRecModal();
 }
 
 function deleteDividendRecord(id) {
@@ -9393,9 +9407,8 @@ function editDividendRecord(id) {
     if (saveBtn) saveBtn.textContent = '수정 저장';
     const cancelBtn = document.getElementById('divMiscCancelBtn');
     if (cancelBtn) cancelBtn.style.display = '';
-    toggleDivForm(true);
+    openDivRecModal('배당 기록 수정');
     toggleDivMiscForm(true);
-    document.getElementById('divMiscBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
 
@@ -9429,7 +9442,7 @@ function editDividendRecord(id) {
   if (saveBtn) saveBtn.textContent = '수정 저장';
   const cancelBtn = document.getElementById('divCancelBtn');
   if (cancelBtn) cancelBtn.style.display = '';
-  toggleDivForm(true);
+  openDivRecModal('배당 기록 수정');
 }
 
 function cancelDivEdit() {
@@ -9439,7 +9452,7 @@ function cancelDivEdit() {
   const cancelBtn = document.getElementById('divCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
   if (_divMiscEditingId) cancelDivMiscEdit();
-  toggleDivForm(false);
+  closeDivRecModal();
 }
 
 // ===== 배당 연도 뷰 =====
