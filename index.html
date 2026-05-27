@@ -3239,8 +3239,13 @@ registerMobileTooltipDismiss();
 
       <!-- 월별 배당 내역 -->
       <div class="div-breakdown-toggle">
-        <button id="divToggleStock" class="div-toggle-btn active" onclick="setDivBreakdownMode('stock')">종목별</button>
-        <button id="divToggleAcc"   class="div-toggle-btn"        onclick="setDivBreakdownMode('account')">계좌별</button>
+        <button id="divModeToggle" class="div-toggle-btn active" onclick="toggleDivBreakdownMode()">종목별</button>
+        <button id="divViewDonutBtn" class="div-toggle-btn" onclick="setDivViewMode('donut')">배당비중</button>
+      </div>
+      <div id="divDonutWrap" style="display:none">
+        <div id="divDonutTopItem" style="padding:6px 0 2px;text-align:center"></div>
+        <div style="position:relative;height:200px"><canvas id="divDonutChart"></canvas></div>
+        <div id="divDonutLegend" style="margin-top:10px"></div>
       </div>
       <div id="divMonthlyBreakdown"></div>
 
@@ -3251,7 +3256,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.472';
+const APP_VERSION = 'MyPM v0.473';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -8416,6 +8421,8 @@ let _divMonthlyChart = null;
 let _divSelectedYear = new Date().getFullYear();
 let _divChartPeriod = 'year'; // 'all' | '5y' | 'year'
 let _divBreakdownMode = 'stock'; // 'stock' | 'account'
+let _divViewMode = 'list'; // 'list' | 'donut'
+let _divDonutChart = null;
 let _divEditingId = null;
 let _divFormShares = {}; // { code: { accId: qty } } — 폼 상태
 const _DIV_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
@@ -8438,8 +8445,12 @@ function openDividendModal() {
   _divSelectedYear = years.length ? Math.max(...years) : now.getFullYear();
   _divBreakdownMode = 'stock';
   _divChartPeriod = 'year';
-  document.getElementById('divToggleStock')?.classList.add('active');
-  document.getElementById('divToggleAcc')?.classList.remove('active');
+  _divViewMode = 'list';
+  if (_divDonutChart) { _divDonutChart.destroy(); _divDonutChart = null; }
+  document.getElementById('divModeToggle').textContent = '종목별';
+  document.getElementById('divModeToggle').classList.add('active');
+  document.getElementById('divViewDonutBtn').classList.remove('active');
+  document.getElementById('divDonutWrap').style.display = 'none';
   document.querySelectorAll('#divPeriodBtns .rec-period-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.period === 'year');
   });
@@ -9231,8 +9242,6 @@ function setDivChartPeriod(period) {
   const isYear = period === 'year';
   document.querySelector('.div-year-bar').style.display     = isYear ? '' : 'none';
   document.querySelector('.div-year-summary').style.display = isYear ? '' : 'none';
-  document.querySelector('.div-breakdown-toggle').style.display = isYear ? '' : 'none';
-  document.getElementById('divMonthlyBreakdown').style.display  = isYear ? '' : 'none';
   renderDivYearView();
 }
 
@@ -9277,7 +9286,7 @@ function renderDivYearView() {
   }
 
   renderDivMonthlyChart();
-  renderDivMonthlyBreakdown();
+  renderDivBreakdownView();
 }
 
 function renderDivMonthlyChart() {
@@ -9379,11 +9388,133 @@ function renderDivMonthlyChart() {
   });
 }
 
-function setDivBreakdownMode(mode) {
-  _divBreakdownMode = mode;
-  document.getElementById('divToggleStock')?.classList.toggle('active', mode === 'stock');
-  document.getElementById('divToggleAcc')?.classList.toggle('active', mode === 'account');
-  renderDivMonthlyBreakdown();
+function toggleDivBreakdownMode() {
+  _divBreakdownMode = _divBreakdownMode === 'stock' ? 'account' : 'stock';
+  document.getElementById('divModeToggle').textContent = _divBreakdownMode === 'stock' ? '종목별' : '계좌별';
+  renderDivBreakdownView();
+}
+
+function setDivViewMode(mode) {
+  _divViewMode = (_divViewMode === mode) ? 'list' : mode;
+  document.getElementById('divViewDonutBtn').classList.toggle('active', _divViewMode === 'donut');
+  renderDivBreakdownView();
+}
+
+function renderDivBreakdownView() {
+  const donutWrap   = document.getElementById('divDonutWrap');
+  const breakdownEl = document.getElementById('divMonthlyBreakdown');
+  if (!donutWrap || !breakdownEl) return;
+  if (_divViewMode === 'donut') {
+    donutWrap.style.display   = '';
+    breakdownEl.style.display = 'none';
+    renderDivDonutChart();
+  } else {
+    donutWrap.style.display = 'none';
+    if (_divChartPeriod !== 'year') {
+      breakdownEl.style.display = 'none';
+    } else {
+      breakdownEl.style.display = '';
+      if (_divBreakdownMode === 'stock') renderDivMonthlyBreakdown();
+      else renderDivMonthlyBreakdownByAcc();
+    }
+  }
+}
+
+function renderDivDonutChart() {
+  if (typeof Chart === 'undefined') { setTimeout(renderDivDonutChart, 200); return; }
+  const canvas  = document.getElementById('divDonutChart');
+  const topEl   = document.getElementById('divDonutTopItem');
+  const legendEl = document.getElementById('divDonutLegend');
+  if (!canvas) return;
+
+  const curYear = new Date().getFullYear();
+  let recs;
+  if (_divChartPeriod === 'year')    recs = dividendRecords.filter(r => r.year === _divSelectedYear);
+  else if (_divChartPeriod === '5y') recs = dividendRecords.filter(r => r.year >= curYear - 4);
+  else                               recs = dividendRecords;
+
+  const totals = {};
+  if (_divBreakdownMode === 'stock') {
+    for (const rec of recs) {
+      if (divRecIsMisc(rec)) {
+        const t = divRecMiscTotal(rec);
+        if (t) totals['기타'] = (totals['기타'] || 0) + t;
+      } else {
+        for (const code of divRecCodes(rec)) {
+          const amt = divRecAmount(rec, code);
+          if (!amt) continue;
+          const name = holdings.find(h => h.code === code)?.name || code;
+          totals[name] = (totals[name] || 0) + amt;
+        }
+      }
+    }
+  } else {
+    const activeAccs = getActiveAccounts();
+    for (const rec of recs) {
+      const accMap = divRecIsMisc(rec) ? (rec.misc?.accounts || {}) : (rec.accounts || {});
+      for (const acc of activeAccs) {
+        const amt = Number(accMap[acc.id]) || 0;
+        if (amt) totals[getAccName(acc.id) || acc.id] = (totals[getAccName(acc.id) || acc.id] || 0) + amt;
+      }
+    }
+  }
+
+  const sorted    = Object.entries(totals).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+  const grandTotal = sorted.reduce((s,[,v]) => s+v, 0);
+
+  if (!sorted.length || !grandTotal) {
+    if (_divDonutChart) { _divDonutChart.destroy(); _divDonutChart = null; }
+    canvas.style.display = 'none';
+    if (topEl) topEl.innerHTML = '';
+    if (legendEl) legendEl.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">배당 기록이 없습니다</div>`;
+    return;
+  }
+  canvas.style.display = '';
+
+  const labels  = sorted.map(([k]) => k);
+  const data    = sorted.map(([,v]) => v);
+  const colors  = sorted.map((_, i) => _DIV_COLORS[i % _DIV_COLORS.length]);
+
+  // 상단: 1위 항목
+  if (topEl) {
+    const [topName, topAmt] = sorted[0];
+    const topPct = (topAmt / grandTotal * 100).toFixed(2);
+    topEl.innerHTML = `
+      <div style="font-size:13px;color:var(--muted);margin-bottom:2px">${topName}</div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${topPct}%</div>
+      <div style="font-size:12px;color:var(--muted)">${topAmt.toLocaleString('ko-KR')} 원</div>`;
+  }
+
+  if (_divDonutChart) { _divDonutChart.destroy(); _divDonutChart = null; }
+  _divDonutChart = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: c => {
+            const pct = (c.parsed / grandTotal * 100).toFixed(1);
+            return ` ${pct}%  ${c.parsed.toLocaleString('ko-KR')} 원`;
+          }
+        }}
+      }
+    }
+  });
+
+  // 범례
+  if (legendEl) {
+    legendEl.innerHTML = sorted.map(([name, amt], i) => {
+      const pct = (amt / grandTotal * 100).toFixed(1);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${colors[i]};flex-shrink:0;display:inline-block"></span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
+        <span style="font-weight:600;flex-shrink:0">${pct}%</span>
+      </div>`;
+    }).join('');
+  }
 }
 
 function renderDivMonthlyBreakdown() {
