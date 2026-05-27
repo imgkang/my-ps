@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.476';
+const APP_VERSION = 'NonK v0.477';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -3826,6 +3826,18 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
 }
+
+(function() {
+  if (window.parent === window) return;
+  document.querySelector('a[title="My PM"]').addEventListener('click', e => {
+    e.preventDefault();
+    window.parent.postMessage({ type: 'FRAME_BACK' }, '*');
+  });
+  document.querySelector('a[title="KDeal"]').addEventListener('click', e => {
+    e.preventDefault();
+    window.parent.postMessage({ type: 'FRAME_NAV', name: 'kdeal' }, '*');
+  });
+})();
 
 </script>
 <div class="app-version" id="appVersion"></div>
