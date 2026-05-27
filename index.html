@@ -3306,7 +3306,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.481';
+const APP_VERSION = 'MyPM v0.482';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9399,16 +9399,16 @@ function editDividendRecord(id) {
     const stockCancelBtn = document.getElementById('divCancelBtn');
     if (stockCancelBtn) stockCancelBtn.style.display = 'none';
     _divMiscEditingId = id;
-    document.getElementById('divMiscMemo').value = rec.misc.memo || '';
-    const sc = document.getElementById('divMiscSkipCash');
-    if (sc) sc.checked = !!rec.skipCash;
-    renderDivMiscInputs(rec.misc.accounts || {});
     const saveBtn = document.getElementById('divMiscSaveBtn');
     if (saveBtn) saveBtn.textContent = '수정 저장';
     const cancelBtn = document.getElementById('divMiscCancelBtn');
     if (cancelBtn) cancelBtn.style.display = '';
     openDivRecModal('배당 기록 수정');
     toggleDivMiscForm(true);
+    document.getElementById('divMiscMemo').value = rec.misc.memo || '';
+    const sc = document.getElementById('divMiscSkipCash');
+    if (sc) sc.checked = !!rec.skipCash;
+    renderDivMiscInputs(rec.misc.accounts || {});
     return;
   }
 
