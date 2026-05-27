@@ -3292,7 +3292,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.477';
+const APP_VERSION = 'MyPM v0.478';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6660,6 +6660,8 @@ function openTradeModal(code, type) {
   document.getElementById('tradeModalSubtitle').textContent =
     h && h.price ? '현재가 ' + Number(h.price).toLocaleString('ko-KR') + ' 원' : '';
   document.getElementById('tradeAccList').innerHTML = '';
+  document.getElementById('tradeAccForm').style.display = 'none';
+  document.getElementById('tradeAccList').style.display = '';
   document.getElementById('tradeModal').classList.add('open');
   renderTradeAccList(code);
 }
