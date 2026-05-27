@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.473';
+const APP_VERSION = 'NonK v0.474';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1497,10 +1497,8 @@ function nkDivRecCodes(rec) {
 
 function fmtUSD(n) {
   if (!n && n !== 0) return '$0';
-  const abs = Math.abs(n);
-  if (abs >= 1000000) return (n < 0 ? '-' : '') + '$' + (abs/1000000).toFixed(2) + 'M';
-  if (abs >= 1000) return (n < 0 ? '-' : '') + '$' + (abs/1000).toFixed(1) + 'K';
-  return (n < 0 ? '-$' : '$') + abs.toFixed(2);
+  const rounded = Math.round(n);
+  return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString('en-US');
 }
 function fmtUSDSigned(n) { return (n >= 0 ? '+' : '') + fmtUSD(n); }
 function fmtUSDInt(n) {
