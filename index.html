@@ -1393,13 +1393,13 @@ registerMobileTooltipDismiss();
       </svg>
       <span class="hdr-title">연금 준비</span>
     </a>
-    <a href="NonK.html" class="hdr-btn" title="NonK">
+    <a href="NonK.html" class="hdr-btn" title="NonK" onclick="return showSubFrame('nonk')">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><line x1="2" y1="12" x2="22" y2="12"/>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn" title="KDeal">
+    <a href="KDeal.html" class="hdr-btn" title="KDeal" onclick="return showSubFrame('kdeal')">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
         <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
@@ -3292,7 +3292,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.476';
+const APP_VERSION = 'MyPM v0.477';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -16818,6 +16818,29 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.warn('SW 등록 실패:', err));
   });
 }
+
+function showSubFrame(name) {
+  const src   = name === 'nonk' ? 'NonK.html' : 'KDeal.html';
+  const frame = document.getElementById('frame-' + name);
+  if (!frame.dataset.loaded) {
+    frame.src = src;
+    frame.dataset.loaded = '1';
+  }
+  frame.style.display = '';
+  return false;
+}
+
+window.addEventListener('message', e => {
+  if (!e.data?.type) return;
+  if (e.data.type === 'FRAME_BACK') {
+    document.getElementById('frame-nonk').style.display  = 'none';
+    document.getElementById('frame-kdeal').style.display = 'none';
+  } else if (e.data.type === 'FRAME_NAV') {
+    const other = e.data.name === 'nonk' ? 'kdeal' : 'nonk';
+    document.getElementById('frame-' + other).style.display = 'none';
+    showSubFrame(e.data.name);
+  }
+});
 </script>
 <!-- ===== 시작하기 마법사 모달 ===== -->
 <div class="modal-backdrop" id="onboardingModal" style="z-index:1100">
@@ -16909,6 +16932,8 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 </div>
+<iframe id="frame-nonk"  src="" style="display:none;position:fixed;inset:0;width:100%;height:100%;border:none;z-index:9999"></iframe>
+<iframe id="frame-kdeal" src="" style="display:none;position:fixed;inset:0;width:100%;height:100%;border:none;z-index:9999"></iframe>
 </body>
 </html>
-                                             
+

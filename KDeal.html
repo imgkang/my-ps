@@ -1314,7 +1314,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.476';
+const APP_VERSION = 'KDeal v0.477';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4081,6 +4081,18 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
 }
+
+(function() {
+  if (window.parent === window) return;
+  document.querySelector('a[title="My PM"]').addEventListener('click', e => {
+    e.preventDefault();
+    window.parent.postMessage({ type: 'FRAME_BACK' }, '*');
+  });
+  document.querySelector('a[title="NonK"]').addEventListener('click', e => {
+    e.preventDefault();
+    window.parent.postMessage({ type: 'FRAME_NAV', name: 'nonk' }, '*');
+  });
+})();
 </script>
 <div class="app-version" id="appVersion"></div>
 <input type="file" id="kdImportInput" accept=".json" style="display:none" onchange="kdImportFromFile(event)">
