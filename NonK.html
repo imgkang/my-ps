@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.486';
+const APP_VERSION = 'NonK v0.487';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1499,6 +1499,11 @@ function fmtUSD(n) {
   if (!n && n !== 0) return '$0';
   const rounded = Math.round(n);
   return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString('en-US');
+}
+function fmtUSDDec(n) {
+  if (!n && n !== 0) return '$0.00';
+  const abs = Math.abs(n);
+  return (n < 0 ? '-$' : '$') + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtUSDSigned(n) { return (n >= 0 ? '+' : '') + fmtUSD(n); }
 function fmtUSDInt(n) {
@@ -1817,14 +1822,14 @@ function nkRender() {
           <div class="stock-code">${it.ticker}</div>
         </td>
         <td>
-          <div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price > 0 ? fmtUSD(it.price) : '-'}</div>
+          <div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price > 0 ? fmtUSDDec(it.price) : '-'}</div>
           <div class="${crCls}" style="font-size:13px;white-space:nowrap">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
         </td>
         <td class="${chCls}" style="font-size:14px">${dayAmt ? fmtUSDIntSigned(dayAmt) : '-'}</td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
         <td>${it.hasCost ? fmtUSDInt(it.cost) : '-'}</td>
         <td><a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
-        <td>${it.avgPrice > 0 ? fmtUSD(it.avgPrice) : '-'}</td>
+        <td>${it.avgPrice > 0 ? fmtUSDDec(it.avgPrice) : '-'}</td>
         <td><strong>${fmtUSDInt(it.currentValue)}</strong></td>
         <td class="${pCls}">${it.hasCost ? fmtUSDIntSigned(it.profit) : '-'}</td>
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
@@ -2158,8 +2163,8 @@ function nkOpenAccountDetail(accId) {
         <td>${i.cost > 0 ? buyWeight.toFixed(1) + '%' : '-'}</td>
         <td>${i.cost > 0 ? fmtUSD(i.cost) : '-'}</td>
         <td>${i.qty.toLocaleString()}</td>
-        <td>${i.avg > 0 ? fmtUSD(i.avg) : '-'}</td>
-        <td>${i.price > 0 ? fmtUSD(i.price) : '-'}</td>
+        <td>${i.avg > 0 ? fmtUSDDec(i.avg) : '-'}</td>
+        <td>${i.price > 0 ? fmtUSDDec(i.price) : '-'}</td>
         <td><strong>${fmtUSD(i.val)}</strong></td>
         <td class="${pCls}">${i.cost > 0 ? pSign + fmtUSDSigned(i.pnl) : '-'}</td>
         <td class="${pCls}">${i.rate != null && i.cost > 0 ? pSign + i.rate.toFixed(2) + '%' : '-'}</td>
