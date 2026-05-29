@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.487';
+const APP_VERSION = 'NonK v0.488';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1823,7 +1823,7 @@ function nkRender() {
         </td>
         <td>
           <div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price > 0 ? fmtUSDDec(it.price) : '-'}</div>
-          <div class="${crCls}" style="font-size:13px;white-space:nowrap">${it.change ? (it.change > 0 ? '+' : '') + fmtUSD(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
+          <div class="${crCls}" style="font-size:13px;white-space:nowrap">${it.change ? (it.change > 0 ? '+' : '') + fmtUSDDec(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
         </td>
         <td class="${chCls}" style="font-size:14px">${dayAmt ? fmtUSDIntSigned(dayAmt) : '-'}</td>
         <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
