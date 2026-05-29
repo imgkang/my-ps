@@ -1314,7 +1314,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.487';
+const APP_VERSION = 'KDeal v0.488';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3865,21 +3865,57 @@ function kdtSaveTrade() {
     const idx = kdtTrades.findIndex(x => x.id === kdtEditingTradeId);
     if (idx >= 0) {
       const old = kdtTrades[idx];
-      // 기존 거래 현금 효과 역산
+      // 기존 거래 현금/수량 효과 역산
       const oldCash = old.type === 'buy' ? +(old.price * old.qty + (old.fee||0)) : -(old.price * old.qty - (old.fee||0));
       kdAdjustCash(old.accId, oldCash);
+      kdtApplyTradeQty(old, true);
       kdtTrades[idx] = { ...old, ...entry };
     }
   } else {
     kdtTrades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
   }
-  // 새 거래 현금 효과 적용
+  // 새 거래 현금/수량 효과 적용
   const delta = type === 'buy' ? -(price * qty + fee) : +(price * qty - fee);
   kdAdjustCash(accId, delta);
+  kdtApplyTradeQty({ type, ticker, accId, qty, price }, false);
   kdtSaveTrades();
   kdtCloseTradeModal();
   if (kdtHistoryOpen) kdtRenderTradeHistory();
   kdRender();
+}
+
+function kdtApplyTradeQty(trade, reverse) {
+  const h = kdHoldings.find(x => x.ticker === trade.ticker);
+  if (!h) return;
+  if (!h.accounts) h.accounts = {};
+  if (!h.accounts[trade.accId]) h.accounts[trade.accId] = { qty: 0, avgPrice: 0 };
+  const acc = h.accounts[trade.accId];
+  const curQty = Number(acc.qty) || 0;
+  const curAvg = Number(acc.avgPrice) || 0;
+  const tQty = Number(trade.qty) || 0;
+  const tPrice = Number(trade.price) || 0;
+  if (trade.type === 'buy') {
+    if (!reverse) {
+      const newQty = curQty + tQty;
+      acc.avgPrice = newQty > 0 ? (curQty * curAvg + tQty * tPrice) / newQty : tPrice;
+      acc.qty = newQty;
+    } else {
+      acc.qty = Math.max(0, curQty - tQty);
+      if (acc.qty === 0) delete h.accounts[trade.accId];
+    }
+  } else {
+    if (!reverse) {
+      const newQty = Math.max(0, curQty - tQty);
+      acc.qty = newQty;
+      if (newQty === 0) delete h.accounts[trade.accId];
+    } else {
+      const newQty = curQty + tQty;
+      const newAvg = newQty > 0 ? (curQty * curAvg + tQty * tPrice) / newQty : tPrice;
+      acc.avgPrice = newAvg;
+      acc.qty = newQty;
+    }
+  }
+  kdSaveHoldings();
 }
 
 function kdtDeleteTrade(id) {
@@ -3889,6 +3925,7 @@ function kdtDeleteTrade(id) {
   if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
   const reverseDelta = t.type === 'buy' ? +(t.price * t.qty + (t.fee||0)) : -(t.price * t.qty - (t.fee||0));
   kdAdjustCash(t.accId, reverseDelta);
+  kdtApplyTradeQty(t, true);
   kdtTrades = kdtTrades.filter(x => x.id !== id);
   kdtSaveTrades();
   kdtRenderTradeHistory();

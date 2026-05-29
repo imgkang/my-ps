@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.487';
+const APP_VERSION = 'NonK v0.488';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -2273,6 +2273,12 @@ function nkSaveCash() {
   nkSaveCashData();
   nkCloseCashModal();
   nkRender();
+}
+
+function nkAdjustCash(accId, delta) {
+  if (!accId) return;
+  nkCashAccounts[accId] = (Number(nkCashAccounts[accId]) || 0) + delta;
+  nkSaveCashData();
 }
 
 // --- Deposit modal ---
@@ -3734,6 +3740,44 @@ function nktUpdateTradePreview() {
   }
 }
 
+function nktApplyTradeEffect(trade, reverse) {
+  const h = nkHoldings.find(x => x.ticker === trade.ticker);
+  if (!h) return;
+  if (!h.accounts) h.accounts = {};
+  if (!h.accounts[trade.accId]) h.accounts[trade.accId] = { qty: 0, avgPrice: 0 };
+  const acc = h.accounts[trade.accId];
+  const curQty = Number(acc.qty) || 0;
+  const curAvg = Number(acc.avgPrice) || 0;
+  const tQty = Number(trade.qty) || 0;
+  const tPrice = Number(trade.price) || 0;
+  const tFee = Number(trade.fee) || 0;
+  if (trade.type === 'buy') {
+    if (!reverse) {
+      const newQty = curQty + tQty;
+      acc.avgPrice = newQty > 0 ? (curQty * curAvg + tQty * tPrice) / newQty : tPrice;
+      acc.qty = newQty;
+      nkAdjustCash(trade.accId, -(tQty * tPrice + tFee));
+    } else {
+      acc.qty = Math.max(0, curQty - tQty);
+      if (acc.qty === 0) delete h.accounts[trade.accId];
+      nkAdjustCash(trade.accId, tQty * tPrice + tFee);
+    }
+  } else {
+    if (!reverse) {
+      const newQty = Math.max(0, curQty - tQty);
+      acc.qty = newQty;
+      if (newQty === 0) delete h.accounts[trade.accId];
+      nkAdjustCash(trade.accId, tQty * tPrice - tFee);
+    } else {
+      const newQty = curQty + tQty;
+      const newAvg = newQty > 0 ? (curQty * curAvg + tQty * tPrice) / newQty : tPrice;
+      acc.avgPrice = newAvg;
+      acc.qty = newQty;
+      nkAdjustCash(trade.accId, -(tQty * tPrice - tFee));
+    }
+  }
+}
+
 function nktSaveTrade() {
   const type   = document.getElementById('nktTradeType').value;
   const ticker = document.getElementById('nktTradeTicker').value.trim().toUpperCase();
@@ -3753,13 +3797,21 @@ function nktSaveTrade() {
   const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
   if (nktEditingTradeId) {
     const idx = nktTrades.findIndex(x => x.id === nktEditingTradeId);
-    if (idx >= 0) nktTrades[idx] = { ...nktTrades[idx], ...entry };
+    if (idx >= 0) {
+      nktApplyTradeEffect(nktTrades[idx], true);
+      nktTrades[idx] = { ...nktTrades[idx], ...entry };
+      nktApplyTradeEffect(nktTrades[idx], false);
+    }
   } else {
-    nktTrades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
+    const newTrade = { id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry };
+    nktTrades.push(newTrade);
+    nktApplyTradeEffect(newTrade, false);
   }
   nktSaveTrades();
+  nkSaveHoldings();
   nktCloseTradeModal();
   if (nktHistoryOpen) nktRenderTradeHistory();
+  nkRender();
 }
 
 function nktDeleteTrade(id) {
@@ -3767,9 +3819,12 @@ function nktDeleteTrade(id) {
   if (!t) return;
   const qtyStr = parseFloat(t.qty).toLocaleString('en-US', { maximumFractionDigits:4 });
   if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
+  nktApplyTradeEffect(t, true);
   nktTrades = nktTrades.filter(x => x.id !== id);
   nktSaveTrades();
+  nkSaveHoldings();
   nktRenderTradeHistory();
+  nkRender();
 }
 
 // 자동완성 (US 주식)
