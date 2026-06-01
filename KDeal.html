@@ -1314,7 +1314,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.489';
+const APP_VERSION = 'KDeal v0.490';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1771,7 +1771,7 @@ function kdRender() {
   const prevRecs = kdMonthlyRecords.filter(r => r.year < _yr || (r.year === _yr && r.month < _thisM));
   let monthPnl = null, monthPnlRate = null;
   if (prevRecs.length) {
-    const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month)[0];
+    const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0))[0];
     const prevVal = _activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
     const cutoff = `${_yr}-${String(_thisM).padStart(2,'0')}-01`;
     const moDeposits = kdDepositData.transactions

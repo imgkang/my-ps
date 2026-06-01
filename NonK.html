@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.489';
+const APP_VERSION = 'NonK v0.490';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1720,7 +1720,7 @@ function nkRender() {
   const prevRecs = nkMonthlyRecords.filter(r => r.year < _yr || (r.year === _yr && r.month < _thisM));
   let monthPnl = null, monthPnlRate = null;
   if (prevRecs.length) {
-    const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month)[0];
+    const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0))[0];
     const prevVal = _activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
     const cutoff = `${_yr}-${String(_thisM).padStart(2,'0')}-01`;
     const moDeposits = nkDepositData.transactions
