@@ -3306,7 +3306,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.488';
+const APP_VERSION = 'MyPM v0.489';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4937,7 +4937,7 @@ function importFromFile(event) {
   reader.readAsText(file, 'utf-8');
 }
 
-async function refreshPricesSilent() {
+async function refreshPricesSilent(suppressSync = false) {
   if (!holdings.length) return;
   await Promise.all(holdings.map(async h => {
     try {
@@ -4949,6 +4949,12 @@ async function refreshPricesSilent() {
   }));
   saveHoldings();
   render();
+  if (!suppressSync) {
+    ['nonk', 'kdeal'].forEach(name => {
+      const frame = document.getElementById('frame-' + name);
+      if (frame?.dataset.loaded) frame.contentWindow?.postMessage({ type: 'REFRESH_REQUEST' }, '*');
+    });
+  }
 }
 
 // ===== 주가 조회 (Naver Finance 우선 → Yahoo Finance 폴백) =====
@@ -16869,6 +16875,11 @@ window.addEventListener('message', e => {
     const other = e.data.name === 'nonk' ? 'kdeal' : 'nonk';
     document.getElementById('frame-' + other).style.display = 'none';
     showSubFrame(e.data.name);
+  } else if (e.data.type === 'REFRESH_DONE') {
+    refreshPricesSilent(true);
+    const other = e.data.source === 'nonk' ? 'kdeal' : 'nonk';
+    const otherFrame = document.getElementById('frame-' + other);
+    if (otherFrame?.dataset.loaded) otherFrame.contentWindow?.postMessage({ type: 'REFRESH_REQUEST' }, '*');
   }
 });
 </script>

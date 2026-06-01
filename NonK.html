@@ -1307,7 +1307,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.488';
+const APP_VERSION = 'NonK v0.489';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1533,7 +1533,7 @@ function switchPage(page) {
   }
 }
 
-async function nkRefreshAll() {
+async function nkRefreshAll(suppressDone = false) {
   const statusEl = document.getElementById('nkRefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
@@ -1575,6 +1575,9 @@ async function nkRefreshAll() {
     statusEl.textContent = failCount
       ? `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss} (${failCount}개 실패)`
       : `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss}`;
+  }
+  if (!suppressDone && window.parent !== window) {
+    window.parent.postMessage({ type: 'REFRESH_DONE', source: 'nonk' }, '*');
   }
 }
 
@@ -3831,6 +3834,12 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
 }
+
+window.addEventListener('message', e => {
+  if (e.data?.type === 'REFRESH_REQUEST') {
+    if (nkHoldings.length || nkWatchlist.length) nkRefreshAll(true);
+  }
+});
 
 (function() {
   if (window.parent === window) return;

@@ -1314,7 +1314,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.488';
+const APP_VERSION = 'KDeal v0.489';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1584,7 +1584,7 @@ function switchPage(page) {
   }
 }
 
-async function kdRefreshAll() {
+async function kdRefreshAll(suppressDone = false) {
   const statusEl = document.getElementById('kdRefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
@@ -1626,6 +1626,9 @@ async function kdRefreshAll() {
     statusEl.textContent = failCount
       ? `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss} (${failCount}개 실패)`
       : `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss}`;
+  }
+  if (!suppressDone && window.parent !== window) {
+    window.parent.postMessage({ type: 'REFRESH_DONE', source: 'kdeal' }, '*');
   }
 }
 
@@ -4081,6 +4084,12 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
 }
+
+window.addEventListener('message', e => {
+  if (e.data?.type === 'REFRESH_REQUEST') {
+    if (kdHoldings.length || kdWatchlist.length) kdRefreshAll(true);
+  }
+});
 
 (function() {
   if (window.parent === window) return;
