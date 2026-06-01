@@ -3306,7 +3306,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.489';
+const APP_VERSION = 'MyPM v0.490';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6327,7 +6327,7 @@ function render() {
   const _curYm = _now.getFullYear() * 12 + _now.getMonth() + 1;
   const _prevMonRec = [...monthlyRecords]
     .filter(r => r.year * 12 + r.month < _curYm)
-    .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))[0];
+    .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month) || (b.day || 0) - (a.day || 0))[0];
   const _prevMonVal   = _prevMonRec ? _recSum(_prevMonRec) : 0;
   const thisMonChange = _prevMonVal > 0 ? totalValue - _prevMonVal : null;
   const thisMonRate   = _prevMonVal > 0 && thisMonChange != null ? (thisMonChange / _prevMonVal) * 100 : null;
