@@ -953,6 +953,11 @@
   .div-cell-editable {
     display:flex; align-items:center; justify-content:flex-end; gap:3px;
   }
+  .div-date-link {
+    cursor:pointer; color:var(--primary,#2563eb);
+    text-decoration:underline; text-decoration-style:dotted; text-underline-offset:2px;
+  }
+  .div-date-link:hover { text-decoration-style:solid; }
 </style>
 </head>
 <body>
@@ -1423,7 +1428,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.491';
+const APP_VERSION = 'KDeal v0.492';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3223,7 +3228,7 @@ function kdRenderDividendLists() {
           const total = kdDivRecMiscTotal(rec);
           const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
           return `<div class="div-record-row" style="grid-template-columns:${cols}">
-            <span>${dateLabel}</span>
+            <span class="div-date-link" onclick="kdEditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>
             <span style="grid-column: span ${spanCount};color:var(--muted,#888)">📝 ${memo}</span>
             <span class="total">${fmtKRW(total)}</span>
             <span>
@@ -3239,7 +3244,7 @@ function kdRenderDividendLists() {
           return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="kdOpenDivStockEdit('${rec.id}','${t}')">✏️</button></span>`;
         }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span>${dateLabel}</span>${cells}
+          <span class="div-date-link" onclick="kdEditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
           <span><button class="del-btn" onclick="kdDeleteDividendRecord('${rec.id}')">삭제</button></span>
         </div>`;
@@ -3270,7 +3275,7 @@ function kdRenderDividendLists() {
           ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}" style="color:var(--muted,#888)">📝 </small>`
           : '';
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span>${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span class="div-date-link" onclick="kdEditDividendRecord('${rec.id}')" title="전체 수정">${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
         </div>`;
       }).join('');
