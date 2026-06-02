@@ -3366,7 +3366,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.492';
+const APP_VERSION = 'MyPM v0.493';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9766,15 +9766,23 @@ function renderDivDonutChart() {
   const data    = sorted.map(([,v]) => v);
   const colors  = sorted.map((_, i) => _DIV_COLORS[i % _DIV_COLORS.length]);
 
-  // 상단: 1위 항목
-  if (topEl) {
-    const [topName, topAmt] = sorted[0];
-    const topPct = (topAmt / grandTotal * 100).toFixed(2);
+  // 선택 항목 표시 헬퍼
+  function showTopItem(name, amt, selectedIdx) {
+    if (!topEl) return;
+    const pct = (amt / grandTotal * 100).toFixed(2);
     topEl.innerHTML = `
-      <div style="font-size:13px;color:var(--muted);margin-bottom:2px">${topName}</div>
-      <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${topPct}%</div>
-      <div style="font-size:12px;color:var(--muted)">${topAmt.toLocaleString('ko-KR')} 원</div>`;
+      <div style="font-size:13px;color:var(--muted);margin-bottom:2px">${name}</div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${pct}%</div>
+      <div style="font-size:12px;color:var(--muted)">${amt.toLocaleString('ko-KR')} 원</div>`;
+    if (legendEl) legendEl.querySelectorAll('.div-legend-item').forEach((el, i) => {
+      el.style.fontWeight = i === selectedIdx ? '700' : '';
+      el.style.background = i === selectedIdx ? 'var(--hover-bg,#f3f4f6)' : '';
+      el.style.borderRadius = i === selectedIdx ? '6px' : '';
+    });
   }
+
+  // 초기: 1위 항목
+  showTopItem(sorted[0][0], sorted[0][1], 0);
 
   if (_divDonutChart) { _divDonutChart.destroy(); _divDonutChart = null; }
   _divDonutChart = new Chart(canvas.getContext('2d'), {
@@ -9783,6 +9791,11 @@ function renderDivDonutChart() {
     options: {
       responsive: true, maintainAspectRatio: false,
       cutout: '62%',
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const idx = elements[0].index;
+        showTopItem(sorted[idx][0], sorted[idx][1], idx);
+      },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: {
@@ -9799,12 +9812,18 @@ function renderDivDonutChart() {
   if (legendEl) {
     legendEl.innerHTML = sorted.map(([name, amt], i) => {
       const pct = (amt / grandTotal * 100).toFixed(1);
-      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">
+      return `<div class="div-legend-item" style="display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:13px;cursor:pointer">
         <span style="width:10px;height:10px;border-radius:50%;background:${colors[i]};flex-shrink:0;display:inline-block"></span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
         <span style="font-weight:600;flex-shrink:0">${pct}%</span>
       </div>`;
     }).join('');
+    legendEl.querySelectorAll('.div-legend-item').forEach((el, i) => {
+      el.onclick = () => showTopItem(sorted[i][0], sorted[i][1], i);
+    });
+    // 초기 하이라이트
+    const first = legendEl.querySelector('.div-legend-item');
+    if (first) { first.style.fontWeight = '700'; first.style.background = 'var(--hover-bg,#f3f4f6)'; first.style.borderRadius = '6px'; }
   }
 }
 
