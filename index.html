@@ -1436,6 +1436,11 @@ registerMobileTooltipDismiss();
   .div-focused-edit-footer {
     display:flex; justify-content:flex-end; gap:8px; margin-top:16px;
   }
+  .div-date-link {
+    cursor:pointer; color:var(--primary,#2563eb);
+    text-decoration:underline; text-decoration-style:dotted; text-underline-offset:2px;
+  }
+  .div-date-link:hover { text-decoration-style:solid; }
 </style>
 </head>
 <body>
@@ -3361,7 +3366,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.491';
+const APP_VERSION = 'MyPM v0.492';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9840,7 +9845,7 @@ function renderDivMonthlyBreakdown() {
         const total = divRecMiscTotal(rec);
         if (!total) return [];
         return [`<div class="div-month-item">
-          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+          <span class="div-date-link" style="font-size:12px;min-width:28px;text-align:center" onclick="editDividendRecord('${rec.id}')" title="전체 수정">${dayStr}</span>
           <div class="div-stock-badge" style="background:#9ca3af">기타</div>
           <div class="div-item-info">
             <div class="div-item-name">기타종목</div>
@@ -9860,7 +9865,7 @@ function renderDivMonthlyBreakdown() {
         const total = Object.values(rec.accounts || {}).reduce((s, v) => s + (Number(v) || 0), 0);
         if (!total) return [];
         return [`<div class="div-month-item">
-          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+          <span class="div-date-link" style="font-size:12px;min-width:28px;text-align:center" onclick="editDividendRecord('${rec.id}')" title="전체 수정">${dayStr}</span>
           <div class="div-stock-badge" style="background:#9ca3af">기타</div>
           <div class="div-item-info"><div class="div-item-name">기타종목</div></div>
           <div class="div-item-amount">${total.toLocaleString('ko-KR')} 원</div>
@@ -9900,7 +9905,7 @@ function renderDivMonthlyBreakdown() {
         isFirstShown = false;
 
         return `<div class="div-month-item">
-          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+          <span class="div-date-link" style="font-size:12px;min-width:28px;text-align:center" onclick="editDividendRecord('${rec.id}')" title="전체 수정">${dayStr}</span>
           <div class="div-stock-badge" style="background:${color}">${initial}</div>
           <div class="div-item-info">
             <div class="div-item-name">${name}</div>
@@ -9966,7 +9971,7 @@ function renderDivMonthlyBreakdownByAcc() {
             </div>` : '';
           isFirstShown = false;
           return `<div class="div-month-item">
-            <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+            <span class="div-date-link" style="font-size:12px;min-width:28px;text-align:center" onclick="editDividendRecord('${rec.id}')" title="전체 수정">${dayStr}</span>
             <div class="div-stock-badge" style="background:${color}">${initial}</div>
             <div class="div-item-info">
               <div class="div-item-name">${accName}</div>
@@ -9993,7 +9998,7 @@ function renderDivMonthlyBreakdownByAcc() {
         </div>`;
         isFirstShown = false;
         return `<div class="div-month-item">
-          <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
+          <span class="div-date-link" style="font-size:12px;min-width:28px;text-align:center" onclick="editDividendRecord('${rec.id}')" title="전체 수정">${dayStr}</span>
           <div class="div-stock-badge" style="background:${color}">${initial}</div>
           <div class="div-item-info"><div class="div-item-name">${accName}</div></div>
           <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
