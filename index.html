@@ -2953,11 +2953,8 @@ registerMobileTooltipDismiss();
     <!-- 계좌별 거래 입력 폼 (계좌 클릭 시 전환) -->
     <div id="tradeAccForm" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <button onclick="closeAccTradeForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
-        <div>
-          <div id="taf_stock_name" style="font-weight:700;font-size:16px"></div>
-          <div id="taf_acc_name"   style="font-size:12px;color:var(--muted)"></div>
-        </div>
+        <button id="taf_back_btn" onclick="closeAccTradeForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
+        <div id="taf_acc_name" style="font-size:13px;font-weight:600;color:var(--muted)"></div>
       </div>
       <div id="taf_holdings_info" style="background:#f3f4f6;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px;color:var(--muted)"></div>
       <div class="trade-type-toggle" style="margin-bottom:12px">
@@ -3364,7 +3361,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.497';
+const APP_VERSION = 'MyPM v0.498';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6803,8 +6800,8 @@ function openAccTradeForm(accId, code) {
   const profitAmt = qty * (price - avg);
   const cash    = Number(cashAccounts[accId]) || 0;
 
-  document.getElementById('taf_stock_name').textContent = h ? h.name : code;
-  document.getElementById('taf_acc_name').textContent   = getAccName(accId);
+  document.getElementById('taf_acc_name').textContent = getAccName(accId);
+  document.getElementById('taf_back_btn').style.display = getActiveAccounts().length === 1 ? 'none' : '';
 
   const holdingStr = qty > 0
     ? `보유 ${qty.toLocaleString('ko-KR')}주 · 평균 ${avg.toLocaleString('ko-KR')}원 · 평가 ${val.toLocaleString('ko-KR')}원 (${profitAmt >= 0 ? '+' : ''}${profitAmt.toLocaleString('ko-KR')}원, ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}%)`
