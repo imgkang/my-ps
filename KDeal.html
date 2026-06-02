@@ -188,6 +188,13 @@
   }
   .btn-accounts:hover { background: #dbeafe; }
   .account-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563eb; margin-left: 4px; vertical-align: middle; }
+  .tbl-trade-btn { padding:2px 7px; font-size:13px; font-weight:600; border-radius:4px;
+    border:1px solid #a5b4fc; cursor:pointer; white-space:nowrap;
+    transition:opacity 0.1s; background:#e0e7ff; color:#3730a3; }
+  .tbl-trade-btn:hover { opacity:0.75; }
+  .tbl-icon-btn { background:transparent; border:none; cursor:pointer;
+    font-size:15px; padding:2px 4px; line-height:1; border-radius:4px; }
+  .tbl-icon-btn:hover { background:#f1f5f9; }
 
   /* Modal (별도 페이지처럼 전체화면 덮는 오버레이) */
   .modal-backdrop {
@@ -1428,7 +1435,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.498';
+const APP_VERSION = 'KDeal v0.499';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1985,7 +1992,7 @@ function kdRender() {
     const dayAmt = it.change * it.qty;
     tableHtml += `
       <tr>
-        <td>
+        <td onclick="kdtOpenTradeModalForTicker('${it.ticker}','${kdEscape(it.name)}')" style="cursor:pointer">
           <div class="stock-name">${kdEscape(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div>
           <div class="stock-code">${it.ticker}</div>
         </td>
@@ -2003,9 +2010,10 @@ function kdRender() {
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
-        <td>
-          <button class="btn-accounts" onclick="kdOpenAccountModal('${it.ticker}')" title="계좌별 수량 입력">📂</button>
-          <button class="del-btn" onclick="kdDeleteHolding('${it.ticker}')">삭제</button>
+        <td style="white-space:nowrap">
+          <button class="tbl-trade-btn" onclick="kdtOpenTradeModalForTicker('${it.ticker}','${kdEscape(it.name)}')" title="거래">거래</button>
+          <button class="tbl-icon-btn" onclick="kdOpenAccountModal('${it.ticker}')" title="편집">✏️</button>
+          <button class="tbl-icon-btn" onclick="kdDeleteHolding('${it.ticker}')" title="삭제">🗑️</button>
         </td>
       </tr>`;
   }
@@ -4071,6 +4079,13 @@ function kdtOpenTradeModal(editId = null) {
   }
   kdtUpdateTradePreview();
   document.getElementById('kdtTradeModal').classList.add('open');
+}
+
+function kdtOpenTradeModalForTicker(ticker, name) {
+  kdtOpenTradeModal();
+  document.getElementById('kdtTradeTicker').value = ticker;
+  document.getElementById('kdtTradeName').value   = name || ticker;
+  kdtUpdateTradePreview();
 }
 
 function kdtCloseTradeModal() {

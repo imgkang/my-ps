@@ -187,6 +187,13 @@
     border: 1px solid #dbeafe; margin-right: 4px;
   }
   .btn-accounts:hover { background: #dbeafe; }
+  .tbl-trade-btn { padding:2px 7px; font-size:13px; font-weight:600; border-radius:4px;
+    border:1px solid #a5b4fc; cursor:pointer; white-space:nowrap;
+    transition:opacity 0.1s; background:#e0e7ff; color:#3730a3; }
+  .tbl-trade-btn:hover { opacity:0.75; }
+  .tbl-icon-btn { background:transparent; border:none; cursor:pointer;
+    font-size:15px; padding:2px 4px; line-height:1; border-radius:4px; }
+  .tbl-icon-btn:hover { background:#f1f5f9; }
   .account-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563eb; margin-left: 4px; vertical-align: middle; }
 
   /* Modal (별도 페이지처럼 전체화면 덮는 오버레이) */
@@ -1421,7 +1428,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.498';
+const APP_VERSION = 'NonK v0.499';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1939,7 +1946,7 @@ function nkRender() {
     const dayAmt = it.change * it.qty;
     tableHtml += `
       <tr>
-        <td>
+        <td onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" style="cursor:pointer">
           <div class="stock-name">${nkEscape(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div>
           <div class="stock-code">${it.ticker}</div>
         </td>
@@ -1957,9 +1964,10 @@ function nkRender() {
         <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
-        <td>
-          <button class="btn-accounts" onclick="nkOpenAccountModal('${it.ticker}')" title="계좌별 수량 입력">📂</button>
-          <button class="del-btn" onclick="nkDeleteHolding('${it.ticker}')">삭제</button>
+        <td style="white-space:nowrap">
+          <button class="tbl-trade-btn" onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" title="거래">거래</button>
+          <button class="tbl-icon-btn" onclick="nkOpenAccountModal('${it.ticker}')" title="편집">✏️</button>
+          <button class="tbl-icon-btn" onclick="nkDeleteHolding('${it.ticker}')" title="삭제">🗑️</button>
         </td>
       </tr>`;
   }
@@ -3976,6 +3984,13 @@ function nktOpenTradeModal(editId = null) {
   }
   nktUpdateTradePreview();
   document.getElementById('nktTradeModal').classList.add('open');
+}
+
+function nktOpenTradeModalForTicker(ticker, name) {
+  nktOpenTradeModal();
+  document.getElementById('nktTradeTicker').value = ticker;
+  document.getElementById('nktTradeName').value   = name || ticker;
+  nktUpdateTradePreview();
 }
 
 function nktCloseTradeModal() {
