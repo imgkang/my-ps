@@ -1421,7 +1421,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.492';
+const APP_VERSION = 'NonK v0.493';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -1567,6 +1567,11 @@ function nkLoadHoldings()  { try { return JSON.parse(localStorage.getItem(NK_HOL
 function nkSaveHoldings()  { localStorage.setItem(NK_HOLD_KEY, JSON.stringify(nkHoldings)); }
 function nkLoadCash()      { try { return JSON.parse(localStorage.getItem(NK_CASH_KEY)) || {}; } catch(e) { return {}; } }
 function nkSaveCashData()  { localStorage.setItem(NK_CASH_KEY, JSON.stringify(nkCashAccounts)); }
+function nkAdjustCash(accId, delta) {
+  if (!accId) return;
+  nkCashAccounts[accId] = (Number(nkCashAccounts[accId]) || 0) + delta;
+  nkSaveCashData();
+}
 function nkLoadDeposits()  { try { return JSON.parse(localStorage.getItem(NK_DEP_KEY)) || { transactions: [] }; } catch(e) { return { transactions: [] }; } }
 function nkSaveDeposits()  { localStorage.setItem(NK_DEP_KEY, JSON.stringify(nkDepositData)); }
 function nkLoadMonthly()   { try { return JSON.parse(localStorage.getItem(NK_MON_KEY)) || []; } catch(e) { return []; } }
@@ -3992,6 +3997,35 @@ function nktUpdateTradePreview() {
   }
 }
 
+function nktApplyTradeToPortfolio(type, ticker, tradeName, accId, price, qty, fee, reverse) {
+  // reverse=true: 기존 거래 효과 역산 (편집·삭제 시)
+  const isBuy = reverse ? type === 'sell' : type === 'buy';
+  const h = nkHoldings.find(x => x.ticker === ticker);
+
+  if (isBuy) {
+    if (h) {
+      if (!h.accounts) h.accounts = {};
+      const curQty = Number(h.accounts[accId]?.qty) || 0;
+      const curAvg = Number(h.accounts[accId]?.avgPrice) || 0;
+      const newQty = curQty + qty;
+      h.accounts[accId] = { qty: newQty, avgPrice: newQty > 0 ? (curQty * curAvg + qty * price) / newQty : price };
+    } else if (!reverse) {
+      nkHoldings.push({ ticker, name: tradeName || ticker, accounts: { [accId]: { qty, avgPrice: price } }, price, change: 0, changeRate: 0 });
+    }
+    nkSaveHoldings();
+    nkAdjustCash(accId, -(price * qty + fee));
+  } else {
+    if (h && h.accounts) {
+      const curQty = Number(h.accounts[accId]?.qty) || 0;
+      const newQty = curQty - qty;
+      if (newQty <= 0) delete h.accounts[accId];
+      else h.accounts[accId] = { ...h.accounts[accId], qty: newQty };
+      nkSaveHoldings();
+    }
+    nkAdjustCash(accId, +(price * qty - fee));
+  }
+}
+
 function nktSaveTrade() {
   const type   = document.getElementById('nktTradeType').value;
   const ticker = document.getElementById('nktTradeTicker').value.trim().toUpperCase();
@@ -4011,13 +4045,19 @@ function nktSaveTrade() {
   const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
   if (nktEditingTradeId) {
     const idx = nktTrades.findIndex(x => x.id === nktEditingTradeId);
-    if (idx >= 0) nktTrades[idx] = { ...nktTrades[idx], ...entry };
+    if (idx >= 0) {
+      const old = nktTrades[idx];
+      nktApplyTradeToPortfolio(old.type, old.ticker, old.name, old.accId, old.price, old.qty, old.fee||0, true);
+      nktTrades[idx] = { ...old, ...entry };
+    }
   } else {
     nktTrades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
   }
+  nktApplyTradeToPortfolio(type, ticker, name || ticker, accId, price, qty, fee, false);
   nktSaveTrades();
   nktCloseTradeModal();
   if (nktHistoryOpen) nktRenderTradeHistory();
+  nkRender();
 }
 
 function nktDeleteTrade(id) {
@@ -4025,9 +4065,11 @@ function nktDeleteTrade(id) {
   if (!t) return;
   const qtyStr = parseFloat(t.qty).toLocaleString('en-US', { maximumFractionDigits:4 });
   if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
+  nktApplyTradeToPortfolio(t.type, t.ticker, t.name, t.accId, t.price, t.qty, t.fee||0, true);
   nktTrades = nktTrades.filter(x => x.id !== id);
   nktSaveTrades();
   nktRenderTradeHistory();
+  nkRender();
 }
 
 // 자동완성 (US 주식)
