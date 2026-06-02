@@ -1381,6 +1381,61 @@ registerMobileTooltipDismiss();
   .wdprep-tab { padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:none; color:#94a3b8; border-bottom:2.5px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; white-space:nowrap; }
   .wdprep-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
   .wdprep-tab:hover:not(.active) { color:#475569; }
+  /* 배당기록 포커스드 편집 패널 */
+  .div-focused-edit-overlay {
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.45);
+    z-index:1100;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .div-focused-edit-card {
+    background:var(--card-bg,#fff);
+    border-radius:12px;
+    padding:20px;
+    width:90%; max-width:360px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.25);
+  }
+  .div-focused-edit-hdr {
+    display:flex; justify-content:space-between; align-items:center;
+    font-weight:600; font-size:15px; margin-bottom:14px;
+  }
+  .div-focused-edit-hdr button {
+    background:none; border:none; font-size:18px; cursor:pointer; color:var(--muted,#888); padding:2px 6px;
+  }
+  .div-focused-ps-row {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--border,#eee); margin-bottom:10px;
+  }
+  .div-focused-ps-row input {
+    flex:1; padding:6px 10px;
+    border:1px solid var(--border,#ccc); border-radius:6px;
+    font-size:14px; text-align:right;
+  }
+  .div-focused-col3 { display:grid; grid-template-columns:1fr 1fr 1fr; }
+  .div-focused-col4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; }
+  .div-focused-acc-header, .div-focused-stock-header {
+    font-size:11px; color:var(--muted,#888);
+    padding-bottom:4px; border-bottom:1px solid var(--border,#eee);
+  }
+  .div-focused-acc-row, .div-focused-stock-row {
+    padding:7px 0; font-size:13px;
+    border-bottom:1px solid var(--border-light,#f3f3f3);
+    align-items:center;
+  }
+  .div-focused-acc-row span:not(:first-child),
+  .div-focused-stock-row span:not(:first-child) { text-align:right; }
+  .div-focused-qty-input {
+    width:100%; padding:4px 6px;
+    border:1px solid var(--border,#ccc); border-radius:4px;
+    font-size:13px; text-align:right; box-sizing:border-box;
+  }
+  .div-focused-total-row {
+    padding:8px 0; font-weight:600; font-size:13px;
+  }
+  .div-focused-total-row span:not(:first-child) { text-align:right; }
+  .div-focused-edit-footer {
+    display:flex; justify-content:flex-end; gap:8px; margin-top:16px;
+  }
 </style>
 </head>
 <body>
@@ -3306,7 +3361,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.490';
+const APP_VERSION = 'MyPM v0.491';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9836,11 +9891,12 @@ function renderDivMonthlyBreakdown() {
           ? `${totalShares.toLocaleString('ko-KR')}주 · 주당 ${ps.toLocaleString('ko-KR')}원`
           : code;
         const initial = (name || code).slice(0, 1).toUpperCase();
-        const buttonsHtml = isFirstShown
-          ? `<div style="display:flex;gap:4px;flex-shrink:0">
-            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-          </div>` : '';
+        const delBtn = isFirstShown
+          ? `<button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>` : '';
+        const buttonsHtml = `<div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="tbl-icon-btn" onclick="openDivStockEdit('${rec.id}','${code}')" title="편집">✏️</button>
+          ${delBtn}
+        </div>`;
         isFirstShown = false;
 
         return `<div class="div-month-item">
@@ -9929,11 +9985,12 @@ function renderDivMonthlyBreakdownByAcc() {
         const color = _DIV_COLORS[i % _DIV_COLORS.length];
         const accName = getAccName(acc.id);
         const initial = (accName || acc.id).slice(0, 1).toUpperCase();
-        const buttonsHtml = isFirstShown
-          ? `<div style="display:flex;gap:4px;flex-shrink:0">
-            <button class="tbl-icon-btn" onclick="editDividendRecord('${rec.id}')" title="편집">✏️</button>
-            <button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>
-          </div>` : '';
+        const delBtn = isFirstShown
+          ? `<button class="tbl-icon-btn" onclick="deleteDividendRecord('${rec.id}')" title="삭제">🗑️</button>` : '';
+        const buttonsHtml = `<div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="tbl-icon-btn" onclick="openDivAccEdit('${rec.id}','${acc.id}')" title="편집">✏️</button>
+          ${delBtn}
+        </div>`;
         isFirstShown = false;
         return `<div class="div-month-item">
           <span style="font-size:12px;color:var(--muted);min-width:28px;text-align:center">${dayStr}</span>
@@ -9953,6 +10010,153 @@ function renderDivMonthlyBreakdownByAcc() {
       ${rows || '<div class="div-empty" style="padding:12px 0">계좌별 금액 정보가 없습니다.</div>'}
     </div>`;
   }).join('');
+}
+
+// ===== 배당 포커스드 편집 패널 =====
+let _divStockEditRecId = null, _divStockEditCode = null;
+let _divAccEditRecId = null, _divAccEditAccId = null;
+
+function openDivStockEdit(recId, code) {
+  const rec = dividendRecords.find(r => r.id === recId);
+  if (!rec) return;
+  _divStockEditRecId = recId;
+  _divStockEditCode = code;
+  const h = holdings.find(x => x.code === code);
+  const name = h ? h.name : code;
+  const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+  document.getElementById('divStockEditTitle').textContent = `${name} · ${dateLabel}`;
+  const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
+  document.getElementById('divStockEditPs').value = perShare;
+  updateDivStockEditPreview();
+  document.getElementById('divStockEditPanel').style.display = '';
+}
+
+function updateDivStockEditPreview() {
+  const rec = dividendRecords.find(r => r.id === _divStockEditRecId);
+  if (!rec) return;
+  const code = _divStockEditCode;
+  const newPs = parseFloat(document.getElementById('divStockEditPs').value) || 0;
+  const activeAccs = getActiveAccounts();
+  let total = 0;
+  const rows = activeAccs.map(acc => {
+    const qty = Number((rec.stocksShares && rec.stocksShares[code] && rec.stocksShares[code][acc.id]) || 0);
+    const amt = Math.round(qty * newPs);
+    total += amt;
+    return `<div class="div-focused-col3 div-focused-acc-row">
+      <span>${getAccName(acc.id)}</span><span>${qty}</span><span>${amt.toLocaleString('ko-KR')} 원</span>
+    </div>`;
+  }).join('');
+  document.getElementById('divStockEditAccRows').innerHTML = rows;
+  document.getElementById('divStockEditTotal').textContent = total.toLocaleString('ko-KR') + ' 원';
+}
+
+function closeDivStockEdit() {
+  document.getElementById('divStockEditPanel').style.display = 'none';
+  _divStockEditRecId = null; _divStockEditCode = null;
+}
+
+function saveDivStockEdit() {
+  const rec = dividendRecords.find(r => r.id === _divStockEditRecId);
+  if (!rec) return;
+  const code = _divStockEditCode;
+  const newPs = Math.round(parseFloat(document.getElementById('divStockEditPs').value) || 0);
+  // 기존 accounts 역산
+  if (!rec.skipCash) applyDividendCashDelta(rec.accounts, -1);
+  if (!rec.stocksPerShare) rec.stocksPerShare = {};
+  rec.stocksPerShare[code] = newPs;
+  // 모든 계좌 amounts 재계산
+  if (!rec.accounts) rec.accounts = {};
+  const activeAccs = getActiveAccounts();
+  activeAccs.forEach(acc => {
+    let total = 0;
+    for (const t of Object.keys(rec.stocksPerShare)) {
+      const ps = Number(rec.stocksPerShare[t]) || 0;
+      const qty = Number((rec.stocksShares && rec.stocksShares[t] && rec.stocksShares[t][acc.id]) || 0);
+      total += ps * qty;
+    }
+    rec.accounts[acc.id] = Math.round(total);
+  });
+  // 새 amounts 적용
+  if (!rec.skipCash) applyDividendCashDelta(rec.accounts, +1);
+  saveDividendRecords();
+  renderDivYearView();
+  closeDivStockEdit();
+}
+
+function openDivAccEdit(recId, accId) {
+  const rec = dividendRecords.find(r => r.id === recId);
+  if (!rec) return;
+  _divAccEditRecId = recId;
+  _divAccEditAccId = accId;
+  const accName = getAccName(accId);
+  const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+  document.getElementById('divAccEditTitle').textContent = `${accName} · ${dateLabel}`;
+  const codes = divRecCodes(rec);
+  const rows = codes.map(code => {
+    const h = holdings.find(x => x.code === code);
+    const name = h ? h.name : code;
+    const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
+    const qty = Number((rec.stocksShares && rec.stocksShares[code] && rec.stocksShares[code][accId]) || 0);
+    const amt = Math.round(perShare * qty);
+    return `<div class="div-focused-col4 div-focused-stock-row" data-code="${code}">
+      <span style="font-size:12px">${name}</span>
+      <span>${perShare.toLocaleString('ko-KR')}</span>
+      <input type="number" class="div-focused-qty-input" value="${qty}" min="0" oninput="updateDivAccEditPreview()">
+      <span class="div-acc-amt-cell">${amt.toLocaleString('ko-KR')} 원</span>
+    </div>`;
+  }).join('');
+  document.getElementById('divAccEditStockRows').innerHTML = rows;
+  updateDivAccEditPreview();
+  document.getElementById('divAccEditPanel').style.display = '';
+}
+
+function updateDivAccEditPreview() {
+  const rec = dividendRecords.find(r => r.id === _divAccEditRecId);
+  if (!rec) return;
+  let total = 0;
+  document.querySelectorAll('#divAccEditStockRows .div-focused-stock-row').forEach(row => {
+    const code = row.dataset.code;
+    const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
+    const qty = parseFloat(row.querySelector('.div-focused-qty-input').value) || 0;
+    const amt = Math.round(perShare * qty);
+    total += amt;
+    row.querySelector('.div-acc-amt-cell').textContent = amt.toLocaleString('ko-KR') + ' 원';
+  });
+  document.getElementById('divAccEditTotal').textContent = total.toLocaleString('ko-KR') + ' 원';
+}
+
+function closeDivAccEdit() {
+  document.getElementById('divAccEditPanel').style.display = 'none';
+  _divAccEditRecId = null; _divAccEditAccId = null;
+}
+
+function saveDivAccEdit() {
+  const rec = dividendRecords.find(r => r.id === _divAccEditRecId);
+  if (!rec) return;
+  const accId = _divAccEditAccId;
+  // 기존 accounts 역산
+  if (!rec.skipCash) applyDividendCashDelta(rec.accounts, -1);
+  if (!rec.stocksShares) rec.stocksShares = {};
+  document.querySelectorAll('#divAccEditStockRows .div-focused-stock-row').forEach(row => {
+    const code = row.dataset.code;
+    const newQty = parseFloat(row.querySelector('.div-focused-qty-input').value) || 0;
+    if (!rec.stocksShares[code]) rec.stocksShares[code] = {};
+    rec.stocksShares[code][accId] = newQty;
+  });
+  // 해당 계좌 amount 재계산
+  if (!rec.accounts) rec.accounts = {};
+  let total = 0;
+  for (const code of divRecCodes(rec)) {
+    const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
+    const qty = Number((rec.stocksShares[code] && rec.stocksShares[code][accId]) || 0);
+    total += ps * qty;
+  }
+  rec.accounts[accId] = Math.round(total);
+  // 새 amounts 적용
+  if (!rec.skipCash) applyDividendCashDelta(rec.accounts, +1);
+  saveDividendRecords();
+  renderDivYearView();
+  closeDivAccEdit();
 }
 
 // ===== Pull to Refresh =====
@@ -16975,6 +17179,52 @@ window.addEventListener('message', e => {
 </div>
 <iframe id="frame-nonk"  src="" style="display:none;position:fixed;inset:0;width:100%;height:100%;border:none;z-index:9999"></iframe>
 <iframe id="frame-kdeal" src="" style="display:none;position:fixed;inset:0;width:100%;height:100%;border:none;z-index:9999"></iframe>
+
+<!-- 배당 종목별 포커스드 편집 패널 -->
+<div id="divStockEditPanel" class="div-focused-edit-overlay" style="display:none">
+  <div class="div-focused-edit-card">
+    <div class="div-focused-edit-hdr">
+      <span id="divStockEditTitle">종목 편집</span>
+      <button onclick="closeDivStockEdit()">✕</button>
+    </div>
+    <div class="div-focused-ps-row">
+      <label style="font-size:13px;white-space:nowrap">주당 배당금</label>
+      <input type="number" id="divStockEditPs" min="0" step="1" oninput="updateDivStockEditPreview()">
+    </div>
+    <div class="div-focused-col3 div-focused-acc-header">
+      <span>계좌</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
+    </div>
+    <div id="divStockEditAccRows"></div>
+    <div class="div-focused-col3 div-focused-total-row">
+      <span>합계</span><span></span><span id="divStockEditTotal"></span>
+    </div>
+    <div class="div-focused-edit-footer">
+      <button class="btn-secondary" onclick="closeDivStockEdit()">취소</button>
+      <button class="btn-primary" onclick="saveDivStockEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 배당 계좌별 포커스드 편집 패널 -->
+<div id="divAccEditPanel" class="div-focused-edit-overlay" style="display:none">
+  <div class="div-focused-edit-card">
+    <div class="div-focused-edit-hdr">
+      <span id="divAccEditTitle">계좌 편집</span>
+      <button onclick="closeDivAccEdit()">✕</button>
+    </div>
+    <div class="div-focused-col4 div-focused-stock-header">
+      <span>종목</span><span style="text-align:right">주당배당금</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
+    </div>
+    <div id="divAccEditStockRows"></div>
+    <div class="div-focused-col4 div-focused-total-row">
+      <span>합계</span><span></span><span></span><span id="divAccEditTotal"></span>
+    </div>
+    <div class="div-focused-edit-footer">
+      <button class="btn-secondary" onclick="closeDivAccEdit()">취소</button>
+      <button class="btn-primary" onclick="saveDivAccEdit()">저장</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 

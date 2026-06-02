@@ -890,6 +890,69 @@
   .kdt-ac-name { font-size:13px; font-weight:500; }
   .kdt-ac-code { font-size:11px; color:var(--muted); }
   @media (max-width:600px) { .kdt-form-row { grid-template-columns:1fr; } }
+  /* 배당기록 포커스드 편집 패널 */
+  .div-focused-edit-overlay {
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.45);
+    z-index:1100;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .div-focused-edit-card {
+    background:var(--card-bg,#fff);
+    border-radius:12px;
+    padding:20px;
+    width:90%; max-width:360px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.25);
+  }
+  .div-focused-edit-hdr {
+    display:flex; justify-content:space-between; align-items:center;
+    font-weight:600; font-size:15px; margin-bottom:14px;
+  }
+  .div-focused-edit-hdr button {
+    background:none; border:none; font-size:18px; cursor:pointer; color:var(--muted,#888); padding:2px 6px;
+  }
+  .div-focused-ps-row {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--border,#eee); margin-bottom:10px;
+  }
+  .div-focused-ps-row input {
+    flex:1; padding:6px 10px;
+    border:1px solid var(--border,#ccc); border-radius:6px;
+    font-size:14px; text-align:right;
+  }
+  .div-focused-col3 { display:grid; grid-template-columns:1fr 1fr 1fr; }
+  .div-focused-col4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; }
+  .div-focused-acc-header, .div-focused-stock-header {
+    font-size:11px; color:var(--muted,#888);
+    padding-bottom:4px; border-bottom:1px solid var(--border,#eee);
+  }
+  .div-focused-acc-row, .div-focused-stock-row {
+    padding:7px 0; font-size:13px;
+    border-bottom:1px solid var(--border-light,#f3f3f3);
+    align-items:center;
+  }
+  .div-focused-acc-row span:not(:first-child),
+  .div-focused-stock-row span:not(:first-child) { text-align:right; }
+  .div-focused-qty-input {
+    width:100%; padding:4px 6px;
+    border:1px solid var(--border,#ccc); border-radius:4px;
+    font-size:13px; text-align:right; box-sizing:border-box;
+  }
+  .div-focused-total-row {
+    padding:8px 0; font-weight:600; font-size:13px;
+  }
+  .div-focused-total-row span:not(:first-child) { text-align:right; }
+  .div-focused-edit-footer {
+    display:flex; justify-content:flex-end; gap:8px; margin-top:16px;
+  }
+  .mini-edit-btn {
+    padding:0 3px; font-size:11px;
+    background:none; border:none; cursor:pointer; opacity:0.5; line-height:1;
+  }
+  .mini-edit-btn:hover { opacity:1; }
+  .div-cell-editable {
+    display:flex; align-items:center; justify-content:flex-end; gap:3px;
+  }
 </style>
 </head>
 <body>
@@ -1304,6 +1367,52 @@
   </div>
 </div>
 
+<!-- 배당 종목별 포커스드 편집 패널 -->
+<div id="kdDivStockEditPanel" class="div-focused-edit-overlay" style="display:none">
+  <div class="div-focused-edit-card">
+    <div class="div-focused-edit-hdr">
+      <span id="kdDivStockEditTitle">종목 편집</span>
+      <button onclick="kdCloseDivStockEdit()">✕</button>
+    </div>
+    <div class="div-focused-ps-row">
+      <label style="font-size:13px;white-space:nowrap">주당 배당금</label>
+      <input type="number" id="kdDivStockEditPs" min="0" step="1" oninput="kdUpdateDivStockEditPreview()">
+    </div>
+    <div class="div-focused-col3 div-focused-acc-header">
+      <span>계좌</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
+    </div>
+    <div id="kdDivStockEditAccRows"></div>
+    <div class="div-focused-col3 div-focused-total-row">
+      <span>합계</span><span></span><span id="kdDivStockEditTotal"></span>
+    </div>
+    <div class="div-focused-edit-footer">
+      <button class="btn-secondary" onclick="kdCloseDivStockEdit()">취소</button>
+      <button class="btn-primary" onclick="kdSaveDivStockEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 배당 계좌별 포커스드 편집 패널 -->
+<div id="kdDivAccEditPanel" class="div-focused-edit-overlay" style="display:none">
+  <div class="div-focused-edit-card">
+    <div class="div-focused-edit-hdr">
+      <span id="kdDivAccEditTitle">계좌 편집</span>
+      <button onclick="kdCloseDivAccEdit()">✕</button>
+    </div>
+    <div class="div-focused-col4 div-focused-stock-header">
+      <span>종목</span><span style="text-align:right">주당배당금</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
+    </div>
+    <div id="kdDivAccEditStockRows"></div>
+    <div class="div-focused-col4 div-focused-total-row">
+      <span>합계</span><span></span><span></span><span id="kdDivAccEditTotal"></span>
+    </div>
+    <div class="div-focused-edit-footer">
+      <button class="btn-secondary" onclick="kdCloseDivAccEdit()">취소</button>
+      <button class="btn-primary" onclick="kdSaveDivAccEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="kdAccountSettingsModal" onclick="if(event.target===this)kdCloseAccountSettings()">
   <div class="modal" style="max-width:440px">
     <div><h2>계좌 관리</h2><div class="modal-subtitle">계좌를 추가·편집·비활성화할 수 있습니다</div></div>
@@ -1314,7 +1423,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.490';
+const APP_VERSION = 'KDeal v0.491';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3103,7 +3212,7 @@ function kdRenderDividendLists() {
       sHeader.innerHTML = ''; sList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
     } else {
       const allTickers = [...new Set(kdDividendRecords.flatMap(r => kdDivRecCodes(r)))];
-      const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 110px`;
+      const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
       const spanCount = Math.max(allTickers.length, 1);
       sHeader.style.gridTemplateColumns = cols;
       sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
@@ -3124,14 +3233,15 @@ function kdRenderDividendLists() {
           </div>`;
         }
         const total = allTickers.reduce((s,t) => s + kdDivRecAmount(rec, t), 0);
-        const cells = allTickers.map(t => { const v = kdDivRecAmount(rec, t); return `<span class="amount">${v ? fmtKRW(v) : '-'}</span>`; }).join('');
+        const cells = allTickers.map(t => {
+          const v = kdDivRecAmount(rec, t);
+          if (!v) return `<span class="amount">-</span>`;
+          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="kdOpenDivStockEdit('${rec.id}','${t}')">✏️</button></span>`;
+        }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
           <span>${dateLabel}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
-          <span>
-            <button class="edit-btn" onclick="kdEditDividendRecord('${rec.id}')">수정</button>
-            <button class="del-btn" onclick="kdDeleteDividendRecord('${rec.id}')">삭제</button>
-          </span>
+          <span><button class="del-btn" onclick="kdDeleteDividendRecord('${rec.id}')">삭제</button></span>
         </div>`;
       }).join('');
     }
@@ -3149,8 +3259,14 @@ function kdRenderDividendLists() {
       const sorted = [...kdDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       aList.innerHTML = sorted.map(rec => {
         const total = KD_ACCOUNTS.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
-        const cells = KD_ACCOUNTS.map(a=>`<span class="amount">${Number(rec.accounts[a.id])||0 ? fmtKRW(Number(rec.accounts[a.id])) : '-'}</span>`).join('');
-        const miscPrefix = kdDivRecIsMisc(rec)
+        const isMisc = kdDivRecIsMisc(rec);
+        const cells = KD_ACCOUNTS.map(a => {
+          const v = Number(rec.accounts[a.id]) || 0;
+          if (!v) return `<span class="amount">-</span>`;
+          if (isMisc) return `<span class="amount">${fmtKRW(v)}</span>`;
+          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="kdOpenDivAccEdit('${rec.id}','${a.id}')">✏️</button></span>`;
+        }).join('');
+        const miscPrefix = isMisc
           ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}" style="color:var(--muted,#888)">📝 </small>`
           : '';
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
@@ -3160,6 +3276,138 @@ function kdRenderDividendLists() {
       }).join('');
     }
   }
+}
+
+// --- 배당 포커스드 편집 패널 ---
+let _kdDivStockEditRecId = null, _kdDivStockEditTicker = null;
+let _kdDivAccEditRecId = null, _kdDivAccEditAccId = null;
+
+function kdOpenDivStockEdit(recId, ticker) {
+  const rec = kdDividendRecords.find(r => r.id === recId);
+  if (!rec) return;
+  _kdDivStockEditRecId = recId;
+  _kdDivStockEditTicker = ticker;
+  const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+  document.getElementById('kdDivStockEditTitle').textContent = `${ticker} · ${dateLabel}`;
+  const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
+  document.getElementById('kdDivStockEditPs').value = perShare;
+  kdUpdateDivStockEditPreview();
+  document.getElementById('kdDivStockEditPanel').style.display = '';
+}
+
+function kdUpdateDivStockEditPreview() {
+  const rec = kdDividendRecords.find(r => r.id === _kdDivStockEditRecId);
+  if (!rec) return;
+  const ticker = _kdDivStockEditTicker;
+  const newPs = parseFloat(document.getElementById('kdDivStockEditPs').value) || 0;
+  let total = 0;
+  const rows = KD_ACCOUNTS.map(acc => {
+    const qty = Number((rec.stocksShares && rec.stocksShares[ticker] && rec.stocksShares[ticker][acc.id]) || 0);
+    const amt = Math.round(qty * newPs);
+    total += amt;
+    return `<div class="div-focused-col3 div-focused-acc-row">
+      <span>${acc.name}</span><span>${qty}</span><span>${fmtKRW(amt)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('kdDivStockEditAccRows').innerHTML = rows;
+  document.getElementById('kdDivStockEditTotal').textContent = fmtKRW(total);
+}
+
+function kdCloseDivStockEdit() {
+  document.getElementById('kdDivStockEditPanel').style.display = 'none';
+  _kdDivStockEditRecId = null; _kdDivStockEditTicker = null;
+}
+
+function kdSaveDivStockEdit() {
+  const rec = kdDividendRecords.find(r => r.id === _kdDivStockEditRecId);
+  if (!rec) return;
+  const ticker = _kdDivStockEditTicker;
+  const newPs = Math.round(parseFloat(document.getElementById('kdDivStockEditPs').value) || 0);
+  if (!rec.stocksPerShare) rec.stocksPerShare = {};
+  rec.stocksPerShare[ticker] = newPs;
+  if (!rec.accounts) rec.accounts = {};
+  KD_ACCOUNTS.forEach(acc => {
+    let total = 0;
+    for (const t of Object.keys(rec.stocksPerShare)) {
+      const ps = Number(rec.stocksPerShare[t]) || 0;
+      const qty = Number((rec.stocksShares && rec.stocksShares[t] && rec.stocksShares[t][acc.id]) || 0);
+      total += ps * qty;
+    }
+    rec.accounts[acc.id] = Math.round(total);
+  });
+  kdSaveDividends();
+  kdRenderDividendLists();
+  kdCloseDivStockEdit();
+}
+
+function kdOpenDivAccEdit(recId, accId) {
+  const rec = kdDividendRecords.find(r => r.id === recId);
+  if (!rec) return;
+  _kdDivAccEditRecId = recId;
+  _kdDivAccEditAccId = accId;
+  const acc = KD_ACCOUNTS.find(a => a.id === accId);
+  const accName = acc ? acc.name : accId;
+  const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
+  document.getElementById('kdDivAccEditTitle').textContent = `${accName} · ${dateLabel}`;
+  const tickers = kdDivRecCodes(rec);
+  const rows = tickers.map(ticker => {
+    const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
+    const qty = Number((rec.stocksShares && rec.stocksShares[ticker] && rec.stocksShares[ticker][accId]) || 0);
+    const amt = Math.round(perShare * qty);
+    return `<div class="div-focused-col4 div-focused-stock-row" data-ticker="${ticker}">
+      <span>${ticker}</span>
+      <span>${fmtKRW(perShare)}</span>
+      <input type="number" class="div-focused-qty-input" value="${qty}" min="0" oninput="kdUpdateDivAccEditPreview()">
+      <span class="kd-acc-amt-cell">${fmtKRW(amt)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('kdDivAccEditStockRows').innerHTML = rows;
+  kdUpdateDivAccEditPreview();
+  document.getElementById('kdDivAccEditPanel').style.display = '';
+}
+
+function kdUpdateDivAccEditPreview() {
+  const rec = kdDividendRecords.find(r => r.id === _kdDivAccEditRecId);
+  if (!rec) return;
+  let total = 0;
+  document.querySelectorAll('#kdDivAccEditStockRows .div-focused-stock-row').forEach(row => {
+    const ticker = row.dataset.ticker;
+    const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
+    const qty = parseFloat(row.querySelector('.div-focused-qty-input').value) || 0;
+    const amt = Math.round(perShare * qty);
+    total += amt;
+    row.querySelector('.kd-acc-amt-cell').textContent = fmtKRW(amt);
+  });
+  document.getElementById('kdDivAccEditTotal').textContent = fmtKRW(total);
+}
+
+function kdCloseDivAccEdit() {
+  document.getElementById('kdDivAccEditPanel').style.display = 'none';
+  _kdDivAccEditRecId = null; _kdDivAccEditAccId = null;
+}
+
+function kdSaveDivAccEdit() {
+  const rec = kdDividendRecords.find(r => r.id === _kdDivAccEditRecId);
+  if (!rec) return;
+  const accId = _kdDivAccEditAccId;
+  if (!rec.stocksShares) rec.stocksShares = {};
+  document.querySelectorAll('#kdDivAccEditStockRows .div-focused-stock-row').forEach(row => {
+    const ticker = row.dataset.ticker;
+    const newQty = parseFloat(row.querySelector('.div-focused-qty-input').value) || 0;
+    if (!rec.stocksShares[ticker]) rec.stocksShares[ticker] = {};
+    rec.stocksShares[ticker][accId] = newQty;
+  });
+  if (!rec.accounts) rec.accounts = {};
+  let total = 0;
+  for (const ticker of kdDivRecCodes(rec)) {
+    const ps = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
+    const qty = Number((rec.stocksShares[ticker] && rec.stocksShares[ticker][accId]) || 0);
+    total += ps * qty;
+  }
+  rec.accounts[accId] = Math.round(total);
+  kdSaveDividends();
+  kdRenderDividendLists();
+  kdCloseDivAccEdit();
 }
 
 // --- Export / Import ---
