@@ -3364,7 +3364,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.496';
+const APP_VERSION = 'MyPM v0.497';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6741,7 +6741,12 @@ function openTradeModal(code) {
   document.getElementById('tradeAccForm').style.display = 'none';
   document.getElementById('tradeAccList').style.display = '';
   document.getElementById('tradeModal').classList.add('open');
-  renderTradeAccList(code);
+  const accs = getActiveAccounts();
+  if (accs.length === 1) {
+    openAccTradeForm(accs[0].id, code);
+  } else {
+    renderTradeAccList(code);
+  }
 }
 
 function renderTradeAccList(code) {
