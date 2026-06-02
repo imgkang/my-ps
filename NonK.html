@@ -1421,7 +1421,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.493';
+const APP_VERSION = 'NonK v0.494';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -3342,7 +3342,8 @@ function nkExportToFile() {
       deposits:  nkDepositData,
       monthly:   nkMonthlyRecords,
       dividends: nkDividendRecords,
-      watchlist: nkWatchlist
+      watchlist: nkWatchlist,
+      trades:    nktTrades
     }
   };
   const now = new Date();
@@ -3369,6 +3370,7 @@ function nkImportFromFile(event) {
       if (src.monthly)   { nkMonthlyRecords   = src.monthly;   nkSaveMonthly(); }
       if (src.dividends) { nkDividendRecords  = src.dividends; nkSaveDividends(); }
       if (src.watchlist) { nkWatchlist        = src.watchlist; nkSaveWatchlist(); }
+      if (src.trades)    { nktTrades          = src.trades;    nktSaveTrades(); }
       if (data.mypm) {
         const mp = data.mypm;
         if (mp.holdings)        localStorage.setItem('pension_portfolio_v1',       JSON.stringify(mp.holdings));
@@ -3860,7 +3862,12 @@ function nktRenderTradeHistory() {
   }
 
   if (!trades.length) {
-    container.innerHTML = '<div class="nkt-empty">해당 거래 내역이 없습니다.</div>';
+    const emptyMsg = nktCurrentTab === 'closed'
+      ? '완료된 포지션이 없습니다.<br><small style="opacity:0.7">매수 후 매도까지 완료된 거래만 표시됩니다.</small>'
+      : nktCurrentTab === 'open'
+      ? '보유 중인 종목의 매수 내역이 없습니다.'
+      : '거래 내역이 없습니다.';
+    container.innerHTML = `<div class="nkt-empty">${emptyMsg}</div>`;
     return;
   }
 
