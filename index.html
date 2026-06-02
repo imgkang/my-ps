@@ -775,14 +775,12 @@ registerMobileTooltipDismiss();
   .trade-cashin-badge  { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#dcfce7;color:#15803d; }
   .trade-cashout-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;background:#fef9c3;color:#854d0e; }
 
-  /* 매수/매도 인라인 버튼 */
+  /* 거래 인라인 버튼 */
   .tbl-trade-btn {
     padding: 2px 7px; font-size: 13px; font-weight: 600; border-radius: 4px;
-    border: 1px solid transparent; cursor: pointer; white-space: nowrap;
-    transition: opacity 0.1s;
+    border: 1px solid #a5b4fc; cursor: pointer; white-space: nowrap;
+    transition: opacity 0.1s; background:#e0e7ff; color:#3730a3;
   }
-  .tbl-trade-btn.buy  { background:#fee2e2;color:#b91c1c;border-color:#fca5a5; }
-  .tbl-trade-btn.sell { background:#dbeafe;color:#1d4ed8;border-color:#93c5fd; }
   .tbl-trade-btn:hover { opacity: 0.75; }
   /* 매수/매도 토글 버튼 */
   .trade-type-toggle { display:flex; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
@@ -3366,7 +3364,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.495';
+const APP_VERSION = 'MyPM v0.496';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6500,8 +6498,7 @@ function render() {
         <td>${curWeight.toFixed(1)}%</td>
         <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
         <td style="white-space:nowrap">
-          <button class="tbl-trade-btn buy" onclick="openTradeModal('${it.code}','buy')" title="매수">매수</button>
-          <button class="tbl-trade-btn sell" onclick="openTradeModal('${it.code}','sell')" title="매도">매도</button>
+          <button class="tbl-trade-btn" onclick="openTradeModal('${it.code}')" title="거래">거래</button>
         </td>
         <td>
           <button class="tbl-icon-btn" onclick="openAccountModal('${it.code}')" title="계좌별 수량 입력">✏️</button>
@@ -6733,7 +6730,7 @@ function renderTradeList() {
 let _tradeModalCode = null;
 let _tafAccId = null;
 
-function openTradeModal(code, type) {
+function openTradeModal(code) {
   editingTradeId = null;
   _tradeModalCode = code;
   const h = holdings.find(x => x.code === code);
