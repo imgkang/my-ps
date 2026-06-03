@@ -304,6 +304,26 @@
       font-family: inherit;
     }
     .btn-save:active { background: var(--primary-dark); }
+
+    /* Force update button */
+    .btn-force-update {
+      position: fixed;
+      bottom: 14px;
+      right: 14px;
+      z-index: 300;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .btn-force-update:active { background: #f3f4f6; }
   </style>
 </head>
 <body>
@@ -387,6 +407,8 @@
   </div>
   <div id="tabContent"></div>
 </div>
+
+<button class="btn-force-update" onclick="forceUpdate()">🔄 캐시 삭제</button>
 
 <div class="modal-backdrop" id="rateModal" onclick="bgClose(event)">
   <div class="modal" onclick="event.stopPropagation()">
@@ -641,6 +663,19 @@ function saveRates() {
 }
 
 init();
+
+async function forceUpdate() {
+  if (!confirm('캐시를 모두 삭제하고 최신 버전을 새로 받아옵니다.\n계속하시겠습니까?')) return;
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+  }
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+  }
+  location.reload(true);
+}
 
 // Prevent all touch zoom (pinch-to-zoom and double-tap zoom)
 document.addEventListener('touchmove', function(e) {
