@@ -129,6 +129,28 @@
       -webkit-appearance: none;
     }
     .f-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(3,199,90,0.15); }
+
+    /* Currency toggle buttons */
+    .cur-btns { display: flex; gap: 6px; }
+    .cur-btn {
+      flex: 1;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      background: white;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: center;
+    }
+    .cur-btn.active {
+      border-color: var(--primary);
+      background: #f0fdf6;
+      color: var(--primary);
+    }
+
     .btn-add {
       width: 100%;
       background: var(--primary);
@@ -305,6 +327,10 @@
     }
     .btn-save:active { background: var(--primary-dark); }
 
+    /* Expense items - tappable for edit */
+    .expense-item { cursor: pointer; }
+    .expense-item:active { background: #f9fafb; }
+
     /* Force update button */
     .btn-force-update {
       position: fixed;
@@ -333,7 +359,7 @@
     <div>
       <h1>🌴 인도네시아 여행경비</h1>
       <div class="header-date" id="headerDate"></div>
-      <div class="header-ver">v1.0</div>
+      <div class="header-ver" id="appVer"></div>
     </div>
     <button class="btn-rate" onclick="openRateModal()">💱 환율 설정</button>
   </div>
@@ -382,11 +408,11 @@
       </div>
       <div>
         <label class="f-label">화폐</label>
-        <select class="f-input" id="fCurrency">
-          <option value="IDR">IDR</option>
-          <option value="KRW">KRW</option>
-          <option value="USD">USD</option>
-        </select>
+        <div class="cur-btns">
+          <button class="cur-btn active" id="cur-IDR" onclick="selectCur('IDR')">IDR</button>
+          <button class="cur-btn" id="cur-KRW" onclick="selectCur('KRW')">KRW</button>
+          <button class="cur-btn" id="cur-USD" onclick="selectCur('USD')">USD</button>
+        </div>
       </div>
     </div>
     <div class="form-row" style="margin-bottom:10px">
@@ -410,6 +436,48 @@
 
 <button class="btn-force-update" onclick="forceUpdate()">🔄 캐시 삭제</button>
 
+<div class="modal-backdrop" id="editModal" onclick="bgCloseEdit(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>✏️ 지출 수정</h3>
+    <div class="m-field">
+      <label class="m-label">날짜</label>
+      <input class="m-input" type="date" id="eDate">
+    </div>
+    <div class="m-field">
+      <label class="m-label">카테고리</label>
+      <select class="m-input" id="eCategory">
+        <option value="교통">🚌 교통</option>
+        <option value="항공">✈️ 항공</option>
+        <option value="숙박">🏨 숙박</option>
+        <option value="관람">🎭 관람</option>
+        <option value="식비">🍜 식비</option>
+        <option value="선물">🎁 선물</option>
+        <option value="기타">📦 기타</option>
+      </select>
+    </div>
+    <div class="m-field">
+      <label class="m-label">금액</label>
+      <input class="m-input" type="number" id="eAmount" inputmode="decimal" min="0">
+    </div>
+    <div class="m-field">
+      <label class="m-label">화폐</label>
+      <div class="cur-btns">
+        <button class="cur-btn active" id="ecur-IDR" onclick="selectEditCur('IDR')">IDR</button>
+        <button class="cur-btn" id="ecur-KRW" onclick="selectEditCur('KRW')">KRW</button>
+        <button class="cur-btn" id="ecur-USD" onclick="selectEditCur('USD')">USD</button>
+      </div>
+    </div>
+    <div class="m-field">
+      <label class="m-label">메모</label>
+      <input class="m-input" type="text" id="eMemo" placeholder="메모">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeEditModal()">취소</button>
+      <button class="btn-save" onclick="saveEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="rateModal" onclick="bgClose(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <h3>💱 환율 설정</h3>
@@ -431,6 +499,7 @@
 </div>
 
 <script>
+const VERSION     = 'v1.1';
 const STORAGE_KEY = 'indonesia-trip-2026-expenses';
 const RATES_KEY   = 'indonesia-trip-2026-rates';
 
@@ -445,6 +514,9 @@ const DAY  = ['일','월','화','수','목','금','토'];
 let expenses = [];
 let rates = { IDR: 0.085, USD: 1350 };
 let currentTab = 'all';
+let selectedCur = 'IDR';
+let editingId = null;
+let editCur = 'IDR';
 
 function load() {
   try { expenses = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { expenses = []; }
@@ -478,6 +550,7 @@ function pad(n) { return String(n).padStart(2,'0'); }
 function init() {
   load();
   document.getElementById('fDate').value = todayStr();
+  document.getElementById('appVer').textContent = VERSION;
   const d = new Date();
   document.getElementById('headerDate').textContent =
     `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} (${DAY[d.getDay()]})`;
@@ -521,7 +594,7 @@ function renderAll() {
   if (!expenses.length) return empty();
   const sorted = [...expenses].sort((a,b) => b.createdAt - a.createdAt);
   return '<div class="expense-list">' +
-    sorted.map(e => `<div class="expense-item">
+    sorted.map(e => `<div class="expense-item" onclick="openEditModal('${e.id}')">
       <span class="exp-dot" style="background:${CAT_COLOR[e.category]}"></span>
       <div class="exp-info">
         <div class="exp-meta">${e.category} · ${fmtDate(e.date)}</div>
@@ -531,7 +604,7 @@ function renderAll() {
         <div class="exp-amt" style="color:${CAT_COLOR[e.category]}">${fmtAmt(e.amount, e.currency)}</div>
         ${e.currency !== 'KRW' ? `<div class="exp-krw">${fmtKrw(toKrw(e.amount, e.currency))}</div>` : ''}
       </div>
-      <button class="btn-del" onclick="delExp('${e.id}')">×</button>
+      <button class="btn-del" onclick="event.stopPropagation();delExp('${e.id}')">×</button>
     </div>`).join('') + '</div>';
 }
 
@@ -603,11 +676,24 @@ function gItem(e, forceCat) {
 function fmtDate(s) { const [,m,d] = s.split('-'); return m+'/'+d; }
 function empty() { return `<div class="empty-state"><div class="emo">✈️</div><p>아직 등록된 지출이 없어요.</p></div>`; }
 
+// ===== Currency buttons =====
+function selectCur(c) {
+  selectedCur = c;
+  ['IDR','KRW','USD'].forEach(x =>
+    document.getElementById('cur-' + x).classList.toggle('active', x === c)
+  );
+}
+function selectEditCur(c) {
+  editCur = c;
+  ['IDR','KRW','USD'].forEach(x =>
+    document.getElementById('ecur-' + x).classList.toggle('active', x === c)
+  );
+}
+
 function addExpense() {
   const date = document.getElementById('fDate').value;
   const category = document.getElementById('fCategory').value;
   const amount = parseFloat(document.getElementById('fAmount').value);
-  const currency = document.getElementById('fCurrency').value;
   const memo = document.getElementById('fMemo').value.trim();
 
   if (!date || !category || isNaN(amount) || amount <= 0) {
@@ -616,12 +702,44 @@ function addExpense() {
   }
   expenses.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    date, category, amount, currency, memo,
+    date, category, amount, currency: selectedCur, memo,
     createdAt: Date.now()
   });
   saveExp();
   document.getElementById('fAmount').value = '';
   document.getElementById('fMemo').value = '';
+  render();
+}
+
+// ===== Edit modal =====
+function openEditModal(id) {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  document.getElementById('eDate').value = e.date;
+  document.getElementById('eCategory').value = e.category;
+  document.getElementById('eAmount').value = e.amount;
+  document.getElementById('eMemo').value = e.memo || '';
+  selectEditCur(e.currency);
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('editModal').classList.remove('open'); editingId = null; }
+function bgCloseEdit(ev) { if (ev.target === document.getElementById('editModal')) closeEditModal(); }
+
+function saveEdit() {
+  if (!editingId) return;
+  const date = document.getElementById('eDate').value;
+  const category = document.getElementById('eCategory').value;
+  const amount = parseFloat(document.getElementById('eAmount').value);
+  const memo = document.getElementById('eMemo').value.trim();
+  if (!date || isNaN(amount) || amount <= 0) { alert('날짜와 금액을 확인해주세요.'); return; }
+
+  const idx = expenses.findIndex(x => x.id === editingId);
+  if (idx < 0) return;
+  const prev = expenses[idx];
+  expenses[idx] = { ...prev, date, category, amount, currency: editCur, memo };
+  saveExp();
+  closeEditModal();
   render();
 }
 
