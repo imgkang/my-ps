@@ -1168,9 +1168,9 @@
       <input type="hidden" id="nqtType" value="buy">
       <div class="txn-form" style="margin-bottom:10px">
         <label><span>날짜</span><input type="date" id="nqtDate"></label>
-        <label><span>수량</span><input type="number" id="nqtQty" min="0.0001" step="0.001" placeholder="수량" oninput="nqtUpdatePreview()"></label>
-        <label><span>단가 (USD)</span><input type="number" id="nqtPrice" min="0.0001" step="0.01" placeholder="단가" oninput="nqtUpdatePreview()"></label>
-        <label><span>수수료 (USD)</span><input type="number" id="nqtFee" min="0" step="0.01" placeholder="0" oninput="nqtUpdatePreview()"></label>
+        <label><span>수량</span><input type="text" inputmode="decimal" id="nqtQty" placeholder="수량" onfocus="this.value=this.value.replace(/,/g,'')" onblur="nkFmtAccInput(this,4)" oninput="nqtUpdatePreview()"></label>
+        <label><span>단가 (USD)</span><input type="text" inputmode="decimal" id="nqtPrice" placeholder="단가" onfocus="this.value=this.value.replace(/,/g,'')" onblur="nkFmtAccInput(this,4)" oninput="nqtUpdatePreview()"></label>
+        <label><span>수수료 (USD)</span><input type="text" inputmode="decimal" id="nqtFee" placeholder="0" onfocus="this.value=this.value.replace(/,/g,'')" onblur="nkFmtAccInput(this,2)" oninput="nqtUpdatePreview()"></label>
       </div>
       <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -1492,7 +1492,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.506';
+const APP_VERSION = 'NonK v0.507';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -4159,7 +4159,7 @@ function nqtOpenForm(accId) {
   const pad = x => String(x).padStart(2, '0');
   document.getElementById('nqtDate').value  = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   document.getElementById('nqtQty').value   = '';
-  document.getElementById('nqtPrice').value = price > 0 ? price : '';
+  document.getElementById('nqtPrice').value = price > 0 ? parseFloat(price.toFixed(4)).toLocaleString('en-US', { maximumFractionDigits: 4 }) : '';
   document.getElementById('nqtFee').value   = '';
 
   document.getElementById('nqtBuyBtn').className  = 'trade-type-btn buy active';
@@ -4184,9 +4184,9 @@ function nqtSetType(type) {
 
 function nqtUpdatePreview() {
   const type  = document.getElementById('nqtType').value;
-  const qty   = parseFloat(document.getElementById('nqtQty').value) || 0;
-  const price = parseFloat(document.getElementById('nqtPrice').value) || 0;
-  const fee   = parseFloat(document.getElementById('nqtFee').value) || 0;
+  const qty   = parseFloat(document.getElementById('nqtQty').value.replace(/,/g,'')) || 0;
+  const price = parseFloat(document.getElementById('nqtPrice').value.replace(/,/g,'')) || 0;
+  const fee   = parseFloat(document.getElementById('nqtFee').value.replace(/,/g,'')) || 0;
   const total = qty * price;
   const cash  = Number(nkCashAccounts[_nqtAccId]) || 0;
   const cashAfter = type === 'buy' ? cash - total - fee : cash + total - fee;
@@ -4206,9 +4206,9 @@ function nqtUpdatePreview() {
 function nqtSave() {
   const type  = document.getElementById('nqtType').value;
   const date  = document.getElementById('nqtDate').value;
-  const qty   = parseFloat(document.getElementById('nqtQty').value) || 0;
-  const price = parseFloat(document.getElementById('nqtPrice').value) || 0;
-  const fee   = parseFloat(document.getElementById('nqtFee').value) || 0;
+  const qty   = parseFloat(document.getElementById('nqtQty').value.replace(/,/g,'')) || 0;
+  const price = parseFloat(document.getElementById('nqtPrice').value.replace(/,/g,'')) || 0;
+  const fee   = parseFloat(document.getElementById('nqtFee').value.replace(/,/g,'')) || 0;
 
   if (!date)      { alert('날짜를 선택해 주세요.'); return; }
   if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }

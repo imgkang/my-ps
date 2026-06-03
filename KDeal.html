@@ -1166,9 +1166,9 @@
       <input type="hidden" id="kqtType" value="buy">
       <div class="txn-form" style="margin-bottom:10px">
         <label><span>날짜</span><input type="date" id="kqtDate"></label>
-        <label><span>수량</span><input type="number" id="kqtQty" min="1" step="1" placeholder="수량" oninput="kqtUpdatePreview()"></label>
-        <label><span>단가 (원)</span><input type="number" id="kqtPrice" min="1" step="1" placeholder="단가" oninput="kqtUpdatePreview()"></label>
-        <label><span>수수료 (원)</span><input type="number" id="kqtFee" min="0" step="1" placeholder="0" oninput="kqtUpdatePreview()"></label>
+        <label><span>수량</span><input type="text" inputmode="numeric" id="kqtQty" placeholder="수량" onfocus="this.value=this.value.replace(/,/g,'')" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
+        <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="kqtPrice" placeholder="단가" onfocus="this.value=this.value.replace(/,/g,'')" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
+        <label><span>수수료 (원)</span><input type="text" inputmode="numeric" id="kqtFee" placeholder="0" onfocus="this.value=this.value.replace(/,/g,'')" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
       </div>
       <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -1497,7 +1497,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.506';
+const APP_VERSION = 'KDeal v0.507';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4252,7 +4252,7 @@ function kqtOpenForm(accId) {
   const pad = x => String(x).padStart(2, '0');
   document.getElementById('kqtDate').value  = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   document.getElementById('kqtQty').value   = '';
-  document.getElementById('kqtPrice').value = price > 0 ? Math.round(price) : '';
+  document.getElementById('kqtPrice').value = price > 0 ? Math.round(price).toLocaleString('ko-KR') : '';
   document.getElementById('kqtFee').value   = '';
 
   document.getElementById('kqtBuyBtn').className  = 'trade-type-btn buy active';
@@ -4277,9 +4277,9 @@ function kqtSetType(type) {
 
 function kqtUpdatePreview() {
   const type  = document.getElementById('kqtType').value;
-  const qty   = parseFloat(document.getElementById('kqtQty').value) || 0;
-  const price = parseFloat(document.getElementById('kqtPrice').value) || 0;
-  const fee   = parseFloat(document.getElementById('kqtFee').value) || 0;
+  const qty   = parseFloat(document.getElementById('kqtQty').value.replace(/,/g,'')) || 0;
+  const price = parseFloat(document.getElementById('kqtPrice').value.replace(/,/g,'')) || 0;
+  const fee   = parseFloat(document.getElementById('kqtFee').value.replace(/,/g,'')) || 0;
   const total = qty * price;
   const cash  = Number(kdCashAccounts[_kqtAccId]) || 0;
   const cashAfter = type === 'buy' ? cash - total - fee : cash + total - fee;
@@ -4299,9 +4299,9 @@ function kqtUpdatePreview() {
 function kqtSave() {
   const type  = document.getElementById('kqtType').value;
   const date  = document.getElementById('kqtDate').value;
-  const qty   = parseFloat(document.getElementById('kqtQty').value) || 0;
-  const price = parseFloat(document.getElementById('kqtPrice').value) || 0;
-  const fee   = parseFloat(document.getElementById('kqtFee').value) || 0;
+  const qty   = parseFloat(document.getElementById('kqtQty').value.replace(/,/g,'')) || 0;
+  const price = parseFloat(document.getElementById('kqtPrice').value.replace(/,/g,'')) || 0;
+  const fee   = parseFloat(document.getElementById('kqtFee').value.replace(/,/g,'')) || 0;
 
   if (!date)      { alert('날짜를 선택해 주세요.'); return; }
   if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }
