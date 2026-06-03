@@ -19,6 +19,9 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Prevent iOS auto-zoom on input focus (triggered when font-size < 16px) */
+    input, select, textarea { font-size: 16px !important; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
       background: var(--bg);
@@ -638,6 +641,18 @@ function saveRates() {
 }
 
 init();
+
+// Prevent all touch zoom (pinch-to-zoom and double-tap zoom)
+document.addEventListener('touchmove', function(e) {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+let _lastTap = 0;
+document.addEventListener('touchend', function(e) {
+  const now = Date.now();
+  if (now - _lastTap < 300) e.preventDefault();
+  _lastTap = now;
+}, { passive: false });
 </script>
 </body>
 </html>
