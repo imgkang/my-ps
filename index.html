@@ -349,6 +349,18 @@ registerMobileTooltipDismiss();
   }
   .modal-total strong { color: var(--primary); font-size: 18px; font-weight: 700; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  /* 계좌별 수량 편집 — 2줄 카드 */
+  .account-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .acc-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .acc-card-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .acc-card-total { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .acc-card-total.zero { color: #9ca3af; }
+  .acc-card-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .acc-card-inputs label { display: flex; flex-direction: column; gap: 3px; }
+  .acc-card-inputs label span { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.2px; }
+  .acc-card-inputs input { padding: 7px 10px; text-align: right; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 6px; width: 100%; box-sizing: border-box; background: #fff; }
+  .acc-card-inputs input:focus { outline: none; border-color: var(--primary); }
   .modal-hint {
     background: #fef3c7; border: 1px solid #fde68a;
     color: #92400e; padding: 10px 14px; border-radius: 8px;
@@ -2170,13 +2182,7 @@ registerMobileTooltipDismiss();
       <button class="close-btn" onclick="closeAccountModal()" aria-label="닫기">×</button>
     </div>
     <div id="modalHint"></div>
-    <div class="account-head">
-      <div>계좌</div>
-      <div>주식수</div>
-      <div>매입단가 (원)</div>
-      <div>매입총액 (원)</div>
-    </div>
-    <div class="account-grid" id="accountInputs"></div>
+    <div id="accountInputs"></div>
     <div class="modal-total">
       <span>합계</span>
       <span>
@@ -3361,7 +3367,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.500';
+const APP_VERSION = 'MyPM v0.501';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4255,12 +4261,25 @@ function openAccountModal(code) {
     const val = accounts[acc.id] || { qty: 0, avgPrice: 0 };
     const qty = val.qty || 0;
     const avg = val.avgPrice || 0;
+    const rowTotal = qty && avg ? Math.round(qty * avg).toLocaleString('ko-KR') + ' 원' : '0 원';
     html += `
-      <div class="account-row">
-        <label for="qty_${acc.id}">${acc.name}</label>
-        <input type="number" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty" value="${qty ? qty : ''}" placeholder="0" min="0" step="1" inputmode="numeric" oninput="updateModalTotal()">
-        <input type="number" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg" value="${avg ? avg : ''}" placeholder="0" min="0" step="1" inputmode="numeric" oninput="updateModalTotal()">
-        <div class="total-display zero" id="total_${acc.id}">0 원</div>
+      <div class="account-card">
+        <div class="acc-card-header">
+          <span class="acc-card-name">${escapeHtml(acc.name)}</span>
+          <span class="acc-card-total${qty && avg ? '' : ' zero'}" id="total_${acc.id}">${rowTotal}</span>
+        </div>
+        <div class="acc-card-inputs">
+          <label>
+            <span>수량</span>
+            <input type="number" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty"
+              value="${qty || ''}" placeholder="0" min="0" step="1" inputmode="numeric" oninput="updateModalTotal()">
+          </label>
+          <label>
+            <span>단가 (원)</span>
+            <input type="number" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg"
+              value="${avg || ''}" placeholder="0" min="0" step="1" inputmode="numeric" oninput="updateModalTotal()">
+          </label>
+        </div>
       </div>
     `;
   }
