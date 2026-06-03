@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌴 인도네시아 여행경비</title>
+  <style>
+    :root {
+      --primary: #03c75a;
+      --primary-dark: #02a04a;
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 48px;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #03c75a, #02a04a);
+      color: white;
+      padding: 18px 16px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header-date { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .btn-rate {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      color: white;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-rate:active { background: rgba(255,255,255,0.3); }
+
+    /* Summary */
+    .summary-section { padding: 12px 14px 0; }
+    .summary-total {
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .summary-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .summary-amount { font-size: 22px; font-weight: 700; }
+    .summary-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .summary-count { text-align: right; }
+    .summary-count .num { font-size: 22px; font-weight: 700; }
+    .summary-count .lbl { font-size: 11px; color: var(--muted); }
+
+    /* Category chips */
+    .cat-chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .cat-chips::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      background: white;
+      border-radius: 10px;
+      padding: 8px 11px;
+      min-width: 68px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      flex-shrink: 0;
+    }
+    .cat-chip-name { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .cat-chip-amt { font-size: 12px; font-weight: 600; }
+
+    /* Form */
+    .form-section { padding: 12px 14px 0; }
+    .form-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    .form-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 11px; }
+    .form-row { display: grid; gap: 8px; margin-bottom: 8px; }
+    .form-row-2 { grid-template-columns: 1fr 1fr; }
+    .form-row-3 { grid-template-columns: 2fr 1fr; }
+    .f-label { display: block; font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
+    .f-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: white;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .f-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(3,199,90,0.15); }
+    .btn-add {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 11px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 2px;
+    }
+    .btn-add:active { background: var(--primary-dark); }
+
+    /* Tabs */
+    .tabs-section { padding: 12px 14px 0; }
+    .tabs {
+      display: flex;
+      background: white;
+      border-radius: 10px;
+      padding: 3px;
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      padding: 8px 4px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .tab-btn.active { background: var(--primary); color: white; font-weight: 600; }
+
+    /* Expense items */
+    .expense-list { display: flex; flex-direction: column; gap: 6px; }
+    .expense-item {
+      background: white;
+      border-radius: 10px;
+      padding: 11px 12px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .exp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .exp-info { flex: 1; min-width: 0; }
+    .exp-meta { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+    .exp-memo { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .exp-right { text-align: right; flex-shrink: 0; }
+    .exp-amt { font-size: 14px; font-weight: 700; }
+    .exp-krw { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .btn-del {
+      background: none;
+      border: none;
+      color: #d1d5db;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 2px 3px;
+      flex-shrink: 0;
+    }
+    .btn-del:active { color: #ef4444; }
+
+    /* Group sections */
+    .group-section {
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .group-header:active { background: #f9fafb; }
+    .group-left { display: flex; align-items: center; gap: 7px; }
+    .group-title { font-size: 14px; font-weight: 600; }
+    .group-cnt { font-size: 11px; color: var(--muted); }
+    .group-right { display: flex; align-items: center; gap: 8px; }
+    .group-amt { font-size: 14px; font-weight: 700; }
+    .arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; display: inline-block; }
+    .arrow.open { transform: rotate(180deg); }
+    .group-items { border-top: 1px solid var(--border); display: none; }
+    .group-items.open { display: block; }
+    .g-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 14px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .g-item:last-child { border-bottom: none; }
+    .g-info { flex: 1; min-width: 0; }
+    .g-memo { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .g-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .g-right { text-align: right; flex-shrink: 0; }
+    .g-amt { font-size: 13px; font-weight: 600; }
+    .g-krw { font-size: 11px; color: var(--muted); }
+
+    /* Empty */
+    .empty-state { text-align: center; padding: 44px 20px; color: var(--muted); }
+    .empty-state .emo { font-size: 36px; margin-bottom: 10px; }
+    .empty-state p { font-size: 14px; }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 18px 18px 0 0;
+      padding: 22px 18px 36px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+    .m-field { margin-bottom: 14px; }
+    .m-label { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 5px; }
+    .m-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      color: var(--text);
+    }
+    .m-input:focus { border-color: var(--primary); }
+    .m-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 8px; }
+    .btn-cancel {
+      flex: 1;
+      background: var(--bg);
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--muted);
+    }
+    .btn-save {
+      flex: 2;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-save:active { background: var(--primary-dark); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>🌴 인도네시아 여행경비</h1>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+    <button class="btn-rate" onclick="openRateModal()">💱 환율 설정</button>
+  </div>
+</div>
+
+<div class="summary-section">
+  <div class="summary-total">
+    <div>
+      <div class="summary-label">총 지출 (KRW 환산)</div>
+      <div class="summary-amount" id="totalKrw">₩0</div>
+      <div class="summary-sub" id="totalOrig"></div>
+    </div>
+    <div class="summary-count">
+      <div class="num" id="totalCount">0</div>
+      <div class="lbl">건</div>
+    </div>
+  </div>
+  <div class="cat-chips" id="catChips"></div>
+</div>
+
+<div class="form-section">
+  <div class="form-card">
+    <h3>+ 지출 추가</h3>
+    <div class="form-row form-row-2">
+      <div>
+        <label class="f-label">날짜</label>
+        <input class="f-input" type="date" id="fDate">
+      </div>
+      <div>
+        <label class="f-label">카테고리</label>
+        <select class="f-input" id="fCategory">
+          <option value="교통">🚌 교통</option>
+          <option value="항공">✈️ 항공</option>
+          <option value="숙박">🏨 숙박</option>
+          <option value="관람">🎭 관람</option>
+          <option value="식비" selected>🍜 식비</option>
+          <option value="선물">🎁 선물</option>
+          <option value="기타">📦 기타</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row form-row-3">
+      <div>
+        <label class="f-label">금액</label>
+        <input class="f-input" type="number" id="fAmount" placeholder="0" inputmode="decimal" min="0">
+      </div>
+      <div>
+        <label class="f-label">화폐</label>
+        <select class="f-input" id="fCurrency">
+          <option value="IDR">IDR</option>
+          <option value="KRW">KRW</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div>
+        <label class="f-label">메모 (선택)</label>
+        <input class="f-input" type="text" id="fMemo" placeholder="예: 나시고렝, 블루버드 택시">
+      </div>
+    </div>
+    <button class="btn-add" onclick="addExpense()">추가</button>
+  </div>
+</div>
+
+<div class="tabs-section">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('all', this)">전체 목록</button>
+    <button class="tab-btn" onclick="switchTab('category', this)">카테고리별</button>
+    <button class="tab-btn" onclick="switchTab('date', this)">날짜별</button>
+  </div>
+  <div id="tabContent"></div>
+</div>
+
+<div class="modal-backdrop" id="rateModal" onclick="bgClose(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>💱 환율 설정</h3>
+    <div class="m-field">
+      <label class="m-label">IDR → KRW (루피아 1원을 원화로)</label>
+      <input class="m-input" type="number" id="rIdr" placeholder="0.085" inputmode="decimal" step="0.001">
+      <div class="m-hint">예: 1 IDR = 0.085 KRW이면 0.085 입력</div>
+    </div>
+    <div class="m-field">
+      <label class="m-label">USD → KRW (달러 1달러를 원화로)</label>
+      <input class="m-input" type="number" id="rUsd" placeholder="1350" inputmode="decimal">
+      <div class="m-hint">예: 1 USD = 1,350 KRW이면 1350 입력</div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeRateModal()">취소</button>
+      <button class="btn-save" onclick="saveRates()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'indonesia-trip-2026-expenses';
+const RATES_KEY   = 'indonesia-trip-2026-rates';
+
+const CAT_COLOR = {
+  '교통': '#3b82f6', '항공': '#6366f1', '숙박': '#8b5cf6',
+  '관람': '#ec4899', '식비': '#f59e0b', '선물': '#10b981', '기타': '#9ca3af'
+};
+const CATS = ['교통','항공','숙박','관람','식비','선물','기타'];
+const SYM  = { IDR: 'Rp', KRW: '₩', USD: '$' };
+const DAY  = ['일','월','화','수','목','금','토'];
+
+let expenses = [];
+let rates = { IDR: 0.085, USD: 1350 };
+let currentTab = 'all';
+
+function load() {
+  try { expenses = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { expenses = []; }
+  try { const r = JSON.parse(localStorage.getItem(RATES_KEY) || '{}'); if (r.IDR) rates.IDR = r.IDR; if (r.USD) rates.USD = r.USD; } catch {}
+}
+function saveExp() { localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses)); }
+function saveRatesData() { localStorage.setItem(RATES_KEY, JSON.stringify(rates)); }
+
+function toKrw(amount, currency) {
+  if (currency === 'KRW') return amount;
+  if (currency === 'IDR') return amount * rates.IDR;
+  if (currency === 'USD') return amount * rates.USD;
+  return amount;
+}
+
+function fmtAmt(amount, currency) {
+  const s = SYM[currency] || '';
+  if (currency === 'IDR') return s + Number(amount).toLocaleString('ko');
+  if (currency === 'USD') return s + Number(amount).toLocaleString('en', {minimumFractionDigits:0, maximumFractionDigits:2});
+  return s + Number(amount).toLocaleString('ko');
+}
+
+function fmtKrw(v) { return '₩' + Math.round(v).toLocaleString('ko'); }
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function init() {
+  load();
+  document.getElementById('fDate').value = todayStr();
+  const d = new Date();
+  document.getElementById('headerDate').textContent =
+    `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} (${DAY[d.getDay()]})`;
+  render();
+}
+
+function render() {
+  renderSummary();
+  renderTab();
+}
+
+function renderSummary() {
+  const totalKrw = expenses.reduce((s, e) => s + toKrw(e.amount, e.currency), 0);
+  document.getElementById('totalKrw').textContent = fmtKrw(totalKrw);
+  document.getElementById('totalCount').textContent = expenses.length;
+
+  const byCur = {};
+  expenses.forEach(e => { byCur[e.currency] = (byCur[e.currency] || 0) + e.amount; });
+  const parts = Object.entries(byCur).map(([c, a]) => fmtAmt(a, c));
+  document.getElementById('totalOrig').textContent = parts.join(' + ');
+
+  const byCat = {};
+  expenses.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + toKrw(e.amount, e.currency); });
+  document.getElementById('catChips').innerHTML = CATS.map(cat => {
+    const amt = byCat[cat] || 0;
+    return `<div class="cat-chip">
+      <div class="cat-chip-name"><span class="dot" style="background:${CAT_COLOR[cat]}"></span>${cat}</div>
+      <div class="cat-chip-amt" style="color:${CAT_COLOR[cat]}">${amt > 0 ? fmtKrw(amt) : '-'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTab() {
+  const el = document.getElementById('tabContent');
+  if (currentTab === 'all') el.innerHTML = renderAll();
+  else if (currentTab === 'category') el.innerHTML = renderByCat();
+  else el.innerHTML = renderByDate();
+}
+
+function renderAll() {
+  if (!expenses.length) return empty();
+  const sorted = [...expenses].sort((a,b) => b.createdAt - a.createdAt);
+  return '<div class="expense-list">' +
+    sorted.map(e => `<div class="expense-item">
+      <span class="exp-dot" style="background:${CAT_COLOR[e.category]}"></span>
+      <div class="exp-info">
+        <div class="exp-meta">${e.category} · ${fmtDate(e.date)}</div>
+        <div class="exp-memo">${e.memo || '(메모 없음)'}</div>
+      </div>
+      <div class="exp-right">
+        <div class="exp-amt" style="color:${CAT_COLOR[e.category]}">${fmtAmt(e.amount, e.currency)}</div>
+        ${e.currency !== 'KRW' ? `<div class="exp-krw">${fmtKrw(toKrw(e.amount, e.currency))}</div>` : ''}
+      </div>
+      <button class="btn-del" onclick="delExp('${e.id}')">×</button>
+    </div>`).join('') + '</div>';
+}
+
+function renderByCat() {
+  if (!expenses.length) return empty();
+  return CATS.map((cat, i) => {
+    const items = expenses.filter(e => e.category === cat).sort((a,b) => a.date.localeCompare(b.date));
+    if (!items.length) return '';
+    const total = items.reduce((s, e) => s + toKrw(e.amount, e.currency), 0);
+    const gid = 'gc' + i;
+    return `<div class="group-section">
+      <div class="group-header" onclick="toggle('${gid}')">
+        <div class="group-left">
+          <span class="dot" style="background:${CAT_COLOR[cat]}"></span>
+          <span class="group-title">${cat}</span>
+          <span class="group-cnt">${items.length}건</span>
+        </div>
+        <div class="group-right">
+          <span class="group-amt" style="color:${CAT_COLOR[cat]}">${fmtKrw(total)}</span>
+          <span class="arrow" id="a${gid}">▼</span>
+        </div>
+      </div>
+      <div class="group-items" id="${gid}">${items.map(e => gItem(e, cat)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderByDate() {
+  if (!expenses.length) return empty();
+  const byDate = {};
+  expenses.forEach(e => { (byDate[e.date] = byDate[e.date] || []).push(e); });
+  return Object.keys(byDate).sort().map((date, i) => {
+    const items = byDate[date].sort((a,b) => a.createdAt - b.createdAt);
+    const total = items.reduce((s, e) => s + toKrw(e.amount, e.currency), 0);
+    const gid = 'gd' + i;
+    const [, m, d] = date.split('-');
+    return `<div class="group-section">
+      <div class="group-header" onclick="toggle('${gid}')">
+        <div class="group-left">
+          <span class="group-title">${m}월 ${d}일 (${DAY[new Date(date).getDay()]})</span>
+          <span class="group-cnt">${items.length}건</span>
+        </div>
+        <div class="group-right">
+          <span class="group-amt">${fmtKrw(total)}</span>
+          <span class="arrow" id="a${gid}">▼</span>
+        </div>
+      </div>
+      <div class="group-items" id="${gid}">${items.map(e => gItem(e, null)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function gItem(e, forceCat) {
+  const cat = e.category;
+  return `<div class="g-item">
+    <span class="dot" style="background:${CAT_COLOR[cat]}"></span>
+    <div class="g-info">
+      <div class="g-memo">${e.memo || '(메모 없음)'}</div>
+      <div class="g-sub">${forceCat ? fmtDate(e.date) : cat}${e.currency !== 'KRW' ? ' · ' + e.currency : ''}</div>
+    </div>
+    <div class="g-right">
+      <div class="g-amt">${fmtAmt(e.amount, e.currency)}</div>
+      ${e.currency !== 'KRW' ? `<div class="g-krw">${fmtKrw(toKrw(e.amount, e.currency))}</div>` : ''}
+    </div>
+    <button class="btn-del" onclick="delExp('${e.id}')">×</button>
+  </div>`;
+}
+
+function fmtDate(s) { const [,m,d] = s.split('-'); return m+'/'+d; }
+function empty() { return `<div class="empty-state"><div class="emo">✈️</div><p>아직 등록된 지출이 없어요.</p></div>`; }
+
+function addExpense() {
+  const date = document.getElementById('fDate').value;
+  const category = document.getElementById('fCategory').value;
+  const amount = parseFloat(document.getElementById('fAmount').value);
+  const currency = document.getElementById('fCurrency').value;
+  const memo = document.getElementById('fMemo').value.trim();
+
+  if (!date || !category || isNaN(amount) || amount <= 0) {
+    alert('날짜, 카테고리, 금액을 입력해주세요.');
+    return;
+  }
+  expenses.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    date, category, amount, currency, memo,
+    createdAt: Date.now()
+  });
+  saveExp();
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fMemo').value = '';
+  render();
+}
+
+function delExp(id) {
+  if (!confirm('이 항목을 삭제할까요?')) return;
+  expenses = expenses.filter(e => e.id !== id);
+  saveExp();
+  render();
+}
+
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTab();
+}
+
+function toggle(gid) {
+  document.getElementById(gid).classList.toggle('open');
+  document.getElementById('a' + gid).classList.toggle('open');
+}
+
+function openRateModal() {
+  document.getElementById('rIdr').value = rates.IDR;
+  document.getElementById('rUsd').value = rates.USD;
+  document.getElementById('rateModal').classList.add('open');
+}
+function closeRateModal() { document.getElementById('rateModal').classList.remove('open'); }
+function bgClose(e) { if (e.target === document.getElementById('rateModal')) closeRateModal(); }
+
+function saveRates() {
+  const idr = parseFloat(document.getElementById('rIdr').value);
+  const usd = parseFloat(document.getElementById('rUsd').value);
+  if (!isNaN(idr) && idr > 0) rates.IDR = idr;
+  if (!isNaN(usd) && usd > 0) rates.USD = usd;
+  saveRatesData();
+  closeRateModal();
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
