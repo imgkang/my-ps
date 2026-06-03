@@ -331,6 +331,12 @@
     .expense-item { cursor: pointer; }
     .expense-item:active { background: #f9fafb; }
 
+    /* Move up/down buttons */
+    .move-btns { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; margin-right: 2px; }
+    .btn-move { background: none; border: none; color: #d1d5db; font-size: 13px; cursor: pointer; padding: 1px 4px; line-height: 1.3; }
+    .btn-move:active { color: var(--primary); }
+    .btn-move.hidden { visibility: hidden; }
+
     /* Force update button */
     .btn-force-update {
       position: fixed;
@@ -499,7 +505,7 @@
 </div>
 
 <script>
-const VERSION     = 'v1.1';
+const VERSION     = 'v1.2';
 const STORAGE_KEY = 'indonesia-trip-2026-expenses';
 const RATES_KEY   = 'indonesia-trip-2026-rates';
 
@@ -592,20 +598,39 @@ function renderTab() {
 
 function renderAll() {
   if (!expenses.length) return empty();
-  const sorted = [...expenses].sort((a,b) => b.createdAt - a.createdAt);
+  const sorted = [...expenses].sort((a,b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+  // Build per-date index for ▲▼ visibility
+  const dateCounts = {};
+  sorted.forEach(e => { dateCounts[e.date] = (dateCounts[e.date] || 0) + 1; });
+  const dateIdx = {};
+  sorted.forEach(e => { dateIdx[e.id] = (dateIdx[e.date] = (dateIdx[e.date] ?? -1) + 1, dateIdx[e.date]); });
+  // Reset per-date counters for rendering
+  const datePos = {};
   return '<div class="expense-list">' +
-    sorted.map(e => `<div class="expense-item" onclick="openEditModal('${e.id}')">
-      <span class="exp-dot" style="background:${CAT_COLOR[e.category]}"></span>
-      <div class="exp-info">
-        <div class="exp-meta">${e.category} · ${fmtDate(e.date)}</div>
-        <div class="exp-memo">${e.memo || '(메모 없음)'}</div>
-      </div>
-      <div class="exp-right">
-        <div class="exp-amt" style="color:${CAT_COLOR[e.category]}">${fmtAmt(e.amount, e.currency)}</div>
-        ${e.currency !== 'KRW' ? `<div class="exp-krw">${fmtKrw(toKrw(e.amount, e.currency))}</div>` : ''}
-      </div>
-      <button class="btn-del" onclick="event.stopPropagation();delExp('${e.id}')">×</button>
-    </div>`).join('') + '</div>';
+    sorted.map(e => {
+      if (datePos[e.date] === undefined) datePos[e.date] = 0; else datePos[e.date]++;
+      const pos = datePos[e.date];
+      const cnt = dateCounts[e.date];
+      const single = cnt === 1;
+      const upCls = (single || pos === 0) ? 'hidden' : '';
+      const downCls = (single || pos === cnt - 1) ? 'hidden' : '';
+      return `<div class="expense-item" onclick="openEditModal('${e.id}')">
+        <div class="move-btns" onclick="event.stopPropagation()">
+          <button class="btn-move ${upCls}" onclick="moveExp('${e.id}','up')">▲</button>
+          <button class="btn-move ${downCls}" onclick="moveExp('${e.id}','down')">▼</button>
+        </div>
+        <span class="exp-dot" style="background:${CAT_COLOR[e.category]}"></span>
+        <div class="exp-info">
+          <div class="exp-meta">${e.category} · ${fmtDate(e.date)}</div>
+          <div class="exp-memo">${e.memo || '(메모 없음)'}</div>
+        </div>
+        <div class="exp-right">
+          <div class="exp-amt" style="color:${CAT_COLOR[e.category]}">${fmtAmt(e.amount, e.currency)}</div>
+          ${e.currency !== 'KRW' ? `<div class="exp-krw">${fmtKrw(toKrw(e.amount, e.currency))}</div>` : ''}
+        </div>
+        <button class="btn-del" onclick="event.stopPropagation();delExp('${e.id}')">×</button>
+      </div>`;
+    }).join('') + '</div>';
 }
 
 function renderByCat() {
@@ -740,6 +765,21 @@ function saveEdit() {
   expenses[idx] = { ...prev, date, category, amount, currency: editCur, memo };
   saveExp();
   closeEditModal();
+  render();
+}
+
+function moveExp(id, dir) {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  const group = expenses.filter(x => x.date === e.date)
+    .sort((a,b) => b.createdAt - a.createdAt);
+  const idx = group.findIndex(x => x.id === id);
+  const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= group.length) return;
+  const a = expenses.find(x => x.id === group[idx].id);
+  const b = expenses.find(x => x.id === group[swapIdx].id);
+  const tmp = a.createdAt; a.createdAt = b.createdAt; b.createdAt = tmp;
+  saveExp();
   render();
 }
 
