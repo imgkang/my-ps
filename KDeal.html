@@ -1497,7 +1497,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.505';
+const APP_VERSION = 'KDeal v0.506';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2318,10 +2318,16 @@ function kdOpenAccountModal(ticker) {
       </div>
       <div class="acc-card-inputs">
         <label><span>수량</span>
-          <input type="number" id="kdAccQty_${a.id}" min="0" step="1" value="${acc.qty || ''}">
+          <input type="text" inputmode="numeric" id="kdAccQty_${a.id}"
+            value="${acc.qty ? Math.round(+acc.qty).toLocaleString('ko-KR') : ''}"
+            onfocus="this.value=this.value.replace(/,/g,'')"
+            onblur="kdFmtAccInput(this,0)">
         </label>
         <label><span>단가 (원)</span>
-          <input type="number" id="kdAccAvg_${a.id}" min="0" step="1" value="${acc.avgPrice ? Math.round(+acc.avgPrice) : ''}">
+          <input type="text" inputmode="numeric" id="kdAccAvg_${a.id}"
+            value="${acc.avgPrice ? Math.round(+acc.avgPrice).toLocaleString('ko-KR') : ''}"
+            onfocus="this.value=this.value.replace(/,/g,'')"
+            onblur="kdFmtAccInput(this,0)">
         </label>
       </div>
     </div>`;
@@ -2334,11 +2340,16 @@ function kdOpenAccountModal(ticker) {
   document.getElementById('kdAccountModal').classList.add('open');
 }
 
+function kdFmtAccInput(el, dec) {
+  const v = parseFloat(el.value.replace(/,/g, ''));
+  el.value = isNaN(v) || !v ? '' : v.toLocaleString('ko-KR', { maximumFractionDigits: dec });
+}
+
 function kdUpdateAccTotals() {
   let totalQty = 0, totalCost = 0;
   KD_ACCOUNTS.filter(a => a.active !== false).forEach(a => {
-    const qty = Number(document.getElementById(`kdAccQty_${a.id}`)?.value) || 0;
-    const avg = Number(document.getElementById(`kdAccAvg_${a.id}`)?.value) || 0;
+    const qty = Number(document.getElementById(`kdAccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
+    const avg = Number(document.getElementById(`kdAccAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const el = document.getElementById(`kdAccTotal_${a.id}`);
     if (el) { el.textContent = fmtKRW(qty * avg); el.classList.toggle('zero', !(qty * avg)); }
     totalQty += qty; totalCost += qty * avg;
@@ -2360,8 +2371,8 @@ function kdSaveAccountQuantities() {
   if (!h.accounts) h.accounts = {};
   for (const a of KD_ACCOUNTS.filter(x => x.active !== false)) {
     h.accounts[a.id] = {
-      qty:      Number(document.getElementById(`kdAccQty_${a.id}`)?.value) || 0,
-      avgPrice: Number(document.getElementById(`kdAccAvg_${a.id}`)?.value) || 0
+      qty:      Number(document.getElementById(`kdAccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0,
+      avgPrice: Number(document.getElementById(`kdAccAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0
     };
   }
   kdSaveHoldings();

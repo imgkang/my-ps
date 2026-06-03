@@ -3367,7 +3367,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.505';
+const APP_VERSION = 'MyPM v0.506';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4271,13 +4271,19 @@ function openAccountModal(code) {
         <div class="acc-card-inputs">
           <label>
             <span>수량</span>
-            <input type="number" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty"
-              value="${qty || ''}" placeholder="0" min="0" step="1" inputmode="numeric" oninput="updateModalTotal()">
+            <input type="text" inputmode="numeric" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty"
+              value="${qty ? (+qty).toLocaleString('ko-KR') : ''}" placeholder="0"
+              onfocus="this.value=this.value.replace(/,/g,'')"
+              onblur="fmtAccModalInput(this,0)"
+              oninput="updateModalTotal()">
           </label>
           <label>
             <span>단가 (원)</span>
-            <input type="number" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg"
-              value="${avg || ''}" placeholder="0" min="0" step="1" inputmode="numeric" oninput="updateModalTotal()">
+            <input type="text" inputmode="numeric" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg"
+              value="${avg ? Math.round(+avg).toLocaleString('ko-KR') : ''}" placeholder="0"
+              onfocus="this.value=this.value.replace(/,/g,'')"
+              onblur="fmtAccModalInput(this,0)"
+              oninput="updateModalTotal()">
           </label>
         </div>
       </div>
@@ -4301,6 +4307,11 @@ function handleBackdropClick(e) {
   if (e.target.id === 'accountModal') closeAccountModal();
 }
 
+function fmtAccModalInput(el, dec) {
+  const v = parseFloat(el.value.replace(/,/g, ''));
+  el.value = isNaN(v) || !v ? '' : v.toLocaleString('ko-KR', { maximumFractionDigits: dec });
+}
+
 function updateModalTotal() {
   let totalQty = 0;
   let totalCost = 0;
@@ -4309,8 +4320,8 @@ function updateModalTotal() {
     const avgEl = document.getElementById('avg_' + acc.id);
     const totalEl = document.getElementById('total_' + acc.id);
     if (!qtyEl || !avgEl || !totalEl) continue;
-    const qty = Number(qtyEl.value) || 0;
-    const avg = Number(avgEl.value) || 0;
+    const qty = Number(qtyEl.value.replace(/,/g,'')) || 0;
+    const avg = Number(avgEl.value.replace(/,/g,'')) || 0;
     const rowTotal = qty * avg;
     totalEl.textContent = rowTotal > 0 ? Math.round(rowTotal).toLocaleString('ko-KR') + ' 원' : '0 원';
     totalEl.classList.toggle('zero', rowTotal === 0);
@@ -4339,8 +4350,8 @@ function saveAccountQuantities() {
     const qtyEl = document.getElementById('qty_' + acc.id);
     const avgEl = document.getElementById('avg_' + acc.id);
     if (!qtyEl || !avgEl) continue;
-    const qty = Number(qtyEl.value) || 0;
-    const avg = Number(avgEl.value) || 0;
+    const qty = Number(qtyEl.value.replace(/,/g,'')) || 0;
+    const avg = Number(avgEl.value.replace(/,/g,'')) || 0;
     if (qty > 0) {
       accounts[acc.id] = { qty, avgPrice: avg };
       totalQty += qty;
