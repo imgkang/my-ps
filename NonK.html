@@ -194,6 +194,19 @@
   .tbl-icon-btn { background:transparent; border:none; cursor:pointer;
     font-size:15px; padding:2px 4px; line-height:1; border-radius:4px; }
   .tbl-icon-btn:hover { background:#f1f5f9; }
+  .trade-acc-card { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+  .trade-acc-row { display:flex; align-items:center; gap:12px; padding:12px 14px; cursor:pointer; }
+  .trade-acc-row:hover { background:#f8fafc; }
+  .trade-acc-badge { width:36px; height:36px; border-radius:50%; background:#e0e7ff; color:#3730a3;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
+  .trade-type-toggle { display:flex; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+  .trade-type-btn { flex:1; padding:8px 10px; font-size:13px; font-weight:600; border:none; cursor:pointer;
+    background:#f3f4f6; color:var(--muted); transition:background 0.15s,color 0.15s; }
+  .trade-type-btn.buy.active  { background:#fee2e2; color:#b91c1c; }
+  .trade-type-btn.sell.active { background:#dbeafe; color:#1d4ed8; }
+  .trade-type-btn:not(.active):hover { background:#e5e7eb; }
+  .txn-form label input { width:100%; border:1px solid var(--border); border-radius:8px; padding:10px 12px;
+    font-size:14px; background:var(--card); color:var(--text); box-sizing:border-box; }
   .account-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563eb; margin-left: 4px; vertical-align: middle; }
 
   /* Modal (별도 페이지처럼 전체화면 덮는 오버레이) */
@@ -581,7 +594,8 @@
   .txn-form label > span { font-weight: 500; color: var(--muted); }
   .txn-form select,
   .txn-form input[type="date"],
-  .txn-form input[type="text"] {
+  .txn-form input[type="text"],
+  .txn-form input[type="number"] {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--border);
@@ -1056,7 +1070,7 @@
       <h2 id="nktTradeModalTitle">거래 추가</h2>
       <button class="close-btn" onclick="nktCloseTradeModal()">×</button>
     </div>
-    <div class="nkt-form">
+    <div class="nkt-form" id="nktFullForm">
       <div class="nkt-field">
         <label>구분</label>
         <div class="nkt-type-toggle">
@@ -1120,9 +1134,50 @@
         <span>거래 금액</span><span id="nktTradePreviewAmt">-</span>
       </div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-actions" id="nktFullFormActions">
       <button class="btn-secondary" onclick="nktCloseTradeModal()">취소</button>
       <button class="btn-primary" onclick="nktSaveTrade()">저장</button>
+    </div>
+
+    <!-- Quick 거래: 계좌 선택 카드 -->
+    <div id="nktQuickAccList" style="display:none"></div>
+
+    <!-- Quick 거래: MyPM 스타일 폼 -->
+    <div id="nktQuickForm" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <button id="nqtBackBtn" onclick="nqtCloseForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
+        <div id="nqtAccName" style="font-size:13px;font-weight:600;color:var(--muted)"></div>
+      </div>
+      <div id="nqtHoldingsInfo" style="background:#f3f4f6;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px;color:var(--muted)"></div>
+      <div class="trade-type-toggle" style="margin-bottom:12px">
+        <button class="trade-type-btn buy active" id="nqtBuyBtn" onclick="nqtSetType('buy')">매수</button>
+        <button class="trade-type-btn sell"       id="nqtSellBtn" onclick="nqtSetType('sell')">매도</button>
+      </div>
+      <input type="hidden" id="nqtType" value="buy">
+      <div class="txn-form" style="margin-bottom:10px">
+        <label><span>날짜</span><input type="date" id="nqtDate"></label>
+        <label><span>수량</span><input type="number" id="nqtQty" min="0.0001" step="0.001" placeholder="수량" oninput="nqtUpdatePreview()"></label>
+        <label><span>단가 (USD)</span><input type="number" id="nqtPrice" min="0.0001" step="0.01" placeholder="단가" oninput="nqtUpdatePreview()"></label>
+        <label><span>수수료 (USD)</span><input type="number" id="nqtFee" min="0" step="0.01" placeholder="0" oninput="nqtUpdatePreview()"></label>
+      </div>
+      <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:var(--muted)">거래금액</span>
+          <span id="nqtTotalAmt" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span id="nqtCashLabel" style="color:var(--muted)">거래 후 현금</span>
+          <span id="nqtCashAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--muted)">거래 후 보유수</span>
+          <span id="nqtQtyAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="nqtCloseForm()">취소</button>
+        <button class="btn-primary" onclick="nqtSave()">저장</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1428,7 +1483,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.499';
+const APP_VERSION = 'NonK v0.500';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -3982,15 +4037,174 @@ function nktOpenTradeModal(editId = null) {
     document.getElementById('nktTradeFee').value   = '';
     document.getElementById('nktTradeMemo').value  = '';
   }
+  // 일반 폼 표시, 퀵 모드 숨김
+  document.getElementById('nktFullForm').style.display = '';
+  document.getElementById('nktFullFormActions').style.display = '';
+  document.getElementById('nktQuickAccList').style.display = 'none';
+  document.getElementById('nktQuickForm').style.display = 'none';
   nktUpdateTradePreview();
   document.getElementById('nktTradeModal').classList.add('open');
 }
 
+let _nqtTicker = '', _nqtName = '', _nqtAccId = '';
+
 function nktOpenTradeModalForTicker(ticker, name) {
-  nktOpenTradeModal();
-  document.getElementById('nktTradeTicker').value = ticker;
-  document.getElementById('nktTradeName').value   = name || ticker;
-  nktUpdateTradePreview();
+  _nqtTicker = ticker;
+  _nqtName = name || ticker;
+  document.getElementById('nktTradeModalTitle').textContent = _nqtName;
+  document.getElementById('nktFullForm').style.display = 'none';
+  document.getElementById('nktFullFormActions').style.display = 'none';
+  document.getElementById('nktQuickForm').style.display = 'none';
+
+  const activeAccs = NK_ACCOUNTS.filter(a => a.active !== false);
+  if (activeAccs.length === 1) {
+    document.getElementById('nktQuickAccList').style.display = 'none';
+    nqtOpenForm(activeAccs[0].id);
+  } else {
+    document.getElementById('nktQuickAccList').style.display = '';
+    nqtRenderAccList();
+  }
+  document.getElementById('nktTradeModal').classList.add('open');
+}
+
+function nqtRenderAccList() {
+  const wrap = document.getElementById('nktQuickAccList');
+  if (!wrap) return;
+  const h = nkHoldings.find(x => x.ticker === _nqtTicker);
+  const price = h ? (Number(h.price) || 0) : 0;
+  const accs = NK_ACCOUNTS.filter(a => a.active !== false);
+
+  wrap.innerHTML = accs.map(acc => {
+    const accData = h?.accounts?.[acc.id];
+    const qty = accData ? (Number(accData.qty) || 0) : 0;
+    const avg = accData ? (Number(accData.avgPrice) || 0) : 0;
+    const val = qty * price;
+    const profitAmt = qty * (price - avg);
+    const profit = avg > 0 ? (price - avg) / avg * 100 : 0;
+    const profitColor = profit >= 0 ? 'var(--plus)' : 'var(--minus)';
+
+    return `<div class="trade-acc-card">
+      <div class="trade-acc-row" onclick="nqtOpenForm('${acc.id}')">
+        <div class="trade-acc-badge">${nkEscape((acc.name||'').slice(0,2))}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px">${nkEscape(acc.name)}</div>
+          <div style="font-size:12px;color:var(--muted)">
+            ${qty > 0 ? qty.toLocaleString('en-US',{maximumFractionDigits:4})+'주 · '+fmtUSDDec(avg) : '보유 없음'}
+          </div>
+        </div>
+        ${qty > 0 ? `<div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:15px">${fmtUSDDec(val)}</div>
+          <div style="font-size:12px;color:${profitColor}">
+            ${profitAmt >= 0 ? '+' : ''}${fmtUSDDec(profitAmt)} (${profit >= 0 ? '+' : ''}${profit.toFixed(2)}%)
+          </div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function nqtOpenForm(accId) {
+  _nqtAccId = accId;
+  const acc = NK_ACCOUNTS.find(a => a.id === accId);
+  const h = nkHoldings.find(x => x.ticker === _nqtTicker);
+  const price = h ? (Number(h.price) || 0) : 0;
+  const accData = h?.accounts?.[accId];
+  const qty = accData ? (Number(accData.qty) || 0) : 0;
+  const avg = accData ? (Number(accData.avgPrice) || 0) : 0;
+  const val = qty * price;
+  const profitAmt = qty * (price - avg);
+  const profit = avg > 0 ? (price - avg) / avg * 100 : 0;
+  const cash = Number(nkCashAccounts[accId]) || 0;
+
+  document.getElementById('nqtAccName').textContent = acc?.name || accId;
+  document.getElementById('nqtBackBtn').style.display =
+    NK_ACCOUNTS.filter(a => a.active !== false).length === 1 ? 'none' : '';
+
+  const holdingStr = qty > 0
+    ? `보유 ${qty.toLocaleString('en-US',{maximumFractionDigits:4})}주 · 평균 ${fmtUSDDec(avg)} · 평가 ${fmtUSDDec(val)} (${profitAmt >= 0 ? '+' : ''}${fmtUSDDec(profitAmt)}, ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}%)`
+    : '보유 없음';
+  document.getElementById('nqtHoldingsInfo').innerHTML =
+    `<div>${holdingStr}</div><div style="margin-top:4px">현금 <strong>${fmtUSDDec(cash)}</strong></div>`;
+
+  const now = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  document.getElementById('nqtDate').value  = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('nqtQty').value   = '';
+  document.getElementById('nqtPrice').value = price > 0 ? price : '';
+  document.getElementById('nqtFee').value   = '';
+
+  document.getElementById('nqtBuyBtn').className  = 'trade-type-btn buy active';
+  document.getElementById('nqtSellBtn').className = 'trade-type-btn sell';
+  document.getElementById('nqtType').value = 'buy';
+  document.getElementById('nqtCashLabel').textContent = '거래 후 현금 (감소)';
+
+  document.getElementById('nktQuickAccList').style.display = 'none';
+  document.getElementById('nktQuickForm').style.display = '';
+  nqtUpdatePreview();
+  setTimeout(() => document.getElementById('nqtQty').focus(), 50);
+}
+
+function nqtSetType(type) {
+  document.getElementById('nqtBuyBtn').className  = 'trade-type-btn buy'  + (type === 'buy'  ? ' active' : '');
+  document.getElementById('nqtSellBtn').className = 'trade-type-btn sell' + (type === 'sell' ? ' active' : '');
+  document.getElementById('nqtType').value = type;
+  document.getElementById('nqtCashLabel').textContent =
+    type === 'buy' ? '거래 후 현금 (감소)' : '거래 후 현금 (증가)';
+  nqtUpdatePreview();
+}
+
+function nqtUpdatePreview() {
+  const type  = document.getElementById('nqtType').value;
+  const qty   = parseFloat(document.getElementById('nqtQty').value) || 0;
+  const price = parseFloat(document.getElementById('nqtPrice').value) || 0;
+  const fee   = parseFloat(document.getElementById('nqtFee').value) || 0;
+  const total = qty * price;
+  const cash  = Number(nkCashAccounts[_nqtAccId]) || 0;
+  const cashAfter = type === 'buy' ? cash - total - fee : cash + total - fee;
+  const h = nkHoldings.find(x => x.ticker === _nqtTicker);
+  const curQty = h?.accounts?.[_nqtAccId] ? (Number(h.accounts[_nqtAccId].qty) || 0) : 0;
+  const qtyAfter = type === 'buy' ? curQty + qty : curQty - qty;
+
+  document.getElementById('nqtTotalAmt').textContent =
+    qty > 0 && price > 0 ? fmtUSDDec(total) : '-';
+  document.getElementById('nqtCashAfter').textContent =
+    qty > 0 && price > 0 ? fmtUSDDec(cashAfter) : '-';
+  document.getElementById('nqtCashAfter').style.color = cashAfter < 0 ? 'var(--minus)' : 'inherit';
+  document.getElementById('nqtQtyAfter').textContent =
+    qty > 0 ? qtyAfter.toLocaleString('en-US',{maximumFractionDigits:4})+'주' : '-';
+}
+
+function nqtSave() {
+  const type  = document.getElementById('nqtType').value;
+  const date  = document.getElementById('nqtDate').value;
+  const qty   = parseFloat(document.getElementById('nqtQty').value) || 0;
+  const price = parseFloat(document.getElementById('nqtPrice').value) || 0;
+  const fee   = parseFloat(document.getElementById('nqtFee').value) || 0;
+
+  if (!date)      { alert('날짜를 선택해 주세요.'); return; }
+  if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }
+  if (price <= 0) { alert('단가를 입력해 주세요.'); return; }
+
+  const entry = {
+    id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+    type, ticker: _nqtTicker, name: _nqtName, date, price, qty, fee, memo: '', accId: _nqtAccId
+  };
+  nktApplyTradeToPortfolio(type, _nqtTicker, _nqtName, _nqtAccId, price, qty, fee, false);
+  nktTrades.push(entry);
+  nktSaveTrades();
+  nktCloseTradeModal();
+  if (nktHistoryOpen) nktRenderTradeHistory();
+  nkRender();
+}
+
+function nqtCloseForm() {
+  const multiAcc = NK_ACCOUNTS.filter(a => a.active !== false).length > 1;
+  if (multiAcc) {
+    document.getElementById('nktQuickForm').style.display = 'none';
+    document.getElementById('nktQuickAccList').style.display = '';
+  } else {
+    nktCloseTradeModal();
+  }
 }
 
 function nktCloseTradeModal() {
