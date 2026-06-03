@@ -81,27 +81,23 @@
     .summary-count .num { font-size: 22px; font-weight: 700; }
     .summary-count .lbl { font-size: 11px; color: var(--muted); }
 
-    /* Category chips */
-    .cat-chips {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-      scrollbar-width: none;
-    }
-    .cat-chips::-webkit-scrollbar { display: none; }
-    .cat-chip {
-      background: white;
-      border-radius: 10px;
-      padding: 8px 11px;
-      min-width: 68px;
-      text-align: center;
-      box-shadow: var(--shadow);
-      flex-shrink: 0;
-    }
-    .cat-chip-name { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 3px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-    .cat-chip-amt { font-size: 12px; font-weight: 600; }
+
+    /* Donut chart card */
+    .chart-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .chart-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .legend-row { display: flex; align-items: center; gap: 6px; }
+    .legend-name { font-size: 12px; color: var(--muted); flex: 1; }
+    .legend-amt { font-size: 12px; font-weight: 600; }
+    .legend-pct { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
 
     /* Form */
     .form-section { padding: 12px 14px 0; }
@@ -383,7 +379,10 @@
       <div class="lbl">건</div>
     </div>
   </div>
-  <div class="cat-chips" id="catChips"></div>
+  <div class="chart-card" id="chartCard" style="display:none">
+    <svg id="donutSvg" viewBox="0 0 100 100" width="110" height="110" style="flex-shrink:0"></svg>
+    <div class="chart-legend" id="chartLegend"></div>
+  </div>
 </div>
 
 <div class="form-section">
@@ -505,7 +504,7 @@
 </div>
 
 <script>
-const VERSION     = 'v1.2';
+const VERSION     = 'v1.3';
 const STORAGE_KEY = 'indonesia-trip-2026-expenses';
 const RATES_KEY   = 'indonesia-trip-2026-rates';
 
@@ -580,13 +579,41 @@ function renderSummary() {
 
   const byCat = {};
   expenses.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + toKrw(e.amount, e.currency); });
-  document.getElementById('catChips').innerHTML = CATS.map(cat => {
-    const amt = byCat[cat] || 0;
-    return `<div class="cat-chip">
-      <div class="cat-chip-name"><span class="dot" style="background:${CAT_COLOR[cat]}"></span>${cat}</div>
-      <div class="cat-chip-amt" style="color:${CAT_COLOR[cat]}">${amt > 0 ? fmtKrw(amt) : '-'}</div>
-    </div>`;
+  renderDonut(byCat, totalKrw);
+}
+
+function renderDonut(byCat, totalKrw) {
+  const card = document.getElementById('chartCard');
+  const segments = CATS.filter(c => byCat[c] > 0).map(c => ({ c, amt: byCat[c], pct: byCat[c] / totalKrw }));
+  if (!segments.length) { card.style.display = 'none'; return; }
+  card.style.display = 'flex';
+
+  const R = 36, CX = 50, CY = 50, SW = 20;
+  const CIRC = 2 * Math.PI * R;
+  const GAP = segments.length > 1 ? 1.5 : 0;
+  let acc = 0;
+  const segs = segments.map(s => {
+    const len = Math.max(0, s.pct * CIRC - GAP);
+    const off = CIRC - acc;
+    acc += s.pct * CIRC;
+    return `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${CAT_COLOR[s.c]}"
+      stroke-width="${SW}" stroke-dasharray="${len} ${CIRC}"
+      stroke-dashoffset="${off}" transform="rotate(-90 ${CX} ${CY})"/>`;
   }).join('');
+
+  const countTxt = `<text x="50" y="47" text-anchor="middle" font-size="16" font-weight="700" fill="#1f2937">${segments.length}</text>
+    <text x="50" y="59" text-anchor="middle" font-size="9" fill="#6b7280">카테고리</text>`;
+
+  document.getElementById('donutSvg').innerHTML = segs + countTxt;
+
+  document.getElementById('chartLegend').innerHTML = segments.map(s =>
+    `<div class="legend-row">
+      <span class="dot" style="background:${CAT_COLOR[s.c]}"></span>
+      <span class="legend-name">${s.c}</span>
+      <span class="legend-amt" style="color:${CAT_COLOR[s.c]}">${fmtKrw(s.amt)}</span>
+      <span class="legend-pct">${Math.round(s.pct * 100)}%</span>
+    </div>`
+  ).join('');
 }
 
 function renderTab() {
