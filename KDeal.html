@@ -195,6 +195,17 @@
   .tbl-icon-btn { background:transparent; border:none; cursor:pointer;
     font-size:15px; padding:2px 4px; line-height:1; border-radius:4px; }
   .tbl-icon-btn:hover { background:#f1f5f9; }
+  .trade-acc-card { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+  .trade-acc-row { display:flex; align-items:center; gap:12px; padding:12px 14px; cursor:pointer; }
+  .trade-acc-row:hover { background:#f8fafc; }
+  .trade-acc-badge { width:36px; height:36px; border-radius:50%; background:#e0e7ff; color:#3730a3;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
+  .trade-type-toggle { display:flex; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+  .trade-type-btn { flex:1; padding:8px 10px; font-size:13px; font-weight:600; border:none; cursor:pointer;
+    background:#f3f4f6; color:var(--muted); transition:background 0.15s,color 0.15s; }
+  .trade-type-btn.buy.active  { background:#fee2e2; color:#b91c1c; }
+  .trade-type-btn.sell.active { background:#dbeafe; color:#1d4ed8; }
+  .trade-type-btn:not(.active):hover { background:#e5e7eb; }
 
   /* Modal (별도 페이지처럼 전체화면 덮는 오버레이) */
   .modal-backdrop {
@@ -581,7 +592,8 @@
   .txn-form label > span { font-weight: 500; color: var(--muted); }
   .txn-form select,
   .txn-form input[type="date"],
-  .txn-form input[type="text"] {
+  .txn-form input[type="text"],
+  .txn-form input[type="number"] {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--border);
@@ -1056,7 +1068,7 @@
       <h2 id="kdtTradeModalTitle">거래 추가</h2>
       <button class="close-btn" onclick="kdtCloseTradeModal()">×</button>
     </div>
-    <div class="kdt-form">
+    <div class="kdt-form" id="kdtFullForm">
       <div class="kdt-field">
         <label>구분</label>
         <div class="kdt-type-toggle">
@@ -1120,9 +1132,50 @@
         <span>거래 금액</span><span id="kdtTradePreviewAmt">-</span>
       </div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-actions" id="kdtFullFormActions">
       <button class="btn-secondary" onclick="kdtCloseTradeModal()">취소</button>
       <button class="btn-primary" onclick="kdtSaveTrade()">저장</button>
+    </div>
+
+    <!-- Quick 거래: 계좌 선택 카드 -->
+    <div id="kdtQuickAccList" style="display:none"></div>
+
+    <!-- Quick 거래: MyPM 스타일 폼 -->
+    <div id="kdtQuickForm" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <button id="kqtBackBtn" onclick="kqtCloseForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
+        <div id="kqtAccName" style="font-size:13px;font-weight:600;color:var(--muted)"></div>
+      </div>
+      <div id="kqtHoldingsInfo" style="background:#f3f4f6;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px;color:var(--muted)"></div>
+      <div class="trade-type-toggle" style="margin-bottom:12px">
+        <button class="trade-type-btn buy active" id="kqtBuyBtn" onclick="kqtSetType('buy')">매수</button>
+        <button class="trade-type-btn sell"       id="kqtSellBtn" onclick="kqtSetType('sell')">매도</button>
+      </div>
+      <input type="hidden" id="kqtType" value="buy">
+      <div class="txn-form" style="margin-bottom:10px">
+        <label><span>날짜</span><input type="date" id="kqtDate"></label>
+        <label><span>수량</span><input type="number" id="kqtQty" min="1" step="1" placeholder="수량" oninput="kqtUpdatePreview()"></label>
+        <label><span>단가 (원)</span><input type="number" id="kqtPrice" min="1" step="1" placeholder="단가" oninput="kqtUpdatePreview()"></label>
+        <label><span>수수료 (원)</span><input type="number" id="kqtFee" min="0" step="1" placeholder="0" oninput="kqtUpdatePreview()"></label>
+      </div>
+      <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:var(--muted)">거래금액</span>
+          <span id="kqtTotalAmt" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span id="kqtCashLabel" style="color:var(--muted)">거래 후 현금</span>
+          <span id="kqtCashAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--muted)">거래 후 보유수</span>
+          <span id="kqtQtyAfter" style="font-weight:700;font-variant-numeric:tabular-nums">-</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="kqtCloseForm()">취소</button>
+        <button class="btn-primary" onclick="kqtSave()">저장</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1435,7 +1488,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.499';
+const APP_VERSION = 'KDeal v0.500';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4077,15 +4130,176 @@ function kdtOpenTradeModal(editId = null) {
     document.getElementById('kdtTradeFee').value   = '';
     document.getElementById('kdtTradeMemo').value  = '';
   }
+  // 일반 폼 표시, 퀵 모드 숨김
+  document.getElementById('kdtFullForm').style.display = '';
+  document.getElementById('kdtFullFormActions').style.display = '';
+  document.getElementById('kdtQuickAccList').style.display = 'none';
+  document.getElementById('kdtQuickForm').style.display = 'none';
   kdtUpdateTradePreview();
   document.getElementById('kdtTradeModal').classList.add('open');
 }
 
+let _kqtTicker = '', _kqtName = '', _kqtAccId = '';
+
 function kdtOpenTradeModalForTicker(ticker, name) {
-  kdtOpenTradeModal();
-  document.getElementById('kdtTradeTicker').value = ticker;
-  document.getElementById('kdtTradeName').value   = name || ticker;
-  kdtUpdateTradePreview();
+  _kqtTicker = ticker;
+  _kqtName = name || ticker;
+  document.getElementById('kdtTradeModalTitle').textContent = _kqtName;
+  document.getElementById('kdtFullForm').style.display = 'none';
+  document.getElementById('kdtFullFormActions').style.display = 'none';
+  document.getElementById('kdtQuickForm').style.display = 'none';
+
+  const activeAccs = KD_ACCOUNTS.filter(a => a.active !== false);
+  if (activeAccs.length === 1) {
+    document.getElementById('kdtQuickAccList').style.display = 'none';
+    kqtOpenForm(activeAccs[0].id);
+  } else {
+    document.getElementById('kdtQuickAccList').style.display = '';
+    kqtRenderAccList();
+  }
+  document.getElementById('kdtTradeModal').classList.add('open');
+}
+
+function kqtRenderAccList() {
+  const wrap = document.getElementById('kdtQuickAccList');
+  if (!wrap) return;
+  const h = kdHoldings.find(x => x.ticker === _kqtTicker);
+  const price = h ? (Number(h.price) || 0) : 0;
+  const accs = KD_ACCOUNTS.filter(a => a.active !== false);
+
+  wrap.innerHTML = accs.map(acc => {
+    const accData = h?.accounts?.[acc.id];
+    const qty = accData ? (Number(accData.qty) || 0) : 0;
+    const avg = accData ? (Number(accData.avgPrice) || 0) : 0;
+    const val = qty * price;
+    const profitAmt = qty * (price - avg);
+    const profit = avg > 0 ? (price - avg) / avg * 100 : 0;
+    const profitColor = profit >= 0 ? 'var(--plus)' : 'var(--minus)';
+
+    return `<div class="trade-acc-card">
+      <div class="trade-acc-row" onclick="kqtOpenForm('${acc.id}')">
+        <div class="trade-acc-badge">${kdEscape((acc.name||'').slice(0,2))}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px">${kdEscape(acc.name)}</div>
+          <div style="font-size:12px;color:var(--muted)">
+            ${qty > 0 ? fmtWon(qty)+'주 · '+fmtWon(avg)+'원' : '보유 없음'}
+          </div>
+        </div>
+        ${qty > 0 ? `<div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:15px">${fmtKRW(val)}</div>
+          <div style="font-size:12px;color:${profitColor}">
+            ${profitAmt >= 0 ? '+' : ''}${fmtKRW(profitAmt)} (${profit >= 0 ? '+' : ''}${profit.toFixed(2)}%)
+          </div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function kqtOpenForm(accId) {
+  _kqtAccId = accId;
+  const acc = KD_ACCOUNTS.find(a => a.id === accId);
+  const h = kdHoldings.find(x => x.ticker === _kqtTicker);
+  const price = h ? (Number(h.price) || 0) : 0;
+  const accData = h?.accounts?.[accId];
+  const qty = accData ? (Number(accData.qty) || 0) : 0;
+  const avg = accData ? (Number(accData.avgPrice) || 0) : 0;
+  const val = qty * price;
+  const profitAmt = qty * (price - avg);
+  const profit = avg > 0 ? (price - avg) / avg * 100 : 0;
+  const cash = Number(kdCashAccounts[accId]) || 0;
+
+  document.getElementById('kqtAccName').textContent = acc?.name || accId;
+  document.getElementById('kqtBackBtn').style.display =
+    KD_ACCOUNTS.filter(a => a.active !== false).length === 1 ? 'none' : '';
+
+  const holdingStr = qty > 0
+    ? `보유 ${fmtWon(qty)}주 · 평균 ${fmtWon(avg)}원 · 평가 ${fmtKRW(val)} (${profitAmt >= 0 ? '+' : ''}${fmtKRW(profitAmt)}, ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}%)`
+    : '보유 없음';
+  document.getElementById('kqtHoldingsInfo').innerHTML =
+    `<div>${holdingStr}</div><div style="margin-top:4px">현금 <strong>${fmtKRW(cash)}</strong></div>`;
+
+  const now = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  document.getElementById('kqtDate').value  = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('kqtQty').value   = '';
+  document.getElementById('kqtPrice').value = price > 0 ? Math.round(price) : '';
+  document.getElementById('kqtFee').value   = '';
+
+  document.getElementById('kqtBuyBtn').className  = 'trade-type-btn buy active';
+  document.getElementById('kqtSellBtn').className = 'trade-type-btn sell';
+  document.getElementById('kqtType').value = 'buy';
+  document.getElementById('kqtCashLabel').textContent = '거래 후 현금 (감소)';
+
+  document.getElementById('kdtQuickAccList').style.display = 'none';
+  document.getElementById('kdtQuickForm').style.display = '';
+  kqtUpdatePreview();
+  setTimeout(() => document.getElementById('kqtQty').focus(), 50);
+}
+
+function kqtSetType(type) {
+  document.getElementById('kqtBuyBtn').className  = 'trade-type-btn buy'  + (type === 'buy'  ? ' active' : '');
+  document.getElementById('kqtSellBtn').className = 'trade-type-btn sell' + (type === 'sell' ? ' active' : '');
+  document.getElementById('kqtType').value = type;
+  document.getElementById('kqtCashLabel').textContent =
+    type === 'buy' ? '거래 후 현금 (감소)' : '거래 후 현금 (증가)';
+  kqtUpdatePreview();
+}
+
+function kqtUpdatePreview() {
+  const type  = document.getElementById('kqtType').value;
+  const qty   = parseFloat(document.getElementById('kqtQty').value) || 0;
+  const price = parseFloat(document.getElementById('kqtPrice').value) || 0;
+  const fee   = parseFloat(document.getElementById('kqtFee').value) || 0;
+  const total = qty * price;
+  const cash  = Number(kdCashAccounts[_kqtAccId]) || 0;
+  const cashAfter = type === 'buy' ? cash - total - fee : cash + total - fee;
+  const h = kdHoldings.find(x => x.ticker === _kqtTicker);
+  const curQty = h?.accounts?.[_kqtAccId] ? (Number(h.accounts[_kqtAccId].qty) || 0) : 0;
+  const qtyAfter = type === 'buy' ? curQty + qty : curQty - qty;
+
+  document.getElementById('kqtTotalAmt').textContent =
+    qty > 0 && price > 0 ? fmtWon(total) + '원' : '-';
+  document.getElementById('kqtCashAfter').textContent =
+    qty > 0 && price > 0 ? fmtKRW(cashAfter) : '-';
+  document.getElementById('kqtCashAfter').style.color = cashAfter < 0 ? 'var(--minus)' : 'inherit';
+  document.getElementById('kqtQtyAfter').textContent =
+    qty > 0 ? fmtWon(qtyAfter) + '주' : '-';
+}
+
+function kqtSave() {
+  const type  = document.getElementById('kqtType').value;
+  const date  = document.getElementById('kqtDate').value;
+  const qty   = parseFloat(document.getElementById('kqtQty').value) || 0;
+  const price = parseFloat(document.getElementById('kqtPrice').value) || 0;
+  const fee   = parseFloat(document.getElementById('kqtFee').value) || 0;
+
+  if (!date)      { alert('날짜를 선택해 주세요.'); return; }
+  if (qty <= 0)   { alert('수량을 입력해 주세요.'); return; }
+  if (price <= 0) { alert('단가를 입력해 주세요.'); return; }
+
+  const entry = {
+    id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+    type, ticker: _kqtTicker, name: _kqtName, date, price, qty, fee, memo: '', accId: _kqtAccId
+  };
+  const delta = type === 'buy' ? -(price * qty + fee) : +(price * qty - fee);
+  kdAdjustCash(_kqtAccId, delta);
+  kdtApplyHoldingsQty(type, _kqtTicker, _kqtName, _kqtAccId, price, qty, false);
+  kdtTrades.push(entry);
+  kdtSaveTrades();
+  kdtCloseTradeModal();
+  if (kdtHistoryOpen) kdtRenderTradeHistory();
+  kdRender();
+}
+
+function kqtCloseForm() {
+  const multiAcc = KD_ACCOUNTS.filter(a => a.active !== false).length > 1;
+  if (multiAcc) {
+    document.getElementById('kdtQuickForm').style.display = 'none';
+    document.getElementById('kdtQuickAccList').style.display = '';
+  } else {
+    kdtCloseTradeModal();
+  }
 }
 
 function kdtCloseTradeModal() {
