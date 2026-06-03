@@ -1492,7 +1492,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.503';
+const APP_VERSION = 'NonK v0.504';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -4267,16 +4267,23 @@ function nktApplyTradeToPortfolio(type, ticker, tradeName, accId, price, qty, fe
       nkHoldings.push({ ticker, name: tradeName || ticker, accounts: { [accId]: { qty, avgPrice: price } }, price, change: 0, changeRate: 0 });
     }
     nkSaveHoldings();
-    nkAdjustCash(accId, -(price * qty + fee));
+    nkAdjustCash(accId, -(price * qty + (reverse ? -fee : fee)));
   } else {
     if (h && h.accounts) {
       const curQty = Number(h.accounts[accId]?.qty) || 0;
+      const curAvg = Number(h.accounts[accId]?.avgPrice) || 0;
       const newQty = curQty - qty;
       if (newQty <= 0) delete h.accounts[accId];
-      else h.accounts[accId] = { ...h.accounts[accId], qty: newQty };
+      else h.accounts[accId] = {
+        ...h.accounts[accId],
+        qty: newQty,
+        avgPrice: (reverse && type === 'buy')
+          ? (curQty * curAvg - qty * price) / newQty
+          : h.accounts[accId].avgPrice
+      };
       nkSaveHoldings();
     }
-    nkAdjustCash(accId, +(price * qty - fee));
+    nkAdjustCash(accId, +(price * qty + (reverse ? fee : -fee)));
   }
 }
 

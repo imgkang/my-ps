@@ -1497,7 +1497,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.503';
+const APP_VERSION = 'KDeal v0.504';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -4364,9 +4364,16 @@ function kdtApplyHoldingsQty(type, ticker, tradeName, accId, price, qty, reverse
   } else {
     if (h && h.accounts) {
       const curQty = Number(h.accounts[accId]?.qty) || 0;
+      const curAvg = Number(h.accounts[accId]?.avgPrice) || 0;
       const newQty = curQty - qty;
       if (newQty <= 0) delete h.accounts[accId];
-      else h.accounts[accId] = { ...h.accounts[accId], qty: newQty };
+      else h.accounts[accId] = {
+        ...h.accounts[accId],
+        qty: newQty,
+        avgPrice: (reverse && type === 'buy')
+          ? (curQty * curAvg - qty * price) / newQty
+          : h.accounts[accId].avgPrice
+      };
     }
   }
   kdSaveHoldings();
