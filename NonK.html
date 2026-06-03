@@ -1492,7 +1492,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.502';
+const APP_VERSION = 'NonK v0.503';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -2236,7 +2236,7 @@ function nkOpenAccountModal(ticker) {
   const h = nkHoldings.find(x => x.ticker === ticker);
   if (!h) return;
   nkEditingTicker = ticker;
-  document.getElementById('nkModalTitle').textContent = `${ticker} 계좌별 수량`;
+  document.getElementById('nkModalTitle').textContent = `${ticker} 계좌별 수량 및 매입가`;
   document.getElementById('nkModalSubtitle').textContent = h.name || '';
 
   const grid = document.getElementById('nkAccountInputs');

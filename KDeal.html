@@ -1497,7 +1497,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.502';
+const APP_VERSION = 'KDeal v0.503';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2303,7 +2303,7 @@ function kdOpenAccountModal(ticker) {
   const h = kdHoldings.find(x => x.ticker === ticker);
   if (!h) return;
   kdEditingTicker = ticker;
-  document.getElementById('kdModalTitle').textContent = `${ticker} 계좌별 수량`;
+  document.getElementById('kdModalTitle').textContent = `${ticker} 계좌별 수량 및 매입가`;
   document.getElementById('kdModalSubtitle').textContent = h.name || '';
 
   const grid = document.getElementById('kdAccountInputs');
