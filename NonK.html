@@ -252,6 +252,18 @@
     align-items: center; justify-content: flex-end;
   }
   .account-row .total-display.zero { color: #9ca3af; }
+  /* 계좌별 수량 편집 — 2줄 카드 */
+  .account-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .acc-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .acc-card-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .acc-card-total { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .acc-card-total.zero { color: #9ca3af; }
+  .acc-card-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .acc-card-inputs label { display: flex; flex-direction: column; gap: 3px; }
+  .acc-card-inputs label span { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.2px; }
+  .acc-card-inputs input { padding: 7px 10px; text-align: right; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 6px; width: 100%; box-sizing: border-box; background: #fff; }
+  .acc-card-inputs input:focus { outline: none; border-color: var(--primary); }
   .account-head {
     display: grid;
     grid-template-columns: 1.2fr 1fr 1.2fr 1.4fr;
@@ -1239,10 +1251,7 @@
       <div><h2 id="nkModalTitle">계좌별 수량 입력</h2><div class="modal-subtitle" id="nkModalSubtitle"></div></div>
       <button class="close-btn" onclick="nkCloseAccountModal()" aria-label="닫기">×</button>
     </div>
-    <div class="account-head">
-      <div>계좌</div><div>수량</div><div>매입단가 (USD)</div><div>매입총액 (USD)</div>
-    </div>
-    <div class="account-grid" id="nkAccountInputs"></div>
+    <div id="nkAccountInputs"></div>
     <div class="modal-total">
       <span>합계</span>
       <span>
@@ -1483,7 +1492,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.501';
+const APP_VERSION = 'NonK v0.502';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -2234,11 +2243,20 @@ function nkOpenAccountModal(ticker) {
   const activeAccs2 = NK_ACCOUNTS.filter(a => a.active !== false);
   grid.innerHTML = activeAccs2.map(a => {
     const acc = h.accounts && h.accounts[a.id] || { qty: 0, avgPrice: 0 };
-    return `<div class="account-row">
-      <span>${a.name}</span>
-      <input type="number" id="nkAccQty_${a.id}" min="0" step="1" value="${acc.qty || 0}">
-      <input type="number" id="nkAccAvg_${a.id}" min="0" step="0.01" value="${acc.avgPrice || 0}">
-      <span id="nkAccTotal_${a.id}">${fmtUSD((acc.qty || 0) * (acc.avgPrice || 0))}</span>
+    const total = (acc.qty || 0) * (acc.avgPrice || 0);
+    return `<div class="account-card">
+      <div class="acc-card-header">
+        <span class="acc-card-name">${nkEscape(a.name)}</span>
+        <span class="acc-card-total${total ? '' : ' zero'}" id="nkAccTotal_${a.id}">${fmtUSD(total)}</span>
+      </div>
+      <div class="acc-card-inputs">
+        <label><span>수량</span>
+          <input type="number" id="nkAccQty_${a.id}" min="0" step="1" value="${acc.qty || ''}">
+        </label>
+        <label><span>단가 (USD)</span>
+          <input type="number" id="nkAccAvg_${a.id}" min="0" step="0.01" value="${acc.avgPrice || ''}">
+        </label>
+      </div>
     </div>`;
   }).join('');
   activeAccs2.forEach(a => {
@@ -2255,7 +2273,7 @@ function nkUpdateAccTotals() {
     const qty = Number(document.getElementById(`nkAccQty_${a.id}`)?.value) || 0;
     const avg = Number(document.getElementById(`nkAccAvg_${a.id}`)?.value) || 0;
     const el = document.getElementById(`nkAccTotal_${a.id}`);
-    if (el) el.textContent = fmtUSD(qty * avg);
+    if (el) { el.textContent = fmtUSD(qty * avg); el.classList.toggle('zero', !(qty * avg)); }
     totalQty += qty; totalCost += qty * avg;
   });
   const qEl = document.getElementById('nkModalTotalQty');
