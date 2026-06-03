@@ -1497,7 +1497,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.504';
+const APP_VERSION = 'KDeal v0.505';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -2321,7 +2321,7 @@ function kdOpenAccountModal(ticker) {
           <input type="number" id="kdAccQty_${a.id}" min="0" step="1" value="${acc.qty || ''}">
         </label>
         <label><span>단가 (원)</span>
-          <input type="number" id="kdAccAvg_${a.id}" min="0" step="1" value="${acc.avgPrice || ''}">
+          <input type="number" id="kdAccAvg_${a.id}" min="0" step="1" value="${acc.avgPrice ? Math.round(+acc.avgPrice) : ''}">
         </label>
       </div>
     </div>`;

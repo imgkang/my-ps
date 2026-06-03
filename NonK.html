@@ -1492,7 +1492,7 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.504';
+const APP_VERSION = 'NonK v0.505';
 if (window.TickerSearch) window.TickerSearch.init();
 const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
@@ -2254,7 +2254,7 @@ function nkOpenAccountModal(ticker) {
           <input type="number" id="nkAccQty_${a.id}" min="0" step="1" value="${acc.qty || ''}">
         </label>
         <label><span>단가 (USD)</span>
-          <input type="number" id="nkAccAvg_${a.id}" min="0" step="0.01" value="${acc.avgPrice || ''}">
+          <input type="number" id="nkAccAvg_${a.id}" min="0" step="0.01" value="${acc.avgPrice ? parseFloat((+acc.avgPrice).toFixed(4)) : ''}">
         </label>
       </div>
     </div>`;
