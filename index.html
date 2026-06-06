@@ -3367,7 +3367,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.507';
+const APP_VERSION = 'MyPM v0.508';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9597,9 +9597,13 @@ function renderDivYearView() {
 
   const yieldEl = document.getElementById('divYearYield');
   if (yieldEl) {
-    const pfVal = calcDivPortfolioValue();
-    if (pfVal > 0 && yearTotal > 0) {
-      yieldEl.textContent = '투자배당률 ' + (yearTotal / pfVal * 100).toFixed(2) + '%';
+    const activeIds = new Set(getActiveAccounts().map(a => a.id));
+    const prevYearEndDate = `${_divSelectedYear - 1}-12-31`;
+    const prevYearPrincipal = (depositData.transactions || [])
+      .filter(t => activeIds.has(t.accId) && typeof t.date === 'string' && t.date <= prevYearEndDate)
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    if (prevYearPrincipal > 0 && yearTotal > 0) {
+      yieldEl.textContent = '투자배당률 ' + (yearTotal / prevYearPrincipal * 100).toFixed(2) + '%';
     } else {
       yieldEl.textContent = '투자배당률 --%';
     }
