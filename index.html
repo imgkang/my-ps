@@ -935,6 +935,8 @@ registerMobileTooltipDismiss();
   .div-year-summary { margin-bottom: 14px; }
   .div-year-total { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
   .div-year-yield { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .div-year-yield2 { font-size: 13px; color: var(--muted); margin-top: 1px; }
+  .div-yield-basis { font-size: 11px; opacity: 0.65; }
   .div-month-group { margin-bottom: 4px; }
   .div-month-hdr {
     display: flex; justify-content: space-between; align-items: center;
@@ -3208,6 +3210,7 @@ registerMobileTooltipDismiss();
       <div class="div-year-summary">
         <div class="div-year-total" id="divYearTotal">0 원</div>
         <div class="div-year-yield" id="divYearYield">투자배당률 --%</div>
+        <div class="div-year-yield2" id="divYearYield2">시가배당률 --%</div>
       </div>
 
       <!-- 월별 막대 차트 (12개월) -->
@@ -3367,7 +3370,7 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.507';
+const APP_VERSION = 'MyPM v0.510';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -9596,12 +9599,34 @@ function renderDivYearView() {
   if (totalEl) totalEl.textContent = yearTotal.toLocaleString('ko-KR') + ' 원';
 
   const yieldEl = document.getElementById('divYearYield');
+  const yield2El = document.getElementById('divYearYield2');
+  const activeAccs = getActiveAccounts();
+  const activeIds = new Set(activeAccs.map(a => a.id));
+
+  // 투자배당률 (YOC: 전년도 말 누적 원금 기준)
   if (yieldEl) {
-    const pfVal = calcDivPortfolioValue();
-    if (pfVal > 0 && yearTotal > 0) {
-      yieldEl.textContent = '투자배당률 ' + (yearTotal / pfVal * 100).toFixed(2) + '%';
+    const prevYearEndDate = `${_divSelectedYear - 1}-12-31`;
+    const prevYearPrincipal = (depositData.transactions || [])
+      .filter(t => activeIds.has(t.accId) && typeof t.date === 'string' && t.date <= prevYearEndDate)
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    if (prevYearPrincipal > 0 && yearTotal > 0) {
+      yieldEl.innerHTML = '투자배당률 ' + (yearTotal / prevYearPrincipal * 100).toFixed(2) + '%'
+        + ' <span class="div-yield-basis">(원금 ' + prevYearPrincipal.toLocaleString('ko-KR') + '원)</span>';
     } else {
       yieldEl.textContent = '투자배당률 --%';
+    }
+  }
+
+  // 시가배당률: 해당 연도 말 평가금 기준 (없으면 현재 평가금 fallback)
+  if (yield2El) {
+    const activeAccIds = activeAccs.map(a => a.id);
+    let evalVal = getGroupYearEndWon(activeAccIds, _divSelectedYear);
+    if (!evalVal || evalVal <= 0) evalVal = calcDivPortfolioValue();
+    if (evalVal > 0 && yearTotal > 0) {
+      yield2El.innerHTML = '시가배당률 ' + (yearTotal / evalVal * 100).toFixed(2) + '%'
+        + ' <span class="div-yield-basis">(평가 ' + evalVal.toLocaleString('ko-KR') + '원)</span>';
+    } else {
+      yield2El.textContent = '시가배당률 --%';
     }
   }
 

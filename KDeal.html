@@ -1497,7 +1497,7 @@
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.507';
+const APP_VERSION = 'KDeal v0.510';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3979,7 +3979,13 @@ function kdtUpdateSellStockOptions() {
     ).join('');
   if (prevTicker) {
     sel.value = prevTicker;
-    if (sel.value) kdtOnSellStockSelect(prevTicker, true);
+    if (sel.value) {
+      const restoredOpt = sel.options[sel.selectedIndex];
+      if (restoredOpt) {
+        document.getElementById('kdtTradeTicker').value = prevTicker;
+        document.getElementById('kdtTradeName').value = restoredOpt.dataset.name || '';
+      }
+    }
   }
 }
 
@@ -3988,6 +3994,7 @@ function kdtOnSellStockSelect(val, skipPrice) {
   if (!sel || !val) return;
   const opt = sel.options[sel.selectedIndex];
   document.getElementById('kdtTradeTicker').value = val;
+  if (!opt) return;
   document.getElementById('kdtTradeName').value = opt.dataset.name || '';
 
   const priceEl = document.getElementById('kdtTradePrice');
