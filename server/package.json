@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "apns2": "^12.2.0",
     "better-sqlite3": "^11.8.1",
     "fastify": "^5.2.1",
+    "firebase-admin": "^13.0.2",
     "node-cron": "^3.0.3"
   },
   "devDependencies": {

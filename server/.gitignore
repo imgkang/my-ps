@@ -7,3 +7,7 @@ data/
 *.db-shm
 .env
 *.p8
+# FCM 서비스 계정 키 (Firebase) — 절대 커밋 금지
+secrets/
+*service-account*.json
+firebase-adminsdk*.json

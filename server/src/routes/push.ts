@@ -1,22 +1,29 @@
 // 푸시 — 디바이스 토큰 등록 + 가격 알림 규칙 CRUD.
-// 실제 APNs 발송은 Phase 5 (src/lib/apns.ts) 에서 연결한다.
+// 실제 발송(APNs/FCM)은 src/lib/push.ts 의 sendPush() 가 플랫폼별로 처리한다.
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
 import { requireAuth } from '../auth.js';
 
+const VALID_PLATFORMS = new Set(['ios', 'android', 'web']);
+
 export default async function pushRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
 
-  // APNs 디바이스 토큰 등록/갱신
+  // 디바이스 토큰 등록/갱신 (platform: ios=APNs, android=FCM)
   app.post('/api/push/register', async (req, reply) => {
     const token = (req.body as any)?.token as string | undefined;
     const platform = ((req.body as any)?.platform as string) ?? 'ios';
     if (!token) return reply.code(400).send({ error: 'missing token' });
+    if (!VALID_PLATFORMS.has(platform)) {
+      return reply.code(400).send({ error: `invalid platform: ${platform}` });
+    }
     const now = new Date().toISOString();
     db.prepare(
       `INSERT INTO devices (token, platform, created_at, updated_at)
        VALUES (?, ?, ?, ?)
-       ON CONFLICT(token) DO UPDATE SET updated_at = excluded.updated_at`
+       ON CONFLICT(token) DO UPDATE SET
+         platform = excluded.platform,
+         updated_at = excluded.updated_at`
     ).run(token, platform, now, now);
     return { ok: true };
   });

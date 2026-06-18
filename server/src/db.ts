@@ -36,7 +36,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_tickers_country ON tickers(c);
 
-  -- 푸시 디바이스 토큰 (APNs)
+  -- 푸시 디바이스 토큰 (platform: ios=APNs, android=FCM, web=미지원)
   CREATE TABLE IF NOT EXISTS devices (
     token      TEXT PRIMARY KEY,
     platform   TEXT NOT NULL DEFAULT 'ios',

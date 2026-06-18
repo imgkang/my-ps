@@ -23,11 +23,14 @@ export const env = {
   APP_PIN: process.env.APP_PIN ?? '',
   FINNHUB_KEY: process.env.FINNHUB_KEY ?? '',
   DB_PATH: process.env.DB_PATH ?? './data/mypm.db',
+  // iOS 푸시 (APNs)
   APNS_KEY_PATH: process.env.APNS_KEY_PATH ?? '',
   APNS_KEY_ID: process.env.APNS_KEY_ID ?? '',
   APNS_TEAM_ID: process.env.APNS_TEAM_ID ?? '',
   APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID ?? '',
   APNS_ENV: process.env.APNS_ENV ?? 'development',
+  // Android 푸시 (FCM) — Firebase 서비스 계정 키 JSON 경로
+  FCM_SERVICE_ACCOUNT_PATH: process.env.FCM_SERVICE_ACCOUNT_PATH ?? '',
 };
 
 if (!env.APP_PIN) {

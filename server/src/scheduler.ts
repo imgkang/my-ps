@@ -35,6 +35,10 @@ export function startScheduler() {
 async function checkAlerts() {
   const alerts = db.prepare('SELECT * FROM alerts WHERE active = 1').all() as any[];
   if (!alerts.length) return;
-  // TODO(Phase 5): 각 종목 현재가 조회 → op/threshold 충족 시 APNs 발송 후 last_fired 갱신
-  // 현재가는 routes/price.ts 의 패스스루 로직을 lib 로 추출해 재사용 예정.
+  // TODO(Phase 5): 각 종목 현재가 조회 → op/threshold 충족 시 알림 발송 후 last_fired 갱신.
+  //   - 현재가: routes/price.ts 의 패스스루 로직을 lib 로 추출해 재사용 예정.
+  //   - 발송: lib/push.ts 의 broadcastPush(devices, payload) 로 등록된 모든 디바이스에 전송
+  //     (플랫폼별 APNs/FCM 분기는 sendPush 가 처리). 예:
+  //       const devices = db.prepare('SELECT token, platform FROM devices').all();
+  //       await broadcastPush(devices, { title, body });
 }
