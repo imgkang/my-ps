@@ -1498,7 +1498,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.512';
+const APP_VERSION = 'KDeal v0.513';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1514,16 +1514,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch(_) {}
 });
 
-// ▼ Cloudflare Worker 배포 후 URL 입력 (worker/README.md 참고)
-// 예: 'https://mypm-proxy.yourname.workers.dev'
-const CF_WORKER = 'https://my-ps-proxy.imgkang.workers.dev';
-
-const PROXIES = [
-  ...(CF_WORKER ? [url => `${CF_WORKER}?url=${encodeURIComponent(url)}`] : []),
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://thingproxy.freeboard.io/fetch/${url}`,
-];
+// 시세는 자체 백엔드 /api/price 로 단일화(외부 CORS 프록시 제거).
 // query2가 더 빠름(테스트 기준 ~370ms), query1은 백업
 const YAHOO_HOSTS = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com'];
 
@@ -1537,18 +1528,14 @@ async function fetchWithTimeout(url, ms = 9000) {
   } catch(e) { clearTimeout(tid); throw e; }
 }
 
+// 백엔드 /api/price 패스스루. 반환은 기존과 동일하게 응답 본문 텍스트(호출부가 JSON.parse).
 async function fetchViaProxy(targetUrl) {
-  let lastErr;
-  for (const proxy of PROXIES) {
-    try {
-      const res = await fetchWithTimeout(proxy(targetUrl));
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const text = await res.text();
-      if (!text || text.length < 10) throw new Error('빈 응답');
-      return text;
-    } catch (e) { lastErr = e; }
-  }
-  throw lastErr || new Error('모든 프록시 실패');
+  const base = (window.MyPMApi && MyPMApi.getBaseUrl()) || '';
+  const res = await fetchWithTimeout(base + '/api/price?url=' + encodeURIComponent(targetUrl));
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  if (!text || text.length < 10) throw new Error('빈 응답');
+  return text;
 }
 
 async function fetchKdPrice(code) {
