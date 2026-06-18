@@ -12,19 +12,46 @@ const ALLOWED_HOSTS = [
 // Worker 내부에서 30초간 캐시 (같은 종목 연속 요청 시 서버 부하 감소)
 const CACHE_TTL = 30;
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Max-Age': '86400',
+};
+
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Max-Age': '86400',
-        },
-      });
+      return new Response(null, { headers: CORS_HEADERS });
     }
 
     const { searchParams } = new URL(request.url);
+
+    // 전용 분기: Finnhub 시세 (키는 Worker secret env.FINNHUB_KEY 에 보관)
+    const finnhubTicker = searchParams.get('finnhub');
+    if (finnhubTicker) {
+      if (!/^[A-Za-z0-9.:\-]+$/.test(finnhubTicker)) {
+        return new Response('Invalid ticker', { status: 400, headers: CORS_HEADERS });
+      }
+      if (!env || !env.FINNHUB_KEY) {
+        return new Response('FINNHUB_KEY not configured', { status: 503, headers: CORS_HEADERS });
+      }
+      try {
+        const fhUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubTicker)}&token=${env.FINNHUB_KEY}`;
+        const res = await fetch(fhUrl, { cf: { cacheTtl: CACHE_TTL, cacheEverything: true } });
+        const body = await res.text();
+        return new Response(body, {
+          status: res.status,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': `public, max-age=${CACHE_TTL}`,
+            ...CORS_HEADERS,
+          },
+        });
+      } catch (err) {
+        return new Response('Finnhub fetch failed: ' + err.message, { status: 502, headers: CORS_HEADERS });
+      }
+    }
+
     const target = searchParams.get('url');
 
     if (!target) {

@@ -1492,9 +1492,8 @@
 </div>
 <script src="js/ticker-search.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.510';
+const APP_VERSION = 'NonK v0.511';
 if (window.TickerSearch) window.TickerSearch.init();
-const FINNHUB_KEY = 'd7m8a91r01qk7lvvdkhgd7m8a91r01qk7lvvdki0';
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
   if (el) el.textContent = APP_VERSION;
@@ -1549,9 +1548,9 @@ async function fetchViaProxy(targetUrl) {
 async function fetchNkPrice(ticker) {
   const ts = Date.now();
 
-  // 1차: Finnhub (직접 호출, CORS 허용, 실시간)
-  try {
-    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${FINNHUB_KEY}`;
+  // 1차: Finnhub (Cloudflare Worker 경유 — 키는 Worker secret 에 보관, 실시간)
+  if (CF_WORKER) try {
+    const url = `${CF_WORKER}?finnhub=${encodeURIComponent(ticker)}`;
     const res = await fetchWithTimeout(url);
     if (res.ok) {
       const j = await res.json();

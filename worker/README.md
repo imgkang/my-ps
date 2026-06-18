@@ -23,6 +23,27 @@ cd worker/
 wrangler deploy
 ```
 
+## Finnhub 키를 secret 으로 설정 (NonK 미국 주식 시세용)
+
+Finnhub API 키는 HTML/저장소에 넣지 않고 **Worker secret(암호화 환경변수)** 으로만 보관한다.
+Worker 가 `?finnhub=<TICKER>` 요청을 받으면 secret 의 키를 붙여 Finnhub 에 대신 호출한다.
+따라서 키는 저장소·HTML·브라우저 어디에도 노출되지 않는다.
+
+### 방법 A — 대시보드
+1. Workers & Pages → `my-ps-proxy` → **Settings** → **Variables and Secrets**
+2. **Add** → 이름 `FINNHUB_KEY`, 값에 새 키 붙여넣기, **Encrypt(Secret)** 선택 → Save
+3. 변경된 `proxy.js` 코드를 편집기에 붙여넣고 **Deploy**
+
+### 방법 B — Wrangler CLI
+```bash
+cd worker/
+wrangler secret put FINNHUB_KEY     # 프롬프트에 새 키 붙여넣기 (저장소엔 안 남음)
+wrangler deploy                     # 수정된 proxy.js 배포
+```
+
+> 설정 전이라도 NonK 는 Yahoo/Stooq 폴백으로 시세를 가져오므로 앱이 깨지지 않는다.
+> 동작 확인: `https://my-ps-proxy.imgkang.workers.dev/?finnhub=AAPL` → `{"c":...,"d":...,"dp":...}`
+
 ## 무료 플랜 한도
 
 | 항목 | 무료 한도 |
