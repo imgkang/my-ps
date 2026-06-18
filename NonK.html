@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.513';
+const APP_VERSION = 'NonK v0.514';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1585,6 +1585,25 @@ async function fetchNkPrice(ticker) {
   } catch(e2) {}
 
   throw new Error('가격 조회 실패: ' + ticker);
+}
+
+// 여러 미국 종목을 백엔드 배치 엔드포인트로 한 번에 조회 (브라우저 출처당 연결제한 우회).
+// 반환: { ticker: {price, change, changeRate, name} } — 실패/무데이터 심볼은 생략(호출부가 종목별 폴백).
+async function nkBatchFinnhub(tickers) {
+  const list = Array.from(new Set((tickers || []).filter(Boolean)));
+  if (!list.length) return {};
+  try {
+    const base = (window.MyPMApi && MyPMApi.getBaseUrl()) || '';
+    const res = await fetchWithTimeout(base + '/api/prices/finnhub?symbols=' + encodeURIComponent(list.join(',')), 12000);
+    if (!res.ok) return {};
+    const map = await res.json();
+    const out = {};
+    for (const t of Object.keys(map || {})) {
+      const j = map[t];
+      if (j && j.c > 0) out[t] = { price: j.c, change: j.d || 0, changeRate: j.dp || 0, name: t };
+    }
+    return out;
+  } catch(_) { return {}; }
 }
 
 const NK_ACC_KEY   = 'nonk_accounts_v1';
@@ -1715,9 +1734,15 @@ async function nkRefreshAll(suppressDone = false) {
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
 
+  // 배치 우선조회 — 보유+관심 티커를 한 요청으로 받아 브라우저 연결제한 우회.
+  // 배치에 없는(=Finnhub 미커버) 종목만 개별 fetchNkPrice(Finnhub단건→Yahoo→Stooq) 폴백.
+  const holdTickers = new Set(nkHoldings.map(h => h.ticker));
+  const watchTickers = nkWatchlist.filter(w => !holdTickers.has(w.ticker)).map(w => w.ticker);
+  const batch = await nkBatchFinnhub([...nkHoldings.map(h => h.ticker), ...watchTickers]);
+
   await Promise.all(nkHoldings.map(async h => {
     try {
-      const info = await fetchNkPrice(h.ticker);
+      const info = batch[h.ticker] || await fetchNkPrice(h.ticker);
       h.price = info.price; h.change = info.change;
       h.changeRate = info.changeRate;
       h.updatedAt  = new Date().toISOString();
@@ -1725,10 +1750,9 @@ async function nkRefreshAll(suppressDone = false) {
   }));
 
   // 관심종목 가격 갱신 (보유 종목과 중복 없이)
-  const holdTickers = new Set(nkHoldings.map(h => h.ticker));
   await Promise.all(nkWatchlist.filter(w => !holdTickers.has(w.ticker)).map(async w => {
     try {
-      const info = await fetchNkPrice(w.ticker);
+      const info = batch[w.ticker] || await fetchNkPrice(w.ticker);
       if (info) {
         nkWatchPrices[w.ticker] = info;
         if (info.name && info.name !== w.ticker) { w.name = info.name; nkSaveWatchlist(); }
