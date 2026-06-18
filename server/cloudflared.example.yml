@@ -1,0 +1,17 @@
+# Cloudflare Tunnel 설정 템플릿 — 실제 값으로 채워 %USERPROFILE%\.cloudflared\config.yml 로 복사.
+# (실제 config.yml 은 머신별 UUID·자격증명 경로를 담으므로 커밋하지 않는다 — .gitignore 처리됨)
+#
+# 생성 순서(자세한 건 README.md "Cloudflare Tunnel" 절):
+#   cloudflared tunnel login
+#   cloudflared tunnel create mypm           # → <UUID>.json 자격증명 생성
+#   cloudflared tunnel route dns mypm mypm.<도메인>
+
+tunnel: mypm
+credentials-file: C:\Users\<사용자>\.cloudflared\<UUID>.json
+
+ingress:
+  # 외부 HTTPS 요청을 로컬 백엔드(0.0.0.0:3000)로 전달
+  - hostname: mypm.<도메인>
+    service: http://localhost:3000
+  # 그 외 모든 요청은 404
+  - service: http_status:404

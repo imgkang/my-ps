@@ -24,13 +24,39 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
   }
 }
 
+// 인터넷 노출(Cloudflare Tunnel) 대비 — 로그인 무차별 대입 완화.
+// 무의존성 인메모리 스로틀: 클라이언트별 실패 횟수를 창 단위로 집계.
+const FAIL_LIMIT = 10;                 // 창 내 허용 실패 횟수
+const FAIL_WINDOW_MS = 5 * 60_000;     // 5분
+const loginFails = new Map<string, { count: number; first: number }>();
+
+// 터널 뒤에서는 req.ip 가 로컬(127.0.0.1)이므로 Cloudflare 가 전달하는 실제 IP 를 우선 사용.
+function clientKey(req: FastifyRequest): string {
+  const cf = req.headers['cf-connecting-ip'];
+  if (typeof cf === 'string' && cf.length) return cf;
+  return req.ip;
+}
+
 export default async function authRoutes(app: FastifyInstance) {
   app.post('/api/auth/login', async (req, reply) => {
-    const pin = (req.body as any)?.pin as string | undefined;
     if (!env.APP_PIN) return reply.code(503).send({ error: 'APP_PIN not configured' });
+
+    const key = clientKey(req);
+    const now = Date.now();
+    const rec = loginFails.get(key);
+    const inWindow = !!rec && now - rec.first < FAIL_WINDOW_MS;
+    if (inWindow && rec!.count >= FAIL_LIMIT) {
+      return reply.code(429).send({ error: 'too many attempts, try again later' });
+    }
+
+    const pin = (req.body as any)?.pin as string | undefined;
     if (!pin || !safeEqual(pin, env.APP_PIN)) {
+      if (inWindow) rec!.count++;
+      else loginFails.set(key, { count: 1, first: now });
       return reply.code(401).send({ error: 'invalid pin' });
     }
+
+    loginFails.delete(key); // 성공 시 리셋
     return { token: tokenForPin() };
   });
 }

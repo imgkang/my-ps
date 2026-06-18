@@ -11,3 +11,6 @@ data/
 secrets/
 *service-account*.json
 firebase-adminsdk*.json
+# Cloudflare Tunnel — 실제 config(머신별 UUID·자격증명 경로)와 자격증명 JSON 은 커밋 금지
+config.yml
+*.cloudflared.json
