@@ -1,5 +1,6 @@
 // My PM 백엔드 진입점 — Fastify 앱 구성 및 라우트 등록.
 import './env.js';
+import { resolve } from 'node:path';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { env } from './env.js';
@@ -22,6 +23,24 @@ await app.register(priceRoutes);
 await app.register(syncRoutes);
 await app.register(searchRoutes);
 await app.register(pushRoutes);
+
+// 프론트 정적 서빙 (로컬 테스트용 단일 출처). API 라우트 등록 뒤에 둔다.
+// 보안 가드: server/(=.env·DB), .git, dotfile 은 절대 서빙하지 않는다.
+if (env.SERVE_STATIC) {
+  const fastifyStatic = (await import('@fastify/static')).default;
+  await app.register(fastifyStatic, {
+    root: resolve(process.cwd(), '..'), // 저장소 루트(index.html 등)
+    prefix: '/',
+    index: ['index.html'],
+    allowedPath: (pathName: string) => {
+      const p = pathName.toLowerCase();
+      if (p === '/server' || p.startsWith('/server/')) return false; // .env·DB 차단
+      if (p.startsWith('/.')) return false; // /.git, /.env 등 dotpath 차단
+      if (p.split('/').some((seg) => seg.startsWith('.'))) return false; // 중첩 dotfile 차단
+      return true;
+    },
+  });
+}
 
 try {
   await app.listen({ port: env.PORT, host: '0.0.0.0' });

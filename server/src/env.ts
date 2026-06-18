@@ -23,6 +23,8 @@ export const env = {
   APP_PIN: process.env.APP_PIN ?? '',
   FINNHUB_KEY: process.env.FINNHUB_KEY ?? '',
   DB_PATH: process.env.DB_PATH ?? './data/mypm.db',
+  // 프론트 정적 파일 서빙(로컬 테스트용 단일 출처). 'false' 면 API 전용.
+  SERVE_STATIC: (process.env.SERVE_STATIC ?? 'true') !== 'false',
   // iOS 푸시 (APNs)
   APNS_KEY_PATH: process.env.APNS_KEY_PATH ?? '',
   APNS_KEY_ID: process.env.APNS_KEY_ID ?? '',
