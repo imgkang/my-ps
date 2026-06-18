@@ -31,9 +31,10 @@ export default async function syncRoutes(app: FastifyInstance) {
     const incoming = Number(body.version ?? 0);
     const current = db.prepare('SELECT version FROM data_bundle WHERE id = 1').get() as { version: number };
 
-    // 충돌 방지: 들어온 버전이 서버보다 낮으면 거부 (force=true 면 무시)
+    // 충돌 방지: 들어온 버전이 서버 버전 이하면 거부 (force=true 면 무시).
+    // '이하'로 판정해야 두 기기가 같은 base 에서 동시에 같은 리비전을 보내는 경우(덮어쓰기)도 막는다.
     const force = (req.query as any)?.force === 'true';
-    if (!force && incoming < current.version) {
+    if (!force && incoming <= current.version) {
       return reply.code(409).send({
         error: 'stale',
         serverVersion: current.version,
