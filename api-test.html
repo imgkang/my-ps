@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>My PM — 백엔드 연결 테스트</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 16px; line-height: 1.5;
+    max-width: 640px; margin-inline: auto;
+  }
+  h1 { font-size: 1.2rem; margin: 0 0 4px; }
+  .sub { color: #888; font-size: 0.85rem; margin: 0 0 16px; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; }
+  input {
+    width: 100%; padding: 12px; font-size: 16px; /* 16px = iOS 자동확대 방지 */
+    border: 1px solid #ccc; border-radius: 8px;
+  }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+  button {
+    padding: 14px 10px; font-size: 15px; font-weight: 600;
+    border: 0; border-radius: 8px; background: #2563eb; color: #fff;
+    cursor: pointer; touch-action: manipulation;
+  }
+  button.sec { background: #475569; }
+  button:active { opacity: 0.7; }
+  .status { margin-top: 16px; font-weight: 700; }
+  .ok { color: #16a34a; } .err { color: #dc2626; }
+  pre {
+    margin-top: 8px; padding: 12px; background: #1e293b; color: #e2e8f0;
+    border-radius: 8px; overflow: auto; font-size: 12px; max-height: 50vh;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .hint { font-size: 0.78rem; color: #888; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>My PM — 백엔드 연결 테스트</h1>
+  <p class="sub">휴대폰에서 노트북 백엔드 연동을 확인하는 스모크 테스트 페이지입니다.</p>
+
+  <label for="baseUrl">백엔드 주소 (baseUrl)</label>
+  <input id="baseUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+         placeholder="https://example.trycloudflare.com">
+  <p class="hint">이 페이지를 백엔드가 직접 서빙하면 현재 주소가 자동으로 채워집니다.</p>
+
+  <label for="clientId">Google Client ID</label>
+  <input id="clientId" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+         value="27411403852-l8khk3nssbpdj9f9clrn3u70ikri9g9b.apps.googleusercontent.com">
+  <p class="hint">구글 로그인 버튼이 안 보이면 아래 "2. 구글 로그인 버튼"을 누르세요.</p>
+  <div id="gbtn" style="margin-top:12px;"></div>
+
+  <div class="btns">
+    <button onclick="run('health')">1. Health</button>
+    <button onclick="initGoogle()">2. 구글 로그인 버튼</button>
+    <button onclick="run('bundle')">3. Get Bundle</button>
+    <button onclick="run('me')" class="sec">내 정보(me)</button>
+    <button onclick="run('meta')" class="sec">Sync Meta</button>
+    <button onclick="run('search')" class="sec">Search 삼성</button>
+    <button onclick="run('count')" class="sec">Tickers Count</button>
+    <button onclick="run('register')" class="sec">Register(dummy)</button>
+    <button onclick="run('reset')" class="sec">설정 초기화</button>
+  </div>
+
+  <div id="status" class="status"></div>
+  <pre id="out">결과가 여기에 표시됩니다.</pre>
+
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <script src="js/api.js"></script>
+  <script>
+    var elBase = document.getElementById('baseUrl');
+    var elClientId = document.getElementById('clientId');
+    var elStatus = document.getElementById('status');
+    var elOut = document.getElementById('out');
+
+    // baseUrl 기본값: 이미 설정돼 있으면 그 값, 없으면 현재 페이지 출처(같은 출처 서빙 시).
+    elBase.value = MyPMApi.getBaseUrl() || location.origin;
+
+    function show(ok, label, data) {
+      elStatus.textContent = (ok ? '✓ ' : '✗ ') + label;
+      elStatus.className = 'status ' + (ok ? 'ok' : 'err');
+      try { elOut.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); }
+      catch (e) { elOut.textContent = String(data); }
+    }
+
+    function syncBase() {
+      var v = (elBase.value || '').trim();
+      if (v) MyPMApi.configure({ baseUrl: v });
+      return MyPMApi.getBaseUrl();
+    }
+
+    async function run(action) {
+      try {
+        syncBase();
+        if (action === 'reset') {
+          MyPMApi.logout();
+          MyPMApi.configure({ baseUrl: '' });
+          elBase.value = location.origin;
+          return show(true, '설정/토큰 초기화됨', { authenticated: MyPMApi.isAuthenticated() });
+        }
+        if (action === 'health') {
+          var r = await MyPMApi.request('/api/health');
+          return show(true, 'Health OK', r.data);
+        }
+        if (action === 'me') {
+          return show(true, '내 정보', await MyPMApi.me());
+        }
+        if (action === 'bundle') {
+          var b = await MyPMApi.getBundle();
+          return show(true, 'Get Bundle 성공' + (b.fromCache ? ' (캐시)' : ''), b.bundle);
+        }
+        if (action === 'meta') {
+          return show(true, 'Sync Meta', await MyPMApi.getMeta());
+        }
+        if (action === 'search') {
+          return show(true, 'Search 결과', await MyPMApi.search('삼성', { country: 'KR', limit: 10 }));
+        }
+        if (action === 'count') {
+          return show(true, 'Tickers Count', await MyPMApi.tickersCount());
+        }
+        if (action === 'register') {
+          var dummy = 'dummy-web-token-' + Date.now();
+          return show(true, 'Register(dummy)', await MyPMApi.registerDevice(dummy, 'web'));
+        }
+      } catch (e) {
+        show(false, (e && e.name ? e.name + ': ' : '') + (e && e.message || '실패'),
+             { name: e && e.name, message: e && e.message, status: e && e.status, data: e && e.data });
+      }
+    }
+    window.run = run;
+
+    // 구글 로그인 버튼 초기화/렌더 (Google Identity Services)
+    function initGoogle() {
+      var cid = (elClientId.value || '').trim();
+      if (!cid) return show(false, 'Google Client ID 를 입력하세요');
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        return show(false, 'GIS 스크립트가 아직 로딩되지 않았습니다 — 잠시 후 다시 시도하세요');
+      }
+      syncBase();
+      google.accounts.id.initialize({
+        client_id: cid,
+        callback: function (resp) {
+          MyPMApi.loginGoogle(resp.credential).then(function (r) {
+            show(true, '구글 로그인 성공 — ' + (r.user && r.user.email), r.user);
+          }).catch(function (e) {
+            show(false, (e && e.name ? e.name + ': ' : '') + (e && e.message || '실패'),
+                 { status: e && e.status, data: e && e.data });
+          });
+        },
+      });
+      google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'outline', size: 'large', width: 280 });
+      show(true, '구글 로그인 버튼 표시됨 — 버튼을 눌러 로그인하세요', {});
+    }
+    window.initGoogle = initGoogle;
+
+    // 페이지 로드 후 GIS 준비되면 자동으로 버튼 렌더 시도
+    window.addEventListener('load', function () {
+      var tries = 0;
+      var t = setInterval(function () {
+        if (window.google && google.accounts && google.accounts.id) { clearInterval(t); initGoogle(); }
+        else if (++tries > 20) clearInterval(t);
+      }, 250);
+    });
+  </script>
+</body>
+</html>
