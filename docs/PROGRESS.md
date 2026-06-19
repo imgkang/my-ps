@@ -89,6 +89,30 @@ Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend
 
 ---
 
+## ✅ 다중 사용자 + 구글 로그인 완료 (2026-06-19, v0.517)
+단일(PIN) → **다중 사용자 + 구글 로그인(허용목록)** 전환 완료. localhost + 휴대폰 검증 완료.
+
+### 백엔드
+- `users`(google_sub/email/name) + `app_meta`(token_secret) 테이블 신설.
+- `data_bundle`/`alerts`/`devices` 에 `user_id` 추가 → 모든 보호 라우트를 로그인 사용자로 스코프.
+- 인증: `POST /api/auth/google` (구글 ID 토큰 검증 + `ALLOWED_EMAILS` 화이트리스트) → 앱 토큰(uid 서명, HMAC, 30일) 발급. `GET /api/auth/me`. PIN(`/api/auth/login`) 제거.
+- 토큰 서명키는 `app_meta.token_secret` 에 영속.
+- `.env` 신규: `GOOGLE_CLIENT_ID`, `ALLOWED_EMAILS`(콤마), `OWNER_EMAIL`.
+- 마이그레이션: `npm run migrate` (단일→다중, DB 자동 백업, 기존 번들을 OWNER_EMAIL 계정으로 이관). import-bundle 도 OWNER_EMAIL 대상.
+- 구글 OAuth 웹 클라이언트 ID: `27411403852-...apps.googleusercontent.com` (Google Cloud, 프로젝트 GrowPension, 테스트 사용자 = 허용 이메일). 승인된 JS 원본: `https://mypm.growpension.com`, `http://localhost:3000`.
+
+### 프론트
+- `js/api.js`: `loginGoogle(credential)`/`me()` (login(pin) 제거).
+- `index.html`: 백엔드 로그인 PIN → 구글 로그인 버튼(GIS). `api-test.html` 도 구글 버튼.
+- `sw.js`: `/api/*` 및 비-GET 요청 캐시 제외(동적 데이터/로그인 캐시 방지). client 자산 변경 → v0.514→0.517 + CACHE_NAME 동기화.
+
+### 운영 메모
+- 신규 사용자 추가 = `.env` `ALLOWED_EMAILS` 에 이메일 추가 + (구글 콘솔 테스트 모드면) 테스트 사용자 추가 → 백엔드 재시작.
+- GitHub Pages(`imgkang.github.io`)에서도 로그인하려면 그 출처를 구글 "승인된 JS 원본"에 추가 필요(현재는 미등록 — 실제 앱은 mypm.growpension.com).
+- (미구현) scheduler 의 알림 발송은 아직 사용자별 devices 조회 미연결(Phase 5).
+
+---
+
 ## 다음 단계 (예정)
 - **Phase 4 — Capacitor 안드로이드 앱**: 기존 정적 자산을 `webDir`로 래핑, `npx cap add android`, Windows+Android Studio로 APK 빌드·사이드로드. baseUrl = 터널 도메인. (Mac 불필요. iOS는 추후 Mac/클라우드.)
 - **Phase 5 — 푸시 알림**: `@capacitor/push-notifications` → `/api/push/register`. 안드로이드 FCM 먼저(Firebase 프로젝트 + `google-services.json` + 서버 서비스계정 키). 백엔드 발송기/alerts 엔진 연결.
