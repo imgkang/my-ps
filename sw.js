@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.516';
+const CACHE_NAME = 'mypm-v0.517';
 
 const BASE = '/my-ps/';
 
@@ -53,6 +53,11 @@ self.addEventListener('fetch', event => {
       event.request.url.includes('accounts.google.com')) {
     return;
   }
+
+  // 백엔드 API(/api/*)는 캐시하지 않고 항상 네트워크 — 동적 데이터 + POST 로그인 등.
+  try { if (new URL(event.request.url).pathname.startsWith('/api/')) return; } catch (_) {}
+  // GET 외(POST/PUT/DELETE)는 캐시 대상이 아니므로 그대로 네트워크.
+  if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then(cached => {
