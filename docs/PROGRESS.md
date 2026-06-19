@@ -48,6 +48,47 @@
 
 ---
 
+## ✅ 집 PC 프로덕션 배포 완료 (2026-06-19, 개인 계정 세션)
+부록 G(Cloudflare Tunnel 상시화)를 **집 Windows PC에서 완료**. 외부에서 고정 HTTPS 주소로 상시 접속 가능. 재부팅 후 무인 자동 가동 검증 완료(휴대폰 LTE OK).
+
+### 환경 / 경로 (이 집 PC 기준)
+- 저장소 위치: `C:\Users\강민구\mypm` (루트). 백엔드: `...\mypm\server`.
+- hostname `DESKTOP-V05RLRM`, LAN IPv4 `192.168.86.113` (Google Wifi).
+- Node.js v22.x, Node 실행기 `C:\Program Files\nodejs\node.exe`.
+- cloudflared `C:\Program Files (x86)\cloudflared\cloudflared.exe`.
+
+### 도메인 / 터널
+- 도메인 **`growpension.com`** — Cloudflare Registrar 로 신규 구매(계정 imgkang@gmail.com, 자동 Active, 네임서버 변경 불필요).
+- 외부 접속 주소: **`https://mypm.growpension.com`** (자동 HTTPS).
+- named tunnel **`mypm`**, UUID `d454478b-5f3c-424c-8452-8588509a22a0`.
+- 설정 파일 `C:\Users\강민구\.cloudflared\config.yml` (BOM 없는 UTF-8). 자격증명 `...\.cloudflared\<UUID>.json`, 로그인 인증서 `cert.pem` — 모두 그 폴더에 있으며 **커밋 금지**.
+
+### 자동 실행 = Windows 작업 스케줄러 (NSSM 대신)
+> NSSM 은 AhnLab Safe Transaction 이 PUP 로 오탐·차단 → **작업 스케줄러로 전환**. 둘 다 **SYSTEM 계정 + 부팅 시 실행(AtStartup) + 크래시 시 1분 후 자동 재시작(최대 3회) + 실행시간 제한 해제(PT0S)**.
+- `MyPMBackend` → `node.exe dist\server.js`, 작업폴더 `...\mypm\server` (★ `.env` 가 여기서 로드됨).
+- `MyPMTunnel` → `cloudflared.exe --config <config.yml 절대경로> tunnel run mypm` (SYSTEM 계정이라 `--config` 절대경로 명시 필수).
+- 전원: `powercfg /change standby-timeout-ac 0` 등으로 절전/최대절전 해제(서버 상시 가동). 노트북이면 덮개 동작도 "아무 것도 안 함".
+
+### 관리 명령 (관리자 PowerShell)
+```powershell
+# 상태
+Get-ScheduledTask MyPMBackend,MyPMTunnel | Select TaskName,State
+# 재시작
+Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend
+Stop-ScheduledTask MyPMTunnel;  Start-ScheduledTask MyPMTunnel
+# 코드 업데이트 반영
+cd $env:USERPROFILE\mypm; git pull
+cd server; npm install; npm run build
+Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend
+```
+
+### 운영 주의
+- PC 전원 켜져 있어야 서비스 동작(절전 해제 적용함).
+- Cloudflare 에서 `growpension.com` 자동 갱신/결제수단 확인(만료 시 접속 끊김).
+- APP_PIN 충분히 길게 유지(외부 노출). Finnhub 키 등은 `.env` 에만.
+
+---
+
 ## 다음 단계 (예정)
 - **Phase 4 — Capacitor 안드로이드 앱**: 기존 정적 자산을 `webDir`로 래핑, `npx cap add android`, Windows+Android Studio로 APK 빌드·사이드로드. baseUrl = 터널 도메인. (Mac 불필요. iOS는 추후 Mac/클라우드.)
 - **Phase 5 — 푸시 알림**: `@capacitor/push-notifications` → `/api/push/register`. 안드로이드 FCM 먼저(Firebase 프로젝트 + `google-services.json` + 서버 서비스계정 키). 백엔드 발송기/alerts 엔진 연결.
