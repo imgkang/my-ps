@@ -1,53 +1,63 @@
-// 데이터 동기화 — 기존 Google Drive 번들(mypm-data.json, version 12)과 동일한 형식.
-//   GET  /api/sync       → { version, exportedAt, mypm, nonk, kdeal, kd, ... } 전체 반환
+// 데이터 동기화 — 사용자별 번들(기존 Google Drive mypm-data.json 과 동일 형식).
+//   GET  /api/sync       → 로그인 사용자의 전체 번들 반환
 //   PUT  /api/sync       → 전체 번들 저장 (서버 version 보다 낮으면 거부, 충돌 방지)
 //   GET  /api/sync/meta  → { version, updated_at } (가벼운 변경 확인용)
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
-import { requireAuth } from '../auth.js';
+import { requireAuth, userId } from '../auth.js';
 
-type BundleRow = { version: number; json: string; updated_at: string };
+type BundleRow = { version: number; json: string; updated_at: string | null };
 
 export default async function syncRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
 
-  app.get('/api/sync/meta', async () => {
-    const row = db.prepare('SELECT version, updated_at FROM data_bundle WHERE id = 1').get() as BundleRow;
-    return { version: row.version, updated_at: row.updated_at };
+  app.get('/api/sync/meta', async (req) => {
+    const row = db
+      .prepare('SELECT version, updated_at FROM data_bundle WHERE user_id = ?')
+      .get(userId(req)) as BundleRow | undefined;
+    return row ? { version: row.version, updated_at: row.updated_at } : { version: 0, updated_at: null };
   });
 
-  app.get('/api/sync', async (_req, reply) => {
-    const row = db.prepare('SELECT version, json, updated_at FROM data_bundle WHERE id = 1').get() as BundleRow;
+  app.get('/api/sync', async (req, reply) => {
+    const row = db
+      .prepare('SELECT json FROM data_bundle WHERE user_id = ?')
+      .get(userId(req)) as BundleRow | undefined;
     reply.header('Content-Type', 'application/json; charset=utf-8');
-    // json 컬럼은 이미 직렬화된 번들 그대로 반환
-    return row.json;
+    // json 컬럼은 이미 직렬화된 번들 그대로 반환. 신규 사용자는 빈 객체.
+    return row ? row.json : '{}';
   });
 
   app.put('/api/sync', async (req, reply) => {
+    const uid = userId(req);
     const body = req.body as any;
     if (!body || typeof body !== 'object') {
       return reply.code(400).send({ error: 'invalid bundle' });
     }
     const incoming = Number(body.version ?? 0);
-    const current = db.prepare('SELECT version FROM data_bundle WHERE id = 1').get() as { version: number };
+    const cur = db.prepare('SELECT version FROM data_bundle WHERE user_id = ?').get(uid) as
+      | { version: number }
+      | undefined;
 
     // 충돌 방지: 들어온 버전이 서버 버전 이하면 거부 (force=true 면 무시).
-    // '이하'로 판정해야 두 기기가 같은 base 에서 동시에 같은 리비전을 보내는 경우(덮어쓰기)도 막는다.
+    // 신규 사용자(행 없음)는 충돌 없이 첫 저장 허용.
     const force = (req.query as any)?.force === 'true';
-    if (!force && incoming <= current.version) {
+    if (!force && cur && incoming <= cur.version) {
       return reply.code(409).send({
         error: 'stale',
-        serverVersion: current.version,
+        serverVersion: cur.version,
         incomingVersion: incoming,
       });
     }
 
     const now = new Date().toISOString();
-    db.prepare('UPDATE data_bundle SET version = ?, json = ?, updated_at = ? WHERE id = 1').run(
-      incoming,
-      JSON.stringify(body),
-      now
-    );
+    db.prepare(
+      `INSERT INTO data_bundle (user_id, version, json, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         version = excluded.version,
+         json = excluded.json,
+         updated_at = excluded.updated_at`
+    ).run(uid, incoming, JSON.stringify(body), now);
     return { ok: true, version: incoming, updated_at: now };
   });
 }

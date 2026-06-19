@@ -18,13 +18,29 @@ if (existsSync(envPath)) {
   }
 }
 
+// 콤마 구분 이메일 목록 → 소문자 배열
+function emailList(raw: string | undefined): string[] {
+  return (raw ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export const env = {
   PORT: Number(process.env.PORT ?? 3000),
-  APP_PIN: process.env.APP_PIN ?? '',
   FINNHUB_KEY: process.env.FINNHUB_KEY ?? '',
   DB_PATH: process.env.DB_PATH ?? './data/mypm.db',
   // 프론트 정적 파일 서빙(로컬 테스트용 단일 출처). 'false' 면 API 전용.
   SERVE_STATIC: (process.env.SERVE_STATIC ?? 'true') !== 'false',
+
+  // ── 구글 로그인 / 다중 사용자 ──
+  // 구글 OAuth 웹 클라이언트 ID (프론트 GIS 와 동일 값). 비밀 아님.
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? '',
+  // 로그인 허용 이메일 화이트리스트 (콤마 구분). 비어 있으면 아무도 로그인 불가.
+  ALLOWED_EMAILS: emailList(process.env.ALLOWED_EMAILS),
+  // 기존(단일 사용자) 데이터를 이관할 소유자 이메일. 마이그레이션·import 에서 사용.
+  OWNER_EMAIL: (process.env.OWNER_EMAIL ?? '').trim().toLowerCase(),
+
   // iOS 푸시 (APNs)
   APNS_KEY_PATH: process.env.APNS_KEY_PATH ?? '',
   APNS_KEY_ID: process.env.APNS_KEY_ID ?? '',
@@ -35,6 +51,9 @@ export const env = {
   FCM_SERVICE_ACCOUNT_PATH: process.env.FCM_SERVICE_ACCOUNT_PATH ?? '',
 };
 
-if (!env.APP_PIN) {
-  console.warn('[env] ⚠️  APP_PIN 이 설정되지 않았습니다. .env 를 확인하세요.');
+if (!env.GOOGLE_CLIENT_ID) {
+  console.warn('[env] ⚠️  GOOGLE_CLIENT_ID 가 설정되지 않았습니다 — 구글 로그인 불가. .env 를 확인하세요.');
+}
+if (env.ALLOWED_EMAILS.length === 0) {
+  console.warn('[env] ⚠️  ALLOWED_EMAILS 가 비어 있습니다 — 아무도 로그인할 수 없습니다.');
 }

@@ -6,6 +6,8 @@
 // 섹션별 건수 요약 출력 → 사용자가 "내 데이터가 제대로 들어갔다"를 눈으로 확인.
 import { readFileSync } from 'node:fs';
 import { db } from '../db.js';
+import { env } from '../env.js';
+import { userIdByEmail } from '../users.js';
 
 const path = process.argv[2];
 if (!path) {
@@ -42,15 +44,33 @@ const len = (obj: any, ...keys: string[]): number => {
   return Array.isArray(cur) ? cur.length : 0;
 };
 
+// 다중 사용자: OWNER_EMAIL 계정으로 적재 (먼저 npm run migrate 또는 구글 로그인으로 계정 생성 필요)
+const ownerEmail = env.OWNER_EMAIL;
+if (!ownerEmail) {
+  console.error('❌ .env 에 OWNER_EMAIL 을 설정하세요 (이 계정으로 데이터를 적재).');
+  process.exit(1);
+}
+const uid = userIdByEmail(ownerEmail);
+if (!uid) {
+  console.error(
+    `❌ 소유자 계정(${ownerEmail})을 찾을 수 없습니다.\n` +
+      '   먼저 `npm run migrate` 를 실행하거나, 해당 이메일로 구글 로그인해 계정을 만든 뒤 다시 시도하세요.'
+  );
+  process.exit(1);
+}
+
 const version = Number(bundle.version ?? 0);
-const prev = db.prepare('SELECT version FROM data_bundle WHERE id = 1').get() as { version: number };
+const prev = db.prepare('SELECT version FROM data_bundle WHERE user_id = ?').get(uid) as
+  | { version: number }
+  | undefined;
 const now = new Date().toISOString();
 
-db.prepare('UPDATE data_bundle SET version = ?, json = ?, updated_at = ? WHERE id = 1').run(
-  version,
-  JSON.stringify(bundle),
-  now
-);
+db.prepare(
+  `INSERT INTO data_bundle (user_id, version, json, updated_at)
+   VALUES (?, ?, ?, ?)
+   ON CONFLICT(user_id) DO UPDATE SET
+     version = excluded.version, json = excluded.json, updated_at = excluded.updated_at`
+).run(uid, version, JSON.stringify(bundle), now);
 
 // 적재 요약 ----------------------------------------------------------------
 console.log('\n✅ 번들 적재 완료');

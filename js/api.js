@@ -14,7 +14,8 @@
  *   configure({ baseUrl })          - 백엔드 주소 설정(localStorage 영속). 끝 슬래시 제거.
  *   getBaseUrl()                    - 현재 baseUrl ('' 면 미설정)
  *   isConfigured()                  - baseUrl 설정 여부(boolean)
- *   login(pin)                      - PIN 으로 로그인 → 토큰 저장. {ok} 반환
+ *   loginGoogle(credential)         - 구글 ID 토큰으로 로그인 → 앱 토큰 저장. {ok,user} 반환
+ *   me()                            - 현재 로그인 사용자 { email, name }
  *   logout()                        - 토큰 삭제
  *   isAuthenticated()               - 토큰 보유 여부(boolean)
  *   getBundle()                     - GET /api/sync (실패 시 캐시 폴백). { bundle, fromCache } 반환
@@ -126,15 +127,22 @@
     });
   }
 
-  // ───────────────────────── 인증 ─────────────────────────
-  function login(pin) {
-    return request('/api/auth/login', { method: 'POST', json: { pin: pin } })
+  // ───────────────────────── 인증 (구글 로그인) ─────────────────────────
+  // 프론트(Google Identity Services)가 받은 구글 ID 토큰(credential)을 백엔드에 보내
+  // 검증 + 허용목록 확인 후 앱 토큰을 받아 저장한다.
+  function loginGoogle(credential) {
+    return request('/api/auth/google', { method: 'POST', json: { credential: credential } })
       .then(function (r) {
         var token = r.data && r.data.token;
         if (!token) throw ApiHttpError('토큰을 받지 못했습니다', { data: r.data });
         lsSet(LS_TOKEN, token);
-        return { ok: true };
+        return { ok: true, user: r.data.user };
       });
+  }
+
+  // 현재 로그인 사용자 정보 ({ email, name }). 토큰 유효성 확인용.
+  function me() {
+    return request('/api/auth/me', { auth: true }).then(function (r) { return r.data; });
   }
 
   // ───────────────────────── 데이터 동기화 ─────────────────────────
@@ -223,7 +231,8 @@
     configure: configure,
     getBaseUrl: getBaseUrl,
     isConfigured: isConfigured,
-    login: login,
+    loginGoogle: loginGoogle,
+    me: me,
     logout: logout,
     isAuthenticated: isAuthenticated,
     // 동기화

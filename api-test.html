@@ -46,13 +46,17 @@
          placeholder="https://example.trycloudflare.com">
   <p class="hint">이 페이지를 백엔드가 직접 서빙하면 현재 주소가 자동으로 채워집니다.</p>
 
-  <label for="pin">APP_PIN</label>
-  <input id="pin" type="password" autocomplete="off" placeholder="server/.env 의 APP_PIN">
+  <label for="clientId">Google Client ID</label>
+  <input id="clientId" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+         value="27411403852-l8khk3nssbpdj9f9clrn3u70ikri9g9b.apps.googleusercontent.com">
+  <p class="hint">구글 로그인 버튼이 안 보이면 아래 "2. 구글 로그인 버튼"을 누르세요.</p>
+  <div id="gbtn" style="margin-top:12px;"></div>
 
   <div class="btns">
     <button onclick="run('health')">1. Health</button>
-    <button onclick="run('login')">2. Login</button>
+    <button onclick="initGoogle()">2. 구글 로그인 버튼</button>
     <button onclick="run('bundle')">3. Get Bundle</button>
+    <button onclick="run('me')" class="sec">내 정보(me)</button>
     <button onclick="run('meta')" class="sec">Sync Meta</button>
     <button onclick="run('search')" class="sec">Search 삼성</button>
     <button onclick="run('count')" class="sec">Tickers Count</button>
@@ -63,10 +67,11 @@
   <div id="status" class="status"></div>
   <pre id="out">결과가 여기에 표시됩니다.</pre>
 
+  <script src="https://accounts.google.com/gsi/client" async></script>
   <script src="js/api.js"></script>
   <script>
     var elBase = document.getElementById('baseUrl');
-    var elPin = document.getElementById('pin');
+    var elClientId = document.getElementById('clientId');
     var elStatus = document.getElementById('status');
     var elOut = document.getElementById('out');
 
@@ -99,9 +104,8 @@
           var r = await MyPMApi.request('/api/health');
           return show(true, 'Health OK', r.data);
         }
-        if (action === 'login') {
-          await MyPMApi.login(elPin.value);
-          return show(true, '로그인 성공 — 토큰 저장됨', { authenticated: true });
+        if (action === 'me') {
+          return show(true, '내 정보', await MyPMApi.me());
         }
         if (action === 'bundle') {
           var b = await MyPMApi.getBundle();
@@ -126,6 +130,39 @@
       }
     }
     window.run = run;
+
+    // 구글 로그인 버튼 초기화/렌더 (Google Identity Services)
+    function initGoogle() {
+      var cid = (elClientId.value || '').trim();
+      if (!cid) return show(false, 'Google Client ID 를 입력하세요');
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        return show(false, 'GIS 스크립트가 아직 로딩되지 않았습니다 — 잠시 후 다시 시도하세요');
+      }
+      syncBase();
+      google.accounts.id.initialize({
+        client_id: cid,
+        callback: function (resp) {
+          MyPMApi.loginGoogle(resp.credential).then(function (r) {
+            show(true, '구글 로그인 성공 — ' + (r.user && r.user.email), r.user);
+          }).catch(function (e) {
+            show(false, (e && e.name ? e.name + ': ' : '') + (e && e.message || '실패'),
+                 { status: e && e.status, data: e && e.data });
+          });
+        },
+      });
+      google.accounts.id.renderButton(document.getElementById('gbtn'), { theme: 'outline', size: 'large', width: 280 });
+      show(true, '구글 로그인 버튼 표시됨 — 버튼을 눌러 로그인하세요', {});
+    }
+    window.initGoogle = initGoogle;
+
+    // 페이지 로드 후 GIS 준비되면 자동으로 버튼 렌더 시도
+    window.addEventListener('load', function () {
+      var tries = 0;
+      var t = setInterval(function () {
+        if (window.google && google.accounts && google.accounts.id) { clearInterval(t); initGoogle(); }
+        else if (++tries > 20) clearInterval(t);
+      }, 250);
+    });
   </script>
 </body>
 </html>
