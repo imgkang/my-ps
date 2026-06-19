@@ -1628,14 +1628,8 @@ registerMobileTooltipDismiss();
 
         <!-- 로그인 전 -->
         <div id="backendLoginSection">
-          <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">PIN</label>
-          <div style="display:flex;gap:6px">
-            <input id="backendPinInput" type="password" inputmode="numeric" placeholder="백엔드 PIN"
-                   style="flex:1;padding:9px 10px;font-size:14px;border:1px solid var(--border);border-radius:6px"
-                   onkeydown="if(event.key==='Enter')backendLogin()">
-            <button onclick="backendLogin()"
-                    style="padding:9px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">로그인</button>
-          </div>
+          <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">구글 계정으로 로그인</label>
+          <div id="backendGoogleBtn"></div>
         </div>
 
         <!-- 로그인 후 -->
@@ -3405,7 +3399,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyPM v0.515';
+const APP_VERSION = 'MyPM v0.516';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17173,23 +17167,63 @@ function updateBackendUI() {
   if (actSec)   actSec.style.display   = authed ? 'block' : 'none';
   const chk = document.getElementById('backendAutoSaveChk');
   if (chk) chk.checked = localStorage.getItem('mypm_autosave_v1') === '1';
-  if (authed) setBackendStatus('ok', '✅ 백엔드 연결됨');
-  else if (window.MyPMApi && MyPMApi.isConfigured()) setBackendStatus('idle', 'PIN 로그인이 필요합니다');
-  else setBackendStatus('idle', '백엔드 주소가 설정되지 않았습니다');
+  if (authed) {
+    setBackendStatus('ok', '✅ 백엔드 연결됨');
+    // 로그인 사용자 표시 (비동기)
+    try {
+      MyPMApi.me().then(function (u) {
+        if (u && u.email) setBackendStatus('ok', '✅ ' + (u.name || u.email) + ' 로그인됨');
+      }).catch(function () {});
+    } catch (_) {}
+  } else if (window.MyPMApi && MyPMApi.isConfigured()) {
+    setBackendStatus('idle', '구글 계정으로 로그인하세요');
+    renderBackendGoogleBtn();
+  } else {
+    setBackendStatus('idle', '백엔드 주소가 설정되지 않았습니다');
+  }
 }
 
-async function backendLogin() {
-  const input = document.getElementById('backendPinInput');
-  const pin = (input?.value || '').trim();
-  if (!pin) { setBackendStatus('error', 'PIN을 입력하세요'); return; }
-  setBackendStatus('loading', '⏳ 로그인 중...');
+// 구글 로그인 (집 PC 백엔드 인증). js/api.js 의 loginGoogle 사용.
+// Client ID 는 공개값(프론트 노출 정상). 구글 클라우드의 "승인된 JavaScript 원본"에
+// 이 앱의 출처(https://mypm.growpension.com, http://localhost:3000)가 등록돼 있어야 버튼이 동작.
+const BACKEND_GOOGLE_CLIENT_ID = '27411403852-l8khk3nssbpdj9f9clrn3u70ikri9g9b.apps.googleusercontent.com';
+
+function ensureGsiScript() {
+  if (!document.querySelector('script[src*="gsi/client"]')) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    document.head.appendChild(s);
+  }
+}
+
+function renderBackendGoogleBtn() {
+  const host = document.getElementById('backendGoogleBtn');
+  if (!host) return;
+  ensureGsiScript();
+  if (!(window.google && google.accounts && google.accounts.id)) {
+    setTimeout(renderBackendGoogleBtn, 300); // GIS 로딩 대기
+    return;
+  }
   try {
-    await MyPMApi.login(pin);
-    if (input) input.value = '';
-    setBackendStatus('ok', '✅ 로그인 성공');
-    updateBackendUI();
+    google.accounts.id.initialize({
+      client_id: BACKEND_GOOGLE_CLIENT_ID,
+      callback: function (resp) {
+        setBackendStatus('loading', '⏳ 로그인 중...');
+        MyPMApi.loginGoogle(resp.credential).then(function () {
+          setBackendStatus('ok', '✅ 로그인 성공');
+          updateBackendUI();
+          syncPullOnStartup(); // 로그인 직후 최신 데이터 가져오기
+        }).catch(function (e) {
+          const msg = (e && e.status === 403) ? '허용되지 않은 계정입니다' : (e && e.message) || '로그인 실패';
+          setBackendStatus('error', '❌ ' + msg);
+        });
+      },
+    });
+    host.innerHTML = '';
+    google.accounts.id.renderButton(host, { theme: 'outline', size: 'large', text: 'signin_with', width: 240 });
   } catch (e) {
-    setBackendStatus('error', '❌ ' + (e?.message || '로그인 실패'));
+    setBackendStatus('error', 'GIS 초기화 실패: ' + (e && e.message));
   }
 }
 
