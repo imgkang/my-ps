@@ -1699,52 +1699,6 @@ registerMobileTooltipDismiss();
         </div>
       </div>
 
-      <!-- ── 아래는 비상 백업용 Google Drive ── -->
-      <div style="font-size:11px;color:var(--muted);text-align:center;margin:2px 0 8px">— 비상 백업용 (Google Drive) —</div>
-
-      <!-- 상태 표시 -->
-      <div class="drive-status idle" id="driveStatusMsg">연결되지 않음</div>
-
-      <!-- Client ID 설정 -->
-      <div>
-        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Google Client ID</label>
-        <input id="driveClientIdInput" type="text" placeholder="123456789-xxx.apps.googleusercontent.com"
-               style="width:100%;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;font-family:monospace"
-               oninput="onDriveClientIdChange()">
-      </div>
-
-      <!-- 연결 버튼 (로그인 전) -->
-      <div id="driveLoginSection">
-        <button onclick="driveSignIn()"
-                style="width:100%;padding:11px;background:#4285f4;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFF" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
-          Google 로그인
-        </button>
-      </div>
-
-      <!-- 연결 후 동작 버튼 -->
-      <div id="driveActionSection" style="display:none">
-        <div class="drive-action-row">
-          <button class="drive-btn-load" onclick="driveLoad()">⬇️ Drive에서 불러오기</button>
-          <button class="drive-btn-save" onclick="driveSave()">⬆️ Drive에 저장</button>
-        </div>
-        <div style="font-size:11px;color:var(--muted);text-align:right" id="driveLastSync"></div>
-        <button class="drive-btn-logout" onclick="driveSignOut()" style="width:100%;padding:8px">연결 해제</button>
-      </div>
-
-      <!-- 설정 안내 -->
-      <div class="drive-setup" id="driveSetupGuide">
-        <strong>⚙️ 최초 설정 방법 (1회만)</strong>
-        <ol>
-          <li><a href="https://console.cloud.google.com" target="_blank" style="color:#92400e">console.cloud.google.com</a> 접속</li>
-          <li>새 프로젝트 생성 → <strong>APIs & Services → 사용자 인증 정보</strong></li>
-          <li><strong>OAuth 2.0 클라이언트 ID</strong> 생성 (웹 애플리케이션)</li>
-          <li>승인된 JavaScript 출처에 이 앱의 주소 입력</li>
-          <li><strong>Google Drive API</strong> 활성화</li>
-          <li>발급된 클라이언트 ID를 위 입력란에 붙여넣기</li>
-        </ol>
-        <div style="margin-top:8px">💡 데이터는 본인 구글 드라이브에 <code>mypm-data.json</code> 파일로 저장됩니다.</div>
-      </div>
 
     </div>
   </div>
@@ -3507,7 +3461,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.519';
+const APP_VERSION = 'MyGP v0.520';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -16986,7 +16940,7 @@ updateDriveUI();
 // Drive 로그인은 사용자가 Drive 버튼을 눌렀을 때만 시도 (자동 초기화 제거)
 
 function openDriveModal() {
-  document.getElementById('driveClientIdInput').value = driveClientId;
+  const _cid = document.getElementById('driveClientIdInput'); if (_cid) _cid.value = driveClientId;
   document.getElementById('driveModal').classList.add('open');
   updateBackendUI();
   if (driveClientId && !driveAccessToken) {
@@ -17033,8 +16987,8 @@ function setDriveStatus(type, msg) {
 
 function updateDriveUI() {
   const connected = !!driveAccessToken;
-  document.getElementById('driveLoginSection').style.display  = connected ? 'none' : 'block';
-  document.getElementById('driveActionSection').style.display = connected ? 'block' : 'none';
+  const _ls = document.getElementById('driveLoginSection');  if (_ls) _ls.style.display  = connected ? 'none' : 'block';
+  const _as = document.getElementById('driveActionSection'); if (_as) _as.style.display = connected ? 'block' : 'none';
   const navBtn   = document.getElementById('driveNavBtn');
   const navLabel = document.getElementById('driveNavLabel');
   if (navBtn && navLabel) {
