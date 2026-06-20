@@ -1250,12 +1250,10 @@ registerMobileTooltipDismiss();
   .cfg-row-static .cfg-row-label { font-weight: 500; }
   .cfg-row-value { flex: 1; text-align: right; font-size: 15px; color: var(--muted);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cfg-row-chev { color: #c4c7cc; font-size: 19px; line-height: 1; flex-shrink: 0;
-    transition: transform 0.2s; }
-  .cfg-item.editing .cfg-row-chev { transform: rotate(90deg); }
-  .cfg-item.editing .cfg-row-value { display: none; }
-  .cfg-row-edit { display: none; padding: 2px 16px 16px; background: #fff; }
-  .cfg-item.editing .cfg-row-edit { display: block; }
+  .cfg-row-chev { color: #c4c7cc; font-size: 19px; line-height: 1; flex-shrink: 0; }
+  .cfg-row-edit { display: none; }
+  .cfg-edit-host { padding: 2px; }
+  .cfg-edit-host .cfg-row-edit { display: block; padding: 0; }
   .cfg-edit-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .cfg-edit-inline input { padding: 9px 11px; border: 1px solid #ddd; background: #fff;
     border-radius: 6px; font-size: 16px; }
@@ -1853,7 +1851,7 @@ registerMobileTooltipDismiss();
       <div class="cfg-section">🔄 자동 새로고침</div>
       <div class="cfg-list">
         <div class="cfg-item">
-          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+          <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
             <span class="cfg-row-label">새로고침 간격</span>
             <span class="cfg-row-value" id="cfgVal_autoRefresh">—</span>
             <span class="cfg-row-chev">›</span>
@@ -1894,7 +1892,7 @@ registerMobileTooltipDismiss();
       <div class="cfg-section">💬 셀 정보 패널</div>
       <div class="cfg-list">
         <div class="cfg-item">
-          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+          <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
             <span class="cfg-row-label">표시 유지 시간</span>
             <span class="cfg-row-value" id="cfgVal_cellInfo">—</span>
             <span class="cfg-row-chev">›</span>
@@ -1914,7 +1912,7 @@ registerMobileTooltipDismiss();
       <div class="cfg-section">👤 기본 정보</div>
       <div class="cfg-list">
         <div class="cfg-item">
-          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+          <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
             <span class="cfg-row-label">본인 생년월</span>
             <span class="cfg-row-value" id="cfgVal_myBirth">—</span>
             <span class="cfg-row-chev">›</span>
@@ -1937,7 +1935,7 @@ registerMobileTooltipDismiss();
         </div>
         <div id="cfgWifeRows">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">호칭</span>
               <span class="cfg-row-value" id="cfgVal_wifeTitle">—</span>
               <span class="cfg-row-chev">›</span>
@@ -1950,7 +1948,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">배우자 생년월</span>
               <span class="cfg-row-value" id="cfgVal_wifeBirth">—</span>
               <span class="cfg-row-chev">›</span>
@@ -1969,7 +1967,7 @@ registerMobileTooltipDismiss();
       <div class="cfg-section">🏦 세율 설정</div>
       <div class="cfg-list">
         <div class="cfg-item">
-          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+          <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
             <span class="cfg-row-label">국민연금 소득세율</span>
             <span class="cfg-row-value" id="cfgVal_npTaxRate">—</span>
             <span class="cfg-row-chev">›</span>
@@ -1981,7 +1979,7 @@ registerMobileTooltipDismiss();
           </div>
         </div>
         <div class="cfg-item">
-          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+          <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
             <span class="cfg-row-label">연금소득세율</span>
             <span class="cfg-row-value" id="cfgVal_pensionTax">—</span>
             <span class="cfg-row-chev">›</span>
@@ -2004,7 +2002,7 @@ registerMobileTooltipDismiss();
           </div>
         </div>
         <div class="cfg-item">
-          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+          <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
             <span class="cfg-row-label">연금소득초과세율</span>
             <span class="cfg-row-value" id="cfgVal_excessTax">—</span>
             <span class="cfg-row-chev">›</span>
@@ -2034,7 +2032,7 @@ registerMobileTooltipDismiss();
         </div>
         <div id="cfgMyNPFields">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">수급 시작(기준)월</span>
               <span class="cfg-row-value" id="cfgVal_myNPStart">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2048,7 +2046,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">월 수령액</span>
               <span class="cfg-row-value" id="cfgVal_myNPMonthly">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2060,7 +2058,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">연기 / 조기</span>
               <span class="cfg-row-value" id="cfgVal_myNPAdj">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2086,7 +2084,7 @@ registerMobileTooltipDismiss();
         </div>
         <div id="cfgMyGPFields">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">수령 시작(기준)월</span>
               <span class="cfg-row-value" id="cfgVal_myGPStart">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2099,7 +2097,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">월 수령액</span>
               <span class="cfg-row-value" id="cfgVal_myGPMonthly">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2111,7 +2109,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">조기</span>
               <span class="cfg-row-value" id="cfgVal_myGPAdj">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2135,7 +2133,7 @@ registerMobileTooltipDismiss();
         </div>
         <div id="cfgMySPFields">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">수령 시작(기준)월</span>
               <span class="cfg-row-value" id="cfgVal_mySPStart">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2148,7 +2146,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">월 수령액</span>
               <span class="cfg-row-value" id="cfgVal_mySPMonthly">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2160,7 +2158,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">연기 / 조기</span>
               <span class="cfg-row-value" id="cfgVal_mySPAdj">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2181,7 +2179,7 @@ registerMobileTooltipDismiss();
         <div class="cfg-section">💰 퇴직소득세율</div>
         <div class="cfg-list">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">퇴직소득세율</span>
               <span class="cfg-row-value" id="cfgVal_myRetireTax">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2212,7 +2210,7 @@ registerMobileTooltipDismiss();
         </div>
         <div id="cfgWifeNPFields">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">수급 시작(기준)월</span>
               <span class="cfg-row-value" id="cfgVal_wifeNPStart">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2226,7 +2224,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">월 수령액</span>
               <span class="cfg-row-value" id="cfgVal_wifeNPMonthly">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2238,7 +2236,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">연기 / 조기</span>
               <span class="cfg-row-value" id="cfgVal_wifeNPAdj">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2264,7 +2262,7 @@ registerMobileTooltipDismiss();
         </div>
         <div id="cfgWifeGPFields">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">수령 시작(기준)월</span>
               <span class="cfg-row-value" id="cfgVal_wifeGPStart">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2277,7 +2275,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">월 수령액</span>
               <span class="cfg-row-value" id="cfgVal_wifeGPMonthly">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2289,7 +2287,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">조기</span>
               <span class="cfg-row-value" id="cfgVal_wifeGPAdj">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2313,7 +2311,7 @@ registerMobileTooltipDismiss();
         </div>
         <div id="cfgWifeSPFields">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">수령 시작(기준)월</span>
               <span class="cfg-row-value" id="cfgVal_wifeSPStart">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2326,7 +2324,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">월 수령액</span>
               <span class="cfg-row-value" id="cfgVal_wifeSPMonthly">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2338,7 +2336,7 @@ registerMobileTooltipDismiss();
             </div>
           </div>
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">연기 / 조기</span>
               <span class="cfg-row-value" id="cfgVal_wifeSPAdj">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2359,7 +2357,7 @@ registerMobileTooltipDismiss();
         <div class="cfg-section">💰 퇴직소득세율</div>
         <div class="cfg-list">
           <div class="cfg-item">
-            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
               <span class="cfg-row-label">퇴직소득세율</span>
               <span class="cfg-row-value" id="cfgVal_wifeRetireTax">—</span>
               <span class="cfg-row-chev">›</span>
@@ -2380,6 +2378,20 @@ registerMobileTooltipDismiss();
   </div><!-- /cfgDetail -->
 
 </div><!-- /settings-fs -->
+
+<!-- 설정 값 편집 모달 -->
+<div class="modal-backdrop" id="cfgEditModal" style="z-index:1100" onclick="if(event.target.id==='cfgEditModal') closeCfgEdit()">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <div><h2 id="cfgEditTitle">편집</h2></div>
+      <button class="close-btn" onclick="closeCfgEdit()" aria-label="닫기">×</button>
+    </div>
+    <div class="cfg-edit-host" id="cfgEditHost"></div>
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn-primary" style="width:100%" onclick="closeCfgEdit()">완료</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="addStockModal" onclick="handleAddStockBackdropClick(event)">
   <div class="modal" style="max-width: 480px;">
@@ -3725,7 +3737,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.522';
+const APP_VERSION = 'MyGP v0.523';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4742,6 +4754,7 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('cashAccountModal').classList.contains('open')) { closeCashAccountModal(); return; }
   if (document.getElementById('wdrecModal')?.classList.contains('open')) { closeWdrecModal(); return; }
   if (document.getElementById('divRecModal')?.classList.contains('open')) { closeDivRecModal(); return; }
+  if (document.getElementById('cfgEditModal')?.classList.contains('open')) { closeCfgEdit(); return; }
   if (['records','dividend','deposit','annual','withdrawal','wdrec'].some(t => document.getElementById('panel-'+t)?.classList.contains('active'))) { switchTab('portfolio'); return; }
   if (document.getElementById('settingsModal').classList.contains('open')) {
     if (!document.getElementById('cfgDetail')?.classList.contains('hidden')) backToCfgHome();
@@ -12752,24 +12765,36 @@ function cfgSwitchToggle(el) {
   el.setAttribute('aria-checked', on ? 'true' : 'false');
   return on;
 }
-// 행을 탭하면 편집 영역 펼침 (같은 패널 내 다른 행은 닫음 - 아코디언)
-function cfgToggleEdit(rowBtn) {
+// 행을 탭하면 값 편집 모달을 띄움 (편집 영역 노드를 모달로 이동, 닫을 때 원위치)
+let _cfgEditReturn = null; // { item, node }
+function cfgOpenEdit(rowBtn) {
+  if (_cfgEditReturn) _cfgRestoreEditNode();   // 안전: 이전 편집 복원
   const item = rowBtn.closest('.cfg-item');
   if (!item) return;
-  const pane = item.closest('.cfg-tab-pane');
-  const wasOpen = item.classList.contains('editing');
-  if (pane) pane.querySelectorAll('.cfg-item.editing').forEach(el => { if (el !== item) el.classList.remove('editing'); });
-  if (wasOpen) {
-    item.classList.remove('editing');
-  } else {
-    item.classList.add('editing');
-    const inp = item.querySelector('.cfg-row-edit input:not([disabled])');
-    if (inp) setTimeout(() => inp.focus(), 50);
-  }
+  const edit = item.querySelector('.cfg-row-edit');
+  const host = document.getElementById('cfgEditHost');
+  if (!edit || !host) return;
+  const titleEl = document.getElementById('cfgEditTitle');
+  if (titleEl) titleEl.textContent = item.querySelector('.cfg-row-label')?.textContent || '편집';
+  _cfgEditReturn = { item, node: edit };
+  host.appendChild(edit);
+  document.getElementById('cfgEditModal').classList.add('open');
+  const inp = edit.querySelector('input:not([disabled])');
+  if (inp) setTimeout(() => { inp.focus(); try { inp.select(); } catch (_) {} }, 80);
+}
+function _cfgRestoreEditNode() {
+  if (!_cfgEditReturn) return;
+  _cfgEditReturn.item.appendChild(_cfgEditReturn.node);
+  _cfgEditReturn = null;
+}
+function closeCfgEdit() {
+  _cfgRestoreEditNode();
+  document.getElementById('cfgEditModal')?.classList.remove('open');
   _refreshCfgSummaries();
 }
 function _cfgCloseAllEdits() {
-  document.querySelectorAll('#cfgDetail .cfg-item.editing').forEach(el => el.classList.remove('editing'));
+  if (document.getElementById('cfgEditModal')?.classList.contains('open')) closeCfgEdit();
+  else _cfgRestoreEditNode();
 }
 // 입력값 → 행 우측 값 텍스트 갱신
 function _refreshCfgSummaries() {
@@ -13011,6 +13036,7 @@ function openSettingsModal() {
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() {
+  _cfgCloseAllEdits();
   document.getElementById('settingsModal').classList.remove('open');
   document.getElementById('appVersion')?.style.removeProperty('display');
   // 다음 진입 시 홈 화면부터 보이도록 리셋
