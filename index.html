@@ -1727,44 +1727,6 @@ registerMobileTooltipDismiss();
 
 <!-- 종목 추가 모달 -->
 
-<!-- ☁️ Google Drive 동기화 모달 -->
-<div class="modal-backdrop" id="driveModal" onclick="handleDriveBackdropClick(event)">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-header">
-      <div><h2>🔄 데이터 동기화</h2></div>
-      <button class="close-btn" onclick="closeDriveModal()">×</button>
-    </div>
-    <div class="drive-modal-body" style="padding:4px 0 8px">
-
-      <!-- 🏠 집 PC 백엔드 동기화 (주 저장소) -->
-      <div id="backendSyncSection" style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px">
-        <div style="font-weight:700;font-size:14px;margin-bottom:8px">🏠 집 PC 백엔드 (주 저장소)</div>
-        <div class="drive-status idle" id="backendStatusMsg" style="margin-bottom:8px">상태 확인 중...</div>
-
-        <!-- 로그인 전 -->
-        <div id="backendLoginSection">
-          <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">구글 계정으로 로그인</label>
-          <div id="backendGoogleBtn"></div>
-        </div>
-
-        <!-- 로그인 후 -->
-        <div id="backendActionSection" style="display:none">
-          <div class="drive-action-row">
-            <button class="drive-btn-load" onclick="backendLoad()">⬇️ 불러오기</button>
-            <button class="drive-btn-save" onclick="backendSave()">⬆️ 저장</button>
-          </div>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:10px;cursor:pointer">
-            <input type="checkbox" id="backendAutoSaveChk" onchange="toggleAutoSave(this.checked)" style="width:16px;height:16px">
-            <span>자동저장 — 변경 후 잠시 뒤 자동으로 백엔드에 저장</span>
-          </label>
-          <button onclick="backendLogout()" style="width:100%;padding:8px;margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--muted);cursor:pointer">로그아웃</button>
-        </div>
-      </div>
-
-
-    </div>
-  </div>
-</div>
 
 <!-- ⚙️ 설정 (전체화면 드릴다운) -->
 <div class="settings-fs" id="settingsModal">
@@ -1792,13 +1754,16 @@ registerMobileTooltipDismiss();
         <button class="cfg-manage-btn" onclick="openCfgDetail('basic')">관리</button>
       </div>
 
-      <!-- 강조 카드: Google Drive 백업 -->
-      <div class="cfg-highlight">
-        <div class="cfg-highlight-title" id="cfgHomeDriveLabel">☁️ Google Drive 백업</div>
-        <div class="cfg-highlight-sub">데이터를 클라우드에 안전하게 보관하고 기기 간에 동기화하세요.</div>
-        <div class="cfg-highlight-actions">
-          <button onclick="closeThenDrive()">연결 / 동기화</button>
-          <button onclick="exportToFile()">파일로 저장</button>
+      <!-- 백엔드 동기화 -->
+      <div class="cfg-highlight" id="backendSyncSection">
+        <div id="backendLoginSection">
+          <div class="cfg-highlight-title">☁️ 백엔드 동기화</div>
+          <div class="cfg-highlight-sub">구글 계정으로 로그인하면 데이터가 자동으로 동기화됩니다.</div>
+          <div id="backendGoogleBtn" style="margin-top:10px;display:flex;justify-content:center"></div>
+        </div>
+        <div id="backendActionSection" style="display:none">
+          <div class="cfg-highlight-title">☁️ 백엔드 연결됨</div>
+          <div id="backendStatusMsg" class="drive-status ok" style="margin-top:6px;font-size:13px"></div>
         </div>
       </div>
 
@@ -1856,9 +1821,6 @@ registerMobileTooltipDismiss();
       <div class="cfg-section">💾 데이터</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
         <div style="display:flex;gap:6px">
-          <button class="drive-btn" id="driveNavBtn" onclick="closeThenDrive()" style="flex:1;justify-content:center;padding:7px 8px">
-            ☁️ <span id="driveNavLabel">Drive 연결 / 동기화</span>
-          </button>
           <button onclick="forceUpdate()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #6366f1;color:#6366f1;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500" title="캐시를 모두 지우고 최신 버전으로 강제 업데이트">🔄 강제 업데이트</button>
           <button onclick="resetAllData()" style="padding:7px 12px;border-radius:8px;border:1.5px solid #dc2626;color:#dc2626;background:#fff;cursor:pointer;font-size:13px;white-space:nowrap;font-weight:500">🗑️ 데이터 초기화</button>
         </div>
@@ -3757,7 +3719,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.528';
+const APP_VERSION = 'MyGP v0.529';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12894,13 +12856,9 @@ function _refreshCfgHomeDynamic() {
   }
   const wifeItem = document.getElementById('cfgMenuWife');
   if (wifeItem) wifeItem.style.display = appSettings.hasWife ? '' : 'none';
-  const driveLabel = document.getElementById('cfgHomeDriveLabel');
-  if (driveLabel) {
-    const connected = (typeof driveAccessToken !== 'undefined') && !!driveAccessToken;
-    driveLabel.textContent = connected ? '☁️ Google Drive · 동기화됨' : '☁️ Google Drive 백업';
-  }
   const vf = document.getElementById('cfgVersionFoot');
   if (vf) vf.textContent = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : '';
+  updateBackendUI();
 }
 function setCfgPersonToggle(key, val) {
   _cfgToggles[key] = val;
@@ -17339,15 +17297,7 @@ updateDriveUI();
 // Drive 로그인은 사용자가 Drive 버튼을 눌렀을 때만 시도 (자동 초기화 제거)
 
 function openDriveModal() {
-  const _cid = document.getElementById('driveClientIdInput'); if (_cid) _cid.value = driveClientId;
-  document.getElementById('driveModal').classList.add('open');
-  updateBackendUI();
-  if (driveClientId && !driveAccessToken) {
-    setDriveStatus('idle', '🔄 재연결 중...');
-    _driveSilentReauth();
-  } else {
-    updateDriveUI();
-  }
+  // 동기화 모달이 제거됨 — no-op
 }
 
 function _driveSilentReauth() {
@@ -17746,9 +17696,9 @@ function renderBackendGoogleBtn() {
         } catch (_) {}
         setBackendStatus('loading', '⏳ 로그인 중...');
         MyPMApi.loginGoogle(resp.credential).then(function () {
-          setBackendStatus('ok', '✅ 로그인 성공');
+          localStorage.setItem('mypm_autosave_v1', '1');
           updateBackendUI();
-          syncPullOnStartup(); // 로그인 직후 최신 데이터 가져오기
+          backendAutoLoadOnLogin();
         }).catch(function (e) {
           const msg = (e && e.status === 403) ? '허용되지 않은 계정입니다' : (e && e.message) || '로그인 실패';
           setBackendStatus('error', '❌ ' + msg);
@@ -17766,23 +17716,12 @@ function backendLogout() {
   try { MyPMApi.logout(); } catch (_) {}
   localStorage.removeItem('cfgGooglePicture');
   _applyCfgProfilePicture('');
-  updateBackendUI();
-  setBackendStatus('idle', '로그아웃됨');
+  doReset(false);
 }
 
 function confirmSettingsLogout() {
-  if (!confirm('로그아웃하시겠습니까?')) return;
-  const doResetData = confirm(
-    '로컬 데이터를 초기화하시겠습니까?\n\n' +
-    '확인 = 초기화  (자산 데이터 전체 삭제)\n' +
-    '취소 = 유지    (데이터 그대로 보존)'
-  );
+  if (!confirm('로그아웃하시겠습니까?\n로컬 데이터가 모두 초기화됩니다.')) return;
   backendLogout();
-  if (doResetData) {
-    doReset(false); // localStorage 전체 삭제 후 reload
-  } else {
-    closeSettingsModal();
-  }
 }
 
 // 수동 저장 — silent=true 면 자동저장(조용한 모드)
@@ -17837,6 +17776,24 @@ async function backendLoad() {
     setTimeout(() => location.reload(), 1000);
   } catch (e) {
     setBackendStatus('error', '❌ ' + (e?.message || '불러오기 실패'));
+  }
+}
+
+async function backendAutoLoadOnLogin() {
+  setBackendStatus('loading', '⏳ 데이터 불러오는 중...');
+  try {
+    const res = await MyPMApi.getBundle();
+    const data = res?.bundle;
+    if (data && Object.keys(data).length > 1) {
+      _applyImportData(data);
+      if (data.version != null) localStorage.setItem('mypm_synced_version', String(data.version));
+      setBackendStatus('ok', '✅ 데이터 로드 완료');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      backendSave(true);
+    }
+  } catch (_) {
+    backendSave(true);
   }
 }
 
