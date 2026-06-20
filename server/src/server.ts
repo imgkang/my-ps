@@ -10,6 +10,7 @@ import priceRoutes from './routes/price.js';
 import syncRoutes from './routes/sync.js';
 import searchRoutes from './routes/search.js';
 import pushRoutes from './routes/push.js';
+import webhookRoutes from './routes/webhook.js';
 
 const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 }); // 번들이 클 수 있어 25MB
 
@@ -23,6 +24,7 @@ await app.register(priceRoutes);
 await app.register(syncRoutes);
 await app.register(searchRoutes);
 await app.register(pushRoutes);
+await app.register(webhookRoutes);
 
 // 프론트 정적 서빙 (로컬 테스트용 단일 출처). API 라우트 등록 뒤에 둔다.
 // 보안 가드: server/(=.env·DB), .git, dotfile 은 절대 서빙하지 않는다.

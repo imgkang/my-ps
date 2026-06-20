@@ -41,6 +41,11 @@ export const env = {
   // 기존(단일 사용자) 데이터를 이관할 소유자 이메일. 마이그레이션·import 에서 사용.
   OWNER_EMAIL: (process.env.OWNER_EMAIL ?? '').trim().toLowerCase(),
 
+  // GitHub Webhook + Cloudflare 자동 배포
+  GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET ?? '',
+  CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID ?? '',
+  CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? '',
+
   // iOS 푸시 (APNs)
   APNS_KEY_PATH: process.env.APNS_KEY_PATH ?? '',
   APNS_KEY_ID: process.env.APNS_KEY_ID ?? '',
