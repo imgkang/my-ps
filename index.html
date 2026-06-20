@@ -1317,6 +1317,13 @@ registerMobileTooltipDismiss();
   .cfg-menu-label small { font-size: 12px; color: var(--muted); font-weight: 400; }
   .cfg-menu-arrow { font-size: 22px; color: #c4c7cc; flex-shrink: 0; line-height: 1; }
   .cfg-version { text-align: center; font-size: 11px; color: var(--muted); padding: 6px 0 28px; }
+  .cfg-logout-row { padding: 4px 8px 6px; }
+  .cfg-logout-btn { display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 15px 14px; background: none; border: none; border-radius: 12px;
+    cursor: pointer; text-align: left; color: #dc2626; }
+  .cfg-logout-btn:hover { background: #fff1f1; }
+  .cfg-logout-ic { font-size: 20px; width: 26px; text-align: center; flex-shrink: 0; }
+  .cfg-logout-label { flex: 1; font-size: 15.5px; font-weight: 500; }
   /* 세부 화면 본문 패딩 */
   .settings-detail-body { padding: 14px 16px 40px; }
 
@@ -1815,6 +1822,18 @@ registerMobileTooltipDismiss();
           <span class="cfg-menu-ic">⚙️</span>
           <span class="cfg-menu-label">앱 · 데이터<small>표시 · 자동 새로고침 · 백업/초기화</small></span>
           <span class="cfg-menu-arrow">›</span>
+        </button>
+      </div>
+      <div class="cfg-logout-row">
+        <button class="cfg-logout-btn" onclick="confirmSettingsLogout()">
+          <span class="cfg-logout-ic">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </span>
+          <span class="cfg-logout-label">로그아웃</span>
         </button>
       </div>
       <div class="cfg-version" id="cfgVersionFoot"></div>
@@ -3737,7 +3756,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.524';
+const APP_VERSION = 'MyGP v0.525';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17722,6 +17741,12 @@ function backendLogout() {
   try { MyPMApi.logout(); } catch (_) {}
   updateBackendUI();
   setBackendStatus('idle', '로그아웃됨');
+}
+
+function confirmSettingsLogout() {
+  if (!confirm('로그아웃하시겠습니까?')) return;
+  backendLogout();
+  closeSettingsModal();
 }
 
 // 수동 저장 — silent=true 면 자동저장(조용한 모드)
