@@ -163,9 +163,28 @@ https://mypm.growpension.com/api/update?token=<UPDATE_TOKEN>
 
 | 증상 | 원인 | 해결 |
 |------|------|------|
+| **Webhook은 ✓(성공)인데 사이트가 안 바뀜** | **SYSTEM 계정 git pull 실패** (아래 ★ 참고) | `git config --system --add safe.directory '*'` |
 | push 후 사이트 업데이트 안 됨 | Webhook 미동작 | 서버 로그 확인 → 수동 git pull |
 | git pull 했는데도 옛날 버전 | Cloudflare 캐시 | 수동 CF purge (C항 참고) |
 | purge 해도 옛날 버전 | 브라우저 SW 캐시 | Ctrl+Shift+R |
 | 사이트 자체가 안 열림 | cloudflared 또는 서버 중단 | Get-ScheduledTask 상태 확인 |
 | 서버 확인 | — | `https://mypm.growpension.com/api/health` → `{"ok":true}` |
 | Webhook 동작 확인 | — | GitHub → Webhooks → Recent Deliveries |
+| 배포 상태 진단 | — | `https://mypm.growpension.com/api/git-status?token=<UPDATE_TOKEN>` → `head`/`status` 확인 |
+
+---
+
+### ★ Webhook이 "되는 것처럼 보이는데" 배포가 안 될 때 (실제 겪은 사례)
+
+**증상**: GitHub → Webhooks → Recent Deliveries 가 **전부 ✓(2xx)** 인데도 사이트가 안 바뀜. polling 도 안 됨.
+
+**근본 원인**: webhook 핸들러(`server/src/routes/webhook.ts`)는 GitHub에 **먼저 200을 응답한 뒤** `git pull` 을 실행한다. 그래서 Recent Deliveries 의 ✓ 는 "GitHub 가 서버에 도달했다"는 뜻일 뿐, "배포 성공"이 아니다.
+실제 실패 지점은 그 다음 `git pull` 인데 — 서버(`MyPMBackend`)는 **SYSTEM 계정**으로 돌고 저장소는 `강민구` 사용자 소유라, git 의 *dubious ownership* 보호가 `git pull` 을 거부한다. webhook 도 polling 도(둘 다 SYSTEM) 같은 이유로 조용히 실패.
+
+**진단**: `…/api/git-status?token=…` 에서 `head` 가 비었거나 에러 → SYSTEM 의 git 이 막힌 것.
+
+**해결 (관리자 PowerShell, 1회)**:
+```powershell
+git config --system --add safe.directory '*'
+```
+이후 `head` 가 정상 출력되고 push → webhook 자동배포가 동작한다. (로그아웃/외출 상태에서도 SYSTEM 계정이라 정상 작동)
