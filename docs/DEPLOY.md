@@ -115,36 +115,45 @@ Webhook이 자동으로 처리하므로 별도 원격 접속 불필요.
 mstsc → 집 PC → 관리자 PowerShell → Stop/Start-ScheduledTask MyPMBackend
 ```
 
-### 방법 2. SSH over Cloudflare Tunnel
+### 방법 2. SSH over Cloudflare Tunnel (권장)
 
-cloudflared가 이미 실행 중이므로 SSH 접속 채널 추가 가능.  
-집 PC에서 설정 (관리자 PowerShell):
+cloudflared가 이미 실행 중이므로 SSH 채널만 추가하면 된다.
+
+**집 PC에서 1회 설정 — 스크립트 실행:**
 ```powershell
-# OpenSSH 서버 설치
-Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-Start-Service sshd
-Set-Service -Name sshd -StartupType Automatic
+# 관리자 PowerShell
+C:\Users\강민구\mypm\docs\setup-remote-access.ps1
 ```
 
-cloudflared config에 SSH 인그레스 추가 (`%USERPROFILE%\.cloudflared\config.yml`):
-```yaml
-ingress:
-  - hostname: mypm.growpension.com
-    service: http://localhost:3000
-  - hostname: ssh.growpension.com
-    service: ssh://localhost:22
-  - service: http_status:404
-```
+스크립트가 자동으로 처리하는 것:
+- OpenSSH 서버 설치 + 자동시작
+- cloudflared config 에 `ssh.growpension.com` 인그레스 추가
+- Cloudflare DNS 라우팅 등록
+- MyPMTunnel 재시작
+- `UPDATE_TOKEN` 생성 및 `.env` 추가 + 서버 재빌드
 
-```powershell
-cloudflared tunnel route dns mypm ssh.growpension.com
-cloudflared service restart
-```
-
-이후 어디서든:
+**설정 후 어디서든 SSH 접속:**
 ```bash
+# cloudflared 가 설치된 기기라면 어디서든
 ssh -o "ProxyCommand cloudflared access ssh --hostname ssh.growpension.com" 강민구@ssh.growpension.com
 ```
+
+접속 후 배포 명령:
+```powershell
+cd C:\Users\강민구\mypm
+git pull
+cd server && npm run build
+Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend
+```
+
+### 방법 3. 원격 강제 배포 URL (SSH 없이)
+
+`setup-remote-access.ps1` 실행 후 생성되는 토큰으로 URL 북마크:
+```
+https://mypm.growpension.com/api/update?token=<UPDATE_TOKEN>
+```
+브라우저나 curl로 호출하면 즉시 `git pull + CF 퍼지` 실행됨.  
+(.env의 `UPDATE_TOKEN` 값은 `server\.env` 파일에서 확인)
 
 ---
 
