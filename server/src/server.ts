@@ -11,6 +11,7 @@ import syncRoutes from './routes/sync.js';
 import searchRoutes from './routes/search.js';
 import pushRoutes from './routes/push.js';
 import webhookRoutes from './routes/webhook.js';
+import { startScheduler } from './scheduler.js';
 
 const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 }); // 번들이 클 수 있어 25MB
 
@@ -47,6 +48,7 @@ if (env.SERVE_STATIC) {
 try {
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
   app.log.info(`My PM 백엔드 실행 중 — http://0.0.0.0:${env.PORT}`);
+  startScheduler();
 } catch (err) {
   app.log.error(err);
   process.exit(1);

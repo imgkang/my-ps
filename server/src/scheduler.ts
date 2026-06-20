@@ -1,12 +1,34 @@
-// 스케줄러 — 종목 갱신 + 시세 폴링 기반 가격 알림.
+// 스케줄러 — 종목 갱신 + 시세 폴링 기반 가격 알림 + 자동 배포 polling.
 // server.ts 에서 import 하여 활성화한다. (Phase 5 에서 APNs 발송과 연결)
-import { spawn } from 'node:child_process';
+import { spawn, exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import cron from 'node-cron';
 import { db } from './db.js';
+import { gitPullAndPurge } from './routes/webhook.js';
+
+const execAsync = promisify(exec);
+const repoRoot = resolve(process.cwd(), '..');
+
+// 5분마다 origin/main과 HEAD를 비교 → 차이 있으면 git pull + CF purge
+async function autoDeploy() {
+  try {
+    await execAsync(`git -C "${repoRoot}" fetch origin main`);
+    const { stdout: local } = await execAsync(`git -C "${repoRoot}" rev-parse HEAD`);
+    const { stdout: remote } = await execAsync(`git -C "${repoRoot}" rev-parse origin/main`);
+    if (local.trim() === remote.trim()) return; // 이미 최신
+    console.log(`[auto-deploy] 새 커밋 감지 ${local.trim().slice(0,7)} → ${remote.trim().slice(0,7)}, git pull 시작`);
+    gitPullAndPurge(s => console.log(s), s => console.error(s));
+  } catch (e: any) {
+    console.error('[auto-deploy] 오류:', e.message);
+  }
+}
 
 // 매일 06:10 KST — update_tickers.py 실행 후 tickers.json 을 테이블로 재적재
 export function startScheduler() {
+  // 5분마다 자동 배포 polling
+  cron.schedule('*/5 * * * *', () => autoDeploy().catch(e => console.error('[auto-deploy]', e)));
+
   cron.schedule(
     '10 6 * * *',
     () => {

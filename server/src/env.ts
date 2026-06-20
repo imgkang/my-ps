@@ -45,6 +45,8 @@ export const env = {
   GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET ?? '',
   CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID ?? '',
   CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN ?? '',
+  // 원격 강제 업데이트 토큰: GET /api/update?token=<UPDATE_TOKEN>
+  UPDATE_TOKEN: process.env.UPDATE_TOKEN ?? '',
 
   // iOS 푸시 (APNs)
   APNS_KEY_PATH: process.env.APNS_KEY_PATH ?? '',

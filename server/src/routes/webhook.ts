@@ -1,11 +1,32 @@
 // GitHub Webhook — main 브랜치 push 시 git pull + Cloudflare 캐시 퍼지 자동 실행
-//   POST /api/github-webhook
-//   GitHub 설정: Content type = application/json, Secret = GITHUB_WEBHOOK_SECRET
+//   POST /api/github-webhook  (GitHub HMAC 서명 검증)
+//   GET  /api/update?token=<UPDATE_TOKEN>  (원격 수동 트리거)
 import type { FastifyInstance } from 'fastify';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { exec } from 'node:child_process';
 import { resolve } from 'node:path';
 import { env } from '../env.js';
+
+const repoRoot = resolve(process.cwd(), '..');
+
+export function gitPullAndPurge(log: (msg: string) => void, errLog: (msg: string) => void) {
+  exec(`git -C "${repoRoot}" pull origin main`, (pullErr, stdout) => {
+    if (pullErr) { errLog('[deploy] git pull 실패: ' + pullErr.message); return; }
+    log('[deploy] git pull 완료:\n' + stdout.trim());
+
+    const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_TOKEN: cfToken } = env;
+    if (!zoneId || !cfToken) return;
+
+    fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cfToken}`, 'Content-Type': 'application/json' },
+      body: '{"purge_everything":true}',
+    })
+      .then(r => r.json() as Promise<{ success: boolean; errors: unknown[] }>)
+      .then(r => log(`[deploy] CF purge: ${r.success ? 'OK' : JSON.stringify(r.errors)}`))
+      .catch(e => errLog('[deploy] CF purge 오류: ' + e.message));
+  });
+}
 
 export default async function webhookRoutes(app: FastifyInstance) {
   // HMAC 검증에 rawBody가 필요 — 이 스코프에서만 Buffer로 파싱 (다른 라우트에 영향 없음)
@@ -13,6 +34,7 @@ export default async function webhookRoutes(app: FastifyInstance) {
     done(null, body);
   });
 
+  // ── GitHub Webhook (자동) ──
   app.post('/api/github-webhook', async (req, reply) => {
     const rawBody = req.body as Buffer;
 
@@ -27,34 +49,21 @@ export default async function webhookRoutes(app: FastifyInstance) {
     }
 
     const payload = JSON.parse(rawBody.toString('utf8'));
-
-    // main 브랜치 push만 처리
     if (payload.ref !== 'refs/heads/main') {
       return { ok: true, action: 'skipped', ref: payload.ref };
     }
 
-    // 응답은 즉시 반환 — pull/purge는 백그라운드 실행
     reply.send({ ok: true, action: 'pulling' });
+    gitPullAndPurge(s => app.log.info(s), s => app.log.error(s));
+  });
 
-    const repoRoot = resolve(process.cwd(), '..');
-    exec(`git -C "${repoRoot}" pull origin main`, (pullErr, stdout) => {
-      if (pullErr) {
-        app.log.error('[webhook] git pull 실패: ' + pullErr.message);
-        return;
-      }
-      app.log.info('[webhook] git pull 완료:\n' + stdout.trim());
+  // ── 수동 원격 업데이트 (GET /api/update?token=...) ──
+  app.get('/api/update', async (req, reply) => {
+    if (!env.UPDATE_TOKEN) return reply.code(403).send({ error: 'UPDATE_TOKEN not configured' });
+    const { token } = req.query as { token?: string };
+    if (!token || token !== env.UPDATE_TOKEN) return reply.code(401).send({ error: 'invalid token' });
 
-      const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_TOKEN: cfToken } = env;
-      if (!zoneId || !cfToken) return;
-
-      fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${cfToken}`, 'Content-Type': 'application/json' },
-        body: '{"purge_everything":true}',
-      })
-        .then(r => r.json() as Promise<{ success: boolean; errors: unknown[] }>)
-        .then(r => app.log.info(`[webhook] CF purge: ${r.success ? 'OK' : JSON.stringify(r.errors)}`))
-        .catch(e => app.log.error('[webhook] CF purge 오류: ' + e.message));
-    });
+    reply.send({ ok: true, action: 'pulling', ts: new Date().toISOString() });
+    gitPullAndPurge(s => app.log.info(s), s => app.log.error(s));
   });
 }
