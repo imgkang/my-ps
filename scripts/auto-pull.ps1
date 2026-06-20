@@ -25,10 +25,18 @@ while ($true) {
         git pull origin main 2>&1 | Add-Content $logFile
 
         if ($CLOUDFLARE_ZONE_ID -and $CLOUDFLARE_API_TOKEN) {
-          Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" `
-            -Method Post `
-            -Headers @{ "Authorization" = "Bearer $CLOUDFLARE_API_TOKEN"; "Content-Type" = "application/json" } `
-            -Body '{"purge_everything":true}' | Out-Null
+          try {
+            $cfResult = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" `
+              -Method Post `
+              -Headers @{ "Authorization" = "Bearer $CLOUDFLARE_API_TOKEN"; "Content-Type" = "application/json" } `
+              -Body '{"purge_everything":true}'
+            $status = if ($cfResult.success) { "[CF-PURGE] OK" } else { "[CF-PURGE] FAIL: $($cfResult.errors | ConvertTo-Json -Compress)" }
+            Add-Content $logFile "$ts $status"
+          } catch {
+            Add-Content $logFile "$ts [CF-PURGE] ERROR: $_"
+          }
+        } else {
+          Add-Content $logFile "$ts [CF-PURGE] SKIP: .env 없음 또는 토큰 미설정"
         }
 
         Add-Content $logFile "$ts [DONE]"
