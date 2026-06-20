@@ -71,21 +71,74 @@
 
 ### 관리 명령 (관리자 PowerShell)
 ```powershell
-# 상태
+# 상태 확인 (이름을 직접 지정 — 키워드 와일드카드 검색에서 안 걸릴 수 있음)
 Get-ScheduledTask MyPMBackend,MyPMTunnel | Select TaskName,State
+
 # 재시작
 Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend
 Stop-ScheduledTask MyPMTunnel;  Start-ScheduledTask MyPMTunnel
-# 코드 업데이트 반영
-cd $env:USERPROFILE\mypm; git pull
-cd server; npm install; npm run build
+
+# 코드 업데이트 반영 (webhook 미작동 시 수동)
+cd C:\Users\강민구\mypm; git pull
+cd server; npm run build
 Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend
+```
+
+> ⚠️ `Get-ScheduledTask | Where-Object { $_.TaskName -like "*MyPM*" }` 로 검색해도 안 보일 수 있음.
+> 반드시 `Get-ScheduledTask MyPMBackend` 처럼 **이름을 직접 지정**해서 확인할 것.
+
+#### 태스크가 응답 안 할 때 (SYSTEM 권한 프로세스 강제 종료)
+```powershell
+# node PID 확인
+Get-Process node | Select Id, SI   # SI=0 이면 SYSTEM 권한
+
+# 관리자 PowerShell에서 강제 종료 후 재시작
+Stop-Process -Id <PID> -Force
+Start-Sleep 2
+Start-ScheduledTask MyPMBackend
 ```
 
 ### 운영 주의
 - PC 전원 켜져 있어야 서비스 동작(절전 해제 적용함).
 - Cloudflare 에서 `growpension.com` 자동 갱신/결제수단 확인(만료 시 접속 끊김).
 - APP_PIN 충분히 길게 유지(외부 노출). Finnhub 키 등은 `.env` 에만.
+
+---
+
+## ✅ GitHub Webhook 자동 배포 완료 (2026-06-20, v0.527)
+폴링(작업 스케줄러 반복) → **GitHub Webhook 즉시 트리거** 방식으로 전환.
+`git push origin main` 하는 순간 GitHub이 서버에 신호 → 서버가 `git pull` + Cloudflare 캐시 퍼지 자동 실행.
+
+### 구조
+```
+git push → GitHub Webhook → POST /api/github-webhook → git pull + CF purge → 즉시 반영
+```
+
+### server/.env 필수 항목 (추가 필요)
+```
+GITHUB_WEBHOOK_SECRET=<랜덤 시크릿>   # PowerShell: -join((1..32)|%{'{0:x}'-f(Get-Random -Max 16)})
+CLOUDFLARE_ZONE_ID=<zone id>           # 기존 scripts/.env 에서 복사
+CLOUDFLARE_API_TOKEN=<api token>       # 기존 scripts/.env 에서 복사
+```
+> `scripts/.env`는 이제 불필요 — `server/.env`로 통합 후 삭제 가능.
+
+### GitHub Webhook 등록 (1회)
+- GitHub → `imgkang/my-ps` → Settings → Webhooks → Add webhook
+  - Payload URL: `https://mypm.growpension.com/api/github-webhook`
+  - Content type: `application/json`
+  - Secret: `GITHUB_WEBHOOK_SECRET` 값
+  - Events: **Just the push event**
+
+### 업데이트 반영 확인
+Cloudflare purge 결과는 서버 로그에서 확인:
+```
+[webhook] git pull 완료: ...
+[webhook] CF purge: OK
+```
+
+### scripts/auto-pull.ps1
+Webhook 미설정 시 수동 폴백용으로만 유지. 평소에는 사용 안 함.
+`scripts/.env`(Cloudflare 토큰)는 `server/.env`로 이전 후 삭제.
 
 ---
 
