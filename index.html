@@ -12859,7 +12859,7 @@ function dismissSetupBanner() {
 }
 function initSetupBanner() {
   const dismissed = localStorage.getItem('setup_banner_dismissed');
-  const hasData = (appSettings && appSettings.myBirthYear) || (wdPlan && wdPlan.startYear);
+  const hasData = appSettings && appSettings.myBirthYear > 0;
   const b = document.getElementById('setupBanner');
   if (!b) return;
   b.style.display = (dismissed || hasData) ? 'none' : '';
