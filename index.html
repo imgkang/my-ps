@@ -1236,6 +1236,40 @@ registerMobileTooltipDismiss();
   .toggle-btn:hover { background: #f5f5f5; }
   .toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
+  /* 카카오톡식 리스트 행 / 스위치 / 탭편집 */
+  .cfg-list { background: #fff; border: 1px solid #ececec; border-radius: 12px;
+    overflow: hidden; margin-bottom: 14px; }
+  .cfg-item, .cfg-row-static { border-top: 1px solid #f1f1f1; }
+  .cfg-list > .cfg-item:first-child, .cfg-list > .cfg-row-static:first-child { border-top: none; }
+  .cfg-row-static { display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 14px 16px; background: #fff; }
+  .cfg-row { display: flex; align-items: center; width: 100%; gap: 10px;
+    padding: 14px 16px; background: #fff; border: none; cursor: pointer; text-align: left; }
+  .cfg-row:active { background: #f7f7f7; }
+  .cfg-row-label { font-size: 15px; color: var(--text); white-space: nowrap; }
+  .cfg-row-static .cfg-row-label { font-weight: 500; }
+  .cfg-row-value { flex: 1; text-align: right; font-size: 15px; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cfg-row-chev { color: #c4c7cc; font-size: 19px; line-height: 1; flex-shrink: 0;
+    transition: transform 0.2s; }
+  .cfg-item.editing .cfg-row-chev { transform: rotate(90deg); }
+  .cfg-item.editing .cfg-row-value { display: none; }
+  .cfg-row-edit { display: none; padding: 2px 16px 16px; background: #fff; }
+  .cfg-item.editing .cfg-row-edit { display: block; }
+  .cfg-edit-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .cfg-edit-inline input { padding: 9px 11px; border: 1px solid #ddd; background: #fff;
+    border-radius: 6px; font-size: 16px; }
+  .cfg-edit-inline > span { font-size: 13px; color: var(--muted); }
+  /* iOS 스위치 */
+  .cfg-switch { position: relative; width: 46px; height: 28px; border-radius: 14px;
+    background: #d1d5db; border: none; cursor: pointer; flex-shrink: 0; padding: 0;
+    transition: background 0.2s; }
+  .cfg-switch::after { content: ''; position: absolute; top: 3px; left: 3px;
+    width: 22px; height: 22px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.2s; }
+  .cfg-switch.on { background: #34c759; }
+  .cfg-switch.on::after { transform: translateX(18px); }
+
   /* ===== 설정 전체화면 (드릴다운) ===== */
   .settings-fs { position: fixed; inset: 0; background: #fff; z-index: 1000;
     display: none; }
@@ -1817,320 +1851,527 @@ registerMobileTooltipDismiss();
         </div>
       </div>
       <div class="cfg-section">🔄 자동 새로고침</div>
-      <div class="cfg-grid">
-        <label>새로고침 간격</label>
-        <div style="display:flex;align-items:center;gap:6px">
-          <input id="autoRefreshMinutes" type="number" min="0" step="1"
-                 onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()"
-                 style="width:70px;text-align:right;padding:8px 10px">
-          <span style="color:var(--muted);font-size:13px">분&nbsp;(0 = 끄기)</span>
+      <div class="cfg-list">
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <span class="cfg-row-label">새로고침 간격</span>
+            <span class="cfg-row-value" id="cfgVal_autoRefresh">—</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit">
+            <div class="cfg-edit-inline">
+              <input id="autoRefreshMinutes" type="number" min="0" step="1"
+                     onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()"
+                     style="width:80px;text-align:right">
+              <span>분 (0 = 끄기)</span>
+            </div>
+          </div>
         </div>
       </div>
       <div class="cfg-section">📱 앱 표시</div>
-      <div class="cfg-grid">
-        <label>미국주식</label>
-        <div class="toggle-row">
-          <button id="cfgShowNonKOn"  class="toggle-btn" onclick="setCfgShowApp('NonK',true)">표시</button>
-          <button id="cfgShowNonKOff" class="toggle-btn" onclick="setCfgShowApp('NonK',false)">숨기기</button>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">미국주식</span>
+          <button type="button" class="cfg-switch" id="cfgSwNonK" role="switch" aria-checked="true" onclick="cfgSwitchToggle(this)"></button>
         </div>
-        <label>국장</label>
-        <div class="toggle-row">
-          <button id="cfgShowKDealOn"  class="toggle-btn" onclick="setCfgShowApp('KDeal',true)">표시</button>
-          <button id="cfgShowKDealOff" class="toggle-btn" onclick="setCfgShowApp('KDeal',false)">숨기기</button>
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">국장</span>
+          <button type="button" class="cfg-switch" id="cfgSwKDeal" role="switch" aria-checked="true" onclick="cfgSwitchToggle(this)"></button>
         </div>
-        <label title="은퇴 전이라도 🏧 인출기록 탭을 강제로 표시합니다">🏧 인출기록 미리보기</label>
-        <div class="toggle-row">
-          <button id="cfgShowWdrecPreviewOn"  class="toggle-btn" onclick="setCfgShowApp('WdrecPreview',true)">표시</button>
-          <button id="cfgShowWdrecPreviewOff" class="toggle-btn" onclick="setCfgShowApp('WdrecPreview',false)">숨기기</button>
+        <div class="cfg-row-static">
+          <span class="cfg-row-label" title="은퇴 전이라도 🏧 인출기록 탭을 강제로 표시합니다">🏧 인출기록 미리보기</span>
+          <button type="button" class="cfg-switch" id="cfgSwWdrecPreview" role="switch" aria-checked="false" onclick="cfgSwitchToggle(this)"></button>
         </div>
-        <label title="인출계획 시뮬레이션 실행 후 디버그 로그 버튼을 표시합니다">📟 디버그 버튼</label>
-        <div class="toggle-row">
-          <button id="cfgShowWdDbgOn"  class="toggle-btn" onclick="setCfgShowApp('WdDbg',true)">표시</button>
-          <button id="cfgShowWdDbgOff" class="toggle-btn" onclick="setCfgShowApp('WdDbg',false)">숨기기</button>
+        <div class="cfg-row-static">
+          <span class="cfg-row-label" title="인출계획 시뮬레이션 실행 후 디버그 로그 버튼을 표시합니다">📟 디버그 버튼</span>
+          <button type="button" class="cfg-switch" id="cfgSwWdDbg" role="switch" aria-checked="false" onclick="cfgSwitchToggle(this)"></button>
         </div>
-        <label title="핀치 제스처로 화면을 확대/축소할 수 있는지 설정합니다">🔍 핀치 줌</label>
-        <div class="toggle-row">
-          <button id="cfgZoomOn"  class="toggle-btn" onclick="setCfgZoom(true)">허용</button>
-          <button id="cfgZoomOff" class="toggle-btn" onclick="setCfgZoom(false)">차단</button>
+        <div class="cfg-row-static">
+          <span class="cfg-row-label" title="핀치 제스처로 화면을 확대/축소할 수 있는지 설정합니다">🔍 핀치 줌</span>
+          <button type="button" class="cfg-switch" id="cfgSwZoom" role="switch" aria-checked="true" onclick="cfgSwitchToggle(this)"></button>
         </div>
       </div>
       <div class="cfg-section">💬 셀 정보 패널</div>
-      <div class="cfg-grid">
-        <label>표시 유지 시간 (초)</label>
-        <input id="cfg_cellInfoDuration" type="number" min="1" max="30" step="1">
+      <div class="cfg-list">
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <span class="cfg-row-label">표시 유지 시간</span>
+            <span class="cfg-row-value" id="cfgVal_cellInfo">—</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit">
+            <div class="cfg-edit-inline">
+              <input id="cfg_cellInfoDuration" type="number" min="1" max="30" step="1" style="width:80px;text-align:right">
+              <span>초</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div><!-- /cfgPaneApp -->
 
     <!-- 기본 탭 -->
     <div class="cfg-tab-pane" id="cfgPaneBasic">
       <div class="cfg-section">👤 기본 정보</div>
-      <div class="cfg-grid">
-        <label>본인 생년월</label>
-        <div style="display:flex;align-items:center;gap:4px">
-          <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1985"
-                 style="width:66px" oninput="onCfgBirthYearChange('my')">
-          <span style="font-size:12px;color:var(--muted)">년</span>
-          <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
-                 style="width:44px">
-          <span style="font-size:12px;color:var(--muted)">월</span>
+      <div class="cfg-list">
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <span class="cfg-row-label">본인 생년월</span>
+            <span class="cfg-row-value" id="cfgVal_myBirth">—</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit">
+            <div class="cfg-edit-inline">
+              <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1985"
+                     style="width:80px" oninput="onCfgBirthYearChange('my')"><span>년</span>
+              <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
+                     style="width:64px"><span>월</span>
+            </div>
+          </div>
         </div>
       </div>
       <div class="cfg-section">👫 배우자</div>
-      <div class="cfg-grid">
-        <label>배우자 계좌</label>
-        <div class="toggle-row">
-          <button id="cfgWifeYes" class="toggle-btn" onclick="setCfgWife(true)">있음</button>
-          <button id="cfgWifeNo"  class="toggle-btn" onclick="setCfgWife(false)">없음</button>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">배우자 계좌</span>
+          <button type="button" class="cfg-switch" id="cfgSwWife" role="switch" aria-checked="false" onclick="setCfgWife(cfgSwitchToggle(this))"></button>
         </div>
-      </div>
-      <div id="cfgWifeRows">
-        <div class="cfg-grid">
-          <label>호칭 (예: 아내, 남편)</label>
-          <input id="cfg_wifeTitle" type="text" placeholder="아내" maxlength="10"
-                 style="text-align:left;padding:6px 10px">
-          <label>배우자 생년월</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1987"
-                   style="width:66px" oninput="onCfgBirthYearChange('wife')">
-            <span style="font-size:12px;color:var(--muted)">년</span>
-            <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
-                   style="width:44px">
-            <span style="font-size:12px;color:var(--muted)">월</span>
+        <div id="cfgWifeRows">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">호칭</span>
+              <span class="cfg-row-value" id="cfgVal_wifeTitle">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeTitle" type="text" placeholder="아내" maxlength="10" style="width:140px">
+                <span>예: 아내, 남편</span>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">배우자 생년월</span>
+              <span class="cfg-row-value" id="cfgVal_wifeBirth">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1987"
+                       style="width:80px" oninput="onCfgBirthYearChange('wife')"><span>년</span>
+                <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
+                       style="width:64px"><span>월</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       <div class="cfg-section">🏦 세율 설정</div>
-      <div class="cfg-grid">
-        <label>국민연금 소득세율 (%)</label>
-        <input id="cfg_npTaxRate" type="number" min="0" max="20" step="0.1">
-        <label>연금소득세율 (%)</label>
-        <div style="display:flex;gap:6px;width:100%">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
-            <span style="font-size:10px;color:var(--muted)">~70세</span>
-            <input id="cfg_pensionTaxRateU70" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center">
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
-            <span style="font-size:10px;color:var(--muted)">70~80</span>
-            <input id="cfg_pensionTaxRate7080" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center">
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
-            <span style="font-size:10px;color:var(--muted)">80세~</span>
-            <input id="cfg_pensionTaxRateO80" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center">
+      <div class="cfg-list">
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <span class="cfg-row-label">국민연금 소득세율</span>
+            <span class="cfg-row-value" id="cfgVal_npTaxRate">—</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit">
+            <div class="cfg-edit-inline">
+              <input id="cfg_npTaxRate" type="number" min="0" max="20" step="0.1" style="width:90px;text-align:right"><span>%</span>
+            </div>
           </div>
         </div>
-        <label>연금소득초과세율 (%)</label>
-        <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1">
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <span class="cfg-row-label">연금소득세율</span>
+            <span class="cfg-row-value" id="cfgVal_pensionTax">—</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit">
+            <div style="display:flex;gap:8px;width:100%">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+                <span style="font-size:11px;color:var(--muted)">~70세</span>
+                <input id="cfg_pensionTaxRateU70" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+                <span style="font-size:11px;color:var(--muted)">70~80</span>
+                <input id="cfg_pensionTaxRate7080" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+                <span style="font-size:11px;color:var(--muted)">80세~</span>
+                <input id="cfg_pensionTaxRateO80" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+            <span class="cfg-row-label">연금소득초과세율</span>
+            <span class="cfg-row-value" id="cfgVal_excessTax">—</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit">
+            <div class="cfg-edit-inline">
+              <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1" style="width:90px;text-align:right"><span>%</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="cfg-note">연금소득세율은 수령액 1,500만원 이하 기준 (지방소득세 포함)<br>· 70세 미만 5.5% · 70~80세 4.4% · 80세 이상 3.3% · 종신계약 4.4%</div>
     </div><!-- /cfgPaneBasic -->
 
     <!-- 본인 탭 -->
     <div class="cfg-tab-pane" id="cfgPaneMy">
-      <div class="cfg-sub">🏦 계좌 설정</div>
+      <div class="cfg-section">🏦 계좌 설정</div>
       <div class="cfg-acc-grid" id="cfgMyAccGrid"></div>
       <div id="cfgMyExtraAccs"></div>
       <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('my')">+ 계좌 추가</button>
 
-      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
-        <span>🧓 국민연금</span>
-        <div class="toggle-row" style="gap:4px">
-          <button id="cfgMyNPYes" class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('myNP',true)">사용</button>
-          <button id="cfgMyNPNo"  class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('myNP',false)">미사용</button>
+      <div class="cfg-section">🧓 국민연금</div>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">사용</span>
+          <button type="button" class="cfg-switch" id="cfgSwMyNP" role="switch" aria-checked="true" onclick="setCfgPersonToggle('myNP', cfgSwitchToggle(this))"></button>
         </div>
-      </div>
-      <div id="cfgMyNPFields">
-        <div class="cfg-grid">
-          <label>수급 시작(기준)월</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
-            <span style="font-size:12px;color:var(--muted)">년</span>
-            <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
-            <span style="font-size:12px;color:var(--muted)">월</span>
+        <div id="cfgMyNPFields">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">수급 시작(기준)월</span>
+              <span class="cfg-row-value" id="cfgVal_myNPStart">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+              </div>
+              <div id="cfgMyNPAutoHint" class="cfg-note" style="margin:6px 0 0"></div>
+            </div>
           </div>
-          <div id="cfgMyNPAutoHint" class="cfg-note" style="grid-column:1/-1;margin:0 0 2px"></div>
-          <label>월 수령액 (만원)</label>
-          <input id="cfg_myNPMonthly" type="number" min="0" step="1">
-          <label>연기 / 조기</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button id="cfg_myNPAdj_none"  class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('myNP','none')">없음</button>
-            <button id="cfg_myNPAdj_delay" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('myNP','delay')">연기</button>
-            <button id="cfg_myNPAdj_early" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('myNP','early')">조기</button>
-            <input id="cfg_myNPAdjYears" type="number" min="0" max="5" step="1" style="width:40px" value="0" disabled>
-            <span style="font-size:11px;color:var(--muted)">년</span>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">월 수령액</span>
+              <span class="cfg-row-value" id="cfgVal_myNPMonthly">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_myNPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="cfg-note">연기 +7.2%/년 · 조기 -6%/년</div>
-      </div>
-
-      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
-        <span>🏛️ 공무원연금</span>
-        <div class="toggle-row" style="gap:4px">
-          <button id="cfgMyGPYes" class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('myGP',true)">사용</button>
-          <button id="cfgMyGPNo"  class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('myGP',false)">미사용</button>
-        </div>
-      </div>
-      <div id="cfgMyGPFields">
-        <div class="cfg-grid">
-          <label>수령 시작 (기준)월</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
-            <span style="font-size:12px;color:var(--muted)">년</span>
-            <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
-            <span style="font-size:12px;color:var(--muted)">월</span>
-          </div>
-          <label>월 수령액 (만원)</label>
-          <input id="cfg_myGPMonthly" type="number" min="0" step="1">
-          <label>조기</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button id="cfg_myGPAdj_none"  class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('myGP','none')">없음</button>
-            <button id="cfg_myGPAdj_early" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('myGP','early')">조기</button>
-            <input id="cfg_myGPAdjYears" type="number" min="0" max="5" step="1" style="width:40px" value="0" disabled>
-            <span style="font-size:11px;color:var(--muted)">년</span>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">연기 / 조기</span>
+              <span class="cfg-row-value" id="cfgVal_myNPAdj">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <button id="cfg_myNPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('myNP','none')">없음</button>
+                <button id="cfg_myNPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('myNP','delay')">연기</button>
+                <button id="cfg_myNPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('myNP','early')">조기</button>
+                <input id="cfg_myNPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+              </div>
+              <div class="cfg-note" style="margin:6px 0 0">연기 +7.2%/년 · 조기 -6%/년</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
-        <span>🎓 사학연금</span>
-        <div class="toggle-row" style="gap:4px">
-          <button id="cfgMySPYes" class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('mySP',true)">사용</button>
-          <button id="cfgMySPNo"  class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('mySP',false)">미사용</button>
+      <div class="cfg-section">🏛️ 공무원연금</div>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">사용</span>
+          <button type="button" class="cfg-switch" id="cfgSwMyGP" role="switch" aria-checked="false" onclick="setCfgPersonToggle('myGP', cfgSwitchToggle(this))"></button>
+        </div>
+        <div id="cfgMyGPFields">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">수령 시작(기준)월</span>
+              <span class="cfg-row-value" id="cfgVal_myGPStart">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">월 수령액</span>
+              <span class="cfg-row-value" id="cfgVal_myGPMonthly">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_myGPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">조기</span>
+              <span class="cfg-row-value" id="cfgVal_myGPAdj">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <button id="cfg_myGPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('myGP','none')">없음</button>
+                <button id="cfg_myGPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('myGP','early')">조기</button>
+                <input id="cfg_myGPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div id="cfgMySPFields">
-        <div class="cfg-grid">
-          <label>수령 시작 (기준)월</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
-            <span style="font-size:12px;color:var(--muted)">년</span>
-            <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
-            <span style="font-size:12px;color:var(--muted)">월</span>
+
+      <div class="cfg-section">🎓 사학연금</div>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">사용</span>
+          <button type="button" class="cfg-switch" id="cfgSwMySP" role="switch" aria-checked="false" onclick="setCfgPersonToggle('mySP', cfgSwitchToggle(this))"></button>
+        </div>
+        <div id="cfgMySPFields">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">수령 시작(기준)월</span>
+              <span class="cfg-row-value" id="cfgVal_mySPStart">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+              </div>
+            </div>
           </div>
-          <label>월 수령액 (만원)</label>
-          <input id="cfg_mySPMonthly" type="number" min="0" step="1">
-          <label>연기 / 조기</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button id="cfg_mySPAdj_none"  class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('mySP','none')">없음</button>
-            <button id="cfg_mySPAdj_delay" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('mySP','delay')">연기</button>
-            <button id="cfg_mySPAdj_early" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('mySP','early')">조기</button>
-            <input id="cfg_mySPAdjYears" type="number" min="0" max="5" step="1" style="width:40px" value="0" disabled>
-            <span style="font-size:11px;color:var(--muted)">년</span>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">월 수령액</span>
+              <span class="cfg-row-value" id="cfgVal_mySPMonthly">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_mySPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">연기 / 조기</span>
+              <span class="cfg-row-value" id="cfgVal_mySPAdj">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <button id="cfg_mySPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('mySP','none')">없음</button>
+                <button id="cfg_mySPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('mySP','delay')">연기</button>
+                <button id="cfg_mySPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('mySP','early')">조기</button>
+                <input id="cfg_mySPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div id="cfgMyRetireTaxSection">
-      <div class="cfg-sub">💰 퇴직소득세율</div>
-      <div class="cfg-note">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
-      <div class="cfg-grid">
-        <label>퇴직소득세율 (%)</label>
-        <input id="cfg_myRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
-      </div>
+        <div class="cfg-section">💰 퇴직소득세율</div>
+        <div class="cfg-list">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">퇴직소득세율</span>
+              <span class="cfg-row-value" id="cfgVal_myRetireTax">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_myRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12" style="width:90px;text-align:right"><span>%</span>
+              </div>
+              <div class="cfg-note" style="margin:6px 0 0">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
+            </div>
+          </div>
+        </div>
       </div><!-- /cfgMyRetireTaxSection -->
     </div><!-- /cfgPaneMy -->
 
     <!-- 배우자 탭 -->
     <div class="cfg-tab-pane" id="cfgPaneWife">
-      <div class="cfg-sub">🏦 계좌 설정</div>
+      <div class="cfg-section">🏦 계좌 설정</div>
       <div class="cfg-acc-grid" id="cfgWifeAccGrid"></div>
       <div id="cfgWifeExtraAccs"></div>
       <button class="cfg-add-acc-btn" onclick="cfgAddExtraAcc('wife')">+ 계좌 추가</button>
 
-      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
-        <span>🧓 국민연금</span>
-        <div class="toggle-row" style="gap:4px">
-          <button id="cfgWifeNPYes" class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeNP',true)">사용</button>
-          <button id="cfgWifeNPNo"  class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeNP',false)">미사용</button>
+      <div class="cfg-section">🧓 국민연금</div>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">사용</span>
+          <button type="button" class="cfg-switch" id="cfgSwWifeNP" role="switch" aria-checked="true" onclick="setCfgPersonToggle('wifeNP', cfgSwitchToggle(this))"></button>
         </div>
-      </div>
-      <div id="cfgWifeNPFields">
-        <div class="cfg-grid">
-          <label>수급 시작(기준)월</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
-            <span style="font-size:12px;color:var(--muted)">년</span>
-            <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
-            <span style="font-size:12px;color:var(--muted)">월</span>
+        <div id="cfgWifeNPFields">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">수급 시작(기준)월</span>
+              <span class="cfg-row-value" id="cfgVal_wifeNPStart">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+              </div>
+              <div id="cfgWifeNPAutoHint" class="cfg-note" style="margin:6px 0 0"></div>
+            </div>
           </div>
-          <div id="cfgWifeNPAutoHint" class="cfg-note" style="grid-column:1/-1;margin:0 0 2px"></div>
-          <label>월 수령액 (만원)</label>
-          <input id="cfg_wifeNPMonthly" type="number" min="0" step="1">
-          <label>연기 / 조기</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button id="cfg_wifeNPAdj_none"  class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeNP','none')">없음</button>
-            <button id="cfg_wifeNPAdj_delay" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeNP','delay')">연기</button>
-            <button id="cfg_wifeNPAdj_early" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeNP','early')">조기</button>
-            <input id="cfg_wifeNPAdjYears" type="number" min="0" max="5" step="1" style="width:40px" value="0" disabled>
-            <span style="font-size:11px;color:var(--muted)">년</span>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">월 수령액</span>
+              <span class="cfg-row-value" id="cfgVal_wifeNPMonthly">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeNPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="cfg-note">연기 +7.2%/년 · 조기 -6%/년</div>
-      </div>
-
-      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
-        <span>🏛️ 공무원연금</span>
-        <div class="toggle-row" style="gap:4px">
-          <button id="cfgWifeGPYes" class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeGP',true)">사용</button>
-          <button id="cfgWifeGPNo"  class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeGP',false)">미사용</button>
-        </div>
-      </div>
-      <div id="cfgWifeGPFields">
-        <div class="cfg-grid">
-          <label>수령 시작 (기준)월</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
-            <span style="font-size:12px;color:var(--muted)">년</span>
-            <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
-            <span style="font-size:12px;color:var(--muted)">월</span>
-          </div>
-          <label>월 수령액 (만원)</label>
-          <input id="cfg_wifeGPMonthly" type="number" min="0" step="1">
-          <label>조기</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button id="cfg_wifeGPAdj_none"  class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeGP','none')">없음</button>
-            <button id="cfg_wifeGPAdj_early" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeGP','early')">조기</button>
-            <input id="cfg_wifeGPAdjYears" type="number" min="0" max="5" step="1" style="width:40px" value="0" disabled>
-            <span style="font-size:11px;color:var(--muted)">년</span>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">연기 / 조기</span>
+              <span class="cfg-row-value" id="cfgVal_wifeNPAdj">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <button id="cfg_wifeNPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('wifeNP','none')">없음</button>
+                <button id="cfg_wifeNPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('wifeNP','delay')">연기</button>
+                <button id="cfg_wifeNPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('wifeNP','early')">조기</button>
+                <input id="cfg_wifeNPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+              </div>
+              <div class="cfg-note" style="margin:6px 0 0">연기 +7.2%/년 · 조기 -6%/년</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="cfg-sub" style="display:flex;align-items:center;justify-content:space-between">
-        <span>🎓 사학연금</span>
-        <div class="toggle-row" style="gap:4px">
-          <button id="cfgWifeSPYes" class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeSP',true)">사용</button>
-          <button id="cfgWifeSPNo"  class="toggle-btn" style="padding:5px 10px;font-size:12px" onclick="setCfgPersonToggle('wifeSP',false)">미사용</button>
+      <div class="cfg-section">🏛️ 공무원연금</div>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">사용</span>
+          <button type="button" class="cfg-switch" id="cfgSwWifeGP" role="switch" aria-checked="false" onclick="setCfgPersonToggle('wifeGP', cfgSwitchToggle(this))"></button>
+        </div>
+        <div id="cfgWifeGPFields">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">수령 시작(기준)월</span>
+              <span class="cfg-row-value" id="cfgVal_wifeGPStart">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">월 수령액</span>
+              <span class="cfg-row-value" id="cfgVal_wifeGPMonthly">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeGPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">조기</span>
+              <span class="cfg-row-value" id="cfgVal_wifeGPAdj">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <button id="cfg_wifeGPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('wifeGP','none')">없음</button>
+                <button id="cfg_wifeGPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('wifeGP','early')">조기</button>
+                <input id="cfg_wifeGPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div id="cfgWifeSPFields">
-        <div class="cfg-grid">
-          <label>수령 시작 (기준)월</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1" style="width:66px">
-            <span style="font-size:12px;color:var(--muted)">년</span>
-            <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1" style="width:44px">
-            <span style="font-size:12px;color:var(--muted)">월</span>
+
+      <div class="cfg-section">🎓 사학연금</div>
+      <div class="cfg-list">
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">사용</span>
+          <button type="button" class="cfg-switch" id="cfgSwWifeSP" role="switch" aria-checked="false" onclick="setCfgPersonToggle('wifeSP', cfgSwitchToggle(this))"></button>
+        </div>
+        <div id="cfgWifeSPFields">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">수령 시작(기준)월</span>
+              <span class="cfg-row-value" id="cfgVal_wifeSPStart">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+              </div>
+            </div>
           </div>
-          <label>월 수령액 (만원)</label>
-          <input id="cfg_wifeSPMonthly" type="number" min="0" step="1">
-          <label>연기 / 조기</label>
-          <div style="display:flex;align-items:center;gap:4px">
-            <button id="cfg_wifeSPAdj_none"  class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeSP','none')">없음</button>
-            <button id="cfg_wifeSPAdj_delay" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeSP','delay')">연기</button>
-            <button id="cfg_wifeSPAdj_early" class="toggle-btn" style="padding:5px 8px;font-size:12px" onclick="setCfgPensionAdj('wifeSP','early')">조기</button>
-            <input id="cfg_wifeSPAdjYears" type="number" min="0" max="5" step="1" style="width:40px" value="0" disabled>
-            <span style="font-size:11px;color:var(--muted)">년</span>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">월 수령액</span>
+              <span class="cfg-row-value" id="cfgVal_wifeSPMonthly">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeSPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+              </div>
+            </div>
+          </div>
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">연기 / 조기</span>
+              <span class="cfg-row-value" id="cfgVal_wifeSPAdj">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <button id="cfg_wifeSPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('wifeSP','none')">없음</button>
+                <button id="cfg_wifeSPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('wifeSP','delay')">연기</button>
+                <button id="cfg_wifeSPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('wifeSP','early')">조기</button>
+                <input id="cfg_wifeSPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <div id="cfgWifeRetireTaxSection">
-      <div class="cfg-sub">💰 퇴직소득세율</div>
-      <div class="cfg-note">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
-      <div class="cfg-grid">
-        <label>퇴직소득세율 (%)</label>
-        <input id="cfg_wifeRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12">
-      </div>
+        <div class="cfg-section">💰 퇴직소득세율</div>
+        <div class="cfg-list">
+          <div class="cfg-item">
+            <button type="button" class="cfg-row" onclick="cfgToggleEdit(this)">
+              <span class="cfg-row-label">퇴직소득세율</span>
+              <span class="cfg-row-value" id="cfgVal_wifeRetireTax">—</span>
+              <span class="cfg-row-chev">›</span>
+            </button>
+            <div class="cfg-row-edit">
+              <div class="cfg-edit-inline">
+                <input id="cfg_wifeRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12" style="width:90px;text-align:right"><span>%</span>
+              </div>
+              <div class="cfg-note" style="margin:6px 0 0">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
+            </div>
+          </div>
+        </div>
       </div><!-- /cfgWifeRetireTaxSection -->
     </div><!-- /cfgPaneWife -->
 
@@ -3484,7 +3725,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.521';
+const APP_VERSION = 'MyGP v0.522';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12476,6 +12717,7 @@ function setCfgPensionAdj(key, mode) {
   });
   const yearsEl = document.getElementById(`cfg_${key}AdjYears`);
   if (yearsEl) { yearsEl.disabled = (mode === 'none'); if (mode === 'none') yearsEl.value = 0; }
+  if (typeof _refreshCfgSummaries === 'function') _refreshCfgSummaries();
 }
 function _updateRetireTaxVisibility(person) {
   const dcId = person === 'my' ? 'dc' : 'wife_dc';
@@ -12493,12 +12735,83 @@ function switchCfgTab(tab) {
   });
 }
 
+// ===== 카카오톡식 스위치 / 탭편집 / 값 표시 =====
+function cfgSwitchSet(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('on', !!on);
+  el.setAttribute('aria-checked', on ? 'true' : 'false');
+}
+function cfgSwitchOn(id) {
+  return document.getElementById(id)?.getAttribute('aria-checked') === 'true';
+}
+// 클릭 시 토글하고 새 상태(boolean)를 반환 (인라인 onclick에서 setter로 전달)
+function cfgSwitchToggle(el) {
+  const on = el.getAttribute('aria-checked') !== 'true';
+  el.classList.toggle('on', on);
+  el.setAttribute('aria-checked', on ? 'true' : 'false');
+  return on;
+}
+// 행을 탭하면 편집 영역 펼침 (같은 패널 내 다른 행은 닫음 - 아코디언)
+function cfgToggleEdit(rowBtn) {
+  const item = rowBtn.closest('.cfg-item');
+  if (!item) return;
+  const pane = item.closest('.cfg-tab-pane');
+  const wasOpen = item.classList.contains('editing');
+  if (pane) pane.querySelectorAll('.cfg-item.editing').forEach(el => { if (el !== item) el.classList.remove('editing'); });
+  if (wasOpen) {
+    item.classList.remove('editing');
+  } else {
+    item.classList.add('editing');
+    const inp = item.querySelector('.cfg-row-edit input:not([disabled])');
+    if (inp) setTimeout(() => inp.focus(), 50);
+  }
+  _refreshCfgSummaries();
+}
+function _cfgCloseAllEdits() {
+  document.querySelectorAll('#cfgDetail .cfg-item.editing').forEach(el => el.classList.remove('editing'));
+}
+// 입력값 → 행 우측 값 텍스트 갱신
+function _refreshCfgSummaries() {
+  const v = id => (document.getElementById(id)?.value ?? '').toString().trim();
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const ym = (y, m) => { const yy = v(y); if (!yy) return '미설정'; const mm = v(m); return mm ? `${yy}년 ${mm}월` : `${yy}년`; };
+  const pct = id => { const x = v(id); return x !== '' ? `${x}%` : '미설정'; };
+  const man = id => { const x = v(id); return x !== '' ? `${Number(x).toLocaleString()}만원` : '미설정'; };
+  const adj = prefix => {
+    const mode = _cfgPensionAdj[prefix];
+    const yrs = v(`cfg_${prefix}AdjYears`);
+    if (mode === 'delay') return `연기 ${yrs || 0}년`;
+    if (mode === 'early') return `조기 ${yrs || 0}년`;
+    return '없음';
+  };
+  set('cfgVal_myBirth',   ym('cfg_myBirthYear', 'cfg_myBirthMonth'));
+  set('cfgVal_wifeTitle', v('cfg_wifeTitle') || '미설정');
+  set('cfgVal_wifeBirth', ym('cfg_wifeBirthYear', 'cfg_wifeBirthMonth'));
+  set('cfgVal_npTaxRate', pct('cfg_npTaxRate'));
+  const u70 = v('cfg_pensionTaxRateU70') || '-', m78 = v('cfg_pensionTaxRate7080') || '-', o80 = v('cfg_pensionTaxRateO80') || '-';
+  set('cfgVal_pensionTax', `${u70} / ${m78} / ${o80}%`);
+  set('cfgVal_excessTax', pct('cfg_excessPensionTaxRate'));
+  ['my','wife'].forEach(p => {
+    ['NP','GP','SP'].forEach(k => {
+      set(`cfgVal_${p}${k}Start`,   ym(`cfg_${p}${k}StartYear`, `cfg_${p}${k}StartMonth`));
+      set(`cfgVal_${p}${k}Monthly`, man(`cfg_${p}${k}Monthly`));
+      set(`cfgVal_${p}${k}Adj`,     adj(`${p}${k}`));
+    });
+    set(`cfgVal_${p}RetireTax`, pct(`cfg_${p}RetireTaxRate`));
+  });
+  set('cfgVal_autoRefresh', `${v('autoRefreshMinutes') || '0'}분`);
+  set('cfgVal_cellInfo',    `${v('cfg_cellInfoDuration') || '5'}초`);
+}
+
 // ===== 전체화면 설정 내비게이션 =====
 const _CFG_DETAIL_TITLES = { app: '앱 · 데이터', basic: '기본 · 세율 설정', my: '본인 정보', wife: '배우자 정보' };
 function openCfgDetail(tab) {
   switchCfgTab(tab);
   const titleEl = document.getElementById('cfgDetailTitle');
   if (titleEl) titleEl.textContent = _CFG_DETAIL_TITLES[tab] || '설정';
+  _cfgCloseAllEdits();
+  _refreshCfgSummaries();
   document.getElementById('cfgHome')?.classList.add('hidden');
   document.getElementById('cfgDetail')?.classList.remove('hidden');
   const sc = document.querySelector('#cfgDetail .settings-scroll');
@@ -12507,6 +12820,7 @@ function openCfgDetail(tab) {
 function backToCfgHome() {
   _persistSettingsFromForm();   // 자동 저장
   _refreshCfgHomeDynamic();
+  _cfgCloseAllEdits();
   document.getElementById('cfgDetail')?.classList.add('hidden');
   document.getElementById('cfgHome')?.classList.remove('hidden');
 }
@@ -12531,8 +12845,7 @@ function _refreshCfgHomeDynamic() {
 function setCfgPersonToggle(key, val) {
   _cfgToggles[key] = val;
   const cap = key.charAt(0).toUpperCase() + key.slice(1);
-  document.getElementById(`cfg${cap}Yes`)?.classList.toggle('active', !!val);
-  document.getElementById(`cfg${cap}No`) ?.classList.toggle('active', !val);
+  cfgSwitchSet(`cfgSw${cap}`, !!val);
   const fieldsEl = document.getElementById(`cfg${cap}Fields`);
   if (fieldsEl) fieldsEl.style.display = val ? '' : 'none';
 }
@@ -12597,6 +12910,10 @@ function openSettingsModal() {
   const s  = appSettings;
   const wp = wdPlan;
   const sv = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v ?? ''); };
+
+  // 편집 중 값 미리보기 실시간 갱신 (한 번만 바인딩)
+  const _dt = document.getElementById('cfgDetail');
+  if (_dt && !_dt._sumBound) { _dt.addEventListener('input', _refreshCfgSummaries); _dt._sumBound = true; }
 
   // 일반 탭
   sv('cfg_myBirthYear',   s.myBirthYear  || '');
@@ -12682,6 +12999,8 @@ function openSettingsModal() {
   onCfgBirthYearChange('wife');
 
   ['my','wife'].forEach(_updateRetireTaxVisibility);
+  _cfgCloseAllEdits();
+  _refreshCfgSummaries();
   // 홈 화면으로 초기화한 뒤 전체화면 표시
   document.getElementById('cfgDetail')?.classList.add('hidden');
   document.getElementById('cfgHome')?.classList.remove('hidden');
@@ -12700,8 +13019,7 @@ function closeSettingsModal() {
 }
 
 function setCfgShowApp(app, show) {
-  document.getElementById(`cfgShow${app}On`)?.classList.toggle('active', show);
-  document.getElementById(`cfgShow${app}Off`)?.classList.toggle('active', !show);
+  cfgSwitchSet(`cfgSw${app}`, !!show);
 }
 
 function applyNavVisibility() {
@@ -12720,16 +13038,15 @@ function applyZoomSetting(allow) {
     : 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
 }
 function setCfgZoom(allow) {
-  document.getElementById('cfgZoomOn')?.classList.toggle('active', !!allow);
-  document.getElementById('cfgZoomOff')?.classList.toggle('active', !allow);
+  cfgSwitchSet('cfgSwZoom', !!allow);
 }
 function closeThenDrive() { closeSettingsModal(); openDriveModal(); }
 function handleSettingsBackdropClick(e) { if (e.target.id === 'settingsModal') closeSettingsModal(); }
 function setCfgWife(val) { _updateCfgWifeUI(val); }
 function _updateCfgWifeUI(hasWife) {
-  document.getElementById('cfgWifeYes').classList.toggle('active', !!hasWife);
-  document.getElementById('cfgWifeNo').classList.toggle('active',  !hasWife);
-  document.getElementById('cfgWifeRows').style.display = hasWife ? '' : 'none';
+  cfgSwitchSet('cfgSwWife', !!hasWife);
+  const rows = document.getElementById('cfgWifeRows');
+  if (rows) rows.style.display = hasWife ? '' : 'none';
   const wifeItem = document.getElementById('cfgMenuWife');
   if (wifeItem) wifeItem.style.display = hasWife ? '' : 'none';
 }
@@ -12737,7 +13054,7 @@ function _updateCfgWifeUI(hasWife) {
 function _persistSettingsFromForm() {
   const n  = id => Number(document.getElementById(id)?.value) || 0;
   const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
-  const hasWife = document.getElementById('cfgWifeYes').classList.contains('active');
+  const hasWife = cfgSwitchOn('cfgSwWife');
 
   const buildPersonCfg = (prefix) => ({
     activeAccIds:  [..._cfgActiveAccIds[prefix]],
@@ -12780,13 +13097,11 @@ function _persistSettingsFromForm() {
     wifeTitle:      hasWife ? wifeTitle : appSettings.wifeTitle,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
-    showNonK:  document.getElementById('cfgShowNonKOn')?.classList.contains('active') !== false
-               && !document.getElementById('cfgShowNonKOff')?.classList.contains('active'),
-    showKDeal: document.getElementById('cfgShowKDealOn')?.classList.contains('active') !== false
-               && !document.getElementById('cfgShowKDealOff')?.classList.contains('active'),
-    wdrecPreview: document.getElementById('cfgShowWdrecPreviewOn')?.classList.contains('active') === true,
-    showWdDebugBtn: document.getElementById('cfgShowWdDbgOn')?.classList.contains('active') === true,
-    allowZoom: document.getElementById('cfgZoomOff')?.classList.contains('active') !== true,
+    showNonK:  cfgSwitchOn('cfgSwNonK'),
+    showKDeal: cfgSwitchOn('cfgSwKDeal'),
+    wdrecPreview: cfgSwitchOn('cfgSwWdrecPreview'),
+    showWdDebugBtn: cfgSwitchOn('cfgSwWdDbg'),
+    allowZoom: cfgSwitchOn('cfgSwZoom'),
     cellInfoDuration: nv('cfg_cellInfoDuration', 5),
     my:   buildPersonCfg('my'),
     wife: hasWife ? buildPersonCfg('wife') : appSettings.wife,
