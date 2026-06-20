@@ -3757,7 +3757,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.527';
+const APP_VERSION = 'MyGP v0.528';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17772,8 +17772,17 @@ function backendLogout() {
 
 function confirmSettingsLogout() {
   if (!confirm('로그아웃하시겠습니까?')) return;
+  const doResetData = confirm(
+    '로컬 데이터를 초기화하시겠습니까?\n\n' +
+    '확인 = 초기화  (자산 데이터 전체 삭제)\n' +
+    '취소 = 유지    (데이터 그대로 보존)'
+  );
   backendLogout();
-  closeSettingsModal();
+  if (doResetData) {
+    doReset(false); // localStorage 전체 삭제 후 reload
+  } else {
+    closeSettingsModal();
+  }
 }
 
 // 수동 저장 — silent=true 면 자동저장(조용한 모드)
