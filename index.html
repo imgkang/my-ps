@@ -16981,6 +16981,7 @@ function onDriveClientIdChange() {
 
 function setDriveStatus(type, msg) {
   const el = document.getElementById('driveStatusMsg');
+  if (!el) return;
   el.className = 'drive-status ' + type;
   el.textContent = msg;
 }
