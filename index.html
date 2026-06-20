@@ -3757,7 +3757,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.526';
+const APP_VERSION = 'MyGP v0.527';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12869,7 +12869,22 @@ function backToCfgHome() {
   document.getElementById('cfgDetail')?.classList.add('hidden');
   document.getElementById('cfgHome')?.classList.remove('hidden');
 }
+function _applyCfgProfilePicture(url) {
+  const img = document.getElementById('cfgAvatarImg');
+  const placeholder = document.getElementById('cfgAvatarPlaceholder');
+  if (!img || !placeholder) return;
+  if (url) {
+    img.src = url;
+    img.style.display = '';
+    placeholder.style.display = 'none';
+  } else {
+    img.src = '';
+    img.style.display = 'none';
+    placeholder.style.display = '';
+  }
+}
 function _refreshCfgHomeDynamic() {
+  _applyCfgProfilePicture(localStorage.getItem('cfgGooglePicture') || '');
   const sub = document.getElementById('cfgProfileSub');
   if (sub) {
     const by = appSettings.myBirthYear;
@@ -17720,15 +17735,15 @@ function renderBackendGoogleBtn() {
           setBackendStatus('error', '앱 업데이트가 필요합니다 — 새로고침(또는 앱 종료 후 재실행) 해주세요.');
           return;
         }
-        // JWT 디코딩 — 프로필 이미지 추출
-        const payload = JSON.parse(atob(resp.credential.split('.')[1]));
-        if (payload.picture) {
-          const img = document.getElementById('cfgAvatarImg');
-          const placeholder = document.getElementById('cfgAvatarPlaceholder');
-          img.src = payload.picture;
-          img.style.display = '';
-          placeholder.style.display = 'none';
-        }
+        // JWT 디코딩 — 프로필 이미지 추출 및 저장 (base64url → base64 변환 필수)
+        try {
+          const b64 = resp.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(atob(b64));
+          if (payload.picture) {
+            localStorage.setItem('cfgGooglePicture', payload.picture);
+            _applyCfgProfilePicture(payload.picture);
+          }
+        } catch (_) {}
         setBackendStatus('loading', '⏳ 로그인 중...');
         MyPMApi.loginGoogle(resp.credential).then(function () {
           setBackendStatus('ok', '✅ 로그인 성공');
@@ -17749,6 +17764,8 @@ function renderBackendGoogleBtn() {
 
 function backendLogout() {
   try { MyPMApi.logout(); } catch (_) {}
+  localStorage.removeItem('cfgGooglePicture');
+  _applyCfgProfilePicture('');
   updateBackendUI();
   setBackendStatus('idle', '로그아웃됨');
 }
