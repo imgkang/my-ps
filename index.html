@@ -1757,12 +1757,12 @@ registerMobileTooltipDismiss();
       <!-- 백엔드 동기화 -->
       <div class="cfg-highlight" id="backendSyncSection">
         <div id="backendLoginSection">
-          <div class="cfg-highlight-title">☁️ 백엔드 동기화</div>
+          <div class="cfg-highlight-title">☁️ 클라우드 동기화</div>
           <div class="cfg-highlight-sub">구글 계정으로 로그인하면 데이터가 자동으로 동기화됩니다.</div>
           <div id="backendGoogleBtn" style="margin-top:10px;display:flex;justify-content:center"></div>
         </div>
         <div id="backendActionSection" style="display:none">
-          <div class="cfg-highlight-title">☁️ 백엔드 연결됨</div>
+          <div class="cfg-highlight-title">☁️ 동기화 연결됨</div>
           <div id="backendStatusMsg" class="drive-status ok" style="margin-top:6px;font-size:13px"></div>
         </div>
       </div>
@@ -3719,7 +3719,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.529';
+const APP_VERSION = 'MyGP v0.530';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17639,11 +17639,11 @@ function updateBackendUI() {
   const chk = document.getElementById('backendAutoSaveChk');
   if (chk) chk.checked = localStorage.getItem('mypm_autosave_v1') === '1';
   if (authed) {
-    setBackendStatus('ok', '✅ 백엔드 연결됨');
+    setBackendStatus('ok', '✅ 동기화 연결됨');
     // 로그인 사용자 표시 (비동기)
     try {
       MyPMApi.me().then(function (u) {
-        if (u && u.email) setBackendStatus('ok', '✅ ' + (u.name || u.email) + ' 로그인됨');
+        if (u && u.email) setBackendStatus('ok', '✅ ' + u.email + ' 로그인됨');
       }).catch(function () {});
     } catch (_) {}
   } else if (window.MyPMApi && MyPMApi.isConfigured()) {
