@@ -66,4 +66,22 @@ export default async function webhookRoutes(app: FastifyInstance) {
     reply.send({ ok: true, action: 'pulling', ts: new Date().toISOString() });
     gitPullAndPurge(s => app.log.info(s), s => app.log.error(s));
   });
+
+  // ── git 상태 진단 (GET /api/git-status?token=...) ──
+  app.get('/api/git-status', async (req, reply) => {
+    if (!env.UPDATE_TOKEN) return reply.code(403).send({ error: 'UPDATE_TOKEN not configured' });
+    const { token } = req.query as { token?: string };
+    if (!token || token !== env.UPDATE_TOKEN) return reply.code(401).send({ error: 'invalid token' });
+
+    const run = (cmd: string) => new Promise<string>((res) =>
+      exec(cmd, (_e, stdout, stderr) => res((stdout || stderr || '').trim()))
+    );
+    const [head, remote, remoteUrl, status] = await Promise.all([
+      run(`git -C "${repoRoot}" rev-parse --short HEAD`),
+      run(`git -C "${repoRoot}" rev-parse --short origin/main 2>/dev/null || echo fetch_needed`),
+      run(`git -C "${repoRoot}" remote get-url origin`),
+      run(`git -C "${repoRoot}" status --short`),
+    ]);
+    reply.send({ head, remote, remoteUrl, status: status || 'clean', ts: new Date().toISOString() });
+  });
 }
