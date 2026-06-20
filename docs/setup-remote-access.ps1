@@ -1,18 +1,23 @@
-# =============================================================
+﻿# =============================================================
 # 원격 접속 환경 설정 스크립트
 # 집 PC에서 관리자 PowerShell로 실행
 #
 # 완료 후 가능한 것:
 #   1) ssh.growpension.com 으로 어디서든 SSH 접속
 #   2) https://mypm.growpension.com/api/update?token=... 로 강제 배포
+#
+# ※ 이 파일은 반드시 UTF-8 (BOM 포함) 으로 저장돼 있어야 한다.
+#   BOM 이 없으면 한국어 Windows PowerShell 5.1 이 CP949 로 잘못 읽어
+#   "닫는 중괄호 없음" 파싱 에러가 난다.
 # =============================================================
 
 $ErrorActionPreference = 'Stop'
 
-# ── 설정값 (여기만 바꾸세요) ──────────────────────────────────
+# ── 설정값 ────────────────────────────────────────────────────
+# 경로는 현재 사용자 프로필 기준으로 자동 결정 (한글 사용자명 하드코딩 제거)
 $TUNNEL_NAME      = 'mypm'
-$CF_CONFIG        = 'C:\Users\강민구\.cloudflared\config.yml'
-$MYPM_ROOT        = 'C:\Users\강민구\mypm'
+$CF_CONFIG        = "$env:USERPROFILE\.cloudflared\config.yml"
+$MYPM_ROOT        = "$env:USERPROFILE\mypm"
 $SSH_HOSTNAME     = 'ssh.growpension.com'
 $UPDATE_TOKEN     = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 24 | % {[char]$_})
 # ─────────────────────────────────────────────────────────────
@@ -83,7 +88,7 @@ Write-Host " 원격 접속 설정 완료!" -ForegroundColor Magenta
 Write-Host "============================================" -ForegroundColor Magenta
 Write-Host ""
 Write-Host "1. SSH 접속 (cloudflared 설치된 기기에서):"
-Write-Host "   ssh -o `"ProxyCommand cloudflared access ssh --hostname $SSH_HOSTNAME`" 강민구@$SSH_HOSTNAME" -ForegroundColor Cyan
+Write-Host "   ssh -o `"ProxyCommand cloudflared access ssh --hostname $SSH_HOSTNAME`" $env:USERNAME@$SSH_HOSTNAME" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "2. 원격 강제 배포 URL (북마크 해두세요):"
 Write-Host "   https://mypm.growpension.com/api/update?token=$UPDATE_TOKEN" -ForegroundColor Cyan
