@@ -1,0 +1,16 @@
+node_modules/
+dist/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+*.p8
+# FCM 서비스 계정 키 (Firebase) — 절대 커밋 금지
+secrets/
+*service-account*.json
+firebase-adminsdk*.json
+# Cloudflare Tunnel — 실제 config(머신별 UUID·자격증명 경로)와 자격증명 JSON 은 커밋 금지
+config.yml
+*.cloudflared.json
