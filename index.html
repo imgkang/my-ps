@@ -1212,6 +1212,59 @@ registerMobileTooltipDismiss();
   .cfg-add-acc-btn { font-size: 12px; color: var(--primary); background: none; border: 1px dashed var(--primary);
     border-radius: 6px; padding: 4px 10px; cursor: pointer; margin-bottom: 4px; }
   .cfg-note { font-size: 11px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
+
+  /* ===== 설정 전체화면 (드릴다운) ===== */
+  .settings-fs { position: fixed; inset: 0; background: #fff; z-index: 1000;
+    display: none; }
+  .settings-fs.open { display: block; }
+  .settings-screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+    background: #fff; }
+  .settings-screen.hidden { display: none; }
+  .settings-topbar { display: flex; align-items: center; height: 52px; padding: 0 4px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0; background: #fff; }
+  .settings-topbar-title { flex: 1; text-align: center; font-size: 17px; font-weight: 700;
+    color: var(--text); }
+  .settings-back { width: 44px; height: 44px; font-size: 30px; line-height: 1;
+    background: none; border: none; color: var(--text); cursor: pointer; padding: 0; }
+  .settings-topbar-spacer { width: 44px; flex-shrink: 0; }
+  .settings-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* 프로필 헤더 */
+  .cfg-profile { display: flex; align-items: center; gap: 14px; padding: 22px 20px 18px; }
+  .cfg-avatar { width: 60px; height: 60px; border-radius: 22px; flex-shrink: 0;
+    background: linear-gradient(135deg, #a5b4fc, #6366f1);
+    display: flex; align-items: center; justify-content: center; color: #fff; }
+  .cfg-profile-info { flex: 1; min-width: 0; }
+  .cfg-profile-name { font-size: 19px; font-weight: 700; color: var(--text); }
+  .cfg-profile-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .cfg-manage-btn { padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border);
+    background: #fff; font-size: 13px; color: var(--text); cursor: pointer; flex-shrink: 0; }
+  .cfg-manage-btn:hover { background: #f3f4f6; }
+  /* 강조 카드 (Drive 백업) */
+  .cfg-highlight { margin: 0 16px 18px; background: #f5f6f8; border-radius: 14px;
+    padding: 16px 18px; }
+  .cfg-highlight-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .cfg-highlight-sub { font-size: 12.5px; color: var(--muted); margin: 5px 0 12px;
+    line-height: 1.5; }
+  .cfg-highlight-actions { display: flex; gap: 8px; }
+  .cfg-highlight-actions button { flex: 1; padding: 10px 0; border-radius: 8px;
+    border: 1px solid var(--border); background: #fff; font-size: 13px; font-weight: 600;
+    color: var(--text); cursor: pointer; }
+  .cfg-highlight-actions button:hover { background: #eef0f3; }
+  /* 메뉴 리스트 */
+  .cfg-menu { padding: 4px 8px 6px; }
+  .cfg-menu-item { display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 15px 14px; background: none; border: none; border-radius: 12px;
+    cursor: pointer; text-align: left; }
+  .cfg-menu-item:hover { background: #f5f6f8; }
+  .cfg-menu-ic { font-size: 20px; width: 26px; text-align: center; flex-shrink: 0; }
+  .cfg-menu-label { flex: 1; min-width: 0; font-size: 15.5px; color: var(--text);
+    display: flex; flex-direction: column; gap: 2px; }
+  .cfg-menu-label small { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .cfg-menu-arrow { font-size: 22px; color: #c4c7cc; flex-shrink: 0; line-height: 1; }
+  .cfg-version { text-align: center; font-size: 11px; color: var(--muted); padding: 6px 0 28px; }
+  /* 세부 화면 본문 패딩 */
+  .settings-detail-body { padding: 14px 16px 40px; }
+
   /* Google Drive 동기화 */
   .drive-btn { padding: 7px 12px; border: 1.5px solid #4285f4; border-radius: 8px;
     background: white; color: #4285f4; font-size: 13px; cursor: pointer;
@@ -1697,20 +1750,77 @@ registerMobileTooltipDismiss();
   </div>
 </div>
 
-<!-- ⚙️ 앱 설정 모달 -->
-<div class="modal-backdrop" id="settingsModal" onclick="handleSettingsBackdropClick(event)">
-  <div class="modal" style="max-width:460px;height:min(620px,88vh);display:flex;flex-direction:column">
-    <div class="modal-header" style="flex-shrink:0">
-      <div><h2>⚙️ 설정</h2></div>
-      <button class="close-btn" onclick="closeSettingsModal()" aria-label="닫기">×</button>
+<!-- ⚙️ 설정 (전체화면 드릴다운) -->
+<div class="settings-fs" id="settingsModal">
+
+  <!-- 홈 화면 -->
+  <div class="settings-screen" id="cfgHome">
+    <div class="settings-topbar">
+      <button class="settings-back" onclick="saveSettingsModal()" aria-label="닫기">‹</button>
+      <div class="settings-topbar-title">설정</div>
+      <div class="settings-topbar-spacer"></div>
     </div>
-    <div class="cfg-tabs">
-      <button class="cfg-tab active" id="cfgTabApp"   onclick="switchCfgTab('app')">⚙️ 앱</button>
-      <button class="cfg-tab"        id="cfgTabBasic" onclick="switchCfgTab('basic')">📋 기본</button>
-      <button class="cfg-tab"        id="cfgTabMy"    onclick="switchCfgTab('my')">👤 본인</button>
-      <button class="cfg-tab"        id="cfgTabWife"  onclick="switchCfgTab('wife')">👩 배우자</button>
+    <div class="settings-scroll">
+      <!-- 프로필 -->
+      <div class="cfg-profile">
+        <div class="cfg-avatar">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div class="cfg-profile-info">
+          <div class="cfg-profile-name" id="cfgProfileName">내 자산 플랜</div>
+          <div class="cfg-profile-sub" id="cfgProfileSub"></div>
+        </div>
+        <button class="cfg-manage-btn" onclick="openCfgDetail('basic')">관리</button>
+      </div>
+
+      <!-- 강조 카드: Google Drive 백업 -->
+      <div class="cfg-highlight">
+        <div class="cfg-highlight-title" id="cfgHomeDriveLabel">☁️ Google Drive 백업</div>
+        <div class="cfg-highlight-sub">데이터를 클라우드에 안전하게 보관하고 기기 간에 동기화하세요.</div>
+        <div class="cfg-highlight-actions">
+          <button onclick="closeThenDrive()">연결 / 동기화</button>
+          <button onclick="exportToFile()">파일로 저장</button>
+        </div>
+      </div>
+
+      <!-- 메뉴 리스트 -->
+      <div class="cfg-menu">
+        <button class="cfg-menu-item" onclick="openCfgDetail('my')">
+          <span class="cfg-menu-ic">👤</span>
+          <span class="cfg-menu-label">본인 정보<small>계좌 · 국민/공무원/사학연금 · 퇴직세</small></span>
+          <span class="cfg-menu-arrow">›</span>
+        </button>
+        <button class="cfg-menu-item" id="cfgMenuWife" onclick="openCfgDetail('wife')">
+          <span class="cfg-menu-ic">👩</span>
+          <span class="cfg-menu-label">배우자 정보<small>계좌 · 연금 · 퇴직세</small></span>
+          <span class="cfg-menu-arrow">›</span>
+        </button>
+        <button class="cfg-menu-item" onclick="openCfgDetail('basic')">
+          <span class="cfg-menu-ic">📋</span>
+          <span class="cfg-menu-label">기본 · 세율 설정<small>생년월 · 배우자 · 연금/소득세율</small></span>
+          <span class="cfg-menu-arrow">›</span>
+        </button>
+        <button class="cfg-menu-item" onclick="openCfgDetail('app')">
+          <span class="cfg-menu-ic">⚙️</span>
+          <span class="cfg-menu-label">앱 · 데이터<small>표시 · 자동 새로고침 · 백업/초기화</small></span>
+          <span class="cfg-menu-arrow">›</span>
+        </button>
+      </div>
+      <div class="cfg-version" id="cfgVersionFoot"></div>
     </div>
-    <div style="overflow-y:auto;flex:1;padding:0 4px 4px">
+  </div>
+
+  <!-- 세부 화면 -->
+  <div class="settings-screen hidden" id="cfgDetail">
+    <div class="settings-topbar">
+      <button class="settings-back" onclick="backToCfgHome()" aria-label="뒤로">‹</button>
+      <div class="settings-topbar-title" id="cfgDetailTitle">설정</div>
+      <div class="settings-topbar-spacer"></div>
+    </div>
+    <div class="settings-scroll">
+      <div class="settings-detail-body">
 
     <!-- 앱 탭 -->
     <div class="cfg-tab-pane active" id="cfgPaneApp">
@@ -2047,13 +2157,11 @@ registerMobileTooltipDismiss();
       </div><!-- /cfgWifeRetireTaxSection -->
     </div><!-- /cfgPaneWife -->
 
-    </div><!-- /scrollable -->
-    <div class="modal-actions" style="margin-top:12px;flex-shrink:0">
-      <button class="btn-secondary" onclick="closeSettingsModal()">취소</button>
-      <button class="btn-primary" onclick="saveSettingsModal()">저장</button>
-    </div>
-  </div>
-</div>
+      </div><!-- /settings-detail-body -->
+    </div><!-- /settings-scroll -->
+  </div><!-- /cfgDetail -->
+
+</div><!-- /settings-fs -->
 
 <div class="modal-backdrop" id="addStockModal" onclick="handleAddStockBackdropClick(event)">
   <div class="modal" style="max-width: 480px;">
@@ -3399,7 +3507,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.518';
+const APP_VERSION = 'MyGP v0.519';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4417,7 +4525,11 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('wdrecModal')?.classList.contains('open')) { closeWdrecModal(); return; }
   if (document.getElementById('divRecModal')?.classList.contains('open')) { closeDivRecModal(); return; }
   if (['records','dividend','deposit','annual','withdrawal','wdrec'].some(t => document.getElementById('panel-'+t)?.classList.contains('active'))) { switchTab('portfolio'); return; }
-  if (document.getElementById('settingsModal').classList.contains('open')) { closeSettingsModal(); return; }
+  if (document.getElementById('settingsModal').classList.contains('open')) {
+    if (!document.getElementById('cfgDetail')?.classList.contains('hidden')) backToCfgHome();
+    else saveSettingsModal();
+    return;
+  }
 });
 
 // 금액 입력란 자동 콤마 포맷
@@ -12403,6 +12515,42 @@ function switchCfgTab(tab) {
     document.getElementById(`cfgPane${cap}`)?.classList.toggle('active', t === tab);
   });
 }
+
+// ===== 전체화면 설정 내비게이션 =====
+const _CFG_DETAIL_TITLES = { app: '앱 · 데이터', basic: '기본 · 세율 설정', my: '본인 정보', wife: '배우자 정보' };
+function openCfgDetail(tab) {
+  switchCfgTab(tab);
+  const titleEl = document.getElementById('cfgDetailTitle');
+  if (titleEl) titleEl.textContent = _CFG_DETAIL_TITLES[tab] || '설정';
+  document.getElementById('cfgHome')?.classList.add('hidden');
+  document.getElementById('cfgDetail')?.classList.remove('hidden');
+  const sc = document.querySelector('#cfgDetail .settings-scroll');
+  if (sc) sc.scrollTop = 0;
+}
+function backToCfgHome() {
+  _persistSettingsFromForm();   // 자동 저장
+  _refreshCfgHomeDynamic();
+  document.getElementById('cfgDetail')?.classList.add('hidden');
+  document.getElementById('cfgHome')?.classList.remove('hidden');
+}
+function _refreshCfgHomeDynamic() {
+  const sub = document.getElementById('cfgProfileSub');
+  if (sub) {
+    const by = appSettings.myBirthYear;
+    const parts = [by ? `${by}년생` : '생년 미설정'];
+    if (appSettings.hasWife) parts.push('배우자 설정됨');
+    sub.textContent = parts.join(' · ');
+  }
+  const wifeItem = document.getElementById('cfgMenuWife');
+  if (wifeItem) wifeItem.style.display = appSettings.hasWife ? '' : 'none';
+  const driveLabel = document.getElementById('cfgHomeDriveLabel');
+  if (driveLabel) {
+    const connected = (typeof driveAccessToken !== 'undefined') && !!driveAccessToken;
+    driveLabel.textContent = connected ? '☁️ Google Drive · 동기화됨' : '☁️ Google Drive 백업';
+  }
+  const vf = document.getElementById('cfgVersionFoot');
+  if (vf) vf.textContent = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : '';
+}
 function setCfgPersonToggle(key, val) {
   _cfgToggles[key] = val;
   const cap = key.charAt(0).toUpperCase() + key.slice(1);
@@ -12557,10 +12705,20 @@ function openSettingsModal() {
   onCfgBirthYearChange('wife');
 
   ['my','wife'].forEach(_updateRetireTaxVisibility);
-  switchCfgTab('basic');
+  // 홈 화면으로 초기화한 뒤 전체화면 표시
+  document.getElementById('cfgDetail')?.classList.add('hidden');
+  document.getElementById('cfgHome')?.classList.remove('hidden');
+  const homeScroll = document.querySelector('#cfgHome .settings-scroll');
+  if (homeScroll) homeScroll.scrollTop = 0;
+  _refreshCfgHomeDynamic();
   document.getElementById('settingsModal').classList.add('open');
 }
-function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('open');
+  // 다음 진입 시 홈 화면부터 보이도록 리셋
+  document.getElementById('cfgDetail')?.classList.add('hidden');
+  document.getElementById('cfgHome')?.classList.remove('hidden');
+}
 
 function setCfgShowApp(app, show) {
   document.getElementById(`cfgShow${app}On`)?.classList.toggle('active', show);
@@ -12593,11 +12751,11 @@ function _updateCfgWifeUI(hasWife) {
   document.getElementById('cfgWifeYes').classList.toggle('active', !!hasWife);
   document.getElementById('cfgWifeNo').classList.toggle('active',  !hasWife);
   document.getElementById('cfgWifeRows').style.display = hasWife ? '' : 'none';
-  const wTab = document.getElementById('cfgTabWife');
-  wTab.style.display = hasWife ? '' : 'none';
-  if (!hasWife && wTab.classList.contains('active')) switchCfgTab('basic');
+  const wifeItem = document.getElementById('cfgMenuWife');
+  if (wifeItem) wifeItem.style.display = hasWife ? '' : 'none';
 }
-function saveSettingsModal() {
+// 폼 → 상태 반영(저장)만 수행. 닫기/렌더는 호출부에서 처리 (자동 저장 지원)
+function _persistSettingsFromForm() {
   const n  = id => Number(document.getElementById(id)?.value) || 0;
   const nv = (id, def) => { const v = Number(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
   const hasWife = document.getElementById('cfgWifeYes').classList.contains('active');
@@ -12670,6 +12828,11 @@ function saveSettingsModal() {
   wdPlan.pensionTaxRateO80    = nv('cfg_pensionTaxRateO80',  3.3);
   wdPlan.excessPensionTaxRate = nv('cfg_excessPensionTaxRate', 16.5);
   saveWdPlan();
+}
+
+// 설정 닫기(저장 후 전체화면 종료 + 메인 재렌더)
+function saveSettingsModal() {
+  _persistSettingsFromForm();
   closeSettingsModal();
   render();
   const _activePanelNow = _TAB_NAMES.find(t => document.getElementById('panel-' + t)?.classList.contains('active'));
@@ -16876,6 +17039,8 @@ function updateDriveUI() {
     navBtn.className = 'drive-btn' + (connected ? ' connected' : '');
     navLabel.textContent = connected ? '동기화됨' : 'Drive';
   }
+  const homeDriveLabel = document.getElementById('cfgHomeDriveLabel');
+  if (homeDriveLabel) homeDriveLabel.textContent = connected ? '☁️ Google Drive · 동기화됨' : '☁️ Google Drive 백업';
   if (driveLastSync) {
     const el = document.getElementById('driveLastSync');
     if (el) el.textContent = '마지막 동기화: ' + new Date(driveLastSync).toLocaleString('ko-KR');
