@@ -1779,13 +1779,14 @@ registerMobileTooltipDismiss();
     <div class="settings-scroll">
       <!-- 프로필 -->
       <div class="cfg-profile">
-        <div class="cfg-avatar">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="cfg-avatar" id="cfgAvatarContainer">
+          <img id="cfgAvatarImg" src="" alt="프로필" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">
+          <svg id="cfgAvatarPlaceholder" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
           </svg>
         </div>
         <div class="cfg-profile-info">
-          <div class="cfg-profile-name" id="cfgProfileName">내 자산 플랜</div>
+          <div class="cfg-profile-name" id="cfgProfileName">나의 연금 키우기</div>
           <div class="cfg-profile-sub" id="cfgProfileSub"></div>
         </div>
         <button class="cfg-manage-btn" onclick="openCfgDetail('basic')">관리</button>
@@ -3756,7 +3757,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.525';
+const APP_VERSION = 'MyGP v0.526';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17718,6 +17719,15 @@ function renderBackendGoogleBtn() {
         if (!(window.MyPMApi && typeof MyPMApi.loginGoogle === 'function')) {
           setBackendStatus('error', '앱 업데이트가 필요합니다 — 새로고침(또는 앱 종료 후 재실행) 해주세요.');
           return;
+        }
+        // JWT 디코딩 — 프로필 이미지 추출
+        const payload = JSON.parse(atob(resp.credential.split('.')[1]));
+        if (payload.picture) {
+          const img = document.getElementById('cfgAvatarImg');
+          const placeholder = document.getElementById('cfgAvatarPlaceholder');
+          img.src = payload.picture;
+          img.style.display = '';
+          placeholder.style.display = 'none';
         }
         setBackendStatus('loading', '⏳ 로그인 중...');
         MyPMApi.loginGoogle(resp.credential).then(function () {
