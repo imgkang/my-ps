@@ -12711,10 +12711,12 @@ function openSettingsModal() {
   const homeScroll = document.querySelector('#cfgHome .settings-scroll');
   if (homeScroll) homeScroll.scrollTop = 0;
   _refreshCfgHomeDynamic();
+  document.getElementById('appVersion')?.style.setProperty('display', 'none');
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() {
   document.getElementById('settingsModal').classList.remove('open');
+  document.getElementById('appVersion')?.style.removeProperty('display');
   // 다음 진입 시 홈 화면부터 보이도록 리셋
   document.getElementById('cfgDetail')?.classList.add('hidden');
   document.getElementById('cfgHome')?.classList.remove('hidden');
