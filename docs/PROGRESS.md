@@ -1,10 +1,12 @@
 # My PM — 진행 상황 / 인수인계 (PROGRESS)
 
 > 이 문서는 작업을 **다른 Claude Code 세션(개인 계정 등)으로 이어가기 위한 핸드오프** 용도다.
-> 새 세션은 이 파일 + `server/README.md` + `CLAUDE.md` 를 먼저 읽으면 맥락을 파악할 수 있다.
+> 새 세션은 이 파일 + `server/README.md` + `CLAUDE.md` + `docs/DEPLOY.md` 를 먼저 읽으면 맥락을 파악할 수 있다.
 
-작업 브랜치: **`claude/tender-knuth-0agbyw`** (저장소 `imgkang/my-ps`). main 직접 푸시 금지.
-최종 클라이언트 버전: **v0.514** (index/NonK/KDeal/sw 공통).
+작업 브랜치: **main** (저장소 `imgkang/my-ps`). 직접 push.
+최종 클라이언트 버전: **v0.528** (index/NonK/KDeal/sw 공통).
+
+---
 
 ---
 
@@ -102,6 +104,49 @@ Start-ScheduledTask MyPMBackend
 - PC 전원 켜져 있어야 서비스 동작(절전 해제 적용함).
 - Cloudflare 에서 `growpension.com` 자동 갱신/결제수단 확인(만료 시 접속 끊김).
 - APP_PIN 충분히 길게 유지(외부 노출). Finnhub 키 등은 `.env` 에만.
+
+---
+
+## ✅ Google 프로필 사진 + Webhook 자동 배포 완료 (2026-06-20, v0.528)
+Google 로그인 시 프로필 사진 표시 (JWT 디코딩 + localStorage 저장) 완료.
+폴링 방식 → GitHub Webhook 즉시 트리거 방식으로 전환.
+로그아웃 시 데이터 유지/초기화 선택 옵션 추가.
+
+### 주요 변경사항
+
+**v0.526 (Google 프로필 사진)**
+- JWT에서 프로필 이미지 URL 추출 (base64url → base64 변환 필수: `replace(/-/g, '+').replace(/_/g, '/')`)
+- 사진 URL을 localStorage에 저장 → 이미 로그인된 상태에서도 설정 진입 시 자동 복원
+- 로그아웃 시 localStorage에서 사진 삭제
+- 헤더 텍스트 "내 자산 플랜" → "나의 연금 키우기"
+
+**v0.527 (Git Webhook 자동 배포)**
+- 서버: `POST /api/github-webhook` 엔드포인트 신설 (HMAC-SHA256 검증)
+- 수신 즉시: `git pull origin main` + Cloudflare 캐시 퍼지 자동 실행
+- 환경변수: `GITHUB_WEBHOOK_SECRET`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_API_TOKEN` (모두 `server/.env`)
+- GitHub Webhooks 설정: Payload URL `https://mypm.growpension.com/api/github-webhook`, "Just the push event"
+- `scripts/auto-pull.ps1`은 수동 폴백용으로만 유지 (평상시 사용 안 함)
+
+**v0.528 (로그아웃 옵션)**
+- 로그아웃 확인 후 두 번째 다이얼로그: "데이터를 초기화하시겠습니까?"
+  - 확인 = 초기화 (localStorage 전체 삭제, `doReset(false)` 호출 후 reload)
+  - 취소 = 유지 (데이터 보존, 설정 화면만 닫기)
+
+### 커밋 검증 (중요)
+**규칙**: 커밋 후 `git show HEAD:index.html | grep APP_VERSION` 으로 실제 커밋 내용 검증.
+- HEAD의 버전과 커밋 메시지의 버전이 일치해야 함.
+- 이전 세션에서 v0.526이 커밋되지 않은 사건 방지.
+
+### 집 PC 작업 스케줄러 (갱신)
+- `MyPMBackend`: node.exe dist\server.js, 작업폴더 `C:\Users\강민구\mypm\server` (★ .env 로드 위치)
+- `MyPMTunnel`: cloudflared tunnel run mypm
+- **태스크명을 반드시 직접 지정**으로 조회: `Get-ScheduledTask MyPMBackend` (와일드카드 검색 불가)
+- 재시작: `Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend`
+
+### 운영 요점
+- push → Webhook 자동 처리 (git pull + CF purge) → 브라우저 Ctrl+Shift+R 만 하면 끝.
+- Webhook 미동작 시만 수동 폴백: `git pull` + 수동 CF purge.
+- 서버 코드(TypeScript) 변경 시만: `npm run build` + 태스크 재시작.
 
 ---
 
