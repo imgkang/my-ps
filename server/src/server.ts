@@ -11,9 +11,24 @@ import syncRoutes from './routes/sync.js';
 import searchRoutes from './routes/search.js';
 import pushRoutes from './routes/push.js';
 import webhookRoutes from './routes/webhook.js';
+import adminRoutes from './routes/admin.js';
 import { startScheduler } from './scheduler.js';
+import { recordRequest } from './metrics.js';
+
+// 잡히지 않은 예외 — 로그 남기고 종료 (Task Scheduler 가 재시작)
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] unhandledRejection:', reason);
+  process.exit(1);
+});
 
 const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 }); // 번들이 클 수 있어 25MB
+
+// 모든 요청 카운트
+app.addHook('onRequest', async (req) => { recordRequest(req.routeOptions?.url ?? req.url); });
 
 // Capacitor WebView(capacitor://localhost / ionic://) 및 로컬 개발 허용
 await app.register(cors, { origin: true });
@@ -26,6 +41,7 @@ await app.register(syncRoutes);
 await app.register(searchRoutes);
 await app.register(pushRoutes);
 await app.register(webhookRoutes);
+await app.register(adminRoutes);
 
 // 프론트 정적 서빙 (로컬 테스트용 단일 출처). API 라우트 등록 뒤에 둔다.
 // 보안 가드: server/(=.env·DB), .git, dotfile 은 절대 서빙하지 않는다.
