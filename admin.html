@@ -62,6 +62,17 @@
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e293b; border: 1px solid var(--border); border-radius: 10px; padding: 10px 20px; font-size: 0.85rem; opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
   .section-note { font-size: 0.68rem; color: var(--muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .log-toolbar { display: flex; gap: 6px; margin-bottom: 10px; }
+  .log-tab { flex: 1; padding: 7px; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--muted); cursor: pointer; }
+  .log-tab.active { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+  .log-box { background: #0a0f1d; border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-height: 320px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.7rem; line-height: 1.5; }
+  .log-line { white-space: pre-wrap; word-break: break-word; padding: 1px 0; }
+  .log-line .lt { color: #64748b; }
+  .log-line.lv-info { color: #cbd5e1; }
+  .log-line.lv-warn { color: var(--yellow); }
+  .log-line.lv-error { color: #fca5a5; }
+  .log-line.lv-raw { color: #fda4af; }
+  .log-empty { color: var(--muted); font-size: 0.78rem; text-align: center; padding: 20px 0; }
   #loginSection { display: block; }
   #dashSection { display: none; }
 </style>
@@ -210,6 +221,20 @@
     <div id="taskList"><div style="color:var(--muted);font-size:.8rem">정보 없음</div></div>
   </div>
 
+  <!-- 서버 로그 -->
+  <div class="card">
+    <div class="card-title">서버 로그</div>
+    <div class="log-toolbar">
+      <button class="log-tab active" id="logTabErrors" onclick="setLogMode(true)">⚠️ 오류·경고만</button>
+      <button class="log-tab" id="logTabAll" onclick="setLogMode(false)">전체 로그</button>
+      <button class="log-tab" style="flex:0 0 auto;padding:7px 12px" onclick="loadLogs()">↻</button>
+    </div>
+    <div class="log-box" id="logBox"><div class="log-empty">불러오는 중...</div></div>
+    <div class="section-note">
+      ※ <code id="logPathLabel">data/server.log</code> 파일을 읽음 — 서버가 죽기 직전 stderr(크래시 스택)까지 기록됨
+    </div>
+  </div>
+
   <!-- 제어 -->
   <div class="card">
     <div class="card-title">서버 제어</div>
@@ -294,13 +319,51 @@ async function loadStatus() {
 
     const d = await res.json();
     renderStatus(d);
+    loadLogs();
     startAutoRefresh();
   } catch (e) {
     // 서버 다운
     document.getElementById('loginSection').style.display = 'none';
     document.getElementById('dashSection').style.display = 'block';
     renderOffline();
+    document.getElementById('logBox').innerHTML =
+      '<div class="log-empty">서버 다운 — 로그를 읽을 수 없습니다.<br>(PC의 data/server.log 파일을 직접 확인하세요)</div>';
     startAutoRefresh();
+  }
+}
+
+let logErrorsOnly = true;
+
+function setLogMode(errorsOnly) {
+  logErrorsOnly = errorsOnly;
+  document.getElementById('logTabErrors').classList.toggle('active', errorsOnly);
+  document.getElementById('logTabAll').classList.toggle('active', !errorsOnly);
+  loadLogs();
+}
+
+async function loadLogs() {
+  const box = document.getElementById('logBox');
+  try {
+    const url = `${getBase()}/api/admin/logs?token=${encodeURIComponent(token)}&lines=${logErrorsOnly ? 200 : 120}&errorsOnly=${logErrorsOnly ? 1 : 0}`;
+    const res = await fetch(url);
+    if (!res.ok) { box.innerHTML = '<div class="log-empty">로그 조회 실패</div>'; return; }
+    const d = await res.json();
+    if (!d.lines || d.lines.length === 0) {
+      box.innerHTML = `<div class="log-empty">${d.note || (logErrorsOnly ? '오류·경고 로그가 없습니다 👍' : '로그가 비어 있습니다')}</div>`;
+      return;
+    }
+    box.innerHTML = d.lines.map(l => {
+      let cls = 'lv-info';
+      if (l.level == null) cls = 'lv-raw';
+      else if (l.level >= 50) cls = 'lv-error';
+      else if (l.level >= 40) cls = 'lv-warn';
+      const t = l.time ? new Date(l.time).toLocaleTimeString('ko-KR') : '';
+      const msg = (l.msg || l.raw || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+      return `<div class="log-line ${cls}"><span class="lt">${t}</span> ${msg}</div>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight; // 최신이 아래 → 맨 밑으로 스크롤
+  } catch {
+    box.innerHTML = '<div class="log-empty">로그 조회 중 오류</div>';
   }
 }
 

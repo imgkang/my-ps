@@ -1,12 +1,44 @@
 // 관리자 API — 서버 상태 조회 및 재시작
 // 모든 엔드포인트는 UPDATE_TOKEN 으로 보호됨.
 import type { FastifyInstance } from 'fastify';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { exec } from 'node:child_process';
 import { env } from '../env.js';
 import { db } from '../db.js';
 import { metrics } from '../metrics.js';
+
+// 큰 로그 파일에서 끝부분 maxBytes 만 읽어온다 (전체 로딩 방지).
+function tailBytes(path: string, maxBytes: number): string {
+  const st = statSync(path);
+  const start = Math.max(0, st.size - maxBytes);
+  const len = st.size - start;
+  if (len <= 0) return '';
+  const fd = openSync(path, 'r');
+  try {
+    const buf = Buffer.alloc(len);
+    readSync(fd, buf, 0, len, start);
+    return buf.toString('utf8');
+  } finally {
+    closeSync(fd);
+  }
+}
+
+// pino JSON 한 줄 → 화면용 객체. JSON 이 아니면(예: Node 크래시 스택) 원문 그대로.
+function parseLine(line: string): { time: string | null; level: number | null; msg: string; raw: string } {
+  try {
+    const o = JSON.parse(line);
+    if (typeof o === 'object' && o) {
+      return {
+        time: typeof o.time === 'number' ? new Date(o.time).toISOString() : null,
+        level: typeof o.level === 'number' ? o.level : null,
+        msg: o.msg ?? o.err?.message ?? '',
+        raw: line,
+      };
+    }
+  } catch { /* JSON 아님 */ }
+  return { time: null, level: null, msg: line, raw: line };
+}
 
 function checkToken(req: any, reply: any): boolean {
   if (!env.UPDATE_TOKEN) { reply.code(403).send({ error: 'UPDATE_TOKEN not configured' }); return false; }
@@ -99,13 +131,43 @@ export default async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  // POST /api/admin/restart?token=...  — 응답 후 process.exit(0) → Task Scheduler 가 재시작
+  // GET /api/admin/logs?token=...&lines=N&errorsOnly=1
+  //   server.log 의 끝부분을 읽어 최근 N줄(또는 오류/경고만) 반환.
+  app.get('/api/admin/logs', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const q = req.query as { lines?: string; errorsOnly?: string };
+    const n = Math.min(Math.max(parseInt(q.lines ?? '120', 10) || 120, 1), 1000);
+    const errorsOnly = q.errorsOnly === '1' || q.errorsOnly === 'true';
+
+    const logPath = resolve(process.cwd(), env.LOG_PATH);
+    if (!existsSync(logPath)) {
+      return { ok: true, count: 0, lines: [], note: 'server.log 가 아직 없습니다 (Task Scheduler 로그 리다이렉트 확인).' };
+    }
+
+    try {
+      // 오류만 볼 때는 요청 로그 노이즈 사이에서 찾아야 하므로 더 많이 읽는다.
+      const text = tailBytes(logPath, errorsOnly ? 2 * 1024 * 1024 : 256 * 1024);
+      let lines = text.split(/\r?\n/).filter(Boolean).map(parseLine);
+      if (errorsOnly) {
+        // level>=40(warn/error/fatal) 또는 JSON 이 아닌 줄(크래시 스택 등)만
+        lines = lines.filter((l) => (l.level != null && l.level >= 40) || l.level == null);
+      }
+      lines = lines.slice(-n);
+      return { ok: true, count: lines.length, errorsOnly, lines };
+    } catch (e: any) {
+      return reply.code(500).send({ error: e.message });
+    }
+  });
+
+  // POST /api/admin/restart?token=...  — 의도적으로 비정상 종료(exit 1)하여
+  // Task Scheduler 의 "실패 시 재시작" 정책으로 재기동시킨다.
+  // (cmd 래퍼 + 실패 시 재시작 구성에서는 exit 0(정상)이면 재시작되지 않으므로 1로 종료)
   app.post('/api/admin/restart', async (req, reply) => {
     if (!checkToken(req, reply)) return;
     reply.send({ ok: true, message: '재시작 중... 약 1분 후 복구됩니다.' });
     setTimeout(() => {
-      app.log.warn('[admin] 관리자 요청으로 프로세스 종료 → Task Scheduler 재시작 예정');
-      process.exit(0);
+      app.log.warn('[admin] 관리자 요청으로 의도적 종료(exit 1) → Task Scheduler 재시작 트리거');
+      process.exit(1);
     }, 200);
   });
 

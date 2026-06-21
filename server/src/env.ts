@@ -30,6 +30,9 @@ export const env = {
   PORT: Number(process.env.PORT ?? 3000),
   FINNHUB_KEY: process.env.FINNHUB_KEY ?? '',
   DB_PATH: process.env.DB_PATH ?? './data/mypm.db',
+  // 서버 로그 파일 경로 (Task Scheduler 가 stdout/stderr 를 이 파일로 리다이렉트).
+  // 관리 대시보드의 로그 뷰어가 이 파일을 읽는다.
+  LOG_PATH: process.env.LOG_PATH ?? './data/server.log',
   // 프론트 정적 파일 서빙(로컬 테스트용 단일 출처). 'false' 면 API 전용.
   SERVE_STATIC: (process.env.SERVE_STATIC ?? 'true') !== 'false',
 
