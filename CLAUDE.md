@@ -20,7 +20,9 @@
 `mypm.growpension.com`은 **GitHub Pages가 아닌 집 Windows PC**에서 서빙된다.
 - 집 PC의 `C:\Users\강민구\mypm\` 저장소를 Node 서버(`server/`)가 정적 파일로 서빙
 - Cloudflare Tunnel → cloudflared → localhost:3000 으로 연결됨
-- **main 머지만으로는 반영 안 됨** — 집 PC에서 `git pull` 필요
+- **main push/머지 시 GitHub Webhook이 자동 반영** (`POST /api/github-webhook`
+  → `git pull origin main` + Cloudflare 캐시 퍼지). 수동 `git pull` 불필요.
+  (구현: `server/src/routes/webhook.ts`, 상세: docs/DEPLOY.md)
 
 ## main 머지 후 Claude가 자동으로 할 것
 1. 버전 번호 올리기 (index.html / NonK.html / KDeal.html / sw.js)
@@ -29,5 +31,7 @@
 4. "메인브랜치에 업데이트" 요청 시 → PR 머지
 
 ## main 머지 후 사용자가 해야 할 것 (docs/DEPLOY.md 참고)
-1. 집 PC에서 `git pull` (또는 자동 업데이트 설정 시 자동)
-2. Cloudflare 캐시 퍼지 (선택, 즉시 반영 원할 때)
+- 거의 없음 — Webhook이 git pull + CF 퍼지까지 자동 처리.
+  **브라우저에서 `Ctrl+Shift+R`** 만 하면 됨 (SW 캐시 갱신용)
+- Webhook 미동작 등 폴백 절차는 docs/DEPLOY.md 참고
+- ⚠️ `server/src/` TypeScript 변경 시에만 집 PC에서 수동 빌드·재시작 필요
