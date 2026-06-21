@@ -1442,13 +1442,6 @@ registerMobileTooltipDismiss();
   .mplan-table th:first-child { position: sticky; left: 0; z-index: 2; background: #f3f4f6; }
   .mplan-table td:first-child { position: sticky; left: 0; z-index: 1; background: #fff; }
   .mplan-table tr:hover td { background: #fafafa; }
-  .mplan-card-add-btn { width:100%; padding:10px; border:1.5px dashed var(--border); border-radius:8px; background:transparent; color:var(--muted); font-size:13px; cursor:pointer; transition:border-color .15s,color .15s; }
-  .mplan-card-add-btn:hover { border-color:#3b82f6; color:#3b82f6; }
-  /* 적립계획 폼 모달 */
-  .mplan-form-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:13px; }
-  .mplan-form-row label { min-width:64px; color:var(--muted); font-size:12px; }
-  .mplan-form-row input, .mplan-form-row select { flex:1; padding:7px 9px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:inherit; background:#fff; }
-  .mplan-form-unit { color:var(--muted); font-size:12px; flex-shrink:0; }
   .apt-toggle-btn {
     display: flex; align-items: center; gap: 8px; width: 100%;
     background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
@@ -2866,8 +2859,21 @@ registerMobileTooltipDismiss();
       <i class="apt-chevron">▶</i> 📆 계좌 적립 계획 <span style="font-size:11px;font-weight:400;color:var(--muted)">(단위: 만원)</span><span id="mplanCountBadge" style="font-size:11px;font-weight:400;color:#4ade80;margin-left:4px"></span>
     </button>
     <div id="mplanBody" style="display:none">
-      <div id="monthlyPlanList" style="margin-bottom:8px"></div>
-      <button class="mplan-card-add-btn" onclick="openMplanForm(null,'annual')">+ 적립 계획 추가</button>
+      <div class="mplan-add-form">
+        <select id="mplanAcc" style="flex:2;min-width:90px"></select>
+        <select id="mplanFreq" style="flex:1.2;min-width:72px">
+          <option value="monthly">월 적립</option>
+          <option value="annual">연 적립</option>
+        </select>
+        <input type="number" id="mplanAmt" placeholder="적립금액(만원)" min="0" step="1" style="flex:1.4;min-width:80px">
+        <input type="number" id="mplanAnse" placeholder="안세공(만원)" min="0" step="1" style="flex:1.2;min-width:70px">
+        <input type="date" id="mplanStart" title="시작일" style="flex:1.6;min-width:120px">
+        <span style="align-self:center;color:var(--muted);font-size:12px">~</span>
+        <input type="date" id="mplanEnd" title="종료일" style="flex:1.6;min-width:120px">
+        <button id="mplanSaveBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0" onclick="addMonthlyPlan()">+ 추가</button>
+        <button id="mplanCancelBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;flex-shrink:0;display:none" onclick="cancelEditMonthlyPlan()">취소</button>
+      </div>
+      <div id="monthlyPlanList" style="margin-bottom:10px"></div>
     </div>
 
     <!-- 은퇴연도 / 수익률 입력 바 -->
@@ -3835,7 +3841,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.537';
+const APP_VERSION = 'MyGP v0.538';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -7822,6 +7828,19 @@ function updateMplanCountBadge() {
 function openAnnualPlanModal() {
   const pr = document.getElementById('projRate');
   if (pr) pr.value = annualPlan.projRate || 7;
+  const sel = document.getElementById('mplanAcc');
+  if (sel) {
+    const accs = getActiveAccounts();
+    sel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
+  }
+  // 적립계획 시작/종료일 기본값 = 오늘
+  if (!_editingMplanId) {
+    const today = _todayDateStr();
+    const s = document.getElementById('mplanStart');
+    const e = document.getElementById('mplanEnd');
+    if (s && !s.value) s.value = today;
+    if (e && !e.value) e.value = today;
+  }
   // 계좌적립 계획만 접힘, 원금·평가 표는 펼침 유지
   const mplanEl = document.getElementById('mplanBody');
   if (mplanEl) mplanEl.style.display = 'none';
@@ -8634,33 +8653,68 @@ function renderMonthlyPlanList() {
   const wrap = document.getElementById('monthlyPlanList');
   if (!wrap) return;
   const plans = annualPlan.monthlyPlans || [];
-  if (!plans.length) { wrap.innerHTML = ''; return; }
-  let sumAmt = 0, sumTotal = 0, sumRemaining = 0;
-  const cards = plans.map(p => {
+  if (!plans.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:6px">등록된 적립식 계획이 없습니다.</div>'; return; }
+  let sumAmt = 0, sumAnse = 0, sumTotal = 0, sumRemaining = 0;
+  let minStart = null, maxEnd = null;
+  const rows = plans.map(p => {
     const freq = p.frequency === 'annual' ? '연' : '월';
+    const editing = p.id === _editingMplanId;
     const totals = _calcMplanTotals(p);
     sumAmt += (p.monthlyAmt || 0);
+    sumAnse += (p.monthlyAnse || 0);
     sumTotal += totals.total;
     sumRemaining += totals.remaining;
-    const badge = p._fromWizard ? '<span class="ob-plan-badge">마법사</span>' : '';
-    const anseStr = (p.monthlyAnse||0) > 0 ? ` · 안세공 ${p.monthlyAnse.toLocaleString('ko-KR')}만` : '';
-    return `<div class="ob-plan-item" style="cursor:default">
-      <div class="ob-plan-info">
-        <strong>${getAccName(p.accId)}</strong>${badge}<br>
-        <small>${(p.monthlyAmt||0).toLocaleString('ko-KR')}만원/${freq}${anseStr} · ${p.startYear}.${p.startMonth}~${p.endYear}.${p.endMonth} · 총 ${totals.total.toLocaleString('ko-KR')}만원 · 잔여 <span style="color:${totals.remaining>0?'var(--accent,#1976d2)':'var(--muted)'}">${totals.remaining.toLocaleString('ko-KR')}만원</span></small>
-      </div>
-      <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
-        <button class="tbl-icon-btn" onclick="openMplanForm('${p.id}','annual')" title="편집">✏️</button>
+    const sd = new Date(p.startYear, (p.startMonth||1)-1, p.startDay||1);
+    const ed = new Date(p.endYear,   (p.endMonth||1)-1,   p.endDay||1);
+    if (!minStart || sd < minStart) minStart = sd;
+    if (!maxEnd   || ed > maxEnd)   maxEnd   = ed;
+    return `<tr${editing ? ' style="background:var(--highlight-bg,#fffbe6)"' : ''}>
+      <td>${getAccName(p.accId)}</td>
+      <td style="text-align:center">${freq}적립</td>
+      <td style="text-align:right">${(p.monthlyAmt||0).toLocaleString('ko-KR')} 만원/${freq}</td>
+      <td style="text-align:right">${(p.monthlyAnse||0) > 0 ? (p.monthlyAnse).toLocaleString('ko-KR')+'만원' : '-'}</td>
+      <td>${p.startYear}년 ${p.startMonth}월 ${p.startDay || 1}일</td>
+      <td>${p.endYear}년 ${p.endMonth}월 ${p.endDay || 1}일</td>
+      <td style="text-align:right">${totals.total.toLocaleString('ko-KR')} 만원</td>
+      <td style="text-align:right;color:${totals.remaining > 0 ? 'var(--accent,#1976d2)' : 'var(--muted)'}">${totals.remaining.toLocaleString('ko-KR')} 만원</td>
+      <td style="white-space:nowrap">
+        <button class="tbl-icon-btn" onclick="startEditMonthlyPlan('${p.id}')" title="편집">✏️</button>
         <button class="tbl-icon-btn" onclick="deleteMonthlyPlan('${p.id}')" title="삭제">🗑️</button>
-      </div>
-    </div>`;
-  }).join('');
-  const summary = `<div style="font-size:12px;color:var(--muted);padding:6px 10px;background:#f8fafc;border-radius:8px;margin-top:2px">합계 <strong>${sumAmt.toLocaleString('ko-KR')}만원/월</strong> · 총 ${sumTotal.toLocaleString('ko-KR')}만원 · 잔여 ${sumRemaining.toLocaleString('ko-KR')}만원</div>`;
-  wrap.innerHTML = cards + summary;
+      </td>
+    </tr>`;}).join('');
+  const fmtD = d => d ? `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일` : '-';
+  const sumRow = `<tr style="background:var(--highlight-bg,#f3f4f6);font-weight:600">
+    <td>합계</td>
+    <td></td>
+    <td style="text-align:right">${sumAmt.toLocaleString('ko-KR')} 만원</td>
+    <td style="text-align:right">${sumAnse > 0 ? sumAnse.toLocaleString('ko-KR')+'만원' : '-'}</td>
+    <td>${fmtD(minStart)}</td>
+    <td>${fmtD(maxEnd)}</td>
+    <td style="text-align:right">${sumTotal.toLocaleString('ko-KR')} 만원</td>
+    <td style="text-align:right;color:${sumRemaining > 0 ? 'var(--accent,#1976d2)' : 'var(--muted)'}">${sumRemaining.toLocaleString('ko-KR')} 만원</td>
+    <td></td>
+  </tr>`;
+  wrap.innerHTML = `<table class="mplan-table"><thead><tr><th>계좌</th><th>주기</th><th>적립액</th><th>안세공</th><th>시작</th><th>종료</th><th>총적립금</th><th>남은적립금</th><th></th></tr></thead><tbody>${rows}${sumRow}</tbody></table>`;
 }
 
 function startEditMonthlyPlan(id) {
-  openMplanForm(id, 'annual');
+  const p = (annualPlan.monthlyPlans || []).find(x => x.id === id);
+  if (!p) return;
+  _editingMplanId = id;
+  document.getElementById('mplanAcc').value = p.accId;
+  document.getElementById('mplanFreq').value = p.frequency || 'monthly';
+  document.getElementById('mplanAmt').value = p.monthlyAmt || 0;
+  document.getElementById('mplanAnse').value = p.monthlyAnse || 0;
+  const _fmtDt = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  document.getElementById('mplanStart').value = _fmtDt(p.startYear, p.startMonth, p.startDay || 1);
+  document.getElementById('mplanEnd').value   = _fmtDt(p.endYear,   p.endMonth,   p.endDay   || 1);
+  document.getElementById('mplanSaveBtn').textContent = '저장';
+  document.getElementById('mplanCancelBtn').style.display = '';
+  renderMonthlyPlanList();
+  // 편집 시 섹션 자동 펼침
+  const body = document.getElementById('mplanBody');
+  const btn  = document.getElementById('mplanToggleBtn');
+  if (body && body.style.display === 'none') toggleAptSection('mplanBody', btn);
 }
 
 function _todayDateStr() {
@@ -8668,7 +8722,15 @@ function _todayDateStr() {
   return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
 }
 function cancelEditMonthlyPlan() {
-  closeMplanForm();
+  _editingMplanId = null;
+  document.getElementById('mplanAmt').value = '';
+  document.getElementById('mplanAnse').value = '';
+  const today = _todayDateStr();
+  document.getElementById('mplanStart').value = today;
+  document.getElementById('mplanEnd').value   = today;
+  document.getElementById('mplanSaveBtn').textContent = '+ 추가';
+  document.getElementById('mplanCancelBtn').style.display = 'none';
+  renderMonthlyPlanList();
 }
 
 function _parseDateInput(value) {
@@ -8725,105 +8787,54 @@ function confirmPastDeposit(doAdd) {
   if (afterRender) afterRender();
 }
 
-let _mplanFormEditId = null;
-let _mplanFormSource = 'annual';
-
-function openMplanForm(id, source) {
-  _mplanFormSource = source || 'annual';
-  _mplanFormEditId = id ? String(id) : null;
-  const modal = document.getElementById('mplanFormModal');
-  if (!modal) return;
-  const accSel = document.getElementById('mplanFormAcc');
-  const accs = getActiveAccounts();
-  accSel.innerHTML = accs.map(a => `<option value="${a.id}">${getAccName(a.id)}</option>`).join('');
-  if (id) {
-    const p = (annualPlan.monthlyPlans || []).find(x => x.id === String(id));
-    if (!p) return;
-    document.getElementById('mplanFormTitle').textContent = '적립 계획 편집';
-    accSel.value = p.accId;
-    document.getElementById('mplanFormFreq').value = p.frequency || 'monthly';
-    document.getElementById('mplanFormAmt').value = p.monthlyAmt || 0;
-    document.getElementById('mplanFormAnse').value = p.monthlyAnse || 0;
-    const fmtDt = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    document.getElementById('mplanFormStart').value = fmtDt(p.startYear, p.startMonth, p.startDay||1);
-    document.getElementById('mplanFormEnd').value = fmtDt(p.endYear, p.endMonth, p.endDay||1);
-  } else {
-    document.getElementById('mplanFormTitle').textContent = '적립 계획 추가';
-    document.getElementById('mplanFormFreq').value = 'monthly';
-    document.getElementById('mplanFormAmt').value = '';
-    document.getElementById('mplanFormAnse').value = '';
-    const today = _todayDateStr();
-    document.getElementById('mplanFormStart').value = today;
-    document.getElementById('mplanFormEnd').value = today;
-  }
-  modal.style.display = 'flex';
-}
-
-function closeMplanForm() {
-  const modal = document.getElementById('mplanFormModal');
-  if (modal) modal.style.display = 'none';
-  _mplanFormEditId = null;
-}
-
-function saveMplanForm() {
-  const accId = document.getElementById('mplanFormAcc').value;
-  const frequency = document.getElementById('mplanFormFreq').value || 'monthly';
-  const monthlyAmt = Number(document.getElementById('mplanFormAmt').value) || 0;
-  const monthlyAnse = Number(document.getElementById('mplanFormAnse').value) || 0;
-  const startDt = _parseDateInput(document.getElementById('mplanFormStart').value);
-  const endDt = _parseDateInput(document.getElementById('mplanFormEnd').value);
+function addMonthlyPlan() {
+  const accId = document.getElementById('mplanAcc').value;
+  const frequency = document.getElementById('mplanFreq').value || 'monthly';
+  const monthlyAmt = Number(document.getElementById('mplanAmt').value) || 0;
+  const monthlyAnse = Number(document.getElementById('mplanAnse').value) || 0;
+  const startDt = _parseDateInput(document.getElementById('mplanStart').value);
+  const endDt   = _parseDateInput(document.getElementById('mplanEnd').value);
   if (!accId) { alert('계좌를 선택해 주세요.'); return; }
   if (monthlyAmt <= 0) { alert('적립금액을 입력해 주세요.'); return; }
   if (!startDt || !endDt) { alert('시작일과 종료일을 입력해 주세요.'); return; }
-  const { y: startYear, m: startMonth, d: startDay } = startDt;
-  const { y: endYear, m: endMonth, d: endDay } = endDt;
-  if (new Date(startYear, startMonth-1, startDay) > new Date(endYear, endMonth-1, endDay)) {
+  const startYear = startDt.y, startMonth = startDt.m, startDay = startDt.d;
+  const endYear   = endDt.y,   endMonth   = endDt.m,   endDay   = endDt.d;
+  if (new Date(startYear, startMonth-1, startDay).getTime() > new Date(endYear, endMonth-1, endDay).getTime()) {
     alert('종료일이 시작일보다 빨리 설정되었습니다.'); return;
   }
   if (!annualPlan.monthlyPlans) annualPlan.monthlyPlans = [];
-  const editId = _mplanFormEditId;
-  const source = _mplanFormSource;
-  const afterRender = () => {
-    if (source === 'wizard') renderOnboardingStep();
-    else { renderMonthlyPlanList(); renderPrincipalTable(); renderEvalTable(); renderAnnualCharts(); }
-  };
-  closeMplanForm();
-  if (editId) {
-    const newPlanData = { id: editId, accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, startDay, endYear, endMonth, endDay };
-    const hasRecords = depositData.transactions.some(t => t.autoFromPlan === editId);
+  if (_editingMplanId) {
+    const newPlanData = { id: _editingMplanId, accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, startDay, endYear, endMonth, endDay };
+    const hasRecords = depositData.transactions.some(t => t.autoFromPlan === _editingMplanId);
     if (hasRecords) {
       _pendingEditPlanData = newPlanData;
-      _pendingPastDepositAfterRender = afterRender;
       document.getElementById('editPlanModal').style.display = 'flex';
       return;
     }
-    _editingMplanId = editId;
     applyEditPlan(newPlanData, false);
-    afterRender();
   } else {
     const newPlan = { id: String(Date.now()), accId, frequency, monthlyAmt, monthlyAnse, startYear, startMonth, startDay, endYear, endMonth, endDay };
     annualPlan.monthlyPlans.push(newPlan);
-    // 마법사에서 추가한 계획은 keepPlanIds에 자동 포함 (완료 시 보존됨)
-    if (source === 'wizard') {
-      _obData.keepPlanIds = [...(_obData.keepPlanIds || []), String(newPlan.id)];
-    }
     localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+    document.getElementById('mplanAmt').value = '';
+    document.getElementById('mplanAnse').value = '';
+    const renderAll = () => { renderMonthlyPlanList(); renderPrincipalTable(); renderEvalTable(); renderAnnualCharts(); };
     const pending = _calcPlanPendingDeposits(newPlan);
     if (pending.length > 0) {
-      _showPastDepositModal(newPlan, pending, afterRender);
+      _showPastDepositModal(newPlan, pending, renderAll);
     } else {
       applyAutoDeposits();
-      afterRender();
+      renderAll();
     }
   }
 }
-
-function addMonthlyPlan() { saveMplanForm(); }
 
 function applyEditPlan(planData, refreshRecords) {
   const idx = annualPlan.monthlyPlans.findIndex(p => p.id === planData.id);
   if (idx !== -1) annualPlan.monthlyPlans[idx] = planData;
   _editingMplanId = null;
+  document.getElementById('mplanSaveBtn').textContent = '+ 추가';
+  document.getElementById('mplanCancelBtn').style.display = 'none';
   if (refreshRecords) {
     const toRemove = depositData.transactions.filter(t => t.autoFromPlan === planData.id);
     const netByAcc = {};
@@ -8840,6 +8851,8 @@ function applyEditPlan(planData, refreshRecords) {
     }
   }
   localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
+  document.getElementById('mplanAmt').value = '';
+  document.getElementById('mplanAnse').value = '';
   renderMonthlyPlanList();
   renderPrincipalTable();
   renderEvalTable();
@@ -8863,7 +8876,6 @@ function confirmEditPlan(refreshRecords) {
   if (!data) return;
   closeEditPlanModal();
   applyEditPlan(data, refreshRecords);
-  if (_mplanFormSource === 'wizard') renderOnboardingStep();
 }
 
 function deleteMonthlyPlan(id) {
@@ -8886,7 +8898,7 @@ function confirmDeletePlan(withRecords) {
   const id = _pendingDeletePlanId;
   if (!id) return;
   closeDeletePlanModal();
-  if (_mplanFormEditId === id) closeMplanForm();
+  if (_editingMplanId === id) cancelEditMonthlyPlan();
   if (withRecords) {
     const toRemove = depositData.transactions.filter(t => t.autoFromPlan === id);
     const netByAcc = {};
@@ -11763,20 +11775,24 @@ function openOnboardingModal() {
     wifeGP: { use: wiGpDef.use||false, monthly: wiGpDef.monthlyManwon||0, startYear: wiGpDef.startYear||0, startMonth: wiGpDef.startMonth||1 },
     wifeSP: { use: wiSpDef.use||false, monthly: wiSpDef.monthlyManwon||0, startYear: wiSpDef.startYear||0, startMonth: wiSpDef.startMonth||1 },
     myBalMil: 0,
+    myMonthly: 100,
     wifeBalMil: 0,
+    wifeMonthly: 100,
     accBal: {},
     accAlloc: {},
-    _baseBal: {},
+    contribStartYear: cy,
+    contribStartMonth: cm,
+    contribEndYear: wdPlan.startYear || (cy + 10),
+    contribEndMonth: appSettings.myBirthMonth || 1,
+    wifeContribEndYear: wdPlan.startYear || (cy + 10),
+    wifeContribEndMonth: appSettings.wifeBirthMonth || 1,
+    savedDepositIds: {},
+    savedMonthlyRecordId: null,
     keepPlanIds: [],
     _planKeepInit: false,
     _pensionDefaultsSet: false,
+    _contribDefaultsSet: false,
   };
-  // 현재 계좌별 평가금(최신 월별기록)을 천원 단위로 프리필 + 기준값(baseline) 저장
-  [..._obData.myAccIds, ..._obData.wifeAccIds].forEach(id => {
-    const balK = Math.round(obLatestEvalWon(id) / 1000);  // 원 → 천원
-    _obData.accBal[id]   = balK;
-    _obData._baseBal[id] = balK;
-  });
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   renderOnboardingStep();
   document.getElementById('onboardingModal').classList.add('open');
@@ -11798,6 +11814,7 @@ function onboardingSkip() {
 
 function onboardingNext() {
   if (!collectObStep(_obStep)) return;
+  if (_obStep === 2) obSaveStep2Deposits();
   if (_obStep >= OB_TOTAL_STEPS) { finishOnboarding(); return; }
   _obStep++;
   renderOnboardingStep();
@@ -11887,7 +11904,7 @@ function renderOnboardingStep() {
       <div class="ob-acc-grid">${wifeAccsDef.map(a => mkAccItem2(a, _obData.wifeAccIds)).join('')}</div>` : '';
     body.innerHTML = `
       <div class="ob-title">연금 계좌 선택 💼</div>
-      <div class="ob-sub">현재 평가금을 기록에서 불러왔습니다. 계좌를 선택해 금액을 확인·수정하세요.<br>완료 시 변경분만 입금/조정으로 반영되어 중복 저장되지 않습니다.</div>
+      <div class="ob-sub">계좌를 선택하면 현재 잔액을 입력하세요.<br>입력한 잔액은 첫 입금 기록으로 자동 저장됩니다.</div>
       <div style="font-size:12px;color:#2563eb;background:#eff6ff;border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.6">💡 계좌가 없어도 <strong>개인연금1</strong>과 <strong>IRP</strong>는 노후 준비의 필수 계좌입니다. 아직 없다면 가입을 적극 권장합니다.</div>
       <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">본인 계좌</div>
       <div class="ob-acc-grid">${myGrid}</div>
@@ -11977,19 +11994,50 @@ function renderOnboardingStep() {
     const wifeBal = _obData.hasWife ? _obData.wifeAccIds.reduce((s, id) => s + (_obData.accBal[id]||0), 0) : 0;
     _obData.myBalMil = myBal;
     _obData.wifeBalMil = wifeBal;
+    if (!_obData._contribDefaultsSet) {
+      const _endMonth = cm > 1 ? cm - 1 : 12;
+      const _endYear  = cm > 1 ? cy + 30 : cy + 29;
+      _obData.contribEndYear      = _endYear;
+      _obData.contribEndMonth     = _endMonth;
+      _obData.wifeContribEndYear  = _endYear;
+      _obData.wifeContribEndMonth = _endMonth;
+      _obData._contribDefaultsSet = true;
+    }
+    const showMyAllocBtn = _obData.myAccIds.length > 1;
+    const showWifeAllocBtn = _obData.hasWife && _obData.wifeAccIds.length > 1;
     const rTip = '지금부터 은퇴 전까지 매해 예상하는 복리 수익률입니다. 일반적인 분산투자 6~8%를 기준으로 보수적이라면 4~5%, 공격적이라면 8~10%를 참고하세요.';
     const infTip = '최근 10년 평균 약 2.0%, 5년 평균 약 2.8% (한국). 인상률이 높을수록 미래 필요액이 커지므로 적립금을 늘려야 합니다.';
+    const contribTip = '월 적립을 몇 년부터 몇 년까지 지속할지 입력하세요. 보통 은퇴 시점까지로 설정합니다.';
+    const allocTip = '여러 계좌를 사용할 경우, 각 계좌에 얼마씩 적립할지 분배합니다.';
     const wifeSection = _obData.hasWife ? `
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 6px">${_obData.wifeTitle||'배우자'}</div>
       <div class="ob-field-row">
         <label>현재 잔액</label>
         <span style="font-size:13px;color:var(--text)">${wifeBal.toLocaleString('ko-KR')}천원</span>
+      </div>
+      <div class="ob-field-row">
+        <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showWifeAllocBtn?' ⓘ':''}</label>
+        <input type="text" inputmode="numeric" id="ob_wifeMonthly" value="${(_obData.wifeMonthly||0).toLocaleString('ko-KR')}" style="width:70px" oninput="obFmtAmt(this);updateObSim()">만원/월
+        ${showWifeAllocBtn?`<button class="btn-secondary" style="padding:4px 8px;font-size:12px" onclick="obOpenAllocModal('wife')">계좌별 배분</button>`:''}
+      </div>
+      <div class="ob-field-row" style="gap:4px">
+        <label onmouseenter="obShowTip('${contribTip}')" ontouchstart="obShowTip('${contribTip}')" style="cursor:help">적립 기간 ⓘ</label>
+        <div style="flex:1;display:flex;align-items:center;gap:3px;min-width:0">
+          <input type="number" id="ob_wifeContribStartY" value="${_obData.contribStartYear||cy}" min="2020" max="2080" style="flex:3;min-width:0;font-size:10px" oninput="updateObSim()">
+          <span style="white-space:nowrap;font-size:10px">년</span>
+          <input type="number" id="ob_wifeContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:10px">
+          <span style="white-space:nowrap;font-size:10px">월 ~</span>
+          <input type="number" id="ob_wifeContribEndY" value="${_obData.wifeContribEndYear}" min="2020" max="${_obData.wifeStartYear||2080}" style="flex:3;min-width:0;font-size:10px" oninput="updateObSim()">
+          <span style="white-space:nowrap;font-size:10px">년</span>
+          <input type="number" id="ob_wifeContribEndM" value="${_obData.wifeContribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:10px">
+          <span style="white-space:nowrap;font-size:10px">월</span>
+        </div>
       </div>` : '';
     const plansSection = obBuildExistingPlansSection();
     body.innerHTML = `
       <div class="ob-title">적립 현황 💰</div>
-      <div class="ob-sub">적립 계획을 추가하고 시뮬레이션을 확인하세요.</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div class="ob-sub">월 적립 계획과 기간을 입력해 주세요.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px">
         <div class="ob-field-row" style="margin-bottom:6px">
           <label onmouseenter="obShowTip('${rTip}')" ontouchstart="obShowTip('${rTip}')" style="cursor:help">예상 수익률 ⓘ</label>
           <input type="number" id="ob_returnRate" value="${_obData.returnRate||7}" min="0" max="20" step="0.1" style="width:68px" oninput="updateObSim()">%/년
@@ -12001,7 +12049,6 @@ function renderOnboardingStep() {
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px;font-size:13px">
         <div><span style="color:var(--muted);font-size:12px">본인 잔액</span> <strong>${myBal.toLocaleString('ko-KR')}천원</strong></div>
-        ${_obData.hasWife ? `<div><span style="color:var(--muted);font-size:12px">${_obData.wifeTitle||'배우자'} 잔액</span> <strong>${wifeBal.toLocaleString('ko-KR')}천원</strong></div>` : ''}
       </div>
       ${wifeSection}
       ${plansSection}
@@ -12039,10 +12086,8 @@ function renderOnboardingStep() {
     const inf = (_obData.inflationRate || 2.2) / 100;
     const n = Math.max(1, retireYr - cy);
     const totalPV = ((_obData.myBalMil||0) + (_obData.wifeBalMil||0)) * 1_000;
-    let nomFV = totalPV;
-    for (let i = 1; i <= n; i++) {
-      nomFV = nomFV * (1 + r) + _obPlanMonthlyForYear(cy + i - 1) * 10_000 * 12;
-    }
+    const totalPMT = ((_obData.myMonthly||0) + (_obData.wifeMonthly||0)) * 10_000 * 12;
+    const nomFV = totalPV * Math.pow(1+r, n) + (r > 0 ? totalPMT * (Math.pow(1+r, n) - 1) / r : totalPMT * n);
     const realFVMil = Math.round(nomFV / Math.pow(1+inf, n) / 1_000_000);
     const pensionAnnual = obCalcPensionAnnualMil();
     const portfolioNeedTotal = obCalcPortfolioNeedTotal();
@@ -12156,12 +12201,8 @@ function obToggleAcc2(accId, who) {
     if (el) el.classList.add('selected');
     if (chk) chk.textContent = '✅';
     if (balWrap) balWrap.style.display = '';
-    // 재선택 시 현재 평가금(기준값)으로 복원
-    if (_obData.accBal[accId] == null && _obData._baseBal?.[accId] != null) {
-      _obData.accBal[accId] = _obData._baseBal[accId];
-    }
     const inp = document.getElementById(`ob_bal_${accId}`);
-    if (inp) inp.value = (_obData.accBal[accId] || 0).toLocaleString('ko-KR');
+    if (inp) inp.value = _obData.accBal[accId] || 0;
   }
   obAccBalChanged();
 }
@@ -12189,57 +12230,53 @@ function obAccBalChanged() {
   }
 }
 
-// 계좌별 현재 평가금(최신 월별기록 값, 단위: 원) 조회
-function obLatestEvalWon(accId) {
-  let best = null;
-  for (const r of (monthlyRecords || [])) {
-    if (!r.accounts || r.accounts[accId] == null) continue;
-    if (!best) { best = r; continue; }
-    if (r.year !== best.year)        { if (r.year  > best.year)        best = r; continue; }
-    if (r.month !== best.month)      { if (r.month > best.month)       best = r; continue; }
-    if ((r.day||0) !== (best.day||0)){ if ((r.day||0) > (best.day||0)) best = r; continue; }
-    if (String(r.id) > String(best.id)) best = r;
+function obSaveStep2Deposits() {
+  if (Object.keys(_obData.savedDepositIds).length > 0) {
+    Object.values(_obData.savedDepositIds).forEach(txId => {
+      depositData.transactions = depositData.transactions.filter(t => t.id !== txId);
+    });
+    // 이전에 저장된 현금도 원상복구
+    Object.entries(_obData.savedDepositIds).forEach(([accId]) => {
+      const prevBal = (_obData._prevAccBal || {})[accId] || 0;
+      cashAccounts[accId] = Math.max(0, (cashAccounts[accId] || 0) - prevBal * 1_000);
+    });
+    _obData.savedDepositIds = {};
   }
-  return best ? (Number(best.accounts[accId]) || 0) : 0;
-}
-
-// 완료 시 평가금 반영: "변경분만 조정" (이중 계상 방지, 멱등)
-//  - 월별기록: 오늘자 스냅샷에 입력한 절대 평가금(원)을 upsert
-//  - 입금(원금): 기준값 대비 차액(delta)만 조정 거래로 추가
-function obApplyBalances() {
+  if (_obData.savedMonthlyRecordId) {
+    monthlyRecords = monthlyRecords.filter(r => r.id !== _obData.savedMonthlyRecordId);
+    _obData.savedMonthlyRecordId = null;
+  }
   const today = new Date();
-  const y = today.getFullYear(), m = today.getMonth()+1, d = today.getDate();
-  const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const dateStr = today.toISOString().split('T')[0];
+  const recAccs = {};
   const allIds = [..._obData.myAccIds, ...(_obData.hasWife ? _obData.wifeAccIds : [])];
-  let todayRec = (monthlyRecords || []).find(r => r.year===y && r.month===m && r.day===d);
-  let recChanged = false, depChanged = false, cashChanged = false;
   allIds.forEach(accId => {
-    const enteredWon = Math.round((_obData.accBal[accId]   || 0) * 1000);  // 천원 → 원
-    const baseWon    = Math.round((_obData._baseBal?.[accId] || 0) * 1000);
-    const delta = enteredWon - baseWon;
-    // 평가금 스냅샷(절대값) — 값이 있거나 기준에서 변했을 때만 기록
-    if (enteredWon > 0 || delta !== 0) {
-      if (!todayRec) { todayRec = { id: String(Date.now()), year:y, month:m, day:d, accounts:{} }; monthlyRecords.push(todayRec); }
-      todayRec.accounts[accId] = enteredWon;
-      recChanged = true;
-    }
-    // 원금(입금) — 변경분만 조정 거래로 반영
-    if (delta !== 0) {
-      depositData.transactions.push({ id: generateTxnId(), accId, date: dateStr, amount: delta, _fromWizard: true });
-      cashAccounts[accId] = Math.max(0, (cashAccounts[accId] || 0) + delta);
-      depChanged = true; cashChanged = true;
-    }
-    // 다음 재실행을 위해 기준값 갱신
-    if (_obData._baseBal) _obData._baseBal[accId] = Math.round(enteredWon / 1000);
+    const balMil = _obData.accBal[accId] || 0;
+    if (balMil <= 0) return;
+    const txId = generateTxnId();
+    depositData.transactions.push({ id: txId, accId, date: dateStr, amount: balMil * 1_000 });
+    _obData.savedDepositIds[accId] = txId;
+    recAccs[accId] = balMil / 1000;   // monthly records는 백만원 단위 유지
+    // 포트폴리오 현금에 반영
+    cashAccounts[accId] = (cashAccounts[accId] || 0) + balMil * 1_000;
   });
-  if (recChanged)  saveMonthlyRecords();
-  if (depChanged)  saveDeposits();
-  if (cashChanged) persistCashAccounts();
+  _obData._prevAccBal = { ..._obData.accBal };
+  if (Object.keys(_obData.savedDepositIds).length > 0) {
+    saveDeposits();
+    persistCashAccounts();
+  }
+  if (Object.keys(recAccs).length > 0) {
+    const recId = Date.now();
+    monthlyRecords.push({ id: recId, year: today.getFullYear(), month: today.getMonth()+1, day: today.getDate(), accounts: recAccs });
+    _obData.savedMonthlyRecordId = recId;
+    saveMonthlyRecords();
+  }
 }
 
 // ===== Option A: 기존 적립계획 표시 + 개별 유지/삭제 =====
 function obBuildExistingPlansSection() {
   const plans = annualPlan.monthlyPlans || [];
+  if (!plans.length) return '';
   // 최초 진입 기본값: 직접 만든 계획은 유지, 마법사 생성분은 새 입력으로 교체(해제)
   if (!_obData._planKeepInit) {
     _obData.keepPlanIds = plans.filter(p => !p._fromWizard).map(p => String(p.id));
@@ -12257,21 +12294,16 @@ function obBuildExistingPlansSection() {
       <div class="ob-plan-info"><strong>${getAccName(p.accId)}</strong>${badge}<br>
         <small>${fmtAmt(p)} · ${p.startYear}.${p.startMonth} ~ ${p.endYear}.${p.endMonth}</small></div>
       <span class="ob-plan-state">${keep?'✅ 유지':'🗑 삭제'}</span>
-      <button class="tbl-icon-btn" onclick="event.stopPropagation();openMplanForm('${p.id}','wizard')" title="편집">✏️</button>
     </div>`;
   }).join('');
   const allKept = plans.every(p => keepSet.has(String(p.id)));
-  const noPlansMsg = !plans.length ? '<div style="color:var(--muted);font-size:12px;padding:4px 0">등록된 적립계획이 없습니다.</div>' : '';
   return `<div class="ob-plan-box">
     <div class="ob-plan-box-head">
-      <span class="ob-plan-box-title">적립계획 ${plans.length}개</span>
-      <div style="display:flex;gap:6px">
-        <button type="button" class="ob-plan-box-toggle" onclick="openMplanForm(null,'wizard')">+ 추가</button>
-        ${plans.length ? `<button type="button" class="ob-plan-box-toggle" onclick="obToggleAllPlans(${allKept?'false':'true'})">${allKept?'전체 삭제':'전체 유지'}</button>` : ''}
-      </div>
+      <span class="ob-plan-box-title">기존 적립계획 ${plans.length}개</span>
+      <button type="button" class="ob-plan-box-toggle" onclick="obToggleAllPlans(${allKept?'false':'true'})">${allKept?'전체 삭제':'전체 유지'}</button>
     </div>
-    ${noPlansMsg}${rows}
-    ${plans.length ? `<div class="ob-plan-hint">탭하여 유지/삭제 전환 · ✏️로 편집 · <strong>완료</strong> 시 삭제 표시된 계획은 제거됩니다.</div>` : ''}
+    ${rows}
+    <div class="ob-plan-hint">위에서 입력한 월 적립액은 <strong>새 계획으로 추가</strong>됩니다. 유지할 기존 계획을 탭하여 선택하세요. (삭제로 둔 계획은 완료 시 제거됩니다)</div>
   </div>`;
 }
 
@@ -12410,22 +12442,31 @@ function obRenderFinalChart() {
   const n = Math.max(1, retireYr - cy);
   const totalPV = ((_obData.myBalMil||0) + (_obData.wifeBalMil||0)) * 1_000;
   const pvInitMil = (((_obData.myBalMil||0) + (_obData.wifeBalMil||0)) / 1000);
+  const myContribEnd   = Math.min(_obData.contribEndYear     || retireYr, retireYr);
+  const wifeContribEnd = Math.min(_obData.wifeContribEndYear || retireYr, retireYr);
+  const myPmt2   = ((_obData.myMonthly||0))   * 10_000 * 12;
+  const wifePmt2 = ((_obData.wifeMonthly||0)) * 10_000 * 12;
   const years = Array.from({length: n + 1}, (_, i) => cy + i);
-  let bal2 = totalPV;
-  const nomBalances = [Math.round(bal2 / 1_000_000)];
-  let cum2 = totalPV;
-  const cumPrincipals = [Math.round(cum2 / 1_000_000)];
-  for (let i = 1; i <= n; i++) {
-    const annualPmt = _obPlanMonthlyForYear(cy + i - 1) * 10_000 * 12;
-    cum2 += annualPmt;
-    bal2 = bal2 * (1 + r) + annualPmt;
-    nomBalances.push(Math.round(bal2 / 1_000_000));
-    cumPrincipals.push(Math.round(cum2 / 1_000_000));
-  }
+  const nomBalances = years.map(yr => {
+    const ni = yr - cy;
+    const pvFv = totalPV * Math.pow(1+r, ni);
+    const mc1 = Math.min(ni, Math.max(0, myContribEnd - cy));
+    const myFv2 = (r>0 ? myPmt2*(Math.pow(1+r,mc1)-1)/r : myPmt2*mc1) * Math.pow(1+r, ni-mc1);
+    const mc2 = Math.min(ni, Math.max(0, wifeContribEnd - cy));
+    const wifeFv2 = (r>0 ? wifePmt2*(Math.pow(1+r,mc2)-1)/r : wifePmt2*mc2) * Math.pow(1+r, ni-mc2);
+    return Math.round((pvFv + myFv2 + wifeFv2) / 1_000_000);
+  });
+  const cumPrincipals = years.map((yr, idx) => {
+    const ni = yr - cy;
+    const yc1 = Math.min(ni, Math.max(0, myContribEnd - cy));
+    const yc2 = Math.min(ni, Math.max(0, wifeContribEnd - cy));
+    return Math.round(pvInitMil + ((_obData.myMonthly||0)*yc1 + (_obData.wifeMonthly||0)*yc2)*12*10000/1_000_000);
+  });
   const wifeRetireYr = _obData.hasWife ? ((_obData.wifeBirthYear||cy-40) + (_obData.wifeRetireAge||60)) : null;
   const markers = [
     { year: retireYr, label: '본인 은퇴', color: '#dc2626' },
     ...(wifeRetireYr ? [{ year: wifeRetireYr, label: `${_obData.wifeTitle||'배우자'} 은퇴`, color: '#db2777' }] : []),
+    ...(myContribEnd < retireYr ? [{ year: myContribEnd, label: '적립 종료', color: '#f59e0b' }] : []),
   ];
   const markerPlugin = {
     id: 'obMarkers',
@@ -12503,6 +12544,13 @@ function _obPlanMonthlyForYear(yr) {
     .reduce((s, p) => s + (p.monthlyAmt||0), 0);
 }
 
+function _obPlanMonthlyForYearKept(yr) {
+  const keepSet = new Set((_obData.keepPlanIds || []).map(String));
+  return (annualPlan.monthlyPlans || [])
+    .filter(p => keepSet.has(String(p.id)) && p.startYear <= yr && p.endYear >= yr)
+    .reduce((s, p) => s + (p.monthlyAmt||0), 0);
+}
+
 function updateObSim() {
   const rPct  = Number(document.getElementById('ob_returnRate')?.value) || 7;
   const infPct = Number(document.getElementById('ob_inflationRate')?.value) || 2.2;
@@ -12524,7 +12572,7 @@ function updateObSim() {
   const cumPrincipals = [Math.round(cumPrincipalWon / 1_000_000)];
   for (let i = 1; i <= n; i++) {
     const yr = cy + i;
-    const annualPmt = _obPlanMonthlyForYear(yr - 1) * 10_000 * 12;
+    const annualPmt = _obPlanMonthlyForYearKept(yr - 1) * 10_000 * 12;
     cumPrincipalWon += annualPmt;
     bal = bal * (1 + r) + annualPmt;
     nomBalances.push(Math.round(bal / 1_000_000));
@@ -12563,12 +12611,12 @@ function updateObSim() {
     const tipCall = `obShowTip(obBuildTipText())`;
     const tipBtn  = `<span style="cursor:pointer;color:#3b82f6;margin-left:4px" onclick="${tipCall}" ontouchstart="${tipCall}">ⓘ</span>`;
     if (pensionAnnual > 0) {
-      realTgtEl.innerHTML = `· 연금 ${obFmtKRW(pensionAnnual)}/년 차감 → 실질 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
+      realTgtEl.innerHTML = `· 연금 ${obFmtKRW(pensionAnnual)}/년 차감 → 포트폴리오 현재가치 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
     } else {
-      realTgtEl.innerHTML = `· 공적연금 없음 → 실질 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
+      realTgtEl.innerHTML = `· 공적연금 없음 → 포트폴리오 현재가치 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
     }
   }
-  if (nomTgtEl) nomTgtEl.innerHTML = `· 물가 ${infPct}%, ${n}년 반영 → 명목 목표 <strong>${obFmtKRW(nominalTargetMil)}</strong>`;
+  if (nomTgtEl) nomTgtEl.innerHTML = `· 물가 ${infPct}%, ${n}년 반영 → 포트폴리오 명목 목표 <strong>${obFmtKRW(nominalTargetMil)}</strong>`;
   if (fvEl) fvEl.innerHTML = `· 명목 <strong>${obFmtKRW(nomFVMil)}</strong> / 실질 ${obFmtKRW(realFVMil)}`;
   if (penEl) penEl.textContent = pensionAnnual > 0 ? `· 공적연금 ${obFmtKRW(pensionAnnual)}/년` : '· 공적연금 없음';
   if (yrEl)  yrEl.textContent  = `은퇴까지 ${n}년`;
@@ -12644,8 +12692,20 @@ function collectObStep(step) {
       _obData[key].startMonth = Number(g(`ob_${key}_mon`)?.value) || 1;
     });
   } else if (step === 4) {
+    const cy = new Date().getFullYear();
+    const cm = new Date().getMonth() + 1;
+    _obData.myMonthly     = obReadAmt(g('ob_myMonthly'));
     _obData.returnRate    = Number(g('ob_returnRate')?.value) || 7;
     _obData.inflationRate = Number(g('ob_inflationRate')?.value) || 2.2;
+    _obData.contribStartYear  = Number(g('ob_myContribStartY')?.value) || cy;
+    _obData.contribStartMonth = Number(g('ob_myContribStartM')?.value) || cm;
+    _obData.contribEndYear    = Number(g('ob_myContribEndY')?.value) || (_obData.startYear||cy+10);
+    _obData.contribEndMonth   = Number(g('ob_myContribEndM')?.value) || 12;
+    if (_obData.hasWife) {
+      _obData.wifeMonthly       = obReadAmt(g('ob_wifeMonthly'));
+      _obData.wifeContribEndYear  = Number(g('ob_wifeContribEndY')?.value) || (_obData.wifeStartYear||cy+10);
+      _obData.wifeContribEndMonth = Number(g('ob_wifeContribEndM')?.value) || 12;
+    }
   }
   return true;
 }
@@ -12680,9 +12740,6 @@ function finishOnboarding() {
   }
   saveAppSettings();
 
-  // 계좌 평가금 반영 (변경분만 조정 — 이중 계상 방지)
-  obApplyBalances();
-
   wdPlan.myBirthYear       = _obData.myBirthYear;
   wdPlan.myBirthMonth      = _obData.myBirthMonth;
   wdPlan.startYear         = _obData.startYear;
@@ -12704,10 +12761,38 @@ function finishOnboarding() {
   }
   saveWdPlan();
 
-  // Option A: 사용자가 '유지'로 선택한 기존 계획만 남기고 나머지는 제거 (추가/편집한 계획은 이미 annualPlan에 저장됨)
+  // annualPlan.monthlyPlans: distribute monthly allocation per account
+  const cy = new Date().getFullYear();
+  const cm = new Date().getMonth() + 1;
+  const buildAlloc = (accIds, totalMonthly) => {
+    const alloc = {};
+    if (!accIds.length) return alloc;
+    accIds.forEach(id => {
+      alloc[id] = _obData.accAlloc[id] !== undefined
+        ? _obData.accAlloc[id]
+        : Math.round(totalMonthly / accIds.length);
+    });
+    return alloc;
+  };
+  const myAlloc   = buildAlloc(_obData.myAccIds, _obData.myMonthly);
+  const wifeAlloc = _obData.hasWife ? buildAlloc(_obData.wifeAccIds, _obData.wifeMonthly) : {};
+  // Option A: 사용자가 '유지'로 선택한 기존 계획만 남기고 나머지는 제거
   if (!annualPlan.monthlyPlans) annualPlan.monthlyPlans = [];
   const keepSet = new Set((_obData.keepPlanIds || []).map(String));
   annualPlan.monthlyPlans = annualPlan.monthlyPlans.filter(p => keepSet.has(String(p.id)));
+  // 마법사 입력값을 새 계획으로 추가 (재실행 시 식별용 _fromWizard 태그)
+  let planIdx = 0;
+  Object.entries({ ...myAlloc, ...wifeAlloc }).forEach(([accId, monthly]) => {
+    if (!monthly || monthly <= 0) return;
+    const isWife = accId.startsWith('wife_');
+    const endYr = isWife ? (_obData.wifeContribEndYear || _obData.wifeStartYear || cy+10) : (_obData.contribEndYear || _obData.startYear || cy+10);
+    const endMo = isWife ? (_obData.wifeContribEndMonth||12) : (_obData.contribEndMonth||12);
+    annualPlan.monthlyPlans.push({
+      id: String(Date.now() + planIdx++), accId, frequency: 'monthly', monthlyAmt: monthly,
+      startYear: _obData.contribStartYear||cy, startMonth: _obData.contribStartMonth||cm,
+      endYear: endYr, endMonth: endMo, _fromWizard: true
+    });
+  });
   saveAnnualPlan();
 
   closeOnboardingModal();
@@ -18098,46 +18183,6 @@ window.addEventListener('message', e => {
   <div class="ob-fs-footer">
     <button id="obPrevBtn" class="btn-secondary ob-fs-prev" onclick="onboardingPrev()" style="display:none">← 이전</button>
     <button id="obNextBtn" class="btn-primary ob-fs-next" onclick="onboardingNext()">다음 →</button>
-  </div>
-</div>
-
-<!-- ===== 적립계획 추가/편집 폼 모달 ===== -->
-<div class="modal-backdrop" id="mplanFormModal" style="display:none;z-index:1180" onclick="if(event.target.id==='mplanFormModal')closeMplanForm()">
-  <div class="modal" style="max-width:380px">
-    <h3 id="mplanFormTitle" style="margin-bottom:16px">적립 계획 추가</h3>
-    <div class="mplan-form-row">
-      <label>계좌</label>
-      <select id="mplanFormAcc"></select>
-    </div>
-    <div class="mplan-form-row">
-      <label>주기</label>
-      <select id="mplanFormFreq">
-        <option value="monthly">월 적립</option>
-        <option value="annual">연 적립</option>
-      </select>
-    </div>
-    <div class="mplan-form-row">
-      <label>적립금액</label>
-      <input type="number" id="mplanFormAmt" min="0" step="1" placeholder="0">
-      <span class="mplan-form-unit">만원</span>
-    </div>
-    <div class="mplan-form-row">
-      <label>안세공</label>
-      <input type="number" id="mplanFormAnse" min="0" step="1" placeholder="0">
-      <span class="mplan-form-unit">만원</span>
-    </div>
-    <div class="mplan-form-row">
-      <label>시작일</label>
-      <input type="date" id="mplanFormStart">
-    </div>
-    <div class="mplan-form-row">
-      <label>종료일</label>
-      <input type="date" id="mplanFormEnd">
-    </div>
-    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
-      <button class="btn-secondary" onclick="closeMplanForm()">취소</button>
-      <button class="btn-primary" onclick="saveMplanForm()">저장</button>
-    </div>
   </div>
 </div>
 
