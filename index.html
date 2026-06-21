@@ -1316,7 +1316,7 @@ registerMobileTooltipDismiss();
     display: flex; flex-direction: column; gap: 2px; }
   .cfg-menu-label small { font-size: 12px; color: var(--muted); font-weight: 400; }
   .cfg-menu-arrow { font-size: 22px; color: #c4c7cc; flex-shrink: 0; line-height: 1; }
-  .cfg-version { text-align: center; font-size: 11px; color: var(--muted); padding: 6px 0 28px; }
+  .cfg-version { text-align: center; font-size: 14px; color: var(--muted); padding: 6px 0 28px; cursor: pointer; user-select: none; }
   .cfg-logout-row { padding: 4px 8px 6px; }
   .cfg-logout-btn { display: flex; align-items: center; gap: 14px; width: 100%;
     padding: 15px 14px; background: none; border: none; border-radius: 12px;
@@ -1873,7 +1873,7 @@ registerMobileTooltipDismiss();
           <span class="cfg-logout-label">로그아웃</span>
         </button>
       </div>
-      <div class="cfg-version" id="cfgVersionFoot"></div>
+      <div class="cfg-version" id="cfgVersionFoot" onclick="forceUpdate()" title="클릭하면 강제 업데이트"></div>
     </div>
   </div>
 
@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.541';
+const APP_VERSION = 'MyGP v0.542';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -11726,6 +11726,7 @@ let _obData = {};
 let _obSimChart = null;
 let _obTipTimer = null;
 let _obAllocTarget = null;
+let _obOpenedFromSetup = false;
 
 const OB_TOTAL_STEPS = 5;
 const OB_STEP_TITLES = ['기본 정보', '연금 계좌', '은퇴 목표 · 연금', '적립 계획', '완료'];
@@ -11793,7 +11794,10 @@ function closeOnboardingModal() {
 
 function onboardingSkip() {
   localStorage.setItem('setup_skipped', '1');
+  const fromSetup = _obOpenedFromSetup;
+  _obOpenedFromSetup = false;
   closeOnboardingModal();
+  if (fromSetup) openSetupScreen();
 }
 
 function onboardingNext() {
@@ -11805,6 +11809,7 @@ function onboardingNext() {
 
 function onboardingPrev() {
   if (_obStep > 1) { _obStep--; renderOnboardingStep(); }
+  else if (_obOpenedFromSetup) { _obOpenedFromSetup = false; closeOnboardingModal(); openSetupScreen(); }
 }
 
 function renderOnboardingStep() {
@@ -11820,7 +11825,7 @@ function renderOnboardingStep() {
   const titleEl = document.getElementById('obStepTitle');
   if (titleEl) titleEl.textContent = OB_STEP_TITLES[_obStep - 1] || '시작하기';
   const backBtn = document.getElementById('obBackBtn');
-  if (backBtn) backBtn.disabled = _obStep <= 1;
+  if (backBtn) backBtn.disabled = _obStep <= 1 && !_obOpenedFromSetup;
 
   const prevBtn = document.getElementById('obPrevBtn');
   const nextBtn = document.getElementById('obNextBtn');
@@ -12720,6 +12725,7 @@ function finishOnboarding() {
   annualPlan.monthlyPlans = annualPlan.monthlyPlans.filter(p => keepSet.has(String(p.id)));
   saveAnnualPlan();
 
+  _obOpenedFromSetup = false;
   closeOnboardingModal();
   render();
   if (typeof renderPortfolio === 'function') renderPortfolio();
@@ -12748,6 +12754,7 @@ function setupStartNew() {
   doReset(true);
 }
 function setupOpenWizard() {
+  _obOpenedFromSetup = true;
   closeSetupScreen();
   openOnboardingModal();
 }
