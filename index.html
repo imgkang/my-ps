@@ -3841,7 +3841,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.534';
+const APP_VERSION = 'MyGP v0.538';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12047,28 +12047,8 @@ function renderOnboardingStep() {
           <input type="number" id="ob_inflationRate" value="${_obData.inflationRate||2.2}" min="0" max="10" step="0.1" style="width:68px" oninput="updateObSim()">%/년
         </div>
       </div>
-      <div style="font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 6px">본인</div>
-      <div class="ob-field-row">
-        <label>현재 잔액</label>
-        <span style="font-size:13px;color:var(--text)">${myBal.toLocaleString('ko-KR')}천원</span>
-      </div>
-      <div class="ob-field-row">
-        <label onmouseenter="obShowTip('${allocTip}')" ontouchstart="obShowTip('${allocTip}')" style="cursor:help">월 적립액${showMyAllocBtn?' ⓘ':''}</label>
-        <input type="text" inputmode="numeric" id="ob_myMonthly" value="${(_obData.myMonthly||0).toLocaleString('ko-KR')}" style="width:70px" oninput="obFmtAmt(this);updateObSim()">만원/월
-        ${showMyAllocBtn?`<button class="btn-secondary" style="padding:4px 8px;font-size:12px" onclick="obOpenAllocModal('my')">계좌별 배분</button>`:''}
-      </div>
-      <div class="ob-field-row" style="gap:4px">
-        <label onmouseenter="obShowTip('${contribTip}')" ontouchstart="obShowTip('${contribTip}')" style="cursor:help">적립 기간 ⓘ</label>
-        <div style="flex:1;display:flex;align-items:center;gap:3px;min-width:0">
-          <input type="number" id="ob_myContribStartY" value="${_obData.contribStartYear||cy}" min="2020" max="2080" style="flex:3;min-width:0;font-size:10px" oninput="updateObSim()">
-          <span style="white-space:nowrap;font-size:10px">년</span>
-          <input type="number" id="ob_myContribStartM" value="${_obData.contribStartMonth||cm}" min="1" max="12" style="flex:2;min-width:0;font-size:10px">
-          <span style="white-space:nowrap;font-size:10px">월 ~</span>
-          <input type="number" id="ob_myContribEndY" value="${_obData.contribEndYear}" min="2020" max="${_obData.startYear||2080}" style="flex:3;min-width:0;font-size:10px" oninput="updateObSim()">
-          <span style="white-space:nowrap;font-size:10px">년</span>
-          <input type="number" id="ob_myContribEndM" value="${_obData.contribEndMonth||12}" min="1" max="12" style="flex:2;min-width:0;font-size:10px">
-          <span style="white-space:nowrap;font-size:10px">월</span>
-        </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px;font-size:13px">
+        <div><span style="color:var(--muted);font-size:12px">본인 잔액</span> <strong>${myBal.toLocaleString('ko-KR')}천원</strong></div>
       </div>
       ${wifeSection}
       ${plansSection}
@@ -12558,59 +12538,46 @@ function obUpdateMonthly() {
   if (lbl) lbl.textContent = `≈ ${Math.round(v / 12 / 10)}만원/월`;
 }
 
+function _obPlanMonthlyForYear(yr) {
+  return (annualPlan.monthlyPlans || [])
+    .filter(p => p.startYear <= yr && p.endYear >= yr)
+    .reduce((s, p) => s + (p.monthlyAmt||0), 0);
+}
+
+function _obPlanMonthlyForYearKept(yr) {
+  const keepSet = new Set((_obData.keepPlanIds || []).map(String));
+  return (annualPlan.monthlyPlans || [])
+    .filter(p => keepSet.has(String(p.id)) && p.startYear <= yr && p.endYear >= yr)
+    .reduce((s, p) => s + (p.monthlyAmt||0), 0);
+}
+
 function updateObSim() {
-  const myMo  = obReadAmt(document.getElementById('ob_myMonthly'));
-  const wifeMo = _obData.hasWife ? obReadAmt(document.getElementById('ob_wifeMonthly')) : 0;
   const rPct  = Number(document.getElementById('ob_returnRate')?.value) || 7;
   const infPct = Number(document.getElementById('ob_inflationRate')?.value) || 2.2;
-  _obData.myMonthly = myMo;
-  _obData.wifeMonthly = wifeMo;
   _obData.returnRate = rPct;
   _obData.inflationRate = infPct;
   const cy = new Date().getFullYear();
-  _obData.contribStartYear  = Number(document.getElementById('ob_myContribStartY')?.value) || cy;
-  _obData.contribStartMonth = Number(document.getElementById('ob_myContribStartM')?.value) || 1;
-  _obData.contribEndYear    = Number(document.getElementById('ob_myContribEndY')?.value) || (_obData.startYear||cy+10);
-  _obData.contribEndMonth   = Number(document.getElementById('ob_myContribEndM')?.value) || 12;
-  if (_obData.hasWife) {
-    _obData.wifeContribEndYear  = Number(document.getElementById('ob_wifeContribEndY')?.value) || (_obData.wifeStartYear||cy+10);
-    _obData.wifeContribEndMonth = Number(document.getElementById('ob_wifeContribEndM')?.value) || 12;
-  }
-
   const r   = rPct / 100;
   const inf = infPct / 100;
   const pv  = (_obData.myBalMil + _obData.wifeBalMil) * 1_000;
   const retireYr = (_obData.myBirthYear||cy-40) + (_obData.retireAge||60);
   const n = retireYr - cy;
   if (n <= 0) return;
-
-  // 본인·배우자 적립 종료 연도 분리 계산
-  const myContribEndYr   = Math.min(_obData.contribEndYear     || retireYr, retireYr);
-  const wifeContribEndYr = Math.min(_obData.wifeContribEndYear || retireYr, retireYr);
-  const myPmt   = myMo   * 10_000 * 12;
-  const wifePmt = wifeMo * 10_000 * 12;
-  // 은퇴연도 초과 입력 자동 보정
-  const myEndEl = document.getElementById('ob_myContribEndY');
-  if (myEndEl && Number(myEndEl.value) > retireYr) myEndEl.value = retireYr;
-  const wifeEndEl = document.getElementById('ob_wifeContribEndY');
-  if (wifeEndEl && Number(wifeEndEl.value) > retireYr) wifeEndEl.value = retireYr;
   const pvInitMil = ((_obData.myBalMil||0) + (_obData.wifeBalMil||0)) / 1000;
   const years = Array.from({length: n + 1}, (_, i) => cy + i);
-  const nomBalances = years.map(yr => {
-    const ni = yr - cy;
-    const pvFv = pv * Math.pow(1+r, ni);
-    const mc1 = Math.min(ni, Math.max(0, myContribEndYr - cy));
-    const myFv = (r>0 ? myPmt*(Math.pow(1+r,mc1)-1)/r : myPmt*mc1) * Math.pow(1+r, ni-mc1);
-    const mc2 = Math.min(ni, Math.max(0, wifeContribEndYr - cy));
-    const wifeFv = (r>0 ? wifePmt*(Math.pow(1+r,mc2)-1)/r : wifePmt*mc2) * Math.pow(1+r, ni-mc2);
-    return Math.round((pvFv + myFv + wifeFv) / 1_000_000);
-  });
-  const cumPrincipals = years.map(yr => {
-    const ni = yr - cy;
-    const yc1 = Math.min(ni, Math.max(0, myContribEndYr - cy));
-    const yc2 = Math.min(ni, Math.max(0, wifeContribEndYr - cy));
-    return Math.round(pvInitMil + (myMo*yc1 + wifeMo*yc2)*12*10_000/1_000_000);
-  });
+  // Year-by-year sim from actual plans
+  let bal = pv;
+  const nomBalances = [Math.round(bal / 1_000_000)];
+  let cumPrincipalWon = pv;
+  const cumPrincipals = [Math.round(cumPrincipalWon / 1_000_000)];
+  for (let i = 1; i <= n; i++) {
+    const yr = cy + i;
+    const annualPmt = _obPlanMonthlyForYearKept(yr - 1) * 10_000 * 12;
+    cumPrincipalWon += annualPmt;
+    bal = bal * (1 + r) + annualPmt;
+    nomBalances.push(Math.round(bal / 1_000_000));
+    cumPrincipals.push(Math.round(cumPrincipalWon / 1_000_000));
+  }
   const nomFVMil = nomBalances[nomBalances.length - 1];
   const realFVMil = Math.round(nomFVMil / Math.pow(1+inf, n));
 
@@ -12644,12 +12611,12 @@ function updateObSim() {
     const tipCall = `obShowTip(obBuildTipText())`;
     const tipBtn  = `<span style="cursor:pointer;color:#3b82f6;margin-left:4px" onclick="${tipCall}" ontouchstart="${tipCall}">ⓘ</span>`;
     if (pensionAnnual > 0) {
-      realTgtEl.innerHTML = `· 연금 ${obFmtKRW(pensionAnnual)}/년 차감 → 실질 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
+      realTgtEl.innerHTML = `· 연금 ${obFmtKRW(pensionAnnual)}/년 차감 → 포트폴리오 현재가치 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
     } else {
-      realTgtEl.innerHTML = `· 공적연금 없음 → 실질 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
+      realTgtEl.innerHTML = `· 공적연금 없음 → 포트폴리오 현재가치 목표 <strong>${obFmtKRW(portfolioNeedTotal)}</strong>${tipBtn}`;
     }
   }
-  if (nomTgtEl) nomTgtEl.innerHTML = `· 물가 ${infPct}%, ${n}년 반영 → 명목 목표 <strong>${obFmtKRW(nominalTargetMil)}</strong>`;
+  if (nomTgtEl) nomTgtEl.innerHTML = `· 물가 ${infPct}%, ${n}년 반영 → 포트폴리오 명목 목표 <strong>${obFmtKRW(nominalTargetMil)}</strong>`;
   if (fvEl) fvEl.innerHTML = `· 명목 <strong>${obFmtKRW(nomFVMil)}</strong> / 실질 ${obFmtKRW(realFVMil)}`;
   if (penEl) penEl.textContent = pensionAnnual > 0 ? `· 공적연금 ${obFmtKRW(pensionAnnual)}/년` : '· 공적연금 없음';
   if (yrEl)  yrEl.textContent  = `은퇴까지 ${n}년`;
