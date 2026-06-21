@@ -3841,7 +3841,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.534';
+const APP_VERSION = 'MyGP v0.535';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -11786,13 +11786,18 @@ function openOnboardingModal() {
     contribEndMonth: appSettings.myBirthMonth || 1,
     wifeContribEndYear: wdPlan.startYear || (cy + 10),
     wifeContribEndMonth: appSettings.wifeBirthMonth || 1,
-    savedDepositIds: {},
-    savedMonthlyRecordId: null,
+    _baseBal: {},
     keepPlanIds: [],
     _planKeepInit: false,
     _pensionDefaultsSet: false,
     _contribDefaultsSet: false,
   };
+  // 현재 계좌별 평가금(최신 월별기록)을 천원 단위로 프리필 + 기준값(baseline) 저장
+  [..._obData.myAccIds, ..._obData.wifeAccIds].forEach(id => {
+    const balK = Math.round(obLatestEvalWon(id) / 1000);  // 원 → 천원
+    _obData.accBal[id]   = balK;
+    _obData._baseBal[id] = balK;
+  });
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   renderOnboardingStep();
   document.getElementById('onboardingModal').classList.add('open');
@@ -11814,7 +11819,6 @@ function onboardingSkip() {
 
 function onboardingNext() {
   if (!collectObStep(_obStep)) return;
-  if (_obStep === 2) obSaveStep2Deposits();
   if (_obStep >= OB_TOTAL_STEPS) { finishOnboarding(); return; }
   _obStep++;
   renderOnboardingStep();
@@ -11904,7 +11908,7 @@ function renderOnboardingStep() {
       <div class="ob-acc-grid">${wifeAccsDef.map(a => mkAccItem2(a, _obData.wifeAccIds)).join('')}</div>` : '';
     body.innerHTML = `
       <div class="ob-title">연금 계좌 선택 💼</div>
-      <div class="ob-sub">계좌를 선택하면 현재 잔액을 입력하세요.<br>입력한 잔액은 첫 입금 기록으로 자동 저장됩니다.</div>
+      <div class="ob-sub">현재 평가금을 기록에서 불러왔습니다. 계좌를 선택해 금액을 확인·수정하세요.<br>완료 시 변경분만 입금/조정으로 반영되어 중복 저장되지 않습니다.</div>
       <div style="font-size:12px;color:#2563eb;background:#eff6ff;border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.6">💡 계좌가 없어도 <strong>개인연금1</strong>과 <strong>IRP</strong>는 노후 준비의 필수 계좌입니다. 아직 없다면 가입을 적극 권장합니다.</div>
       <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">본인 계좌</div>
       <div class="ob-acc-grid">${myGrid}</div>
@@ -12221,8 +12225,12 @@ function obToggleAcc2(accId, who) {
     if (el) el.classList.add('selected');
     if (chk) chk.textContent = '✅';
     if (balWrap) balWrap.style.display = '';
+    // 재선택 시 현재 평가금(기준값)으로 복원
+    if (_obData.accBal[accId] == null && _obData._baseBal?.[accId] != null) {
+      _obData.accBal[accId] = _obData._baseBal[accId];
+    }
     const inp = document.getElementById(`ob_bal_${accId}`);
-    if (inp) inp.value = _obData.accBal[accId] || 0;
+    if (inp) inp.value = (_obData.accBal[accId] || 0).toLocaleString('ko-KR');
   }
   obAccBalChanged();
 }
@@ -12250,47 +12258,52 @@ function obAccBalChanged() {
   }
 }
 
-function obSaveStep2Deposits() {
-  if (Object.keys(_obData.savedDepositIds).length > 0) {
-    Object.values(_obData.savedDepositIds).forEach(txId => {
-      depositData.transactions = depositData.transactions.filter(t => t.id !== txId);
-    });
-    // 이전에 저장된 현금도 원상복구
-    Object.entries(_obData.savedDepositIds).forEach(([accId]) => {
-      const prevBal = (_obData._prevAccBal || {})[accId] || 0;
-      cashAccounts[accId] = Math.max(0, (cashAccounts[accId] || 0) - prevBal * 1_000);
-    });
-    _obData.savedDepositIds = {};
+// 계좌별 현재 평가금(최신 월별기록 값, 단위: 원) 조회
+function obLatestEvalWon(accId) {
+  let best = null;
+  for (const r of (monthlyRecords || [])) {
+    if (!r.accounts || r.accounts[accId] == null) continue;
+    if (!best) { best = r; continue; }
+    if (r.year !== best.year)        { if (r.year  > best.year)        best = r; continue; }
+    if (r.month !== best.month)      { if (r.month > best.month)       best = r; continue; }
+    if ((r.day||0) !== (best.day||0)){ if ((r.day||0) > (best.day||0)) best = r; continue; }
+    if (String(r.id) > String(best.id)) best = r;
   }
-  if (_obData.savedMonthlyRecordId) {
-    monthlyRecords = monthlyRecords.filter(r => r.id !== _obData.savedMonthlyRecordId);
-    _obData.savedMonthlyRecordId = null;
-  }
+  return best ? (Number(best.accounts[accId]) || 0) : 0;
+}
+
+// 완료 시 평가금 반영: "변경분만 조정" (이중 계상 방지, 멱등)
+//  - 월별기록: 오늘자 스냅샷에 입력한 절대 평가금(원)을 upsert
+//  - 입금(원금): 기준값 대비 차액(delta)만 조정 거래로 추가
+function obApplyBalances() {
   const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
-  const recAccs = {};
+  const y = today.getFullYear(), m = today.getMonth()+1, d = today.getDate();
+  const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   const allIds = [..._obData.myAccIds, ...(_obData.hasWife ? _obData.wifeAccIds : [])];
+  let todayRec = (monthlyRecords || []).find(r => r.year===y && r.month===m && r.day===d);
+  let recChanged = false, depChanged = false, cashChanged = false;
   allIds.forEach(accId => {
-    const balMil = _obData.accBal[accId] || 0;
-    if (balMil <= 0) return;
-    const txId = generateTxnId();
-    depositData.transactions.push({ id: txId, accId, date: dateStr, amount: balMil * 1_000 });
-    _obData.savedDepositIds[accId] = txId;
-    recAccs[accId] = balMil / 1000;   // monthly records는 백만원 단위 유지
-    // 포트폴리오 현금에 반영
-    cashAccounts[accId] = (cashAccounts[accId] || 0) + balMil * 1_000;
+    const enteredWon = Math.round((_obData.accBal[accId]   || 0) * 1000);  // 천원 → 원
+    const baseWon    = Math.round((_obData._baseBal?.[accId] || 0) * 1000);
+    const delta = enteredWon - baseWon;
+    // 평가금 스냅샷(절대값) — 값이 있거나 기준에서 변했을 때만 기록
+    if (enteredWon > 0 || delta !== 0) {
+      if (!todayRec) { todayRec = { id: String(Date.now()), year:y, month:m, day:d, accounts:{} }; monthlyRecords.push(todayRec); }
+      todayRec.accounts[accId] = enteredWon;
+      recChanged = true;
+    }
+    // 원금(입금) — 변경분만 조정 거래로 반영
+    if (delta !== 0) {
+      depositData.transactions.push({ id: generateTxnId(), accId, date: dateStr, amount: delta, _fromWizard: true });
+      cashAccounts[accId] = Math.max(0, (cashAccounts[accId] || 0) + delta);
+      depChanged = true; cashChanged = true;
+    }
+    // 다음 재실행을 위해 기준값 갱신
+    if (_obData._baseBal) _obData._baseBal[accId] = Math.round(enteredWon / 1000);
   });
-  _obData._prevAccBal = { ..._obData.accBal };
-  if (Object.keys(_obData.savedDepositIds).length > 0) {
-    saveDeposits();
-    persistCashAccounts();
-  }
-  if (Object.keys(recAccs).length > 0) {
-    const recId = Date.now();
-    monthlyRecords.push({ id: recId, year: today.getFullYear(), month: today.getMonth()+1, day: today.getDate(), accounts: recAccs });
-    _obData.savedMonthlyRecordId = recId;
-    saveMonthlyRecords();
-  }
+  if (recChanged)  saveMonthlyRecords();
+  if (depChanged)  saveDeposits();
+  if (cashChanged) persistCashAccounts();
 }
 
 // ===== Option A: 기존 적립계획 표시 + 개별 유지/삭제 =====
@@ -12772,6 +12785,9 @@ function finishOnboarding() {
     mapPension(_obData.wifeSP || {}, appSettings.wife.sp);
   }
   saveAppSettings();
+
+  // 계좌 평가금 반영 (변경분만 조정 — 이중 계상 방지)
+  obApplyBalances();
 
   wdPlan.myBirthYear       = _obData.myBirthYear;
   wdPlan.myBirthMonth      = _obData.myBirthMonth;
