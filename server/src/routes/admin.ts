@@ -74,6 +74,7 @@ export default async function adminRoutes(app: FastifyInstance) {
       ok: true,
       uptime_ms: uptimeMs,
       uptime_human: uptimeHuman(uptimeMs),
+      started_at: new Date(metrics.startedAt).toISOString(),
       app_version: readAppVersion(),
       memory: {
         rss_mb: +(mem.rss / 1024 / 1024).toFixed(1),
