@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.539';
+const APP_VERSION = 'MyGP v0.540';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -11979,12 +11979,7 @@ function renderOnboardingStep() {
     _obData.wifeBalMil = wifeBal;
     const rTip = '지금부터 은퇴 전까지 매해 예상하는 복리 수익률입니다. 일반적인 분산투자 6~8%를 기준으로 보수적이라면 4~5%, 공격적이라면 8~10%를 참고하세요.';
     const infTip = '최근 10년 평균 약 2.0%, 5년 평균 약 2.8% (한국). 인상률이 높을수록 미래 필요액이 커지므로 적립금을 늘려야 합니다.';
-    const wifeSection = _obData.hasWife ? `
-      <div style="font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 6px">${_obData.wifeTitle||'배우자'}</div>
-      <div class="ob-field-row">
-        <label>현재 잔액</label>
-        <span style="font-size:13px;color:var(--text)">${wifeBal.toLocaleString('ko-KR')}천원</span>
-      </div>` : '';
+    const wifeSection = '';
     const plansSection = obBuildExistingPlansSection();
     body.innerHTML = `
       <div class="ob-title">적립 현황 💰</div>
@@ -12001,8 +11996,8 @@ function renderOnboardingStep() {
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px;font-size:13px">
         <div><span style="color:var(--muted);font-size:12px">본인 잔액</span> <strong>${myBal.toLocaleString('ko-KR')}천원</strong></div>
+        ${_obData.hasWife ? `<div><span style="color:var(--muted);font-size:12px">${_obData.wifeTitle||'배우자'} 잔액</span> <strong>${wifeBal.toLocaleString('ko-KR')}천원</strong></div>` : ''}
       </div>
-      ${wifeSection}
       ${plansSection}
       <div class="ob-sim-card" id="obSimCard">
         <div class="ob-sim-slogan">
@@ -12499,14 +12494,20 @@ function obUpdateMonthly() {
 function _obPlanMonthlyForYear(yr) {
   return (annualPlan.monthlyPlans || [])
     .filter(p => p.startYear <= yr && p.endYear >= yr)
-    .reduce((s, p) => s + (p.monthlyAmt||0), 0);
+    .reduce((s, p) => {
+      const mo = p.frequency === 'annual' ? (p.monthlyAmt||0) / 12 : (p.monthlyAmt||0);
+      return s + mo;
+    }, 0);
 }
 
 function _obPlanMonthlyForYearKept(yr) {
   const keepSet = new Set((_obData.keepPlanIds || []).map(String));
   return (annualPlan.monthlyPlans || [])
     .filter(p => keepSet.has(String(p.id)) && p.startYear <= yr && p.endYear >= yr)
-    .reduce((s, p) => s + (p.monthlyAmt||0), 0);
+    .reduce((s, p) => {
+      const mo = p.frequency === 'annual' ? (p.monthlyAmt||0) / 12 : (p.monthlyAmt||0);
+      return s + mo;
+    }, 0);
 }
 
 function updateObSim() {
