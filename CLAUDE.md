@@ -1,5 +1,10 @@
 # My PM - Claude 작업 규칙
 
+## UI 작업 규칙
+- **화면 구성(레이아웃/UI)이 바뀌면 항상 스크린샷을 먼저 보여줄 것**
+  - Playwright(전역 설치) + Chromium(`/opt/pw-browsers`)으로 캡처
+  - 로컬 정적 서버로 띄운 뒤 해당 화면을 캡처하여 `SendUserFile`로 전달
+
 ## 커밋 방식
 - 변경 요청 완료 시 **main 브랜치에 직접 커밋 후 push**
 - 커밋 전 세 파일(`index.html`, `NonK.html`, `KDeal.html`) 모두 patch 버전 +0.001 올릴 것  
