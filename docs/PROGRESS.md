@@ -4,9 +4,47 @@
 > 새 세션은 이 파일 + `server/README.md` + `CLAUDE.md` + `docs/DEPLOY.md` 를 먼저 읽으면 맥락을 파악할 수 있다.
 
 작업 브랜치: **main** (저장소 `imgkang/my-ps`). 직접 push.
-최종 클라이언트 버전: **v0.528** (index/NonK/KDeal/sw 공통).
+최종 클라이언트 버전: **v0.533** (index/NonK/KDeal/sw 공통).
 
 ---
+
+---
+
+## ✅ 502 원인 규명 + 원격 관리 대시보드 완료 (2026-06-21, v0.533)
+
+휴대폰(외부)에서 **502 Bad Gateway** 발생 → 원인 규명 + 재발 방지 + 원격 관리 도구 구축 완료.
+PR #246 main 머지 완료, 집 PC `git pull`+`npm run build`+태스크 재시작 완료, 휴대폰 접속 확인 ✅.
+
+### 502 근본 원인
+- 6/21 00:27 에 Node 백엔드가 **크래시(exit code 1)**. 작업 스케줄러가 `RestartCount=3`(1분 간격)으로 3회 재시도 후 **포기** → 서버 10시간+ 다운.
+- 결정적 문제: **stdout/stderr 가 어디에도 저장 안 됨** → 크래시 당시 에러 메시지 영구 소실. 00:27 의 정확한 원인은 알 수 없음(가설: AhnLab 예약검사가 node.exe 일시 차단).
+- 참고: 서버는 **SYSTEM 계정**으로 동작 → 자녀가 다른 Windows 사용자로 로그인/로그아웃해도 **무관**(세션 독립). 이건 원인 아님.
+
+### 재발 방지 조치 (집 PC)
+1. **로그 캡처**: 작업 스케줄러 액션을 `cmd.exe /c "node.exe dist\server.js >> data\server.log 2>&1"` 로 변경 → 모든 출력(크래시 스택 포함) `server\data\server.log` 에 기록.
+2. **RestartCount 3 → 60** 으로 상향 (장기 다운 방지).
+3. 코드: `process.on('uncaughtException'|'unhandledRejection')` → `console.error` 후 `process.exit(1)` (재시작 트리거).
+
+### 신규 — 원격 관리 대시보드
+- **`admin.html`** (저장소 루트, 정적 서빙): 모바일(아이폰) 친화 다크 대시보드.
+  - 접속: `https://mypm.growpension.com/admin.html`
+  - 로그인 토큰 = **`server/.env` 의 `UPDATE_TOKEN`** (기존 강제업데이트 토큰 재사용).
+  - **Face ID**: `<form autocomplete=on>` + hidden username + `autocomplete=current-password` → Safari 가 비번 저장 제안 → 재방문 시 Face ID 자동 입력. 토큰은 `localStorage['mypm_admin_token']` 에도 보관(자동 로그인).
+  - 표시: 서버 상태/업타임/버전(sw.js CACHE_NAME), 메모리, 트래픽(누적·최근5분·1시간·라우트별 + req/min 속도 + 누적 시작시각), DB 카운트, 작업 스케줄러 상태, **서버 로그 뷰어**(색상: 회색=info/노랑=warn/빨강=error/분홍=크래시 스택, 오류만 필터 토글), 재시작 버튼.
+- **백엔드 (`server/`)**:
+  - `src/metrics.ts` (신규): 요청 수 인메모리 집계. `startedAt`, `total`, `recentTs`(1시간 롤링), `byRoute`, `lastAt`. `recordRequest()`.
+  - `src/routes/admin.ts` (신규): 모두 `UPDATE_TOKEN` 보호(query `?token=` 또는 헤더 `x-admin-token`).
+    - `GET /api/admin/status` — 상태·업타임·버전·메모리·트래픽·DB·태스크 상태.
+    - `GET /api/admin/logs?lines=N&errorsOnly=1` — `server.log` 끝부분 tail(`tailBytes`), pino JSON + 비-JSON 크래시 스택 파싱(`parseLine`), 오류만 필터.
+    - `POST /api/admin/restart` — `process.exit(1)`(cmd 래퍼 + 실패시 재시작 구성에선 exit 0 이면 재시작 안 됨 → **반드시 1**).
+    - `POST /api/admin/restart-task?task=MyPMBackend|MyPMTunnel` — PowerShell Stop/Start.
+  - `src/server.ts`: 위 핸들러 + `onRequest` 훅(`recordRequest`) + `adminRoutes` 등록.
+  - `src/env.ts`: `LOG_PATH` (기본 `./data/server.log`) 추가.
+
+### 운영 메모 / 후속 관찰
+- ⚠️ 크래시 재발 시 **이제 `server\data\server.log` 에 스택이 남음** → admin.html 로그 뷰어로 원격 확인 가능. 00:27 패턴(자정 무렵 AhnLab 검사) 재현되는지 관찰 필요.
+- admin.html 은 클라이언트 버전(v0.5xx) 규칙과 무관(관리 도구). 단 이번 커밋에 클라 3파일도 v0.533 으로 동반 상향됨.
+- 향후 개선 후보: 로그 파일 로테이션(server.log 무한 증가 방지), admin 토큰을 UPDATE_TOKEN 과 분리, 크래시 발생 시 푸시/이메일 알림.
 
 ---
 
