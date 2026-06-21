@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.540';
+const APP_VERSION = 'MyGP v0.541';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -11749,11 +11749,11 @@ function openOnboardingModal() {
     wifeTitle: appSettings.wifeTitle || '아내',
     myAccIds: [...new Set([...(appSettings.my?.activeAccIds || []), 'pension1', 'irp'])],
     wifeAccIds: [...new Set([...(appSettings.wife?.activeAccIds || []), 'wife_pension1', 'wife_irp'])],
-    retireAge: 60,
-    wifeRetireAge: 60,
+    retireAge: wdPlan.retireAge || (wdPlan.startYear && appSettings.myBirthYear ? wdPlan.startYear - appSettings.myBirthYear : 60),
+    wifeRetireAge: wdPlan.wifeRetireAge || 60,
     startYear: wdPlan.startYear || (cy + 10),
-    wifeStartYear: wdPlan.startYear || (cy + 10),
-    annualTarget: (appSettings.hasWife ? 80 : 40),
+    wifeStartYear: wdPlan.wifeStartYear || wdPlan.startYear || (cy + 10),
+    annualTarget: wdPlan.annualTarget || (appSettings.hasWife ? 80 : 40),
     returnRate: 7,
     inflationRate: wdPlan.inflation || 2.2,
     myNP:  { use: myNpDef.use||false,  monthly: myNpDef.monthlyManwon||0,  startYear: myNpDef.startYear||0, startMonth: myNpDef.startMonth||1 },
@@ -12696,6 +12696,8 @@ function finishOnboarding() {
   wdPlan.method1StartYear  = _obData.startYear;
   wdPlan.targetStartYear   = _obData.startYear;
   wdPlan.annualTarget      = _obData.annualTarget;
+  wdPlan.retireAge         = _obData.retireAge;
+  if (_obData.hasWife) wdPlan.wifeRetireAge = _obData.wifeRetireAge;
   const _obAmt = v => Math.round((v || 0) * 1_000_000 / 120_000);
   const _obBase = _obAmt(_obData.annualTarget || 80);
   wdPlan.periods = [{
@@ -12708,6 +12710,7 @@ function finishOnboarding() {
   if (_obData.hasWife) {
     wdPlan.wifeBirthYear    = _obData.wifeBirthYear;
     wdPlan.wifeBirthMonth   = _obData.wifeBirthMonth;
+    wdPlan.wifeStartYear    = _obData.wifeStartYear;
   }
   saveWdPlan();
 
