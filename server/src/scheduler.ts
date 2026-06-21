@@ -33,12 +33,17 @@ export function startScheduler() {
     '10 6 * * *',
     () => {
       const script = resolve(process.cwd(), '../scripts/update_tickers.py');
-      const py = spawn('python', [script], { cwd: resolve(process.cwd(), '..') });
+      // python / python3 둘 다 없으면 ENOENT → error 이벤트로 잡지 않으면 uncaughtException
+      const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
+      const py = spawn(pyCmd, [script], { cwd: resolve(process.cwd(), '..') });
+      py.on('error', (err) => {
+        console.error(`[scheduler] update_tickers.py 실행 불가 (${pyCmd} 없음?):`, err.message);
+      });
       py.on('close', (code) => {
         if (code === 0) {
           console.log('[scheduler] update_tickers.py 완료 → load-tickers 재적재 필요');
           // TODO: load-tickers 로직 재사용하여 자동 적재
-        } else {
+        } else if (code !== null) {
           console.error('[scheduler] update_tickers.py 실패 code', code);
         }
       });
