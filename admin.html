@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MyPM 서버 관리</title>
+<style>
+  :root {
+    --green: #22c55e; --red: #ef4444; --yellow: #f59e0b;
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --text: #f1f5f9; --muted: #94a3b8; --accent: #38bdf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 16px; max-width: 600px; margin: 0 auto; }
+  h1 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 10px; }
+  .status-row { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .dot.pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .status-label { font-size: 1rem; font-weight: 600; }
+  .status-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+  .metric-label { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
+  .metric-value { font-size: 1.1rem; font-weight: 700; }
+  .metric-value.accent { color: var(--accent); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.yellow { color: var(--yellow); }
+  .route-row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .route-row:last-child { border-bottom: none; }
+  .route-path { color: var(--muted); font-family: monospace; }
+  .route-count { font-weight: 600; }
+  .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+  .btn:active { opacity: .7; }
+  .btn-restart { background: var(--red); color: white; }
+  .btn-tunnel { background: var(--yellow); color: #0f172a; }
+  .btn-refresh { background: var(--accent); color: #0f172a; margin-bottom: 8px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .token-wrap { display: flex; gap: 8px; }
+  .token-wrap input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 0.9rem; }
+  .token-wrap button { background: var(--accent); color: #0f172a; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+  .task-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .task-row:last-child { border-bottom: none; }
+  .task-name { font-family: monospace; font-size: 0.85rem; }
+  .task-state { font-size: 0.75rem; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .task-state.running { background: rgba(34,197,94,.2); color: var(--green); }
+  .task-state.stopped { background: rgba(239,68,68,.2); color: var(--red); }
+  .task-state.unknown { background: rgba(148,163,184,.2); color: var(--muted); }
+  .refresh-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .refresh-info { font-size: 0.75rem; color: var(--muted); }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e293b; border: 1px solid var(--border); border-radius: 10px; padding: 10px 20px; font-size: 0.85rem; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  #loginSection { display: block; }
+  #dashSection { display: none; }
+</style>
+</head>
+<body>
+
+<h1>⚙️ MyPM 서버 관리</h1>
+<p class="subtitle">mypm.growpension.com 백엔드 상태 및 제어</p>
+
+<!-- 토큰 입력 -->
+<div id="loginSection" class="card">
+  <div class="card-title">관리자 토큰 입력</div>
+  <div class="token-wrap">
+    <input type="password" id="tokenInput" placeholder=".env의 UPDATE_TOKEN 값" autocomplete="current-password">
+    <button onclick="saveToken()">확인</button>
+  </div>
+  <div id="loginError" style="color:var(--red);font-size:.8rem;margin-top:8px;display:none">토큰이 올바르지 않습니다.</div>
+</div>
+
+<!-- 대시보드 -->
+<div id="dashSection">
+
+  <div class="refresh-bar">
+    <span class="refresh-info" id="lastUpdated">—</span>
+    <span class="refresh-info" id="countdown"></span>
+  </div>
+
+  <!-- 서버 상태 -->
+  <div class="card" id="statusCard">
+    <div class="card-title">서버 상태</div>
+    <div class="status-row">
+      <div class="dot red" id="statusDot"></div>
+      <div>
+        <div class="status-label" id="statusLabel">확인 중...</div>
+        <div class="status-sub" id="statusSub"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주요 지표 -->
+  <div class="card">
+    <div class="card-title">주요 지표</div>
+    <div class="grid">
+      <div class="metric">
+        <div class="metric-label">앱 버전</div>
+        <div class="metric-value accent" id="appVersion">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">가동 시간</div>
+        <div class="metric-value green" id="uptime">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">메모리 (RSS)</div>
+        <div class="metric-value" id="memRss">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">힙 사용량</div>
+        <div class="metric-value" id="memHeap">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 트래픽 -->
+  <div class="card">
+    <div class="card-title">트래픽</div>
+    <div class="grid" style="margin-bottom:12px">
+      <div class="metric">
+        <div class="metric-label">누적 요청</div>
+        <div class="metric-value accent" id="reqTotal">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">최근 5분</div>
+        <div class="metric-value" id="req5m">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">최근 1시간</div>
+        <div class="metric-value" id="req1h">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">마지막 요청</div>
+        <div class="metric-value" style="font-size:.85rem" id="reqLast">—</div>
+      </div>
+    </div>
+    <div id="routeList"></div>
+  </div>
+
+  <!-- 사용자 / DB -->
+  <div class="card">
+    <div class="card-title">데이터베이스</div>
+    <div class="grid">
+      <div class="metric">
+        <div class="metric-label">사용자</div>
+        <div class="metric-value green" id="dbUsers">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">디바이스</div>
+        <div class="metric-value" id="dbDevices">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">활성 알림</div>
+        <div class="metric-value yellow" id="dbAlerts">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">데이터 번들</div>
+        <div class="metric-value" id="dbBundles">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task Scheduler 상태 -->
+  <div class="card">
+    <div class="card-title">Task Scheduler</div>
+    <div id="taskList"><div style="color:var(--muted);font-size:.8rem">정보 없음</div></div>
+  </div>
+
+  <!-- 제어 -->
+  <div class="card">
+    <div class="card-title">서버 제어</div>
+    <button class="btn btn-refresh" onclick="loadStatus()">새로고침</button>
+    <button class="btn btn-tunnel" onclick="restartTask('MyPMTunnel')" style="margin-bottom:8px">MyPMTunnel 재시작 (cloudflared)</button>
+    <button class="btn btn-restart" onclick="confirmRestart()">MyPMBackend 재시작 (Node.js)</button>
+    <div style="font-size:.75rem;color:var(--muted);margin-top:8px;text-align:center">재시작 후 약 1분 뒤 자동 복구됩니다</div>
+  </div>
+
+  <!-- 로그아웃 -->
+  <div style="text-align:center;margin-top:8px">
+    <button onclick="logout()" style="background:none;border:none;color:var(--muted);font-size:.8rem;cursor:pointer">토큰 변경</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = '';
+let token = '';
+let refreshTimer = null;
+let countdownTimer = null;
+let countdown = 30;
+
+function getBase() {
+  const h = location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return '';
+  return 'https://mypm.growpension.com';
+}
+
+function saveToken() {
+  const val = document.getElementById('tokenInput').value.trim();
+  if (!val) return;
+  token = val;
+  loadStatus();
+}
+
+function logout() {
+  token = '';
+  document.getElementById('loginSection').style.display = 'block';
+  document.getElementById('dashSection').style.display = 'none';
+  document.getElementById('tokenInput').value = '';
+  clearInterval(refreshTimer);
+  clearInterval(countdownTimer);
+}
+
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+async function loadStatus() {
+  countdown = 30;
+  try {
+    const res = await fetch(`${getBase()}/api/admin/status?token=${encodeURIComponent(token)}`);
+    if (res.status === 401 || res.status === 403) {
+      document.getElementById('loginError').style.display = 'block';
+      return;
+    }
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashSection').style.display = 'block';
+
+    const d = await res.json();
+    renderStatus(d);
+    startAutoRefresh();
+  } catch (e) {
+    // 서버 자체가 다운된 경우
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashSection').style.display = 'block';
+    renderOffline();
+    startAutoRefresh();
+  }
+}
+
+function renderOffline() {
+  document.getElementById('statusDot').className = 'dot red pulse';
+  document.getElementById('statusLabel').textContent = '서버 다운 (502)';
+  document.getElementById('statusSub').textContent = 'MyPMBackend 또는 cloudflared 중단';
+  document.getElementById('lastUpdated').textContent = `확인: ${new Date().toLocaleTimeString('ko-KR')}`;
+  ['appVersion','uptime','memRss','memHeap','reqTotal','req5m','req1h','reqLast','dbUsers','dbDevices','dbAlerts','dbBundles'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '—';
+  });
+  document.getElementById('routeList').innerHTML = '';
+  document.getElementById('taskList').innerHTML = '<div style="color:var(--red);font-size:.8rem">서버 다운 — Task Scheduler 상태 확인 불가</div>';
+}
+
+function renderStatus(d) {
+  document.getElementById('statusDot').className = 'dot green pulse';
+  document.getElementById('statusLabel').textContent = '정상 운영 중';
+  document.getElementById('statusSub').textContent = `${d.ts ? new Date(d.ts).toLocaleString('ko-KR') : ''}`;
+  document.getElementById('lastUpdated').textContent = `확인: ${new Date().toLocaleTimeString('ko-KR')}`;
+
+  document.getElementById('appVersion').textContent = d.app_version ?? '—';
+  document.getElementById('uptime').textContent = d.uptime_human ?? '—';
+  document.getElementById('memRss').textContent = `${d.memory?.rss_mb ?? '—'} MB`;
+  document.getElementById('memHeap').textContent = `${d.memory?.heap_used_mb ?? '—'} / ${d.memory?.heap_total_mb ?? '—'} MB`;
+
+  document.getElementById('reqTotal').textContent = (d.requests?.total ?? 0).toLocaleString();
+  document.getElementById('req5m').textContent = (d.requests?.last_5m ?? 0).toLocaleString();
+  document.getElementById('req1h').textContent = (d.requests?.last_1h ?? 0).toLocaleString();
+  const la = d.requests?.last_at;
+  document.getElementById('reqLast').textContent = la ? new Date(la).toLocaleTimeString('ko-KR') : '—';
+
+  // 라우트별 요청 수 (상위 8개)
+  const routes = Object.entries(d.requests?.by_route ?? {})
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
+    .slice(0, 8);
+  document.getElementById('routeList').innerHTML = routes.map(([path, count]) =>
+    `<div class="route-row"><span class="route-path">${path}</span><span class="route-count">${(count as number).toLocaleString()}</span></div>`
+  ).join('');
+
+  document.getElementById('dbUsers').textContent = d.db?.users ?? '—';
+  document.getElementById('dbDevices').textContent = d.db?.devices ?? '—';
+  document.getElementById('dbAlerts').textContent = d.db?.active_alerts ?? '—';
+  document.getElementById('dbBundles').textContent = d.db?.data_bundles ?? '—';
+
+  // Task Scheduler 상태
+  const tasks = d.tasks ?? {};
+  const taskHtml = Object.entries(tasks).map(([name, state]) => {
+    const cls = String(state).toLowerCase() === 'running' ? 'running' : 'stopped';
+    return `<div class="task-row"><span class="task-name">${name}</span><span class="task-state ${cls}">${state}</span></div>`;
+  }).join('');
+  document.getElementById('taskList').innerHTML = taskHtml || '<div style="color:var(--muted);font-size:.8rem">정보 없음 (PowerShell 응답 없음)</div>';
+}
+
+function startAutoRefresh() {
+  clearInterval(refreshTimer);
+  clearInterval(countdownTimer);
+  countdown = 30;
+  refreshTimer = setInterval(loadStatus, 30000);
+  countdownTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = `${countdown}초 후 갱신`;
+    if (countdown <= 0) countdown = 30;
+  }, 1000);
+}
+
+async function confirmRestart() {
+  if (!confirm('MyPMBackend(Node.js)를 재시작합니다.\n약 1분간 서비스가 중단됩니다. 계속하시겠습니까?')) return;
+  try {
+    const res = await fetch(`${getBase()}/api/admin/restart?token=${encodeURIComponent(token)}`, { method: 'POST' });
+    const d = await res.json();
+    showToast(d.message ?? '재시작 요청 완료', 4000);
+    setTimeout(loadStatus, 15000);
+  } catch {
+    showToast('재시작 요청 전송 완료 (서버 응답 없음은 정상)', 4000);
+    setTimeout(loadStatus, 20000);
+  }
+}
+
+async function restartTask(task) {
+  if (!confirm(`${task}을 재시작합니다. 계속하시겠습니까?`)) return;
+  try {
+    const res = await fetch(`${getBase()}/api/admin/restart-task?token=${encodeURIComponent(token)}&task=${task}`, { method: 'POST' });
+    const d = await res.json();
+    showToast(d.message ?? '요청 완료', 3000);
+    setTimeout(loadStatus, 5000);
+  } catch {
+    showToast('요청 실패 — 서버 상태를 확인하세요', 3000);
+  }
+}
+</script>
+</body>
+</html>
