@@ -11796,10 +11796,12 @@ function openOnboardingModal() {
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   renderOnboardingStep();
   document.getElementById('onboardingModal').classList.add('open');
+  document.getElementById('appVersion')?.style.setProperty('display', 'none');
 }
 
 function closeOnboardingModal() {
   document.getElementById('onboardingModal').classList.remove('open');
+  document.getElementById('appVersion')?.style.removeProperty('display');
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   const tip = document.getElementById('ob-tip');
   if (tip) tip.classList.remove('visible');
