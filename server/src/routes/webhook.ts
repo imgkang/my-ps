@@ -10,6 +10,25 @@ import { env } from '../env.js';
 const repoRoot = resolve(process.cwd(), '..');
 const serverDir = resolve(repoRoot, 'server');
 
+// 빌드 후 자기 자신(MyPMBackend 태스크)을 재시작한다.
+// 핵심: `cmd /c start` 로 powershell 을 태스크의 프로세스 트리(job object) **밖**에서 띄운다.
+//   → Stop-ScheduledTask 로 현재 node 가 죽어도 이 헬퍼는 살아남아 Start 까지 수행.
+//   → exit 1 + Task Scheduler 실패-재시작 정책(1분 지연·횟수 제한)에 의존하지 않으므로 신뢰성↑·다운타임↓.
+function restartSelf(log: (s: string) => void, errLog: (s: string) => void) {
+  // 2초 대기(HTTP 응답·CF purge 플러시) → Stop → 1초 → Start
+  const ps = 'Start-Sleep -Seconds 2; Stop-ScheduledTask MyPMBackend; Start-Sleep -Seconds 1; Start-ScheduledTask MyPMBackend';
+  const cmd = `cmd /c start "" /min powershell -NoProfile -WindowStyle Hidden -Command "${ps}"`;
+  exec(cmd, (err) => {
+    if (err) {
+      // 헬퍼 기동 실패 시에만 구방식(exit 1)으로 폴백
+      errLog('[deploy] 재시작 헬퍼 실행 실패 → exit 1 폴백: ' + err.message);
+      setTimeout(() => process.exit(1), 500);
+    } else {
+      log('[deploy] 재시작 헬퍼 기동 완료 — 약 3초 후 새 코드로 복귀');
+    }
+  });
+}
+
 function purgeCF(log: (s: string) => void, errLog: (s: string) => void) {
   const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_TOKEN: cfToken } = env;
   if (!zoneId || !cfToken) return;
@@ -49,12 +68,8 @@ export function gitPullAndPurge(log: (msg: string) => void, errLog: (msg: string
           errLog('[deploy] 빌드 실패 — 재시작 생략:\n' + buildStderr.trim());
           return;
         }
-        log('[deploy] 빌드 완료 → 3초 후 재시작');
-        // CF purge 및 응답 전송이 완료될 시간을 확보한 뒤 재시작
-        setTimeout(() => {
-          log('[deploy] 재시작 (exit 1) → Task Scheduler 재기동');
-          process.exit(1);
-        }, 3000);
+        log('[deploy] 빌드 완료 → 태스크 재시작 트리거 (독립 프로세스)');
+        restartSelf(log, errLog);
       });
     });
   });
