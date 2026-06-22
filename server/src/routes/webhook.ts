@@ -1,4 +1,4 @@
-// GitHub Webhook — main 브랜치 push 시 git pull + Cloudflare 캐시 퍼지 자동 실행
+// GitHub Webhook — main 브랜치 push 시 git pull + (서버 소스 변경 시) 빌드·재시작 + CF 캐시 퍼지
 //   POST /api/github-webhook  (GitHub HMAC 서명 검증)
 //   GET  /api/update?token=<UPDATE_TOKEN>  (원격 수동 트리거)
 import type { FastifyInstance } from 'fastify';
@@ -8,23 +8,55 @@ import { resolve } from 'node:path';
 import { env } from '../env.js';
 
 const repoRoot = resolve(process.cwd(), '..');
+const serverDir = resolve(repoRoot, 'server');
+
+function purgeCF(log: (s: string) => void, errLog: (s: string) => void) {
+  const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_TOKEN: cfToken } = env;
+  if (!zoneId || !cfToken) return;
+  fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cfToken}`, 'Content-Type': 'application/json' },
+    body: '{"purge_everything":true}',
+  })
+    .then(r => r.json() as Promise<{ success: boolean; errors: unknown[] }>)
+    .then(r => log(`[deploy] CF purge: ${r.success ? 'OK' : JSON.stringify(r.errors)}`))
+    .catch(e => errLog('[deploy] CF purge 오류: ' + e.message));
+}
 
 export function gitPullAndPurge(log: (msg: string) => void, errLog: (msg: string) => void) {
   exec(`git -C "${repoRoot}" pull origin main`, (pullErr, stdout) => {
     if (pullErr) { errLog('[deploy] git pull 실패: ' + pullErr.message); return; }
-    log('[deploy] git pull 완료:\n' + stdout.trim());
+    const pullMsg = stdout.trim();
+    log('[deploy] git pull 완료:\n' + pullMsg);
 
-    const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_TOKEN: cfToken } = env;
-    if (!zoneId || !cfToken) return;
+    if (pullMsg.includes('Already up to date')) {
+      purgeCF(log, errLog);
+      return;
+    }
 
-    fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${cfToken}`, 'Content-Type': 'application/json' },
-      body: '{"purge_everything":true}',
-    })
-      .then(r => r.json() as Promise<{ success: boolean; errors: unknown[] }>)
-      .then(r => log(`[deploy] CF purge: ${r.success ? 'OK' : JSON.stringify(r.errors)}`))
-      .catch(e => errLog('[deploy] CF purge 오류: ' + e.message));
+    // pull 로 새 커밋이 반영됐을 때 server/src 변경 여부 확인 (ORIG_HEAD = pull 이전 HEAD)
+    exec(`git -C "${repoRoot}" diff ORIG_HEAD HEAD --name-only`, (_e, diffOut) => {
+      const changed = (diffOut ?? '').split('\n').filter(Boolean);
+      const serverChanged = changed.some(f => f.startsWith('server/src/') || f === 'server/package.json');
+
+      purgeCF(log, errLog);
+
+      if (!serverChanged) return;
+
+      log('[deploy] 서버 소스 변경 감지 → npm run build');
+      exec('npm run build', { cwd: serverDir }, (buildErr, _out, buildStderr) => {
+        if (buildErr) {
+          errLog('[deploy] 빌드 실패 — 재시작 생략:\n' + buildStderr.trim());
+          return;
+        }
+        log('[deploy] 빌드 완료 → 3초 후 재시작');
+        // CF purge 및 응답 전송이 완료될 시간을 확보한 뒤 재시작
+        setTimeout(() => {
+          log('[deploy] 재시작 (exit 1) → Task Scheduler 재기동');
+          process.exit(1);
+        }, 3000);
+      });
+    });
   });
 }
 
