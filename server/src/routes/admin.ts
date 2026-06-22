@@ -7,6 +7,7 @@ import { exec } from 'node:child_process';
 import { env } from '../env.js';
 import { db } from '../db.js';
 import { metrics } from '../metrics.js';
+import { restartSelf } from './webhook.js';
 
 // 큰 로그 파일에서 끝부분 maxBytes 만 읽어온다 (전체 로딩 방지).
 function tailBytes(path: string, maxBytes: number): string {
@@ -159,16 +160,13 @@ export default async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  // POST /api/admin/restart?token=...  — 의도적으로 비정상 종료(exit 1)하여
-  // Task Scheduler 의 "실패 시 재시작" 정책으로 재기동시킨다.
-  // (cmd 래퍼 + 실패 시 재시작 구성에서는 exit 0(정상)이면 재시작되지 않으므로 1로 종료)
+  // POST /api/admin/restart?token=...  — 독립 프로세스(restartSelf)로 태스크 재시작.
+  // (webhook 자동배포와 동일 방식: exit 1 + Task Scheduler 실패-재시작 정책에 의존하지 않아 신뢰성↑)
   app.post('/api/admin/restart', async (req, reply) => {
     if (!checkToken(req, reply)) return;
-    reply.send({ ok: true, message: '재시작 중... 약 1분 후 복구됩니다.' });
-    setTimeout(() => {
-      app.log.warn('[admin] 관리자 요청으로 의도적 종료(exit 1) → Task Scheduler 재시작 트리거');
-      process.exit(1);
-    }, 200);
+    reply.send({ ok: true, message: '재시작 중... 약 10초 후 복구됩니다.' });
+    app.log.warn('[admin] 관리자 요청으로 재시작 (독립 프로세스)');
+    restartSelf(s => app.log.info(s), s => app.log.error(s));
   });
 
   // POST /api/admin/restart-task?token=...  — Task Scheduler 태스크 재시작 (cloudflared 포함)

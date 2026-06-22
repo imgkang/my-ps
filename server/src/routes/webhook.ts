@@ -14,7 +14,7 @@ const serverDir = resolve(repoRoot, 'server');
 // 핵심: `cmd /c start` 로 powershell 을 태스크의 프로세스 트리(job object) **밖**에서 띄운다.
 //   → Stop-ScheduledTask 로 현재 node 가 죽어도 이 헬퍼는 살아남아 Start 까지 수행.
 //   → exit 1 + Task Scheduler 실패-재시작 정책(1분 지연·횟수 제한)에 의존하지 않으므로 신뢰성↑·다운타임↓.
-function restartSelf(log: (s: string) => void, errLog: (s: string) => void) {
+export function restartSelf(log: (s: string) => void, errLog: (s: string) => void) {
   // 2초 대기(HTTP 응답·CF purge 플러시) → Stop → 1초 → Start
   const ps = 'Start-Sleep -Seconds 2; Stop-ScheduledTask MyPMBackend; Start-Sleep -Seconds 1; Start-ScheduledTask MyPMBackend';
   const cmd = `cmd /c start "" /min powershell -NoProfile -WindowStyle Hidden -Command "${ps}"`;

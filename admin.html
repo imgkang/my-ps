@@ -241,7 +241,7 @@
     <button class="btn btn-refresh" onclick="loadStatus()" style="margin-bottom:8px">새로고침</button>
     <button class="btn btn-tunnel" onclick="restartTask('MyPMTunnel')" style="margin-bottom:8px">MyPMTunnel 재시작 (cloudflared)</button>
     <button class="btn btn-restart" onclick="confirmRestart()">MyPMBackend 재시작 (Node.js)</button>
-    <div style="font-size:.75rem;color:var(--muted);margin-top:8px;text-align:center">재시작 후 약 1분 뒤 자동 복구됩니다</div>
+    <div style="font-size:.75rem;color:var(--muted);margin-top:8px;text-align:center">재시작 후 약 10초 뒤 자동 복구됩니다</div>
   </div>
 
   <!-- 로그아웃 -->
@@ -453,7 +453,7 @@ function startAutoRefresh() {
 }
 
 async function confirmRestart() {
-  if (!confirm('MyPMBackend(Node.js)를 재시작합니다.\n약 1분간 서비스가 중단됩니다. 계속하시겠습니까?')) return;
+  if (!confirm('MyPMBackend(Node.js)를 재시작합니다.\n약 10초간 서비스가 중단됩니다. 계속하시겠습니까?')) return;
   try {
     const res = await fetch(`${getBase()}/api/admin/restart?token=${encodeURIComponent(token)}`, { method: 'POST' });
     const d = await res.json();
