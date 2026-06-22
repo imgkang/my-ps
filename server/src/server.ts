@@ -63,7 +63,7 @@ if (env.SERVE_STATIC) {
 
 try {
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
-  app.log.info(`My PM 백엔드 실행 중 — http://0.0.0.0:${env.PORT} [v0.544]`);
+  app.log.info(`My PM 백엔드 실행 중 — http://0.0.0.0:${env.PORT} [v0.544] (자동재시작 테스트)`);
   startScheduler();
 } catch (err) {
   app.log.error(err);
