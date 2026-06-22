@@ -4,9 +4,70 @@
 > 새 세션은 이 파일 + `server/README.md` + `CLAUDE.md` + `docs/DEPLOY.md` 를 먼저 읽으면 맥락을 파악할 수 있다.
 
 작업 브랜치: **main** (저장소 `imgkang/my-ps`). 직접 push.
-최종 클라이언트 버전: **v0.533** (index/NonK/KDeal/sw 공통).
+최종 클라이언트 버전: **v0.545** (index/NonK/KDeal/sw 공통).
 
 ---
+
+---
+
+## ✅ 매일 06:10 크래시 근절 + 무중단 자동배포 + 원격 재시작 신뢰성 확보 (2026-06-22, v0.543~0.545)
+
+전날 만든 원격 관리 대시보드(v0.533)에 이어, **반복적인 서버 다운의 진짜 원인**을 잡고 배포·재시작 파이프라인을 신뢰성 있게 완성. 모두 실기기/실서버에서 검증 완료.
+
+### 1. 매일 06:10 크래시 — 진짜 원인 규명 (v0.543)
+- `server.log` 에서 결정적 증거 확보:
+  ```
+  [FATAL] uncaughtException: Error: spawn python ENOENT
+      syscall: 'spawn python'  path: 'python'
+      spawnargs: [ '...\scripts\update_tickers.py' ]
+  ```
+- `scheduler.ts` 가 **매일 06:10 KST** 에 `spawn('python', [update_tickers.py])` 실행 → 집 PC 에 **Python 미설치** → `ENOENT`.
+  `child.on('error')` 리스너가 없어 → `uncaughtException` → `process.exit(1)` → 서버 종료. (전날 502, 그 전 00:27 크래시도 동일 계열로 추정)
+- **수정**: `scheduler.ts` 에 `py.on('error', ...)` 추가(로그만 남기고 서버 계속 실행). Windows=`python`, 그 외=`python3`. `close` 핸들러도 `code!==null` 가드.
+
+### 2. webhook 자동 빌드·재시작 (v0.535→통합 v0.543)
+- 기존 webhook 은 `git pull` + CF purge 만 → **TypeScript 서버 변경 시 수동 빌드 필요**했음.
+- `routes/webhook.ts` `gitPullAndPurge()` 개선:
+  - `Already up to date` 면 purge 만.
+  - pull 로 새 커밋 반영 시 `git diff ORIG_HEAD HEAD --name-only` 로 **`server/src/` 또는 `server/package.json` 변경 감지** → `npm run build` 자동 실행 → 빌드 성공 시 재시작.
+  - 정적 파일만 변경이면 빌드/재시작 없이 CF purge 만(다운타임 0).
+
+### 3. 재시작 방식: exit 1 → 독립 프로세스 (v0.544) ★중요★
+- **문제 발견**: `process.exit(1)` 후 Task Scheduler "실패-재시작" 정책에 의존하는 방식이
+  **불안정**(서버가 `Ready`(정지)로 방치됨) + RestartInterval(1분) 지연. 실테스트에서 실제로 정지 방치 재현됨.
+- **해결** — `routes/webhook.ts` `restartSelf(log, errLog)` 신설:
+  ```
+  cmd /c start "" /min powershell -NoProfile -WindowStyle Hidden -Command
+    "Start-Sleep 2; Stop-ScheduledTask MyPMBackend; Start-Sleep 1; Start-ScheduledTask MyPMBackend"
+  ```
+  - 핵심: `cmd /c start` 로 powershell 을 **태스크 프로세스 트리(job object) 밖**에서 실행 →
+    `Stop-ScheduledTask` 로 현재 node 가 죽어도 헬퍼는 살아남아 `Start` 까지 수행.
+  - 실패-재시작 정책 비의존 → **약 10초 만에 자동 복귀, 정지 방치 없음**. 폴백으로만 `exit 1` 유지.
+- 검증: 더미 커밋 push → 로그에서 `git pull → build → 재시작 헬퍼 → [v0.544]` (pid 변경) 확인. pid 32564→11556→36664 처럼 매번 정상 교체.
+
+### 4. admin.html 재시작도 동일 방식으로 통일 (v0.545)
+- `POST /api/admin/restart` 가 여전히 `process.exit(1)`(불안정) 사용 중이었음 → `restartSelf()` 재사용으로 교체
+  (`webhook.ts` 에서 `export function restartSelf`, `admin.ts` 에서 import).
+- admin.html 안내 문구 "약 1분" → "약 10초".
+- **실기기 검증**(아이폰): 재시작 버튼 클릭 → 대시보드 가동시간 3분57초→8초, 누적 197→3건, 시작시각 갱신 = 성공.
+
+### 운영/주의 — 이번 세션에서 배운 것
+- ⚠️ **main 에 force-push 금지**. 이번에 커밋 서명 수정용 amend → force-push 했더니
+  **집 PC 로컬 main 이 origin 과 갈라져 `git pull` 충돌** 발생. 복구: 집 PC 에서
+  `git merge --abort; git fetch origin main; git reset --hard origin/main` (.env·data 는 gitignore 라 안전).
+- Stop hook 이 커밋을 "Unverified" 로 경고하지만(서명 없음/`fe23aad` 는 GitHub squash 머지 committer),
+  이메일은 `noreply@anthropic.com` 로 정상. 이 환경엔 서명 키가 없고, 고치려면 force-push 가 필요해 **의도적으로 무시**.
+- 서버 시작 로그에 버전 태그를 남김: `My PM 백엔드 실행 중 — ... [v0.5xx]` (`server.ts`). 배포 확인용.
+
+### 최종 배포 파이프라인 (완성형)
+```
+코드 push → GitHub Webhook → git pull
+  ├─ 정적파일만 변경  → CF purge → 즉시 반영 (다운타임 0)
+  └─ server/src 변경  → npm run build → restartSelf(독립 프로세스 Stop→Start)
+                        → 약 10초 후 새 코드로 자동 복귀 (정지 방치 없음)
+원격 수동 재시작: admin.html 버튼 → /api/admin/restart → restartSelf (동일 방식)
+```
+> 이제 집 PC 를 직접 만질 일이 거의 없음. 단, **과거에 force-push로 꼬였을 때만** 위 reset 절차 사용.
 
 ---
 
