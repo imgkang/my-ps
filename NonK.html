@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.545';
+const APP_VERSION = 'NonK v0.546';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3432,6 +3432,10 @@ function nkExportToFile() {
   const payload = {
     version: 8, exportedAt: new Date().toISOString(),
     mypm: {
+      appSettings:     tryParse('pension_app_settings_v1')    || {},
+      wdPlan:          tryParse('pension_withdrawal_v1')      || {},
+      wdScenarios:     tryParse('mypm_wdScenarios')           || [],
+      cashAdjRecords:  tryParse('pension_cash_adj_v1')        || [],
       holdings:        tryParse('pension_portfolio_v1')       || [],
       cashAccounts:    tryParse('pension_cash_accounts_v1')   || {},
       deposits:        tryParse('pension_deposits_v1')        || {},
