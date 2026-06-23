@@ -6,6 +6,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { exec } from 'node:child_process';
 import { resolve } from 'node:path';
 import { env } from '../env.js';
+import { recordBenchAndNotify } from '../bench/index.js';
 
 const repoRoot = resolve(process.cwd(), '..');
 const serverDir = resolve(repoRoot, 'server');
@@ -60,7 +61,9 @@ export function gitPullAndPurge(log: (msg: string) => void, errLog: (msg: string
 
       purgeCF(log, errLog);
 
-      if (!serverChanged) return;
+      // 프론트만 바뀐 배포: 재시작이 없으므로 여기서 성과측정·푸시.
+      // (서버 소스 변경 시엔 재시작 후 startup 에서 측정됨)
+      if (!serverChanged) { recordBenchAndNotify(log, errLog); return; }
 
       log('[deploy] 서버 소스 변경 감지 → npm run build');
       exec('npm run build', { cwd: serverDir }, (buildErr, _out, buildStderr) => {
