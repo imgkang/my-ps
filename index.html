@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.553';
+const APP_VERSION = 'MyGP v0.554';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5261,6 +5261,7 @@ function exportToFile() {
       wdPlan: wdPlan,
       wdConsolidated: wdConsolidated,
       wdScenarios: loadWdScenarios(),
+      setupScenarios: loadSetupScenarios(),
       cashAdjRecords: cashAdjRecords,
     },
     nonk: {
@@ -5462,6 +5463,7 @@ function importFromFile(event) {
       localStorage.setItem(ANNUAL_PLAN_KEY, JSON.stringify(annualPlan));
       if (newWdPlan) localStorage.setItem(WITHDRAWAL_KEY, JSON.stringify(wdPlan));
       if (newWdScenarios) localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(newWdScenarios));
+      if (Array.isArray(src.setupScenarios)) localStorage.setItem(SETUP_SCENARIO_KEY, JSON.stringify(src.setupScenarios));
       if (Array.isArray(src.cashAdjRecords)) { cashAdjRecords = src.cashAdjRecords; saveCashAdjRecords(); }
       render();
       renderPortfolioChart();
@@ -17691,6 +17693,7 @@ function buildDriveBundle() {
       wdPlan: wdPlan,
       wdConsolidated: wdConsolidated,
       wdScenarios: loadWdScenarios(),
+      setupScenarios: loadSetupScenarios(),
       trades: tradeRecords,
       cashAdjRecords: cashAdjRecords,
     },
@@ -17801,6 +17804,8 @@ function _applyImportData(data) {
   if (src.wdPlan)         localStorage.setItem(WITHDRAWAL_KEY,      JSON.stringify(src.wdPlan));
   if (src.wdScenarios && Array.isArray(src.wdScenarios))
                           localStorage.setItem(WD_SCENARIO_KEY,    JSON.stringify(src.wdScenarios));
+  if (src.setupScenarios && Array.isArray(src.setupScenarios))
+                          localStorage.setItem(SETUP_SCENARIO_KEY, JSON.stringify(src.setupScenarios));
   if (src.appSettings && typeof src.appSettings === 'object')
                           localStorage.setItem(APP_SETTINGS_KEY,   JSON.stringify(src.appSettings));
   if (src.trades && Array.isArray(src.trades))
