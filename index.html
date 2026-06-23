@@ -1329,7 +1329,13 @@ registerMobileTooltipDismiss();
 
   /* 연금 키우기 시작하기 화면 */
   .setup-scenario-item { display:flex;align-items:center;gap:10px;padding:11px 12px;
-    background:#f8f9fa;border-radius:10px;margin-bottom:8px; }
+    background:#f8f9fa;border-radius:10px;margin-bottom:8px;border:1.5px solid transparent;transition:all .15s; }
+  .setup-scenario-item.sc-active { background:#dbeafe;border-color:#3b82f6; }
+  .setup-sc-badge { background:#2563eb;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;white-space:nowrap;margin-top:3px;display:inline-block; }
+  .setup-sc-summary { background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin-bottom:16px; }
+  .setup-sc-summary-title { font-size:12px;font-weight:700;color:#0369a1;margin-bottom:8px; }
+  .setup-sc-summary-row { font-size:12px;color:#374151;display:flex;gap:6px;margin-bottom:3px;align-items:flex-start; }
+  .setup-sc-summary-row .lbl { color:#6b7280;min-width:72px;flex-shrink:0; }
   .setup-tips-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
   .setup-tip-card { background:#f5f6f8;border-radius:12px;padding:14px 12px; }
   .setup-tip-icon { font-size:22px;margin-bottom:5px; }
@@ -2462,7 +2468,8 @@ registerMobileTooltipDismiss();
 
         <!-- 저장된 시나리오 -->
         <div class="cfg-section">저장된 시나리오</div>
-        <div id="setupScenarioList" style="margin-bottom:4px"></div>
+        <div id="setupScenarioList" style="margin-bottom:8px"></div>
+        <div id="setupScenarioSummary" style="display:none"></div>
 
         <!-- 연금 키우기 팁 -->
         <div class="cfg-section" style="margin-top:22px">💡 연금 키우기 팁</div>
@@ -3840,7 +3847,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.557';
+const APP_VERSION = 'MyGP v0.558';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12781,8 +12788,11 @@ function finishOnboarding() {
 // ===== 📊 연금 키우기 시작하기 =====
 const SETUP_SCENARIO_KEY = 'mypm_setup_scenarios_v1';
 
+let _activeSetupScenarioId = null;
+
 function openSetupScreen() {
   renderSetupScenarioList();
+  renderSetupScenarioSummaryById(_activeSetupScenarioId);
   updateSetupScenarioCount();
   document.getElementById('setupScreen').classList.add('open');
 }
@@ -12836,17 +12846,23 @@ function loadSetupScenario(idx) {
     wdPlan = { ...getWdDefaults(), ...sc.wdPlan };
     saveWdPlan();
   }
+  _activeSetupScenarioId = sc.id;
   renderSetupScenarioList();
+  renderSetupScenarioSummary(sc);
   render();
   if (typeof renderWithdrawalPlan === 'function') renderWithdrawalPlan();
   if (typeof loadWdFormValues === 'function') loadWdFormValues();
   if (typeof loadQuickWdValues === 'function') loadQuickWdValues();
-  closeSetupScreen();
-  alert(`"${sc.name}" 시나리오를 불러왔습니다.`);
 }
 function deleteSetupScenario(idx) {
   const list = loadSetupScenarios();
-  if (!confirm(`"${list[idx]?.name || '이 시나리오'}"를 삭제하시겠습니까?`)) return;
+  const sc = list[idx];
+  if (!confirm(`"${sc?.name || '이 시나리오'}"를 삭제하시겠습니까?`)) return;
+  if (sc && sc.id === _activeSetupScenarioId) {
+    _activeSetupScenarioId = null;
+    const sumEl = document.getElementById('setupScenarioSummary');
+    if (sumEl) sumEl.style.display = 'none';
+  }
   list.splice(idx, 1);
   localStorage.setItem(SETUP_SCENARIO_KEY, JSON.stringify(list));
   if (typeof scheduleBackendAutoSave === 'function') scheduleBackendAutoSave();
@@ -12870,18 +12886,66 @@ function renderSetupScenarioList() {
     wrap.innerHTML = '<div style="font-size:13px;color:#9ca3af;padding:8px 0 4px">저장된 시나리오가 없습니다.<br><span style="font-size:12px">현재 설정을 저장해두면 나중에 빠르게 불러올 수 있습니다.</span></div>';
     return;
   }
-  wrap.innerHTML = list.map((sc, i) => `
-    <div class="setup-scenario-item">
+  wrap.innerHTML = list.map((sc, i) => {
+    const isActive = sc.id === _activeSetupScenarioId;
+    return `
+    <div class="setup-scenario-item${isActive ? ' sc-active' : ''}">
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:600;color:var(--text)">${sc.name}</div>
         <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${sc.savedAt || ''}</div>
+        ${isActive ? '<span class="setup-sc-badge">✓ 적용됨</span>' : ''}
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0;align-items:center">
-        <button onclick="loadSetupScenario(${i})" style="padding:5px 10px;border-radius:6px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;font-size:12px;cursor:pointer;white-space:nowrap">불러오기</button>
+        <button onclick="loadSetupScenario(${i})" style="padding:5px 10px;border-radius:6px;border:1px solid ${isActive ? '#93c5fd' : '#bfdbfe'};background:${isActive ? '#bfdbfe' : '#eff6ff'};color:#1d4ed8;font-size:12px;cursor:pointer;white-space:nowrap">${isActive ? '재적용' : '불러오기'}</button>
         <button onclick="renameSetupScenario(${i})" style="background:none;border:none;cursor:pointer;font-size:15px;padding:3px" title="이름 변경">✏️</button>
         <button onclick="deleteSetupScenario(${i})" style="background:none;border:none;cursor:pointer;font-size:15px;padding:3px" title="삭제">🗑️</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+function renderSetupScenarioSummaryById(id) {
+  if (!id) return;
+  const list = loadSetupScenarios();
+  const sc = list.find(s => s.id === id);
+  if (sc) renderSetupScenarioSummary(sc);
+}
+function renderSetupScenarioSummary(sc) {
+  const el = document.getElementById('setupScenarioSummary');
+  if (!el) return;
+  const as = sc.appSettings || {};
+  const wd = sc.wdPlan || {};
+  const my = as.my || {};
+  const wife = as.wife || {};
+  const myBY = as.myBirthYear || wd.myBirthYear || 0;
+  const wifeBY = as.wifeBirthYear || wd.wifeBirthYear || 0;
+  const hasWife = !!as.hasWife;
+  const mnp = my.np || {};
+  const wnp = wife.np || {};
+  const mgp = my.gp || {};
+  const msp = my.sp || {};
+  const period0 = (wd.periods && wd.periods[0]) || {};
+  const totalAmt = period0.totalAmount || wd.annualTarget || 0;
+
+  function fmtPension(cfg, label) {
+    if (!cfg || !cfg.use) return '';
+    const yr = cfg.startYear ? `${cfg.startYear}년~` : '';
+    const amt = cfg.monthlyManwon ? `${cfg.monthlyManwon}만원/월` : '';
+    return `<div class="setup-sc-summary-row"><span class="lbl">${label}</span><span>${yr}${yr && amt ? ' ' : ''}${amt || '-'}</span></div>`;
+  }
+
+  let rows = '';
+  if (myBY) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 출생</span><span>${myBY}년생${my.np && my.np.use && mnp.startYear ? ` · 국민연금 ${mnp.startYear}년~` : ''}</span></div>`;
+  if (mnp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 국민연금</span><span>${mnp.startYear || '-'}년~ ${mnp.monthlyManwon || 0}만원/월</span></div>`;
+  if (mgp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 공무원연금</span><span>${mgp.startYear || '-'}년~ ${mgp.monthlyManwon || 0}만원/월</span></div>`;
+  if (msp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 특수직연금</span><span>${msp.startYear || '-'}년~ ${msp.monthlyManwon || 0}만원/월</span></div>`;
+  if (hasWife && wifeBY) rows += `<div class="setup-sc-summary-row"><span class="lbl">배우자 출생</span><span>${wifeBY}년생${wnp.use && wnp.startYear ? ` · 국민연금 ${wnp.startYear}년~` : ''}</span></div>`;
+  if (hasWife && wnp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">배우자 국민연금</span><span>${wnp.startYear || '-'}년~ ${wnp.monthlyManwon || 0}만원/월</span></div>`;
+  if (totalAmt) rows += `<div class="setup-sc-summary-row"><span class="lbl">연간 인출 목표</span><span>${totalAmt.toLocaleString('ko-KR')}만원/년</span></div>`;
+  if (wd.returnRate) rows += `<div class="setup-sc-summary-row"><span class="lbl">수익률/인플레이션</span><span>${wd.returnRate}% / ${wd.inflation || 2.2}%</span></div>`;
+
+  if (!rows) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = `<div class="setup-sc-summary"><div class="setup-sc-summary-title">📋 "${sc.name}" 요약</div>${rows}</div>`;
 }
 function updateSetupScenarioCount() {
   const el = document.getElementById('setupScenarioCount');
