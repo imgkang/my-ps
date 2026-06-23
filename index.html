@@ -1332,8 +1332,6 @@ registerMobileTooltipDismiss();
     background:#f8f9fa;border-radius:10px;margin-bottom:8px;border:1.5px solid transparent;transition:all .15s; }
   .setup-scenario-item.sc-active { background:#dbeafe;border-color:#3b82f6; }
   .setup-sc-badge { background:#2563eb;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;white-space:nowrap;margin-top:3px;display:inline-block; }
-  .setup-sc-summary { background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px; }
-  .setup-sc-summary-title { font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid var(--border); }
   .setup-tips-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
   .setup-tip-card { background:#f5f6f8;border-radius:12px;padding:14px 12px; }
   .setup-tip-icon { font-size:22px;margin-bottom:5px; }
@@ -3845,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.559';
+const APP_VERSION = 'MyGP v0.560';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12079,7 +12077,6 @@ function renderOnboardingStep() {
     const birthY = _obData.myBirthYear || cy - 40;
     const retireAge = _obData.retireAge || 60;
     const retireYr = birthY + retireAge;
-    const myAccStr = _obData.myAccIds.map(id => accLabels[id]||id).join(', ') || '없음';
     const r = (_obData.returnRate || 7) / 100;
     const inf = (_obData.inflationRate || 2.2) / 100;
     const n = Math.max(1, retireYr - cy);
@@ -12094,20 +12091,34 @@ function renderOnboardingStep() {
     const portfolioNeedAnnual = Math.max(0, (_obData.annualTarget||60) - pensionAnnual);
     const pct = portfolioNeedTotal > 0 ? Math.round(realFVMil / portfolioNeedTotal * 100) : 100;
     const pensionStr = pensionAnnual > 0 ? `연금 ${pensionAnnual.toFixed(1)}백만원/년 공제 후 ` : '';
-    const wifeStr = _obData.hasWife ? `<div class="ob-summary-item"><span class="ob-summary-icon">👩</span><div><strong>${_obData.wifeTitle||'배우자'}</strong>: ${_obData.wifeBirthYear||'-'}년생 → 은퇴 ${_obData.wifeStartYear||'-'}년 / 계좌 ${_obData.wifeAccIds.map(id=>accLabels[id]||id).join(', ')||'없음'}</div></div>` : '';
+    const items = buildObSummaryItems({
+      myBirthYear: birthY, retireYr, retireAge,
+      hasWife: _obData.hasWife, wifeTitle: _obData.wifeTitle,
+      wifeBirthYear: _obData.wifeBirthYear, wifeRetireYr: _obData.wifeStartYear,
+      wifeAccIds: _obData.wifeAccIds, myAccIds: _obData.myAccIds,
+      annualTarget: _obData.annualTarget, inflationRate: _obData.inflationRate,
+      realFVMil, pensionStr, portfolioNeedAnnual, portfolioNeedTotal, pct,
+    });
     body.innerHTML = `
       <div class="ob-title">설정 완료! 🎉</div>
       <div class="ob-sub">아래 내용으로 앱을 시작합니다. 언제든지 설정에서 변경할 수 있어요.</div>
-      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">
-        <div class="ob-summary-item"><span class="ob-summary-icon">👤</span><div><strong>본인</strong>: ${birthY}년생 → 은퇴 ${retireYr}년 (${retireAge}세)</div></div>
-        ${wifeStr}
-        <div class="ob-summary-item"><span class="ob-summary-icon">💼</span><div><strong>계좌</strong>: ${myAccStr}</div></div>
-        <div class="ob-summary-item"><span class="ob-summary-icon">🎯</span><div><strong>목표 인출</strong>: 연 ${((_obData.annualTarget||0)*1000).toLocaleString('ko-KR')}천원 (물가인상률 ${_obData.inflationRate}%)</div></div>
-        <div class="ob-summary-item"><span class="ob-summary-icon">📈</span><div><strong>실질 예상잔액</strong>: ${realFVMil.toLocaleString('ko-KR')}백만원<br><span style="font-size:12px;color:var(--muted)">${pensionStr}포트폴리오 목표 ${portfolioNeedAnnual}백만원/년 × 25년 ≈ ${portfolioNeedTotal}백만원</span><br><span style="color:${pct>=100?'#059669':'#d97706'};font-weight:700">달성률 ${pct}%</span></div></div>
-      </div>
+      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px">${items}</div>
       <div style="position:relative;height:150px" id="obFinalChartWrap"><canvas id="obFinalChart"></canvas></div>`;
     setTimeout(() => obRenderFinalChart(), 50);
   }
+}
+
+// ===== 공유: 마법사 완료화면 & 시나리오 요약 카드 공통 HTML 생성 =====
+// d.realFVMil が null なら 실질 예상잔액 행 생략
+function buildObSummaryItems(d) {
+  const _lbls = {dc:'DC',pension1:'개인연금1',pension2:'개인연금2',irp:'IRP',isa:'ISA',
+    wife_dc:'DC',wife_pension1:'개인연금1',wife_pension2:'개인연금2',wife_irp:'IRP',wife_isa:'ISA'};
+  const myAccStr   = (d.myAccIds   ||[]).map(id=>_lbls[id]||id).join(', ')||'없음';
+  const wifeAccStr = (d.wifeAccIds ||[]).map(id=>_lbls[id]||id).join(', ')||'없음';
+  const myInfo = `${d.myBirthYear||'-'}년생 → 은퇴 ${d.retireYr||'-'}년 (${d.retireAge||'-'}세) / 계좌 ${myAccStr}`;
+  const wifeRow = (d.hasWife && d.wifeBirthYear) ? `<div class="ob-summary-item"><span class="ob-summary-icon">👩</span><div><strong>${d.wifeTitle||'배우자'}</strong>: ${d.wifeBirthYear}년생 → 은퇴 ${d.wifeRetireYr||'-'}년 / 계좌 ${wifeAccStr}</div></div>` : '';
+  const fvRow = (d.realFVMil != null) ? `<div class="ob-summary-item"><span class="ob-summary-icon">📈</span><div><strong>실질 예상잔액</strong>: ${d.realFVMil.toLocaleString('ko-KR')}백만원<br><span style="font-size:12px;color:var(--muted)">${d.pensionStr||''}포트폴리오 목표 ${d.portfolioNeedAnnual}백만원/년 × 25년 ≈ ${d.portfolioNeedTotal}백만원</span><br><span style="color:${(d.pct||0)>=100?'#059669':'#d97706'};font-weight:700">달성률 ${d.pct}%</span></div></div>` : '';
+  return `<div class="ob-summary-item"><span class="ob-summary-icon">👤</span><div><strong>본인</strong>: ${myInfo}</div></div>${wifeRow}${d.extraItems||''}<div class="ob-summary-item"><span class="ob-summary-icon">🎯</span><div><strong>목표 인출</strong>: 연 ${((d.annualTarget||0)*1000).toLocaleString('ko-KR')}천원 (물가인상률 ${d.inflationRate||2.2}%)</div></div>${fvRow}`;
 }
 
 function obPensionToggle(key) {
@@ -12912,56 +12923,30 @@ function renderSetupScenarioSummary(sc) {
   if (!el) return;
   const as = sc.appSettings || {};
   const wd = sc.wdPlan || {};
-  const my = as.my || {};
-  const wife = as.wife || {};
-  const myBY = as.myBirthYear || wd.myBirthYear || 0;
+  const my = as.my || {}, wife = as.wife || {};
+  const myBY  = as.myBirthYear  || wd.myBirthYear  || 0;
   const wifeBY = as.wifeBirthYear || wd.wifeBirthYear || 0;
-  const hasWife = !!as.hasWife;
-  const mnp = my.np || {};
-  const wnp = wife.np || {};
-  const mgp = my.gp || {};
-  const msp = my.sp || {};
-  const period0 = (wd.periods && wd.periods[0]) || {};
-  const totalAmt = period0.totalAmount || 0; // 만원/월
-  const accLbls = {dc:'DC',pension1:'개인연금1',pension2:'개인연금2',irp:'IRP',isa:'ISA',
-    wife_dc:'DC',wife_pension1:'개인연금1',wife_pension2:'개인연금2',wife_irp:'IRP',wife_isa:'ISA'};
-
-  const retireYr  = wd.startYear   || (myBY   ? myBY   + (wd.retireAge     || 60) : 0);
-  const retireAge = wd.retireAge   || (myBY && retireYr ? retireYr - myBY : 0);
+  if (!myBY) { el.style.display = 'none'; return; }
+  const retireAge   = wd.retireAge || 60;
+  const retireYr    = wd.startYear || myBY + retireAge;
   const wifeRetireYr = wd.wifeStartYear || (wifeBY ? wifeBY + (wd.wifeRetireAge || 60) : 0);
-  const myAccStr   = (my.activeAccIds   || []).map(id => accLbls[id] || id).join(', ');
-  const wifeAccStr = (wife.activeAccIds || []).map(id => accLbls[id] || id).join(', ');
-
-  let items = '';
-
-  if (myBY) {
-    let info = `${myBY}년생`;
-    if (retireYr)  info += ` → 은퇴 ${retireYr}년${retireAge ? ` (${retireAge}세)` : ''}`;
-    if (myAccStr)  info += ` / 계좌 ${myAccStr}`;
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">👤</span><div><strong>본인</strong>: ${info}</div></div>`;
-  }
-  if (hasWife && wifeBY) {
-    let info = `${wifeBY}년생`;
-    if (wifeRetireYr) info += ` → 은퇴 ${wifeRetireYr}년`;
-    if (wifeAccStr)   info += ` / 계좌 ${wifeAccStr}`;
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">👩</span><div><strong>배우자</strong>: ${info}</div></div>`;
-  }
-  if (mnp.use)
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${mnp.startYear || '-'}년~ ${mnp.monthlyManwon || 0}만원/월</div></div>`;
-  if (hasWife && wnp.use)
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>배우자 국민연금</strong>: ${wnp.startYear || '-'}년~ ${wnp.monthlyManwon || 0}만원/월</div></div>`;
-  if (mgp.use)
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${mgp.startYear || '-'}년~ ${mgp.monthlyManwon || 0}만원/월</div></div>`;
-  if (msp.use)
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${msp.startYear || '-'}년~ ${msp.monthlyManwon || 0}만원/월</div></div>`;
-  if (totalAmt)
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🎯</span><div><strong>목표 인출</strong>: 월 ${totalAmt.toLocaleString('ko-KR')}만원 (인플레이션 ${wd.inflation || 2.2}%)</div></div>`;
-  if (wd.returnRate)
-    items += `<div class="ob-summary-item"><span class="ob-summary-icon">📈</span><div><strong>수익률</strong>: ${wd.returnRate}%</div></div>`;
-
-  if (!items) { el.style.display = 'none'; return; }
+  const mnp = my.np||{}, wnp = wife.np||{}, mgp = my.gp||{}, msp = my.sp||{};
+  let extraItems = '';
+  if (mnp.use)              extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${mnp.startYear||'-'}년~ ${mnp.monthlyManwon||0}만원/월</div></div>`;
+  if (as.hasWife && wnp.use) extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>배우자 국민연금</strong>: ${wnp.startYear||'-'}년~ ${wnp.monthlyManwon||0}만원/월</div></div>`;
+  if (mgp.use)              extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${mgp.startYear||'-'}년~ ${mgp.monthlyManwon||0}만원/월</div></div>`;
+  if (msp.use)              extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${msp.startYear||'-'}년~ ${msp.monthlyManwon||0}만원/월</div></div>`;
+  const items = buildObSummaryItems({
+    myBirthYear: myBY, retireYr, retireAge,
+    hasWife: as.hasWife, wifeTitle: '배우자',
+    wifeBirthYear: wifeBY, wifeRetireYr,
+    wifeAccIds: wife.activeAccIds, myAccIds: my.activeAccIds,
+    annualTarget: wd.annualTarget, inflationRate: wd.inflation || 2.2,
+    realFVMil: null,
+    extraItems,
+  });
   el.style.display = '';
-  el.innerHTML = `<div class="setup-sc-summary"><div class="setup-sc-summary-title">📋 "${sc.name}" 요약</div>${items}</div>`;
+  el.innerHTML = `<div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:4px">📋 "${sc.name}" 요약</div><div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px">${items}</div>`;
 }
 function updateSetupScenarioCount() {
   const el = document.getElementById('setupScenarioCount');
