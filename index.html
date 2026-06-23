@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.546';
+const APP_VERSION = 'MyGP v0.547';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5306,6 +5306,7 @@ function importFromFile(event) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
+    window._localFileImportDone = true; // syncPullOnStartup race condition 방지
     try {
       const data = JSON.parse(e.target.result);
       if (!data || typeof data !== 'object') throw new Error('형식이 올바르지 않습니다');
@@ -18040,6 +18041,11 @@ async function syncPullOnStartup() {
     if (local !== null && String(meta.version) === local) return; // 이미 최신 → reload 불필요
     const res = await MyPMApi.getBundle();
     if (!res || res.fromCache || !res.bundle || !Object.keys(res.bundle).length) return;
+    // 파일 불러오기 완료 후라면 backend pull로 덮어쓰지 않음 (race condition 방지)
+    if (window._localFileImportDone) {
+      localStorage.setItem('mypm_synced_version', String(meta.version));
+      return;
+    }
     _applyImportData(res.bundle);
     localStorage.setItem('mypm_synced_version', String(meta.version));
     location.reload();
