@@ -14,6 +14,7 @@ import { db } from '../db.js';
 import { simulateWithdrawal } from '../compute/withdrawal.js';
 import { benchInputs, clientAssembleCost } from './fixtures.js';
 import { broadcastPush, type PushDevice } from '../lib/push.js';
+import { getFrontendHtml, FRONT_FILES } from '../frontend-minify.js';
 
 const repoRoot = resolve(process.cwd(), '..');
 const FRONT = ['index.html', 'NonK.html', 'KDeal.html'];
@@ -23,6 +24,8 @@ export interface BenchSnapshot {
   version: string;
   ts: string;
   frontend: { files: Record<string, { raw: number; gz: number }>; totalRaw: number; totalGz: number };
+  // 실제 브라우저로 전송되는 minify 후 크기(원본+gzip).
+  served?: { files: Record<string, { raw: number; gz: number }>; totalRaw: number; totalGz: number };
   timing: { serverComputeMs: number; clientAssembleMs: number; iterations: number };
 }
 
@@ -74,11 +77,27 @@ function gitSha(): Promise<string> {
   return new Promise((r) => exec(`git -C "${repoRoot}" rev-parse --short HEAD`, (_e, out) => r((out || '').trim() || 'unknown')));
 }
 
+// minify 후 실제 서빙 크기(원본+gzip). 실패 시 undefined.
+async function servedSizes(): Promise<BenchSnapshot['served']> {
+  try {
+    const files: Record<string, { raw: number; gz: number }> = {};
+    let totalRaw = 0, totalGz = 0;
+    for (const f of FRONT_FILES) {
+      const html = await getFrontendHtml(f);
+      const buf = Buffer.from(html, 'utf8');
+      const gz = gzipSync(buf).length;
+      files[f] = { raw: buf.length, gz };
+      totalRaw += buf.length; totalGz += gz;
+    }
+    return { files, totalRaw, totalGz };
+  } catch { return undefined; }
+}
+
 export async function runBench(): Promise<BenchSnapshot> {
   const sha = await gitSha();
   return {
     sha, version: readVersion(), ts: new Date().toISOString(),
-    frontend: frontendSizes(), timing: computeTiming(),
+    frontend: frontendSizes(), served: await servedSizes(), timing: computeTiming(),
   };
 }
 
@@ -115,10 +134,11 @@ export function withDeltas(snap: BenchSnapshot, prev: BenchSnapshot | null) {
 async function pushBench(snap: BenchSnapshot, prev: BenchSnapshot | null): Promise<void> {
   const devices = db.prepare('SELECT token, platform FROM devices').all() as PushDevice[];
   if (!devices.length) return;
-  const idxKb = (snap.frontend.files['index.html']?.raw || 0) / 1024;
+  const srcKb = (snap.frontend.files['index.html']?.raw || 0) / 1024;
   const prevIdx = prev?.frontend?.files?.['index.html']?.raw;
   const dPct = prevIdx ? (((snap.frontend.files['index.html'].raw - prevIdx) / prevIdx) * 100).toFixed(1) + '%' : '신규';
-  const body = `index.html ${idxKb.toFixed(1)}KB (Δ${dPct}) · 서버계산 ${snap.timing.serverComputeMs}ms`;
+  const servedKb = snap.served?.files['index.html']?.raw ? (snap.served.files['index.html'].raw / 1024).toFixed(0) + 'KB' : '—';
+  const body = `index.html 소스 ${srcKb.toFixed(1)}KB (Δ${dPct}) · 전송 ${servedKb} · 서버계산 ${snap.timing.serverComputeMs}ms`;
   await broadcastPush(devices, { title: `📊 ${snap.version} 성과측정`, body, data: { kind: 'bench', sha: snap.sha } });
 }
 

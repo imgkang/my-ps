@@ -65,8 +65,11 @@ export function gitPullAndPurge(log: (msg: string) => void, errLog: (msg: string
       // (서버 소스 변경 시엔 재시작 후 startup 에서 측정됨)
       if (!serverChanged) { recordBenchAndNotify(log, errLog); return; }
 
-      log('[deploy] 서버 소스 변경 감지 → npm run build');
-      exec('npm run build', { cwd: serverDir }, (buildErr, _out, buildStderr) => {
+      // package.json 변경 시 새 의존성 설치까지 수행(예: html-minifier-terser).
+      const pkgChanged = changed.includes('server/package.json');
+      const buildCmd = pkgChanged ? 'npm install && npm run build' : 'npm run build';
+      log('[deploy] 서버 소스 변경 감지 → ' + buildCmd);
+      exec(buildCmd, { cwd: serverDir }, (buildErr, _out, buildStderr) => {
         if (buildErr) {
           errLog('[deploy] 빌드 실패 — 재시작 생략:\n' + buildStderr.trim());
           return;

@@ -49,6 +49,18 @@ await app.register(computeRoutes);
 // 프론트 정적 서빙 (로컬 테스트용 단일 출처). API 라우트 등록 뒤에 둔다.
 // 보안 가드: server/(=.env·DB), .git, dotfile 은 절대 서빙하지 않는다.
 if (env.SERVE_STATIC) {
+  // 프론트 HTML 은 minify 후 서빙(소스는 그대로, 전송 크기↓). static 보다 먼저 등록해 우선.
+  const { getFrontendHtml, warmFrontendCache } = await import('./frontend-minify.js');
+  const serveHtml = (file: string) => async (_req: any, reply: any) => {
+    reply.header('Content-Type', 'text/html; charset=utf-8');
+    return getFrontendHtml(file);
+  };
+  app.get('/', serveHtml('index.html'));
+  app.get('/index.html', serveHtml('index.html'));
+  app.get('/NonK.html', serveHtml('NonK.html'));
+  app.get('/KDeal.html', serveHtml('KDeal.html'));
+  warmFrontendCache();
+
   const fastifyStatic = (await import('@fastify/static')).default;
   await app.register(fastifyStatic, {
     root: resolve(process.cwd(), '..'), // 저장소 루트(index.html 등)
