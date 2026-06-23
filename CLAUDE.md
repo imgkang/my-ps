@@ -28,7 +28,7 @@
 1. 버전 번호 올리기 (index.html / NonK.html / KDeal.html / sw.js)
 2. 작업 브랜치에 커밋·푸시
 3. Draft PR 생성
-4. "메인브랜치에 업데이트" 요청 시 → PR 머지
+4. **"메업"** 또는 "메인브랜치에 업데이트" 요청 시 → PR 머지
 
 ## main 머지 후 사용자가 해야 할 것 (docs/DEPLOY.md 참고)
 - 거의 없음 — Webhook이 git pull + CF 퍼지까지 자동 처리.
