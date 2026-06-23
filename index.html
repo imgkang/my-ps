@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.560';
+const APP_VERSION = 'MyGP v0.561';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12091,6 +12091,12 @@ function renderOnboardingStep() {
     const portfolioNeedAnnual = Math.max(0, (_obData.annualTarget||60) - pensionAnnual);
     const pct = portfolioNeedTotal > 0 ? Math.round(realFVMil / portfolioNeedTotal * 100) : 100;
     const pensionStr = pensionAnnual > 0 ? `연금 ${pensionAnnual.toFixed(1)}백만원/년 공제 후 ` : '';
+    let obExtraItems = '';
+    const _mnp = _obData.myNP||{}, _wnp = _obData.wifeNP||{}, _mgp = _obData.myGP||{}, _msp = _obData.mySP||{};
+    if (_mnp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${_mnp.startYear||'-'}년~ ${_mnp.monthly||0}만원/월</div></div>`;
+    if (_obData.hasWife && _wnp.use) obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>배우자 국민연금</strong>: ${_wnp.startYear||'-'}년~ ${_wnp.monthly||0}만원/월</div></div>`;
+    if (_mgp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${_mgp.startYear||'-'}년~ ${_mgp.monthly||0}만원/월</div></div>`;
+    if (_msp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${_msp.startYear||'-'}년~ ${_msp.monthly||0}만원/월</div></div>`;
     const items = buildObSummaryItems({
       myBirthYear: birthY, retireYr, retireAge,
       hasWife: _obData.hasWife, wifeTitle: _obData.wifeTitle,
@@ -12098,6 +12104,7 @@ function renderOnboardingStep() {
       wifeAccIds: _obData.wifeAccIds, myAccIds: _obData.myAccIds,
       annualTarget: _obData.annualTarget, inflationRate: _obData.inflationRate,
       realFVMil, pensionStr, portfolioNeedAnnual, portfolioNeedTotal, pct,
+      extraItems: obExtraItems,
     });
     body.innerHTML = `
       <div class="ob-title">설정 완료! 🎉</div>
@@ -12932,17 +12939,35 @@ function renderSetupScenarioSummary(sc) {
   const wifeRetireYr = wd.wifeStartYear || (wifeBY ? wifeBY + (wd.wifeRetireAge || 60) : 0);
   const mnp = my.np||{}, wnp = wife.np||{}, mgp = my.gp||{}, msp = my.sp||{};
   let extraItems = '';
-  if (mnp.use)              extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${mnp.startYear||'-'}년~ ${mnp.monthlyManwon||0}만원/월</div></div>`;
+  if (mnp.use)               extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${mnp.startYear||'-'}년~ ${mnp.monthlyManwon||0}만원/월</div></div>`;
   if (as.hasWife && wnp.use) extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>배우자 국민연금</strong>: ${wnp.startYear||'-'}년~ ${wnp.monthlyManwon||0}만원/월</div></div>`;
-  if (mgp.use)              extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${mgp.startYear||'-'}년~ ${mgp.monthlyManwon||0}만원/월</div></div>`;
-  if (msp.use)              extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${msp.startYear||'-'}년~ ${msp.monthlyManwon||0}만원/월</div></div>`;
+  if (mgp.use)               extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${mgp.startYear||'-'}년~ ${mgp.monthlyManwon||0}만원/월</div></div>`;
+  if (msp.use)               extraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${msp.startYear||'-'}년~ ${msp.monthlyManwon||0}만원/월</div></div>`;
+  // 📈 실질 예상잔액 계산 (현재 cashAccounts 잔액 기반, 잔액 없으면 생략)
+  const cy = new Date().getFullYear();
+  const n = Math.max(1, retireYr - cy);
+  const r = (wd.returnRate || 7) / 100;
+  const inf = (wd.inflation || 2.2) / 100;
+  const scAccIds = [...(my.activeAccIds||[]), ...(as.hasWife ? (wife.activeAccIds||[]) : [])];
+  const totalPV = scAccIds.reduce((s, id) => s + (Number(cashAccounts[id])||0), 0);
+  let scRealFVMil = null, scPensionStr = '', scPortfolioNeedAnnual = 0, scPortfolioNeedTotal = 0, scPct = 0;
+  if (totalPV > 0) {
+    const nomFV = totalPV * Math.pow(1+r, n);
+    scRealFVMil = Math.round(nomFV / Math.pow(1+inf, n) / 1_000_000);
+    const scPensionAnnual = ((mnp.use ? mnp.monthlyManwon||0 : 0) + (as.hasWife && wnp.use ? wnp.monthlyManwon||0 : 0) + (mgp.use ? mgp.monthlyManwon||0 : 0) + (msp.use ? msp.monthlyManwon||0 : 0)) * 12 / 100;
+    scPensionStr = scPensionAnnual > 0 ? `연금 ${scPensionAnnual.toFixed(1)}백만원/년 공제 후 ` : '';
+    scPortfolioNeedAnnual = Math.max(0, (wd.annualTarget||60) - scPensionAnnual);
+    scPortfolioNeedTotal = Math.round(scPortfolioNeedAnnual * 25);
+    scPct = scPortfolioNeedTotal > 0 ? Math.round(scRealFVMil / scPortfolioNeedTotal * 100) : 100;
+  }
   const items = buildObSummaryItems({
     myBirthYear: myBY, retireYr, retireAge,
     hasWife: as.hasWife, wifeTitle: '배우자',
     wifeBirthYear: wifeBY, wifeRetireYr,
     wifeAccIds: wife.activeAccIds, myAccIds: my.activeAccIds,
     annualTarget: wd.annualTarget, inflationRate: wd.inflation || 2.2,
-    realFVMil: null,
+    realFVMil: scRealFVMil, pensionStr: scPensionStr,
+    portfolioNeedAnnual: scPortfolioNeedAnnual, portfolioNeedTotal: scPortfolioNeedTotal, pct: scPct,
     extraItems,
   });
   el.style.display = '';
