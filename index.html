@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.548';
+const APP_VERSION = 'MyGP v0.549';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17801,7 +17801,7 @@ function _applyImportData(data) {
                           localStorage.setItem(TRADES_KEY,         JSON.stringify(src.trades));
   if (src.cashAdjRecords && Array.isArray(src.cashAdjRecords))
                           localStorage.setItem(CASH_ADJ_KEY,       JSON.stringify(src.cashAdjRecords));
-  if (data.nonk) {
+  if (data.nonk && data.version !== 9) {
     if (data.nonk.holdings)  localStorage.setItem('nonk_holdings_v1',  JSON.stringify(data.nonk.holdings));
     if (data.nonk.cash)      localStorage.setItem('nonk_cash_v1',      JSON.stringify(data.nonk.cash));
     if (data.nonk.deposits)  localStorage.setItem('nonk_deposits_v1',  JSON.stringify(data.nonk.deposits));
