@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.561';
+const APP_VERSION = 'MyGP v0.562';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12949,10 +12949,13 @@ function renderSetupScenarioSummary(sc) {
   const r = (wd.returnRate || 7) / 100;
   const inf = (wd.inflation || 2.2) / 100;
   const scAccIds = [...(my.activeAccIds||[]), ...(as.hasWife ? (wife.activeAccIds||[]) : [])];
-  const totalPV = scAccIds.reduce((s, id) => s + (Number(cashAccounts[id])||0), 0);
+  const totalPV = scAccIds.reduce((s, id) => s + obLatestEvalWon(id), 0);
   let scRealFVMil = null, scPensionStr = '', scPortfolioNeedAnnual = 0, scPortfolioNeedTotal = 0, scPct = 0;
   if (totalPV > 0) {
-    const nomFV = totalPV * Math.pow(1+r, n);
+    let nomFV = totalPV;
+    for (let i = 1; i <= n; i++) {
+      nomFV = nomFV * (1+r) + _obPlanMonthlyForYear(cy + i - 1) * 10_000 * 12;
+    }
     scRealFVMil = Math.round(nomFV / Math.pow(1+inf, n) / 1_000_000);
     const scPensionAnnual = ((mnp.use ? mnp.monthlyManwon||0 : 0) + (as.hasWife && wnp.use ? wnp.monthlyManwon||0 : 0) + (mgp.use ? mgp.monthlyManwon||0 : 0) + (msp.use ? msp.monthlyManwon||0 : 0)) * 12 / 100;
     scPensionStr = scPensionAnnual > 0 ? `연금 ${scPensionAnnual.toFixed(1)}백만원/년 공제 후 ` : '';
