@@ -78,6 +78,15 @@ db.exec(`
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id);
+
+  -- 성과측정 스냅샷 (배포마다 1회 누적: 프론트 크기 + 인출 계산속도)
+  CREATE TABLE IF NOT EXISTS bench_runs (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    sha     TEXT NOT NULL,
+    version TEXT,
+    ts      TEXT NOT NULL,
+    json    TEXT NOT NULL
+  );
 `);
 
 // 구(舊) 단일 사용자 스키마 감지 → 마이그레이션 유도.

@@ -35,3 +35,23 @@ node tools/bench/render-speed.mjs [runs]
 
 실제 배포본에서 "트리거→페인트" wall-clock 과 long-task 블로킹을 측정한다.
 서버 왕복(네트워크 지연)까지 포함되므로 배포 후 실측·비교에 사용한다.
+
+## 원격 자동 측정 (집 PC 수동 실행 불필요)
+
+위 ①·② 는 서버 안에서도 자동 측정된다. **배포(webhook git pull→빌드→재시작)마다
+1회 측정해 SQLite `bench_runs` 에 누적**하고, 등록된 디바이스로 핵심 수치를 푸시한다.
+(구현: `server/src/bench/`, 배포 훅: `server/src/routes/webhook.ts`·`server/src/server.ts`)
+
+원격 조회 (admin 토큰):
+```
+GET /api/admin/bench?token=<UPDATE_TOKEN>            # 최신 스냅샷 + 직전 대비 델타 + 히스토리
+GET /api/admin/bench?token=...&run=1                # 즉석 측정·저장 후 반환
+GET /api/admin/bench?token=...&base=<git-ref>       # 임의 ref(예: Phase1 직전) 대비 프론트 크기 비교
+```
+
+측정 항목:
+- `frontend`: index/NonK/KDeal 원본·gzip 바이트
+- `timing.serverComputeMs`: 인출 투영 계산 시간(서버) — 화면 갱신 지연의 서버측 성분
+- `timing.clientAssembleMs`: 클라가 동기로 하는 입력 조립 비용(메인스레드)
+
+푸시는 APNs/FCM 자격증명이 설정된 경우에만 전송된다(미설정 시 조용히 스킵).

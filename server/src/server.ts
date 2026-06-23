@@ -15,6 +15,7 @@ import adminRoutes from './routes/admin.js';
 import computeRoutes from './routes/compute.js';
 import { startScheduler } from './scheduler.js';
 import { recordRequest } from './metrics.js';
+import { recordBenchAndNotify } from './bench/index.js';
 
 // 잡히지 않은 예외 — 로그 남기고 종료 (Task Scheduler 가 재시작)
 process.on('uncaughtException', (err) => {
@@ -67,6 +68,8 @@ try {
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
   app.log.info(`My PM 백엔드 실행 중 — http://0.0.0.0:${env.PORT} [v0.545]`);
   startScheduler();
+  // 배포(서버 소스 변경→재시작) 후 1회 성과측정·푸시. 같은 sha 면 내부에서 스킵.
+  recordBenchAndNotify((s) => app.log.info(s), (s) => app.log.error(s));
 } catch (err) {
   app.log.error(err);
   process.exit(1);

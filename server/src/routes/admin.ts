@@ -8,6 +8,7 @@ import { env } from '../env.js';
 import { db } from '../db.js';
 import { metrics } from '../metrics.js';
 import { restartSelf } from './webhook.js';
+import { runBench, storeSnapshot, latestSnapshot, history, withDeltas, frontendCompare } from '../bench/index.js';
 
 // 큰 로그 파일에서 끝부분 maxBytes 만 읽어온다 (전체 로딩 방지).
 function tailBytes(path: string, maxBytes: number): string {
@@ -158,6 +159,31 @@ export default async function adminRoutes(app: FastifyInstance) {
     } catch (e: any) {
       return reply.code(500).send({ error: e.message });
     }
+  });
+
+  // GET /api/admin/bench?token=...[&run=1][&base=<gitref>][&n=20]
+  //   성과측정 결과 조회. run=1 이면 즉석 측정·저장. base 지정 시 해당 ref 대비 프론트 크기 비교.
+  app.get('/api/admin/bench', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const q = req.query as { run?: string; base?: string; n?: string };
+    const n = Math.min(Math.max(parseInt(q.n ?? '20', 10) || 20, 1), 100);
+
+    let latest = latestSnapshot();
+    let ran = false;
+    if (q.run === '1' || q.run === 'true') {
+      latest = await runBench();
+      storeSnapshot(latest);
+      ran = true;
+    }
+    const hist = history(n);
+    const prev = hist.find((h) => latest && h.sha !== latest.sha) ?? hist[1] ?? null;
+    return {
+      ok: true,
+      ran,
+      latest: latest ? withDeltas(latest, prev) : null,
+      baseCompare: q.base ? frontendCompare(q.base) : undefined,
+      history: hist,
+    };
   });
 
   // POST /api/admin/restart?token=...  — 독립 프로세스(restartSelf)로 태스크 재시작.
