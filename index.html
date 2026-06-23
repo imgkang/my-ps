@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.550';
+const APP_VERSION = 'MyGP v0.551';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5494,6 +5494,10 @@ function importFromFile(event) {
         localStorage.setItem('kd_migration_done_v1', '1');
       }
       alert('불러오기 완료' + ((data.nonk || data.kd) ? '\n(My PM + NonK/KDeal 통합 데이터)' : ''));
+      // 가져오기 직후 서버에 강제 저장 (conflict 무시) — 서버의 구버전이 다음 로그인에서 덮어쓰는 것 방지
+      if (window.MyPMApi && typeof MyPMApi.isAuthenticated === 'function' && MyPMApi.isAuthenticated()) {
+        setTimeout(() => backendSave(true, true), 300);
+      }
     } catch (err) {
       alert('불러오기 실패: ' + err.message);
     } finally {
@@ -17939,8 +17943,8 @@ function confirmSettingsLogout() {
   backendLogout();
 }
 
-// 수동 저장 — silent=true 면 자동저장(조용한 모드)
-async function backendSave(silent) {
+// 수동 저장 — silent=true 면 자동저장(조용한 모드), force=true 면 충돌 무시하고 덮어쓰기
+async function backendSave(silent, force) {
   if (!(window.MyPMApi && MyPMApi.isAuthenticated())) { if (!silent) setBackendStatus('error', '먼저 로그인하세요'); return; }
   if (!silent) setBackendStatus('loading', '⏳ 백엔드에 저장 중...');
   try {
@@ -17951,14 +17955,15 @@ async function backendSave(silent) {
     bundle.version = base + 1;
     let r = await MyPMApi.putBundle(bundle);
     if (r && r.conflict) {
-      if (silent) {
+      if (force) {
+        r = await MyPMApi.putBundle(bundle, { force: true });
+      } else if (silent) {
         // 자동저장 충돌: 자동저장 끄고 사용자에게 안내(데이터 손실 방지)
         localStorage.setItem('mypm_autosave_v1', '0');
         updateBackendUI();
         setBackendStatus('error', '⚠️ 서버에 더 최신본이 있어 자동저장을 중단했습니다. 불러오기 후 다시 시도하세요.');
         return;
-      }
-      if (confirm('서버에 더 최신 데이터가 있습니다.\n현재 기기 데이터로 덮어쓸까요?\n(취소하면 서버 데이터를 불러옵니다)')) {
+      } else if (confirm('서버에 더 최신 데이터가 있습니다.\n현재 기기 데이터로 덮어쓸까요?\n(취소하면 서버 데이터를 불러옵니다)')) {
         r = await MyPMApi.putBundle(bundle, { force: true });
       } else {
         return backendLoad();
