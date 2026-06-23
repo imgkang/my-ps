@@ -1498,7 +1498,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.548';
+const APP_VERSION = 'KDeal v0.549';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3509,16 +3509,6 @@ function kdExportToFile() {
       monthlyRecords:  tryParse('pension_monthly_records_v1') || [],
       dividendRecords: tryParse('pension_dividends_v1')       || [],
       annualPlan:      tryParse('pension_annual_plan_v1')     || {}
-    },
-    nonk: {
-      holdings:  kdHoldings,
-      cash:      kdCashAccounts,
-      deposits:  kdDepositData,
-      monthly:   kdMonthlyRecords,
-      dividends: kdDividendRecords,
-      accounts:  KD_ACCOUNTS,
-      trades:    kdtTrades,
-      watchlist: kdWatchlist
     },
     kd: {
       holdings:  kdHoldings,
