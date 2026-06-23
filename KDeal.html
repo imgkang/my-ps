@@ -1498,7 +1498,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.547';
+const APP_VERSION = 'KDeal v0.548';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3569,7 +3569,10 @@ function kdImportFromFile(event) {
         if (mp.monthlyRecords)  localStorage.setItem('pension_monthly_records_v1', JSON.stringify(mp.monthlyRecords));
         if (mp.dividendRecords) localStorage.setItem('pension_dividends_v1',       JSON.stringify(mp.dividendRecords));
         if (mp.annualPlan)      localStorage.setItem('pension_annual_plan_v1',     JSON.stringify(mp.annualPlan));
+        if (mp.appSettings && typeof mp.appSettings === 'object')
+          localStorage.setItem('pension_app_settings_v1', JSON.stringify(mp.appSettings));
       }
+      try { window.parent.postMessage({ type: 'APP_SETTINGS_UPDATED' }, '*'); } catch(_) {}
       alert('불러오기 완료' + (data.mypm ? '\n(My PM + KDeal 통합 데이터)' : ''));
       kdRender();
       kdRenderChart();

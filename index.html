@@ -3835,7 +3835,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.547';
+const APP_VERSION = 'MyGP v0.548';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5464,6 +5464,7 @@ function importFromFile(event) {
       if (Array.isArray(src.cashAdjRecords)) { cashAdjRecords = src.cashAdjRecords; saveCashAdjRecords(); }
       render();
       renderPortfolioChart();
+      _refreshCfgHomeDynamic();
       setTimeout(() => refreshPricesSilent(), 100);
       if (data.nonk) {
         const nk = data.nonk;
@@ -18102,6 +18103,10 @@ window.addEventListener('message', e => {
     const other = e.data.source === 'nonk' ? 'kdeal' : 'nonk';
     const otherFrame = document.getElementById('frame-' + other);
     if (otherFrame?.dataset.loaded) otherFrame.contentWindow?.postMessage({ type: 'REFRESH_REQUEST' }, '*');
+  } else if (e.data.type === 'APP_SETTINGS_UPDATED') {
+    // NonK/KDeal에서 파일 불러오기 후 appSettings 동기화
+    appSettings = loadAppSettings();
+    _refreshCfgHomeDynamic();
   }
 });
 </script>
