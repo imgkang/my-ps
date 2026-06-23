@@ -207,6 +207,13 @@
       .then(function (r) { return r.data; });
   }
 
+  // ───────────────────────── 계산 (서버 전용 알고리즘) ─────────────────────────
+  // POST /api/compute/withdrawal — 인출 시뮬레이션. input(초기잔액+스칼라) → 투영 결과.
+  function computeWithdrawal(input) {
+    return request('/api/compute/withdrawal', { method: 'POST', auth: true, json: input })
+      .then(function (r) { return r.data; });
+  }
+
   // ───────────────────────── 종목 검색 ─────────────────────────
   function search(q, opts) {
     opts = opts || {};
@@ -243,6 +250,8 @@
     // 주가
     priceProxy: priceProxy,
     finnhub: finnhub,
+    // 계산
+    computeWithdrawal: computeWithdrawal,
     // 검색
     search: search,
     tickersCount: tickersCount,

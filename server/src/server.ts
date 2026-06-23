@@ -12,6 +12,7 @@ import searchRoutes from './routes/search.js';
 import pushRoutes from './routes/push.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
+import computeRoutes from './routes/compute.js';
 import { startScheduler } from './scheduler.js';
 import { recordRequest } from './metrics.js';
 
@@ -42,6 +43,7 @@ await app.register(searchRoutes);
 await app.register(pushRoutes);
 await app.register(webhookRoutes);
 await app.register(adminRoutes);
+await app.register(computeRoutes);
 
 // 프론트 정적 서빙 (로컬 테스트용 단일 출처). API 라우트 등록 뒤에 둔다.
 // 보안 가드: server/(=.env·DB), .git, dotfile 은 절대 서빙하지 않는다.
