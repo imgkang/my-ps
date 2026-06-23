@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.562';
+const APP_VERSION = 'MyGP v0.563';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12960,7 +12960,16 @@ function renderSetupScenarioSummary(sc) {
     const scPensionAnnual = ((mnp.use ? mnp.monthlyManwon||0 : 0) + (as.hasWife && wnp.use ? wnp.monthlyManwon||0 : 0) + (mgp.use ? mgp.monthlyManwon||0 : 0) + (msp.use ? msp.monthlyManwon||0 : 0)) * 12 / 100;
     scPensionStr = scPensionAnnual > 0 ? `연금 ${scPensionAnnual.toFixed(1)}백만원/년 공제 후 ` : '';
     scPortfolioNeedAnnual = Math.max(0, (wd.annualTarget||60) - scPensionAnnual);
-    scPortfolioNeedTotal = Math.round(scPortfolioNeedAnnual * 25);
+    for (let i = 0; i < 25; i++) {
+      const y = retireYr + i;
+      let pyp = 0;
+      if (mnp.use && (mnp.monthlyManwon||0) > 0 && y >= (mnp.startYear||99999)) pyp += (mnp.monthlyManwon||0) * 12 / 100;
+      if (as.hasWife && wnp.use && (wnp.monthlyManwon||0) > 0 && y >= (wnp.startYear||99999)) pyp += (wnp.monthlyManwon||0) * 12 / 100;
+      if (mgp.use && (mgp.monthlyManwon||0) > 0 && y >= (mgp.startYear||99999)) pyp += (mgp.monthlyManwon||0) * 12 / 100;
+      if (msp.use && (msp.monthlyManwon||0) > 0 && y >= (msp.startYear||99999)) pyp += (msp.monthlyManwon||0) * 12 / 100;
+      scPortfolioNeedTotal += Math.max(0, (wd.annualTarget||60) - pyp);
+    }
+    scPortfolioNeedTotal = Math.round(scPortfolioNeedTotal);
     scPct = scPortfolioNeedTotal > 0 ? Math.round(scRealFVMil / scPortfolioNeedTotal * 100) : 100;
   }
   const items = buildObSummaryItems({
