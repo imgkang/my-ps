@@ -1332,10 +1332,8 @@ registerMobileTooltipDismiss();
     background:#f8f9fa;border-radius:10px;margin-bottom:8px;border:1.5px solid transparent;transition:all .15s; }
   .setup-scenario-item.sc-active { background:#dbeafe;border-color:#3b82f6; }
   .setup-sc-badge { background:#2563eb;color:#fff;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;white-space:nowrap;margin-top:3px;display:inline-block; }
-  .setup-sc-summary { background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin-bottom:16px; }
-  .setup-sc-summary-title { font-size:12px;font-weight:700;color:#0369a1;margin-bottom:8px; }
-  .setup-sc-summary-row { font-size:12px;color:#374151;display:flex;gap:6px;margin-bottom:3px;align-items:flex-start; }
-  .setup-sc-summary-row .lbl { color:#6b7280;min-width:72px;flex-shrink:0; }
+  .setup-sc-summary { background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px; }
+  .setup-sc-summary-title { font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid var(--border); }
   .setup-tips-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
   .setup-tip-card { background:#f5f6f8;border-radius:12px;padding:14px 12px; }
   .setup-tip-icon { font-size:22px;margin-bottom:5px; }
@@ -3847,7 +3845,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.558';
+const APP_VERSION = 'MyGP v0.559';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12924,28 +12922,46 @@ function renderSetupScenarioSummary(sc) {
   const mgp = my.gp || {};
   const msp = my.sp || {};
   const period0 = (wd.periods && wd.periods[0]) || {};
-  const totalAmt = period0.totalAmount || wd.annualTarget || 0;
+  const totalAmt = period0.totalAmount || 0; // 만원/월
+  const accLbls = {dc:'DC',pension1:'개인연금1',pension2:'개인연금2',irp:'IRP',isa:'ISA',
+    wife_dc:'DC',wife_pension1:'개인연금1',wife_pension2:'개인연금2',wife_irp:'IRP',wife_isa:'ISA'};
 
-  function fmtPension(cfg, label) {
-    if (!cfg || !cfg.use) return '';
-    const yr = cfg.startYear ? `${cfg.startYear}년~` : '';
-    const amt = cfg.monthlyManwon ? `${cfg.monthlyManwon}만원/월` : '';
-    return `<div class="setup-sc-summary-row"><span class="lbl">${label}</span><span>${yr}${yr && amt ? ' ' : ''}${amt || '-'}</span></div>`;
+  const retireYr  = wd.startYear   || (myBY   ? myBY   + (wd.retireAge     || 60) : 0);
+  const retireAge = wd.retireAge   || (myBY && retireYr ? retireYr - myBY : 0);
+  const wifeRetireYr = wd.wifeStartYear || (wifeBY ? wifeBY + (wd.wifeRetireAge || 60) : 0);
+  const myAccStr   = (my.activeAccIds   || []).map(id => accLbls[id] || id).join(', ');
+  const wifeAccStr = (wife.activeAccIds || []).map(id => accLbls[id] || id).join(', ');
+
+  let items = '';
+
+  if (myBY) {
+    let info = `${myBY}년생`;
+    if (retireYr)  info += ` → 은퇴 ${retireYr}년${retireAge ? ` (${retireAge}세)` : ''}`;
+    if (myAccStr)  info += ` / 계좌 ${myAccStr}`;
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">👤</span><div><strong>본인</strong>: ${info}</div></div>`;
   }
+  if (hasWife && wifeBY) {
+    let info = `${wifeBY}년생`;
+    if (wifeRetireYr) info += ` → 은퇴 ${wifeRetireYr}년`;
+    if (wifeAccStr)   info += ` / 계좌 ${wifeAccStr}`;
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">👩</span><div><strong>배우자</strong>: ${info}</div></div>`;
+  }
+  if (mnp.use)
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${mnp.startYear || '-'}년~ ${mnp.monthlyManwon || 0}만원/월</div></div>`;
+  if (hasWife && wnp.use)
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>배우자 국민연금</strong>: ${wnp.startYear || '-'}년~ ${wnp.monthlyManwon || 0}만원/월</div></div>`;
+  if (mgp.use)
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${mgp.startYear || '-'}년~ ${mgp.monthlyManwon || 0}만원/월</div></div>`;
+  if (msp.use)
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${msp.startYear || '-'}년~ ${msp.monthlyManwon || 0}만원/월</div></div>`;
+  if (totalAmt)
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">🎯</span><div><strong>목표 인출</strong>: 월 ${totalAmt.toLocaleString('ko-KR')}만원 (인플레이션 ${wd.inflation || 2.2}%)</div></div>`;
+  if (wd.returnRate)
+    items += `<div class="ob-summary-item"><span class="ob-summary-icon">📈</span><div><strong>수익률</strong>: ${wd.returnRate}%</div></div>`;
 
-  let rows = '';
-  if (myBY) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 출생</span><span>${myBY}년생${my.np && my.np.use && mnp.startYear ? ` · 국민연금 ${mnp.startYear}년~` : ''}</span></div>`;
-  if (mnp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 국민연금</span><span>${mnp.startYear || '-'}년~ ${mnp.monthlyManwon || 0}만원/월</span></div>`;
-  if (mgp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 공무원연금</span><span>${mgp.startYear || '-'}년~ ${mgp.monthlyManwon || 0}만원/월</span></div>`;
-  if (msp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">본인 특수직연금</span><span>${msp.startYear || '-'}년~ ${msp.monthlyManwon || 0}만원/월</span></div>`;
-  if (hasWife && wifeBY) rows += `<div class="setup-sc-summary-row"><span class="lbl">배우자 출생</span><span>${wifeBY}년생${wnp.use && wnp.startYear ? ` · 국민연금 ${wnp.startYear}년~` : ''}</span></div>`;
-  if (hasWife && wnp.use) rows += `<div class="setup-sc-summary-row"><span class="lbl">배우자 국민연금</span><span>${wnp.startYear || '-'}년~ ${wnp.monthlyManwon || 0}만원/월</span></div>`;
-  if (totalAmt) rows += `<div class="setup-sc-summary-row"><span class="lbl">연간 인출 목표</span><span>${totalAmt.toLocaleString('ko-KR')}만원/년</span></div>`;
-  if (wd.returnRate) rows += `<div class="setup-sc-summary-row"><span class="lbl">수익률/인플레이션</span><span>${wd.returnRate}% / ${wd.inflation || 2.2}%</span></div>`;
-
-  if (!rows) { el.style.display = 'none'; return; }
+  if (!items) { el.style.display = 'none'; return; }
   el.style.display = '';
-  el.innerHTML = `<div class="setup-sc-summary"><div class="setup-sc-summary-title">📋 "${sc.name}" 요약</div>${rows}</div>`;
+  el.innerHTML = `<div class="setup-sc-summary"><div class="setup-sc-summary-title">📋 "${sc.name}" 요약</div>${items}</div>`;
 }
 function updateSetupScenarioCount() {
   const el = document.getElementById('setupScenarioCount');
