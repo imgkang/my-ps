@@ -14,7 +14,7 @@
 - 작업 완료 후 커밋된 버전 번호를 사용자에게 알릴 것
 
 ## 현재 버전
-`v0.546` (MyPM / NonK / KDeal 공통)
+`v0.547` (MyPM / NonK / KDeal 공통)
 
 ## 배포 구조 (중요)
 `mypm.growpension.com`은 **GitHub Pages가 아닌 집 Windows PC**에서 서빙된다.
@@ -28,7 +28,7 @@
 1. 버전 번호 올리기 (index.html / NonK.html / KDeal.html / sw.js)
 2. 작업 브랜치에 커밋·푸시
 3. Draft PR 생성
-4. "메인브랜치에 업데이트" 요청 시 → PR 머지
+4. **"메업"** 또는 "메인브랜치에 업데이트" 요청 시 → PR 머지
 
 ## main 머지 후 사용자가 해야 할 것 (docs/DEPLOY.md 참고)
 - 거의 없음 — Webhook이 git pull + CF 퍼지까지 자동 처리.
