@@ -1938,6 +1938,10 @@ registerMobileTooltipDismiss();
           <button type="button" class="cfg-switch" id="cfgSwWdDbg" role="switch" aria-checked="false" onclick="cfgSwitchToggle(this)"></button>
         </div>
         <div class="cfg-row-static">
+          <span class="cfg-row-label" title="데이터 동기화 로그 버튼을 표시합니다 (값이 바뀔 때마다 기록)">📡 동기화 로그</span>
+          <button type="button" class="cfg-switch" id="cfgSwSyncDbg" role="switch" aria-checked="false" onclick="cfgSwitchToggle(this)"></button>
+        </div>
+        <div class="cfg-row-static">
           <span class="cfg-row-label" title="핀치 제스처로 화면을 확대/축소할 수 있는지 설정합니다">🔍 핀치 줌</span>
           <button type="button" class="cfg-switch" id="cfgSwZoom" role="switch" aria-checked="true" onclick="cfgSwitchToggle(this)"></button>
         </div>
@@ -2983,6 +2987,7 @@ registerMobileTooltipDismiss();
       <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openWdSettingsModal()">⚙️ 인출설정</button>
       <button class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="openConsolidateModal()">📊 계좌 통합</button>
       <button id="wdDbgBtn" class="btn-secondary" style="font-size:11px;padding:3px 8px;display:none" onclick="showWdDebugPanel()">🔍 디버그</button>
+      <button id="syncDbgBtn" class="btn-secondary" style="font-size:11px;padding:3px 8px;display:none" onclick="showSyncDebugPanel()">📡 동기</button>
     </div>
   </div>
 
@@ -3835,7 +3840,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.555';
+const APP_VERSION = 'MyGP v0.556';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -3855,6 +3860,29 @@ window.showWdDebugPanel = function() {
   panel.id = '_wdDbgPanel';
   panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);color:#0f0;font-family:monospace;font-size:11px;padding:10px;overflow-y:auto;z-index:99999;white-space:pre-wrap;word-break:break-all';
   panel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:#fff;font-size:14px">WD-DEBUG 로그</b><button onclick="document.getElementById('_wdDbgPanel').remove()" style="padding:6px 14px;font-size:13px;background:#e11;color:#fff;border:none;border-radius:6px">닫기</button></div>` + lines.map(l => `<div>${l}</div>`).join('');
+  document.body.appendChild(panel);
+};
+
+// 동기화 디버그 패널
+window._syncDebugLines = [];
+window._syncLog = function(...args) {
+  const msg = args.join(' ');
+  console.log('[SYNC]', msg);
+  if (window._syncDebugLines) window._syncDebugLines.push('[SYNC] ' + new Date().toLocaleTimeString('ko-KR') + ' ' + msg);
+  if (window.appSettings?.showSyncDebugBtn) {
+    const btn = document.getElementById('syncDbgBtn');
+    if (btn && window._syncDebugLines.length) btn.style.display = '';
+  }
+};
+window.showSyncDebugPanel = function() {
+  const existing = document.getElementById('_syncDbgPanel');
+  if (existing) { existing.remove(); return; }
+  const lines = window._syncDebugLines;
+  if (!lines || !lines.length) { alert('동기화 로그 없음.'); return; }
+  const panel = document.createElement('div');
+  panel.id = '_syncDbgPanel';
+  panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);color:#0ff;font-family:monospace;font-size:11px;padding:10px;overflow-y:auto;z-index:99999;white-space:pre-wrap;word-break:break-all';
+  panel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:#fff;font-size:14px">동기화 DEBUG 로그</b><button onclick="document.getElementById('_syncDbgPanel').remove()" style="padding:6px 14px;font-size:13px;background:#e11;color:#fff;border:none;border-radius:6px">닫기</button></div>` + lines.map(l => `<div>${l}</div>`).join('');
   document.body.appendChild(panel);
 };
 
@@ -3976,7 +4004,7 @@ function getDefaultAppSettings() {
     myBirthYear: 0, myBirthMonth: 1,
     hasWife: false,
     wifeBirthYear: 0, wifeBirthMonth: 1,
-    showNonK: false, showKDeal: false, showWdDebugBtn: false,
+    showNonK: false, showKDeal: false, showWdDebugBtn: false, showSyncDebugBtn: false,
     wdrecPreview: false,
     allowZoom: true,
     wdChartPV: { 1: false, 2: false, 3: false, 4: false, 5: false },
@@ -5452,8 +5480,10 @@ function importFromFile(event) {
       wdConsolidated = newWdConsolidated;
       if (src.appSettings && typeof src.appSettings === 'object') {
         appSettings = { ...appSettings, ...src.appSettings };
+        if (window._syncLog) window._syncLog('importFromFile appSettings 적용: myBirthYear=' + appSettings.myBirthYear);
         saveAppSettings();
         applyNavVisibility();
+        openSettingsModal(); // form 입력값을 새 appSettings 로 동기화 (뒤로가기 시 _persistSettingsFromForm 덮어쓰기 방지)
       }
       saveHoldings();
       persistCashAccounts();
@@ -13164,6 +13194,7 @@ function openSettingsModal() {
   setCfgShowApp('KDeal', s.showKDeal !== false);
   setCfgShowApp('WdrecPreview', !!s.wdrecPreview);
   setCfgShowApp('WdDbg', !!s.showWdDebugBtn);
+  setCfgShowApp('SyncDbg', !!s.showSyncDebugBtn);
   setCfgZoom(s.allowZoom !== false);
   sv('cfg_cellInfoDuration', s.cellInfoDuration ?? 5);
   sv('cfg_npTaxRate',            wp.npTaxRate            ?? 4);
@@ -13340,11 +13371,13 @@ function _persistSettingsFromForm() {
     showKDeal: cfgSwitchOn('cfgSwKDeal'),
     wdrecPreview: cfgSwitchOn('cfgSwWdrecPreview'),
     showWdDebugBtn: cfgSwitchOn('cfgSwWdDbg'),
+    showSyncDebugBtn: cfgSwitchOn('cfgSwSyncDbg'),
     allowZoom: cfgSwitchOn('cfgSwZoom'),
     cellInfoDuration: nv('cfg_cellInfoDuration', 5),
     my:   buildPersonCfg('my'),
     wife: hasWife ? buildPersonCfg('wife') : appSettings.wife,
   };
+  if (window._syncLog) window._syncLog('_persistSettingsFromForm: myBirthYear=' + appSettings.myBirthYear + ' hasWife=' + appSettings.hasWife);
   saveAppSettings();
   applyNavVisibility();
   applyZoomSetting(appSettings.allowZoom !== false);
@@ -14730,6 +14763,8 @@ function renderWithdrawalPlan() {
   _lastWdSim = sim;
   const _dbgBtn = document.getElementById('wdDbgBtn');
   if (_dbgBtn) _dbgBtn.style.display = (appSettings.showWdDebugBtn && window._wdDebugLines.length) ? '' : 'none';
+  const _syncBtn = document.getElementById('syncDbgBtn');
+  if (_syncBtn) _syncBtn.style.display = (appSettings.showSyncDebugBtn && window._syncDebugLines?.length) ? '' : 'none';
 
   // 각 step 을 try/catch 로 격리: 한 단계가 실패해도 다음 단계는 진행
   const safe = (name, fn) => { try { fn(); } catch (e) { console.error('[renderWithdrawalPlan]', name, e); } };
@@ -17960,6 +17995,7 @@ async function backendSave(silent, force) {
     // version 을 단조 증가 리비전으로 보정한다(마지막 동기화 리비전 + 1). 서버 규칙: incoming < current → 409.
     const base = Number(localStorage.getItem('mypm_synced_version') || bundle.version || 0);
     bundle.version = force ? Math.max(base + 1, Date.now()) : base + 1;
+    if (window._syncLog) window._syncLog('backendSave: force=' + force + ' base=' + base + ' version=' + bundle.version + ' myBirthYear=' + (bundle.appSettings?.myBirthYear ?? '?'));
     let r = await MyPMApi.putBundle(bundle);
     if (r && r.conflict) {
       if (force) {
@@ -17978,6 +18014,7 @@ async function backendSave(silent, force) {
     }
     if (r && r.ok) {
       localStorage.setItem('mypm_synced_version', String(r.version));
+      if (window._syncLog) window._syncLog('backendSave 성공: v' + r.version);
       setBackendStatus('ok', '✅ 저장 완료 — ' + new Date().toLocaleTimeString('ko-KR') + ' (v' + r.version + ')');
     }
   } catch (e) {
@@ -18054,14 +18091,17 @@ async function syncPullOnStartup() {
     const meta = await MyPMApi.getMeta();
     if (!meta || meta.version == null) return;
     const local = localStorage.getItem('mypm_synced_version');
+    if (window._syncLog) window._syncLog('syncPullOnStartup: serverVer=' + meta.version + ' localVer=' + local);
     if (local !== null && String(meta.version) === local) return; // 이미 최신 → reload 불필요
     const res = await MyPMApi.getBundle();
     if (!res || res.fromCache || !res.bundle || !Object.keys(res.bundle).length) return;
     // 파일 불러오기 완료 후라면 backend pull로 덮어쓰지 않음 (race condition 방지)
     if (window._localFileImportDone) {
+      if (window._syncLog) window._syncLog('syncPullOnStartup: _localFileImportDone=true → pull 건너뜀');
       localStorage.setItem('mypm_synced_version', String(meta.version));
       return;
     }
+    if (window._syncLog) window._syncLog('syncPullOnStartup: pull 적용 myBirthYear=' + (res.bundle.appSettings?.myBirthYear ?? '?'));
     _applyImportData(res.bundle);
     localStorage.setItem('mypm_synced_version', String(meta.version));
     location.reload();
