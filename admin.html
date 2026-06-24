@@ -122,6 +122,13 @@
     </div>
   </div>
 
+  <!-- 파생상태 진단 (XIRR/동기화) -->
+  <div class="card">
+    <div class="card-title">파생상태 진단 (XIRR / 동기화)</div>
+    <div id="derivedBox"><div class="status-sub">불러오는 중...</div></div>
+    <div class="section-note" id="derivedClientNote"></div>
+  </div>
+
   <!-- 주요 지표 -->
   <div class="card">
     <div class="card-title">주요 지표</div>
@@ -320,6 +327,7 @@ async function loadStatus() {
     const d = await res.json();
     renderStatus(d);
     loadLogs();
+    loadDerived();
     startAutoRefresh();
   } catch (e) {
     // 서버 다운
@@ -330,6 +338,43 @@ async function loadStatus() {
       '<div class="log-empty">서버 다운 — 로그를 읽을 수 없습니다.<br>(PC의 data/server.log 파일을 직접 확인하세요)</div>';
     startAutoRefresh();
   }
+}
+
+// 파생상태(XIRR/동기화) 진단 — 서버 derived 테이블의 실제 값(서버 진실값) + 이 브라우저 캐시.
+async function loadDerived() {
+  const box = document.getElementById('derivedBox');
+  const fx = v => (v == null ? '—' : (v * 100).toFixed(2) + '%');
+  const fw = v => (v == null ? '—' : Math.round(v / 1000000).toLocaleString() + '백만');
+  try {
+    const res = await fetch(`${getBase()}/api/admin/derived?token=${encodeURIComponent(token)}`);
+    if (!res.ok) { box.innerHTML = '<div class="status-sub">조회 실패 — 서버가 최신 빌드(/api/admin/derived 포함)인지 확인</div>'; return; }
+    const d = await res.json();
+    if (!d.users || !d.users.length) { box.innerHTML = '<div class="status-sub">사용자 없음</div>'; return; }
+    box.innerHTML = d.users.map(u => {
+      const t = u.totals || {};
+      const pa = u.priced_at ? new Date(u.priced_at).toLocaleString('ko-KR') : '—';
+      return `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700">${u.email || '—'}</div>
+        <div class="status-sub">번들버전 ${u.bundle_version ?? '—'} / 파생버전 ${u.derived_version ?? '—'} ${u.synced ? '✅ 동기' : '⚠️ 불일치(파생이 번들보다 옛것)'}</div>
+        <div class="status-sub">기준시각(pricedAt): ${pa}</div>
+        <div class="status-sub">총평가 ${fw(t.totalValue)} · 원금 ${fw(t.totalPrincipal)} · <b style="color:var(--accent)">XIRR ${fx(t.xirr)}</b> · KD XIRR ${fx(u.kd_xirr)}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div class="status-sub">조회 중 오류</div>';
+  }
+  // 이 브라우저의 클라 캐시 — 같은 출처·같은 저장소일 때만 의미(아이폰 PWA↔Safari 는 분리될 수 있음).
+  try {
+    const note = document.getElementById('derivedClientNote');
+    const sv = localStorage.getItem('mypm_synced_version');
+    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
+    if (sv || snap) {
+      const cx = snap && snap.data && snap.data.totals ? snap.data.totals.xirr : null;
+      note.textContent = `이 브라우저 캐시 — synced=${sv || '—'} / snapVer=${snap ? snap.dataVersion : '—'} / XIRR=${fx(cx)} / autosave=${localStorage.getItem('mypm_autosave_v1') || '—'} (PWA·Safari 저장소 분리 시 앱과 다를 수 있음)`;
+    } else {
+      note.textContent = '이 브라우저엔 앱 캐시 없음 — 앱과 다른 저장소(PWA 독립 실행 등)일 수 있음. 위 서버 값이 진실값입니다.';
+    }
+  } catch (_) {}
 }
 
 let logErrorsOnly = true;

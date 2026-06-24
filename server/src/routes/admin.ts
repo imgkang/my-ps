@@ -133,6 +133,44 @@ export default async function adminRoutes(app: FastifyInstance) {
     };
   });
 
+  // GET /api/admin/derived?token=...
+  //   사용자별 data_bundle 버전 vs 파생(derived) 버전·pricedAt·총액·XIRR 진단(서버 진실값).
+  //   "편집 후 갱신했는데 XIRR 이 안 바뀐다" 류를 admin 화면에서 바로 확인하기 위함.
+  app.get('/api/admin/derived', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const rows = db.prepare(`
+      SELECT u.id AS user_id, u.email,
+             b.version AS bundle_version, b.updated_at AS bundle_updated_at,
+             d.data_version AS derived_version, d.priced_at AS priced_at,
+             d.json AS derived_json, d.updated_at AS derived_updated_at
+      FROM users u
+      LEFT JOIN data_bundle b ON b.user_id = u.id
+      LEFT JOIN derived d     ON d.user_id = u.id
+      ORDER BY u.id
+    `).all() as any[];
+    const users = rows.map((r) => {
+      let totals: any = null, kdXirr: number | null = null;
+      try {
+        const j = JSON.parse(r.derived_json || '{}');
+        totals = j.totals || null;
+        kdXirr = j.kd && j.kd.totals ? j.kd.totals.xirr : null;
+      } catch { /* ignore */ }
+      return {
+        email: r.email,
+        bundle_version: r.bundle_version ?? null,
+        bundle_updated_at: r.bundle_updated_at ?? null,
+        derived_version: r.derived_version ?? null,
+        priced_at: r.priced_at ?? null,
+        derived_updated_at: r.derived_updated_at ?? null,
+        synced: r.bundle_version != null && r.derived_version != null
+                && Number(r.bundle_version) === Number(r.derived_version),
+        totals, // { totalValue, totalCash, totalPrincipal, xirr }
+        kd_xirr: kdXirr,
+      };
+    });
+    return { ok: true, users, ts: new Date().toISOString() };
+  });
+
   // GET /api/admin/logs?token=...&lines=N&errorsOnly=1
   //   server.log 의 끝부분을 읽어 최근 N줄(또는 오류/경고만) 반환.
   app.get('/api/admin/logs', async (req, reply) => {
