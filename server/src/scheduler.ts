@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import cron from 'node-cron';
 import { db } from './db.js';
 import { gitPullAndPurge } from './routes/webhook.js';
+import { recomputeWithLivePrices } from './derived-store.js';
 
 const execAsync = promisify(exec);
 const repoRoot = resolve(process.cwd(), '..');
@@ -57,6 +58,22 @@ export function startScheduler() {
     () => checkAlerts().catch((e) => console.error('[scheduler] alert error', e)),
     { timezone: 'Asia/Seoul' }
   );
+
+  // 장중 2분마다 사용자별 파생상태 선계산(라이브 시세) → 클라는 준비된 결과를 받아 즉시 표시.
+  cron.schedule(
+    '*/2 9-15 * * 1-5',
+    () => recomputeAllDerived().catch((e) => console.error('[scheduler] derived tick error', e)),
+    { timezone: 'Asia/Seoul' }
+  );
+}
+
+// 번들이 있는 모든 사용자의 파생상태를 라이브 시세로 재계산·저장.
+async function recomputeAllDerived() {
+  const users = db.prepare('SELECT user_id FROM data_bundle').all() as { user_id: number }[];
+  for (const u of users) {
+    try { await recomputeWithLivePrices(u.user_id); }
+    catch (e: any) { console.error('[derived tick] user', u.user_id, e?.message); }
+  }
 }
 
 async function checkAlerts() {

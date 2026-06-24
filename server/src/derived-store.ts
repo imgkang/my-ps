@@ -2,6 +2,7 @@
 // PUT /api/sync 훅, GET /api/derived, scheduler 시세틱(Stage B)에서 공용으로 쓴다.
 import { db } from './db.js';
 import { computeDerived, type DerivedSnapshot, type PriceMap } from './compute/derived.js';
+import { fetchPrices } from './prices.js';
 
 export interface DerivedRow { dataVersion: number; pricedAt: string | null; updatedAt: string; data: DerivedSnapshot }
 
@@ -25,6 +26,17 @@ export function recomputeDerivedForUser(userId: number, opts?: { prices?: PriceM
        updated_at = excluded.updated_at`
   ).run(userId, row.version, snapshot.computedAt, JSON.stringify(snapshot), now);
   return { dataVersion: row.version, pricedAt: snapshot.computedAt, updatedAt: now, data: snapshot };
+}
+
+// 라이브 시세를 받아 재계산·저장 (scheduler 시세 틱용). 번들의 보유종목 코드로 시세 조회.
+export async function recomputeWithLivePrices(userId: number): Promise<DerivedRow | null> {
+  const row = db.prepare('SELECT json FROM data_bundle WHERE user_id = ?').get(userId) as { json: string } | undefined;
+  if (!row) return null;
+  let bundle: any;
+  try { bundle = JSON.parse(row.json); } catch { return null; }
+  const codes: string[] = (bundle?.mypm?.holdings || []).map((h: any) => h?.code).filter(Boolean);
+  const prices = codes.length ? await fetchPrices(codes) : undefined;
+  return recomputeDerivedForUser(userId, { prices });
 }
 
 export function getDerivedForUser(userId: number): DerivedRow | null {
