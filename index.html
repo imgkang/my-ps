@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.574';
+const APP_VERSION = 'MyGP v0.575';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17943,6 +17943,8 @@ function toggleAutoSave(on) {
 
 // 데이터 변경 시 호출 — 자동저장이 켜져 있을 때만 디바운스로 1회 저장.
 // window 프로퍼티/문자열 리터럴만 사용해 초기 평가 시점 TDZ 를 피한다.
+// 디바운스 350ms: 연속 입력(숫자 타이핑 등 글자마다 호출되는 핸들러)은 1회로 묶되,
+// 버튼 저장(현금조정 등)은 거의 즉시 저장→서버 재계산→재렌더(backendSave)되도록 짧게 유지.
 function scheduleBackendAutoSave() {
   try {
     if (localStorage.getItem('mypm_autosave_v1') !== '1') return;
@@ -17951,7 +17953,7 @@ function scheduleBackendAutoSave() {
     window._mypmAutoSaveTimer = setTimeout(function () {
       window._mypmAutoSaveTimer = null;
       backendSave(true);
-    }, 2500);
+    }, 350);
   } catch (_) {}
 }
 
