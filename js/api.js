@@ -214,6 +214,15 @@
       .then(function (r) { return r.data; });
   }
 
+  // ───────────────────────── 파생상태 (서버 선계산 결과) ─────────────────────────
+  // GET /api/derived — 서버가 미리 계산해 둔 스냅샷. 클라는 받아서 표시만.
+  function getDerived() {
+    return request('/api/derived', { auth: true }).then(function (r) { return r.data; });
+  }
+  function getDerivedMeta() {
+    return request('/api/derived/meta', { auth: true }).then(function (r) { return r.data; });
+  }
+
   // ───────────────────────── 종목 검색 ─────────────────────────
   function search(q, opts) {
     opts = opts || {};
@@ -252,6 +261,9 @@
     finnhub: finnhub,
     // 계산
     computeWithdrawal: computeWithdrawal,
+    // 파생상태(서버 선계산)
+    getDerived: getDerived,
+    getDerivedMeta: getDerivedMeta,
     // 검색
     search: search,
     tickersCount: tickersCount,

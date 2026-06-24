@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.564';
+const APP_VERSION = 'MyGP v0.565';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17798,6 +17798,25 @@ function confirmSettingsLogout() {
   backendLogout();
 }
 
+// ===== 파생상태(서버 선계산) 캐시 =====
+// 서버가 계산해 둔 스냅샷을 localStorage 에 보관한다. (표시 렌더 연결은 후속 단계)
+const DERIVED_CACHE_KEY = 'mypm_derived_v1';
+function cacheDerived(snap) {
+  if (!snap) return;
+  try { localStorage.setItem(DERIVED_CACHE_KEY, JSON.stringify(snap)); } catch (_) {}
+  window.__derivedSnapshot = snap;
+}
+function getCachedDerived() {
+  if (window.__derivedSnapshot) return window.__derivedSnapshot;
+  try { return JSON.parse(localStorage.getItem(DERIVED_CACHE_KEY) || 'null'); } catch (_) { return null; }
+}
+// 서버에서 최신 파생 스냅샷을 받아 캐시(최선노력, 비차단).
+async function refreshDerivedCache() {
+  if (!(window.MyPMApi && MyPMApi.isAuthenticated() && typeof MyPMApi.getDerived === 'function')) return null;
+  try { const d = await MyPMApi.getDerived(); cacheDerived(d); return d; } catch (_) { return null; }
+}
+window.MyPMDerived = { get: getCachedDerived, refresh: refreshDerivedCache };
+
 // 수동 저장 — silent=true 면 자동저장(조용한 모드), force=true 면 충돌 무시하고 덮어쓰기
 async function backendSave(silent, force) {
   if (!(window.MyPMApi && MyPMApi.isAuthenticated())) { if (!silent) setBackendStatus('error', '먼저 로그인하세요'); return; }
@@ -17827,6 +17846,7 @@ async function backendSave(silent, force) {
     }
     if (r && r.ok) {
       localStorage.setItem('mypm_synced_version', String(r.version));
+      if (r.derived) cacheDerived(r.derived); // 서버 선계산 스냅샷 동봉분 캐시
       if (window._syncLog) window._syncLog('backendSave 성공: v' + r.version);
       const _vDisp = r.version > 1e12
         ? 'v' + new Date(r.version).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false })

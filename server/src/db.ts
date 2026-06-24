@@ -87,6 +87,16 @@ db.exec(`
     ts      TEXT NOT NULL,
     json    TEXT NOT NULL
   );
+
+  -- 사용자별 파생상태 스냅샷 (서버 선계산 결과: 계좌평가/XIRR/총액 등). 클라는 이걸 받아 표시만.
+  CREATE TABLE IF NOT EXISTS derived (
+    user_id      INTEGER PRIMARY KEY,
+    data_version INTEGER NOT NULL DEFAULT 0,
+    priced_at    TEXT,
+    json         TEXT NOT NULL DEFAULT '{}',
+    updated_at   TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
 `);
 
 // 구(舊) 단일 사용자 스키마 감지 → 마이그레이션 유도.
