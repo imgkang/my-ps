@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.571';
+const APP_VERSION = 'MyGP v0.572';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5085,7 +5085,10 @@ function openAccountDetail(accId) {
   const profitSign = totalProfit >= 0 ? '+' : '';
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
 
-  const accXirrRate = (_accSnap && typeof _accSnap.a.xirr === 'number') ? _accSnap.a.xirr : null; // C-3: XIRR은 서버 스냅샷에서만 — 폴백 시 '-'
+  // C-3: XIRR은 서버 스냅샷에서만. 단 시세 신선도와 무관하므로 완화 게이트(dataVersion만)로 소비. 없으면 '-'.
+  const _axSnap = getDisplayDerivedForXirr();
+  const _ax = _axSnap && _axSnap.data && _axSnap.data.accounts && _axSnap.data.accounts[accId];
+  const accXirrRate = (_ax && typeof _ax.xirr === 'number') ? _ax.xirr : null;
   const accXirrSign = accXirrRate != null && accXirrRate >= 0 ? '+' : '';
   const accXirrCls  = accXirrRate != null && accXirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const accXirrText = accXirrRate != null ? accXirrSign + (accXirrRate * 100).toFixed(2) + '%' : '-';
@@ -6841,7 +6844,7 @@ function render() {
 
   let totalGrandPricipal = getGrandTotalPrincipal();
 
-  // B2: 서버 선계산 스냅샷(요약 hero) 소비 — 동기화 일치 시 총액·원금·XIRR을 스냅샷에서 사용.
+  // B2: 서버 선계산 스냅샷(요약 hero) 소비 — 동기화+시세신선도 일치 시 총액·원금을 스냅샷에서 사용.
   // 불일치/스냅샷 없음/오프라인이면 위 클라 계산값을 그대로 폴백(비파괴적).
   let _snapPricedAt = null, _snapXirr = null;
   {
@@ -6850,9 +6853,14 @@ function render() {
       const _t = (_snap.data && _snap.data.totals) || {};
       if (typeof _t.totalValue === 'number')     totalValue = _t.totalValue;
       if (typeof _t.totalPrincipal === 'number') totalGrandPricipal = _t.totalPrincipal;
-      if (typeof _t.xirr === 'number')           _snapXirr = _t.xirr;
       _snapPricedAt = _snap.pricedAt || null;
     }
+  }
+  // XIRR은 시세 신선도와 무관 → 완화 게이트(dataVersion만)로 별도 소비. 없으면 누적 카드는 CAGR 폴백.
+  {
+    const _sx = getDisplayDerivedForXirr();
+    const _t = _sx && _sx.data && _sx.data.totals;
+    if (_t && typeof _t.xirr === 'number') _snapXirr = _t.xirr;
   }
 
   const totalProfit = totalValue - totalGrandPricipal; // items.reduce((s, x) => s + (x.hasCost ? x.profit : 0), 0);
@@ -17800,6 +17808,18 @@ function getDisplayDerived() {
     const localTs  = (typeof holdings !== 'undefined' && Array.isArray(holdings) && holdings.length)
       ? Math.max(...holdings.map(h => h.updatedAt || 0)) : 0;
     if (localTs && pricedTs && localTs > pricedTs + 5000) return null; // 로컬 시세가 더 신선 → 클라 계산 우선
+    return snap;
+  } catch (_) { return null; }
+}
+// XIRR 전용 게이트 — dataVersion 일치(거래내역/보유구성 동일)만 요구하고 시세 신선도는 무시한다.
+// XIRR은 거래내역+현재총액 기반이라 분 단위 시세에 거의 불변이며, 클라 폴백을 제거(C-3)했으므로
+// freshness 로 막으면 시세 새로고침만 해도 XIRR 이 사라져 버린다(누적은 CAGR, KDeal 은 '-').
+function getDisplayDerivedForXirr() {
+  try {
+    const snap = getCachedDerived();
+    if (!snap || !snap.data || !snap.data.totals) return null;
+    const localVer = localStorage.getItem('mypm_synced_version');
+    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
     return snap;
   } catch (_) { return null; }
 }
