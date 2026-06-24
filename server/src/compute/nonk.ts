@@ -62,9 +62,19 @@ export function computeNkDerived(nk: NkData, opts?: { now?: Date }): NkDerived {
   const txns = nk.deposits?.transactions || [];
   const now = opts?.now || new Date();
   // 활성 계좌만 (NonK.html: a.active !== false)
-  const activeIds = (nk.accounts || [])
+  let activeIds = (nk.accounts || [])
     .filter((a) => a && a.active !== false && a.id)
     .map((a) => a.id);
+  // 폴백: NonK.html 의 기본계좌(ds/nk1 등)는 localStorage 에 저장되지 않아 번들 accounts 가 비어
+  // 올 수 있다. 그럴 땐 데이터에 실제 존재하는 계좌 id(현금 키 ∪ 보유 계좌 키)로 계산한다.
+  if (activeIds.length === 0) {
+    const ids = new Set<string>();
+    for (const k of Object.keys(cash)) ids.add(k);
+    for (const h of holdings) {
+      if (h.accounts) for (const k of Object.keys(h.accounts)) ids.add(k);
+    }
+    activeIds = [...ids];
+  }
 
   const accounts: Record<string, NkAccountDerived> = {};
   let totalValue = 0;
