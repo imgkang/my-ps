@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.576';
+const APP_VERSION = 'MyGP v0.577';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5896,6 +5896,9 @@ function editQuantity(code) {
 
 // ===== 전체 새로고침 =====
 async function refreshAll() {
+  // 갱신 시 미저장 변경이 있으면 먼저 서버에 저장 → 서버 재계산(XIRR 등) → 표시 반영.
+  // 자동저장 토글과 무관(backendSave 는 토글을 보지 않음). 미인증/오프라인이면 backendSave 가 조용히 skip.
+  if (window._mypmDirty) { try { await backendSave(true); } catch (_) {} }
   if (!holdings.length) return;
   const statusEl = document.getElementById('refreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
@@ -17847,6 +17850,7 @@ async function backendSave(silent, force) {
     }
     if (r && r.ok) {
       localStorage.setItem('mypm_synced_version', String(r.version));
+      window._mypmDirty = false; // 동기화 완료 → 미저장 변경 없음
       if (r.derived) {
         cacheDerived(r.derived); // 서버 선계산 스냅샷 동봉분 캐시
         // 동기화로 새 스냅샷(새 dataVersion=synced_version)을 받았으면 화면 재렌더 —
@@ -17916,6 +17920,7 @@ function toggleAutoSave(on) {
 // 버튼 저장(현금조정 등)은 거의 즉시 저장→서버 재계산→재렌더(backendSave)되도록 짧게 유지.
 function scheduleBackendAutoSave() {
   try {
+    window._mypmDirty = true; // 데이터 변경 표시 — 자동저장 토글과 무관하게 추적(갱신 시 flush 용)
     if (localStorage.getItem('mypm_autosave_v1') !== '1') return;
     if (!(window.MyPMApi && MyPMApi.isConfigured() && MyPMApi.isAuthenticated())) return;
     if (window._mypmAutoSaveTimer) clearTimeout(window._mypmAutoSaveTimer);
