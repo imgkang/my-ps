@@ -5,6 +5,7 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
 import { requireAuth, userId } from '../auth.js';
+import { recomputeDerivedForUser } from '../derived-store.js';
 
 type BundleRow = { version: number; json: string; updated_at: string | null };
 
@@ -58,6 +59,13 @@ export default async function syncRoutes(app: FastifyInstance) {
          json = excluded.json,
          updated_at = excluded.updated_at`
     ).run(uid, incoming, JSON.stringify(body), now);
-    return { ok: true, version: incoming, updated_at: now };
+
+    // 저장 직후 파생상태 선계산 → 응답에 동봉(편집 후 단일 왕복으로 최신 표시).
+    let derived = null;
+    try { derived = recomputeDerivedForUser(uid); } catch (e) { req.log.error(e, 'derived recompute failed'); }
+    return {
+      ok: true, version: incoming, updated_at: now,
+      derived: derived ? { dataVersion: derived.dataVersion, pricedAt: derived.pricedAt, data: derived.data } : null,
+    };
   });
 }

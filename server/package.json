@@ -11,7 +11,8 @@
     "import": "tsx src/scripts/import-bundle.ts",
     "load-tickers": "tsx src/scripts/load-tickers.ts",
     "migrate": "tsx src/scripts/migrate-multiuser.ts",
-    "test:parity": "npm run build && node test/withdrawal-parity.mjs"
+    "test:parity": "npm run build && node test/withdrawal-parity.mjs",
+    "test:derived": "npm run build && node test/derived-parity.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
