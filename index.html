@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.569';
+const APP_VERSION = 'MyGP v0.570';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5085,7 +5085,7 @@ function openAccountDetail(accId) {
   const profitSign = totalProfit >= 0 ? '+' : '';
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
 
-  const accXirrRate = (_accSnap && typeof _accSnap.a.xirr === 'number') ? _accSnap.a.xirr : calcXIRR(totalValue, accId);
+  const accXirrRate = (_accSnap && typeof _accSnap.a.xirr === 'number') ? _accSnap.a.xirr : null; // C-3: XIRR은 서버 스냅샷에서만 — 폴백 시 '-'
   const accXirrSign = accXirrRate != null && accXirrRate >= 0 ? '+' : '';
   const accXirrCls  = accXirrRate != null && accXirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const accXirrText = accXirrRate != null ? accXirrSign + (accXirrRate * 100).toFixed(2) + '%' : '-';
@@ -6791,59 +6791,9 @@ function formatMilSigned(n) {
 }
 
 // ===== XIRR (내부수익률) =====
-function xirrCalc(cashflows) {
-  // cashflows: [{date: Date, amount: number}]
-  // 투자자 기준: 입금 → 음수, 현재가치(회수) → 양수
-  if (!cashflows || cashflows.length < 2) return null;
-  const t0 = cashflows[0].date.getTime();
-  const days = cashflows.map(cf => (cf.date.getTime() - t0) / 86400000);
-  const amounts = cashflows.map(cf => cf.amount);
-
-  // 모든 금액이 같은 부호면 계산 불가
-  const hasPos = amounts.some(a => a > 0);
-  const hasNeg = amounts.some(a => a < 0);
-  if (!hasPos || !hasNeg) return null;
-
-  let rate = 0.1;
-  for (let iter = 0; iter < 200; iter++) {
-    let npv = 0, dnpv = 0;
-    for (let i = 0; i < amounts.length; i++) {
-      const t = days[i] / 365;
-      const factor = Math.pow(1 + rate, t);
-      npv  += amounts[i] / factor;
-      dnpv -= amounts[i] * t / (factor * (1 + rate));
-    }
-    if (Math.abs(npv) < 1e-6) break;
-    if (Math.abs(dnpv) < 1e-15) break;
-    const delta = npv / dnpv;
-    rate -= delta;
-    if (rate <= -1) rate = -0.9999;
-    if (Math.abs(delta) < 1e-9) break;
-  }
-  if (!isFinite(rate) || rate <= -1) return null;
-  let finalNpv = 0;
-  for (let i = 0; i < amounts.length; i++) {
-    finalNpv += amounts[i] / Math.pow(1 + rate, days[i] / 365);
-  }
-  if (Math.abs(finalNpv) > 1e-3) return null;
-  if (Math.abs(rate) > 99.99) return null;
-  return rate;
-}
-
-function calcXIRR(totalCurrentValue, accId = null) {
-  const activeIds = new Set(getActiveAccounts().map(a => a.id));
-  const txns = accId
-    ? depositData.transactions.filter(t => t.accId === accId)
-    : depositData.transactions.filter(t => activeIds.has(t.accId));
-  if (!txns.length || totalCurrentValue <= 0) return null;
-  const sorted = txns.slice().sort((a, b) => a.date.localeCompare(b.date));
-  const cashflows = sorted.map(t => ({
-    date: new Date(t.date),
-    amount: -(Number(t.amount) || 0)  // 입금(+) → 투자자 관점 지출(-), 출금(-) → 회수(+)
-  }));
-  cashflows.push({ date: new Date(), amount: totalCurrentValue });
-  return xirrCalc(cashflows);
-}
+// C-3: XIRR 계산 알고리즘(xirrCalc/calcXIRR)은 서버 전용으로 이전됨(server/src/compute/derived.ts).
+// 클라는 서버 선계산 스냅샷(data.totals.xirr / data.accounts[accId].xirr)을 표시만 한다.
+// 스냅샷이 없으면(오프라인·미동기화) XIRR은 '-'로 표시되고, 누적 카드는 CAGR로 폴백한다.
 
 function render() {
   const container = document.getElementById('holdingsContainer');
@@ -6934,7 +6884,7 @@ function render() {
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
 
   // 내부수익률(XIRR) 계산
-  const xirrRate = _snapXirr != null ? _snapXirr : calcXIRR(totalValue);
+  const xirrRate = _snapXirr != null ? _snapXirr : null; // C-3: XIRR은 서버 스냅샷에서만 — 폴백 시 누적 카드는 CAGR로 표시
   const xirrSign = xirrRate != null && xirrRate >= 0 ? '+' : '';
   const xirrCls  = xirrRate != null && xirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const xirrText = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
