@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.565';
+const APP_VERSION = 'MyGP v0.566';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17815,7 +17815,26 @@ async function refreshDerivedCache() {
   if (!(window.MyPMApi && MyPMApi.isAuthenticated() && typeof MyPMApi.getDerived === 'function')) return null;
   try { const d = await MyPMApi.getDerived(); cacheDerived(d); return d; } catch (_) { return null; }
 }
-window.MyPMDerived = { get: getCachedDerived, refresh: refreshDerivedCache };
+// 백그라운드 폴링 — 서버가 시세틱마다 선계산한 최신 스냅샷을 받아 캐시 유지.
+// (pricedAt 이 바뀐 경우에만 전체 수신) 화면 갱신 시 클라는 이 캐시를 즉시 쓸 수 있다.
+let _derivedPollTimer = null;
+function startDerivedPolling() {
+  if (_derivedPollTimer) return;
+  const tick = async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    if (!(window.MyPMApi && MyPMApi.isAuthenticated())) return;
+    try {
+      const meta = await MyPMApi.getDerivedMeta();
+      const cached = getCachedDerived();
+      if (meta && meta.pricedAt && (!cached || cached.pricedAt !== meta.pricedAt)) {
+        await refreshDerivedCache();
+      }
+    } catch (_) {}
+  };
+  refreshDerivedCache(); // 최초 1회
+  _derivedPollTimer = setInterval(tick, 45000);
+}
+window.MyPMDerived = { get: getCachedDerived, refresh: refreshDerivedCache, startPolling: startDerivedPolling };
 
 // 수동 저장 — silent=true 면 자동저장(조용한 모드), force=true 면 충돌 무시하고 덮어쓰기
 async function backendSave(silent, force) {
@@ -17923,6 +17942,7 @@ function scheduleBackendAutoSave() {
 async function syncPullOnStartup() {
   try { if (window.MyPMApi && !MyPMApi.isConfigured()) MyPMApi.configure({ baseUrl: location.origin }); } catch (_) {}
   if (!(window.MyPMApi && MyPMApi.isConfigured() && MyPMApi.isAuthenticated())) return;
+  startDerivedPolling(); // 서버 선계산 스냅샷 백그라운드 동기화 시작
   try {
     const meta = await MyPMApi.getMeta();
     if (!meta || meta.version == null) return;
