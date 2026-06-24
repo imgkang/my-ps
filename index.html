@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.567';
+const APP_VERSION = 'MyGP v0.568';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6878,9 +6878,23 @@ function render() {
    // 전체 합계
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
   const stockValue = items.reduce((s, x) => s + x.currentValue, 0);
-  const totalValue = stockValue + totalCash;
+  let totalValue = stockValue + totalCash;
 
-  const totalGrandPricipal = getGrandTotalPrincipal();
+  let totalGrandPricipal = getGrandTotalPrincipal();
+
+  // B2: 서버 선계산 스냅샷(요약 hero) 소비 — 동기화 일치 시 총액·원금·XIRR을 스냅샷에서 사용.
+  // 불일치/스냅샷 없음/오프라인이면 위 클라 계산값을 그대로 폴백(비파괴적).
+  let _snapPricedAt = null, _snapXirr = null;
+  {
+    const _snap = getDisplayDerived();
+    if (_snap) {
+      const _t = (_snap.data && _snap.data.totals) || {};
+      if (typeof _t.totalValue === 'number')     totalValue = _t.totalValue;
+      if (typeof _t.totalPrincipal === 'number') totalGrandPricipal = _t.totalPrincipal;
+      if (typeof _t.xirr === 'number')           _snapXirr = _t.xirr;
+      _snapPricedAt = _snap.pricedAt || null;
+    }
+  }
 
   const totalProfit = totalValue - totalGrandPricipal; // items.reduce((s, x) => s + (x.hasCost ? x.profit : 0), 0);
   const totalProfitRate = totalGrandPricipal > 0 ? (totalProfit / totalGrandPricipal) * 100 : null;
@@ -6911,7 +6925,7 @@ function render() {
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
 
   // 내부수익률(XIRR) 계산
-  const xirrRate = calcXIRR(totalValue);
+  const xirrRate = _snapXirr != null ? _snapXirr : calcXIRR(totalValue);
   const xirrSign = xirrRate != null && xirrRate >= 0 ? '+' : '';
   const xirrCls  = xirrRate != null && xirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const xirrText = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
@@ -6975,6 +6989,7 @@ function render() {
         <div class="pf-hero-value">${fmtT(totalValue)}</div>
         <div class="pf-hero-unit">(천원)</div>
       </div>
+      ${_snapPricedAt ? `<div class="pf-hero-asof" style="font-size:11px;color:#8a8f98;margin-top:2px">기준 ${new Date(_snapPricedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})} · 서버 계산</div>` : ''}
       <div class="pf-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</span><span class="pf-hero-label">오늘</span></div>
       <div class="pf-hero-row ${thisMonCls}"><span>${thisMonChange != null ? fmtTS(thisMonChange, thisMonSign) + ' ' + fmtPct(thisMonRate, thisMonSign) : '-'}</span><span class="pf-hero-label">${thisMonLabel}</span></div>
       <div class="pf-hero-row ${profitCls}"><span>${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</span><span class="pf-hero-label">누적</span></div>
@@ -17812,6 +17827,22 @@ function cacheDerived(snap) {
 function getCachedDerived() {
   if (window.__derivedSnapshot) return window.__derivedSnapshot;
   try { return JSON.parse(localStorage.getItem(DERIVED_CACHE_KEY) || 'null'); } catch (_) { return null; }
+}
+// B2: 표시용 파생 스냅샷 — 현재 동기화 상태와 일치할 때만 신뢰(아니면 클라 계산 폴백).
+// 게이트: ① 스냅샷 dataVersion === 로컬 synced_version (= 로컬 미저장 편집 없음)
+//        ② 로컬 시세가 스냅샷 pricedAt 보다 신선하지 않을 것(새로고침 직후·자동저장 OFF 시 hero가 보유목록과 어긋나지 않도록)
+function getDisplayDerived() {
+  try {
+    const snap = getCachedDerived();
+    if (!snap || !snap.data || !snap.data.totals) return null;
+    const localVer = localStorage.getItem('mypm_synced_version');
+    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
+    const pricedTs = snap.pricedAt ? Date.parse(snap.pricedAt) : 0;
+    const localTs  = (typeof holdings !== 'undefined' && Array.isArray(holdings) && holdings.length)
+      ? Math.max(...holdings.map(h => h.updatedAt || 0)) : 0;
+    if (localTs && pricedTs && localTs > pricedTs + 5000) return null; // 로컬 시세가 더 신선 → 클라 계산 우선
+    return snap;
+  } catch (_) { return null; }
 }
 // 서버에서 최신 파생 스냅샷을 받아 캐시(최선노력, 비차단).
 async function refreshDerivedCache() {
