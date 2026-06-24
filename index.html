@@ -3851,7 +3851,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.578';
+const APP_VERSION = 'MyGP v0.579';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5312,6 +5312,7 @@ function exportToFile() {
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
       cash:      tryParse('nonk_cash_v1')      || { ds: 0, nk1: 0 },
+      accounts:  tryParse('nonk_accounts_v1')  || [],
       deposits:  tryParse('nonk_deposits_v1')  || { transactions: [] },
       monthly:   tryParse('nonk_monthly_v1')   || [],
       dividends: tryParse('nonk_dividends_v1') || [],
@@ -5520,6 +5521,7 @@ function importFromFile(event) {
         const nk = data.nonk;
         if (nk.holdings)  localStorage.setItem('nonk_holdings_v1',  JSON.stringify(nk.holdings));
         if (nk.cash)      localStorage.setItem('nonk_cash_v1',      JSON.stringify(nk.cash));
+        if (nk.accounts)  localStorage.setItem('nonk_accounts_v1',  JSON.stringify(nk.accounts));
         if (nk.deposits)  localStorage.setItem('nonk_deposits_v1',  JSON.stringify(nk.deposits));
         if (nk.monthly)   localStorage.setItem('nonk_monthly_v1',   JSON.stringify(nk.monthly));
         if (nk.dividends) localStorage.setItem('nonk_dividends_v1', JSON.stringify(nk.dividends));
@@ -17529,6 +17531,7 @@ function buildDriveBundle() {
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
       cash:      tryParse('nonk_cash_v1')      || { ds: 0, nk1: 0 },
+      accounts:  tryParse('nonk_accounts_v1')  || [],
       deposits:  tryParse('nonk_deposits_v1')  || { transactions: [] },
       monthly:   tryParse('nonk_monthly_v1')   || [],
       dividends: tryParse('nonk_dividends_v1') || [],

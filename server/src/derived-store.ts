@@ -3,6 +3,7 @@
 import { db } from './db.js';
 import { computeDerived, type DerivedSnapshot, type PriceMap } from './compute/derived.js';
 import { computeKdDerived } from './compute/kdeal.js';
+import { computeNkDerived } from './compute/nonk.js';
 import { fetchPrices } from './prices.js';
 
 export interface DerivedRow { dataVersion: number; pricedAt: string | null; updatedAt: string; data: DerivedSnapshot }
@@ -16,8 +17,9 @@ export function recomputeDerivedForUser(userId: number, opts?: { prices?: PriceM
   let bundle: any;
   try { bundle = JSON.parse(row.json); } catch { return null; }
   const snapshot = computeDerived(bundle?.mypm || {}, { prices: opts?.prices });
-  // KDeal(국내보조) 파생을 부가 섹션으로 동봉(있을 때만 의미). mypm 계산엔 영향 없음.
+  // KDeal(국내보조)·NonK(해외/USD) 파생을 부가 섹션으로 동봉(있을 때만 의미). mypm 계산엔 영향 없음.
   snapshot.kd = computeKdDerived(bundle?.kd || {});
+  snapshot.nk = computeNkDerived(bundle?.nonk || {});
   const now = new Date().toISOString();
   db.prepare(
     `INSERT INTO derived (user_id, data_version, priced_at, json, updated_at)

@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.578';
+const APP_VERSION = 'NonK v0.579';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1812,52 +1812,19 @@ function nkTotalDeposited(accId = null, accIds = null) {
   return txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
 }
 
-function nkXirrCalc(cashflows) {
-  if (!cashflows || cashflows.length < 2) return null;
-  const t0 = cashflows[0].date.getTime();
-  const days = cashflows.map(cf => (cf.date.getTime() - t0) / 86400000);
-  const amounts = cashflows.map(cf => cf.amount);
-  const hasPos = amounts.some(a => a > 0);
-  const hasNeg = amounts.some(a => a < 0);
-  if (!hasPos || !hasNeg) return null;
-  let rate = 0.1;
-  for (let iter = 0; iter < 200; iter++) {
-    let npv = 0, dnpv = 0;
-    for (let i = 0; i < amounts.length; i++) {
-      const t = days[i] / 365;
-      const factor = Math.pow(1 + rate, t);
-      npv  += amounts[i] / factor;
-      dnpv -= amounts[i] * t / (factor * (1 + rate));
-    }
-    if (Math.abs(npv) < 1e-6) break;
-    if (Math.abs(dnpv) < 1e-15) break;
-    const delta = npv / dnpv;
-    rate -= delta;
-    if (rate <= -1) rate = -0.9999;
-    if (Math.abs(delta) < 1e-9) break;
-  }
-  if (!isFinite(rate) || rate <= -1) return null;
-  let finalNpv = 0;
-  for (let i = 0; i < amounts.length; i++) {
-    finalNpv += amounts[i] / Math.pow(1 + rate, days[i] / 365);
-  }
-  if (Math.abs(finalNpv) > 1e-3) return null;
-  if (Math.abs(rate) > 99.99) return null;
-  return rate;
-}
-
-function nkCalcXIRR(totalCurrentValue, accId = null, accIds = null) {
-  let txns = nkDepositData.transactions;
-  if (accId) txns = txns.filter(t => t.accId === accId);
-  else if (accIds) txns = txns.filter(t => accIds.includes(t.accId));
-  if (!txns.length || totalCurrentValue <= 0) return null;
-  const sorted = txns.slice().sort((a, b) => a.date.localeCompare(b.date));
-  const cashflows = sorted.map(t => ({
-    date: new Date(t.date),
-    amount: t.type === 'withdraw' ? Number(t.amount) : -Number(t.amount)
-  }));
-  cashflows.push({ date: new Date(), amount: totalCurrentValue });
-  return nkXirrCalc(cashflows);
+// XIRR은 서버 선계산 스냅샷에서만 표시(알고리즘 숨김). 클라 재계산 없음.
+// 표시는 부모(MyPM)가 캐시한 서버 스냅샷(mypm_derived_v1 의 .nk)을 사용. KDeal kdDisplayDerived 와 동일.
+// dataVersion 일치만 확인하고 시세 신선도는 보지 않는다(XIRR은 분 단위 시세에 거의 불변).
+// 부재(.nk 없음)/불일치/오프라인이면 XIRR은 '-'로 표시.
+function nkDisplayDerived() {
+  try {
+    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
+    // 와이어 형식: { dataVersion, pricedAt, data:{ accounts, totals, kd, nk } } → .nk 는 data 안에 있다.
+    if (!snap || !snap.data || !snap.data.nk) return null;
+    const localVer = localStorage.getItem('mypm_synced_version');
+    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
+    return snap.data.nk;
+  } catch (_) { return null; }
 }
 
 function nkRender() {
@@ -1910,7 +1877,9 @@ function nkRender() {
   const deposited  = nkTotalDeposited(null, _activeAccIds);
   const pnl        = totalValue - deposited;
   const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
-  const xirrRate   = nkCalcXIRR(totalValue, null, _activeAccIds);
+  // XIRR은 서버 스냅샷에서만 표시(없으면 '-'). 총액·원금·손익은 위 클라 계산 그대로(즉시 반영).
+  const _nkSnap    = nkDisplayDerived();
+  const xirrRate   = (_nkSnap && _nkSnap.totals && typeof _nkSnap.totals.xirr === 'number') ? _nkSnap.totals.xirr : null;
   const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
   const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
   const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
@@ -2350,7 +2319,10 @@ function nkOpenAccountDetail(accId) {
   const accDeposited = nkTotalDeposited(accId);
   const accPnl       = totalVal - accDeposited;
   const accPnlRate   = accDeposited > 0 ? accPnl / accDeposited * 100 : 0;
-  const accXirr      = nkCalcXIRR(totalVal, accId);
+  // 계좌 XIRR은 서버 스냅샷에서만(없으면 '-'). 평가·원금은 위 클라 계산 유지.
+  const _nkSnapA     = nkDisplayDerived();
+  const _nkAcc       = _nkSnapA && _nkSnapA.accounts && _nkSnapA.accounts[accId];
+  const accXirr      = (_nkAcc && typeof _nkAcc.xirr === 'number') ? _nkAcc.xirr : null;
   const accXirrSign  = accXirr != null && accXirr >= 0 ? '+' : '';
   const accXirrCls   = accXirr != null && accXirr >= 0 ? 'pos' : 'neg';
   const accXirrText  = accXirr != null ? accXirrSign + (accXirr * 100).toFixed(2) + '%' : '-';

@@ -32,6 +32,7 @@ export interface DerivedSnapshot {
   totals: { totalValue: number; totalCash: number; totalPrincipal: number; xirr: number | null };
   computedAt: string;
   kd?: import('./kdeal.js').KdDerived; // KDeal(국내보조) 파생 — 부가 섹션(있을 때만)
+  nk?: import('./nonk.js').NkDerived; // NonK(해외/USD) 파생 — 부가 섹션(있을 때만)
 }
 
 // ── 활성 계좌 id (index.html getActiveAccounts 와 동일 규칙) ──
