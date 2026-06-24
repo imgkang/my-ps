@@ -1498,7 +1498,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.572';
+const APP_VERSION = 'KDeal v0.573';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1841,10 +1841,11 @@ function kdTotalDeposited(accId = null, accIds = null) {
 function kdDisplayDerived() {
   try {
     const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
-    if (!snap || !snap.kd) return null;
+    // 와이어 형식: { dataVersion, pricedAt, data:{ accounts, totals, kd } } → .kd 는 data 안에 있다.
+    if (!snap || !snap.data || !snap.data.kd) return null;
     const localVer = localStorage.getItem('mypm_synced_version');
     if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
-    return snap.kd;
+    return snap.data.kd;
   } catch (_) { return null; }
 }
 
