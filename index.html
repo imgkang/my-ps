@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.575';
+const APP_VERSION = 'MyGP v0.576';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5063,32 +5063,26 @@ function openAccountDetail(accId) {
   const accCash = Number(cashAccounts[accId]) || 0;
   const stockValue = items.reduce((s, x) => s + x.currentValue, 0);
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
-  let totalValue = stockValue + accCash;
-  let totalPrincipal = getAccountNetTotal(accId);
-
-  // C-1: 서버 선계산 스냅샷의 계좌 평가 소비 — 동기화 일치 시 value·principal·xirr 사용(아니면 클라 계산 폴백).
-  let _accSnap = null;
-  { const _s = getDisplayDerived(); const _a = _s && _s.data && _s.data.accounts && _s.data.accounts[accId];
-    if (_a) _accSnap = { a: _a, pricedAt: _s.pricedAt }; }
-  if (_accSnap && typeof _accSnap.a.value === 'number')     totalValue = _accSnap.a.value;
-  if (_accSnap && typeof _accSnap.a.principal === 'number') totalPrincipal = _accSnap.a.principal;
+  // 평가·원금은 클라 계산값(즉시·정확) 사용 — 현금조정·편집이 바로 반영되도록 스냅샷으로 덮지 않는다.
+  const totalValue = stockValue + accCash;
+  const totalPrincipal = getAccountNetTotal(accId);
 
   const totalProfit = totalValue - totalPrincipal;
   const profitBase = totalPrincipal;
   const totalProfitRate = profitBase > 0 ? (totalProfit / profitBase) * 100 : null;
   const accDayChange = items.reduce((s, x) => s + x.dayChange, 0);
 
-  document.getElementById('detailTitle').textContent = '💼 ' + accName;
-  document.getElementById('detailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${formatKRW(accCash)}`
-    + (_accSnap && _accSnap.pricedAt ? ` · 기준 ${new Date(_accSnap.pricedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})}` : '');
-
-  const profitSign = totalProfit >= 0 ? '+' : '';
-  const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
-
-  // C-3: XIRR은 서버 스냅샷에서만. 단 시세 신선도와 무관하므로 완화 게이트(dataVersion만)로 소비. 없으면 '-'.
+  // C-3: XIRR만 서버 스냅샷에서 소비(서버 전용 알고리즘). 시세 신선도 무관 → 완화 게이트. 없으면 '-'.
   const _axSnap = getDisplayDerivedForXirr();
   const _ax = _axSnap && _axSnap.data && _axSnap.data.accounts && _axSnap.data.accounts[accId];
   const accXirrRate = (_ax && typeof _ax.xirr === 'number') ? _ax.xirr : null;
+
+  document.getElementById('detailTitle').textContent = '💼 ' + accName;
+  document.getElementById('detailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${formatKRW(accCash)}`
+    + (_axSnap && _axSnap.pricedAt ? ` · XIRR 기준 ${new Date(_axSnap.pricedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})}` : '');
+
+  const profitSign = totalProfit >= 0 ? '+' : '';
+  const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
   const accXirrSign = accXirrRate != null && accXirrRate >= 0 ? '+' : '';
   const accXirrCls  = accXirrRate != null && accXirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const accXirrText = accXirrRate != null ? accXirrSign + (accXirrRate * 100).toFixed(2) + '%' : '-';
@@ -6840,27 +6834,18 @@ function render() {
    // 전체 합계
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
   const stockValue = items.reduce((s, x) => s + x.currentValue, 0);
+  // 총액·원금은 클라 계산값(수량×시세+현금)을 그대로 사용 — 가볍고 항상 최신이라(현금조정·편집·
+  // 시세 새로고침 즉시 반영) 서버 스냅샷으로 덮지 않는다. (덮으면 미동기화 편집이 옛 합계로 가려짐.)
   let totalValue = stockValue + totalCash;
-
   let totalGrandPricipal = getGrandTotalPrincipal();
 
-  // B2: 서버 선계산 스냅샷(요약 hero) 소비 — 동기화+시세신선도 일치 시 총액·원금을 스냅샷에서 사용.
-  // 불일치/스냅샷 없음/오프라인이면 위 클라 계산값을 그대로 폴백(비파괴적).
+  // XIRR만 서버 선계산 스냅샷에서 소비(독점 알고리즘·서버 전용). 시세 신선도와 무관하므로 완화
+  // 게이트(dataVersion만). 없으면 누적 카드 연수익률은 CAGR 폴백. _snapPricedAt 은 XIRR 기준시각.
   let _snapPricedAt = null, _snapXirr = null;
-  {
-    const _snap = getDisplayDerived();
-    if (_snap) {
-      const _t = (_snap.data && _snap.data.totals) || {};
-      if (typeof _t.totalValue === 'number')     totalValue = _t.totalValue;
-      if (typeof _t.totalPrincipal === 'number') totalGrandPricipal = _t.totalPrincipal;
-      _snapPricedAt = _snap.pricedAt || null;
-    }
-  }
-  // XIRR은 시세 신선도와 무관 → 완화 게이트(dataVersion만)로 별도 소비. 없으면 누적 카드는 CAGR 폴백.
   {
     const _sx = getDisplayDerivedForXirr();
     const _t = _sx && _sx.data && _sx.data.totals;
-    if (_t && typeof _t.xirr === 'number') _snapXirr = _t.xirr;
+    if (_t && typeof _t.xirr === 'number') { _snapXirr = _t.xirr; _snapPricedAt = _sx.pricedAt || null; }
   }
 
   const totalProfit = totalValue - totalGrandPricipal; // items.reduce((s, x) => s + (x.hasCost ? x.profit : 0), 0);
@@ -6956,7 +6941,7 @@ function render() {
         <div class="pf-hero-value">${fmtT(totalValue)}</div>
         <div class="pf-hero-unit">(천원)</div>
       </div>
-      ${_snapPricedAt ? `<div class="pf-hero-asof" style="font-size:11px;color:#8a8f98;margin-top:2px">기준 ${new Date(_snapPricedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})} · 서버 계산</div>` : ''}
+      ${_snapPricedAt ? `<div class="pf-hero-asof" style="font-size:11px;color:#8a8f98;margin-top:2px">XIRR 기준 ${new Date(_snapPricedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})} · 서버 계산</div>` : ''}
       <div class="pf-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</span><span class="pf-hero-label">오늘</span></div>
       <div class="pf-hero-row ${thisMonCls}"><span>${thisMonChange != null ? fmtTS(thisMonChange, thisMonSign) + ' ' + fmtPct(thisMonRate, thisMonSign) : '-'}</span><span class="pf-hero-label">${thisMonLabel}</span></div>
       <div class="pf-hero-row ${profitCls}"><span>${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</span><span class="pf-hero-label">누적</span></div>
@@ -17794,22 +17779,6 @@ function cacheDerived(snap) {
 function getCachedDerived() {
   if (window.__derivedSnapshot) return window.__derivedSnapshot;
   try { return JSON.parse(localStorage.getItem(DERIVED_CACHE_KEY) || 'null'); } catch (_) { return null; }
-}
-// B2: 표시용 파생 스냅샷 — 현재 동기화 상태와 일치할 때만 신뢰(아니면 클라 계산 폴백).
-// 게이트: ① 스냅샷 dataVersion === 로컬 synced_version (= 로컬 미저장 편집 없음)
-//        ② 로컬 시세가 스냅샷 pricedAt 보다 신선하지 않을 것(새로고침 직후·자동저장 OFF 시 hero가 보유목록과 어긋나지 않도록)
-function getDisplayDerived() {
-  try {
-    const snap = getCachedDerived();
-    if (!snap || !snap.data || !snap.data.totals) return null;
-    const localVer = localStorage.getItem('mypm_synced_version');
-    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
-    const pricedTs = snap.pricedAt ? Date.parse(snap.pricedAt) : 0;
-    const localTs  = (typeof holdings !== 'undefined' && Array.isArray(holdings) && holdings.length)
-      ? Math.max(...holdings.map(h => h.updatedAt || 0)) : 0;
-    if (localTs && pricedTs && localTs > pricedTs + 5000) return null; // 로컬 시세가 더 신선 → 클라 계산 우선
-    return snap;
-  } catch (_) { return null; }
 }
 // XIRR 전용 게이트 — dataVersion 일치(거래내역/보유구성 동일)만 요구하고 시세 신선도는 무시한다.
 // XIRR은 거래내역+현재총액 기반이라 분 단위 시세에 거의 불변이며, 클라 폴백을 제거(C-3)했으므로
