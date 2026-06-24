@@ -1832,6 +1832,14 @@ registerMobileTooltipDismiss();
         <div id="backendActionSection" style="display:none">
           <div class="cfg-highlight-title">☁️ 동기화 연결됨</div>
           <div id="backendStatusMsg" class="drive-status ok" style="margin-top:6px;font-size:13px"></div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="backendAutoSaveChk" onchange="toggleAutoSave(this.checked)" style="width:16px;height:16px;flex:none">
+            <span>자동저장 — 데이터 변경 시 서버에 자동 동기화</span>
+          </label>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn-secondary" style="flex:1;font-size:13px;padding:8px" onclick="backendSave(false)">⬆️ 저장</button>
+            <button class="btn-secondary" style="flex:1;font-size:13px;padding:8px" onclick="backendLoad()">⬇️ 불러오기</button>
+          </div>
         </div>
       </div>
 
@@ -3843,7 +3851,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.577';
+const APP_VERSION = 'MyGP v0.578';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
