@@ -3843,7 +3843,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.568';
+const APP_VERSION = 'MyGP v0.569';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5063,20 +5063,29 @@ function openAccountDetail(accId) {
   const accCash = Number(cashAccounts[accId]) || 0;
   const stockValue = items.reduce((s, x) => s + x.currentValue, 0);
   const totalCost = items.reduce((s, x) => s + x.cost, 0);
-  const totalValue = stockValue + accCash;
-  const totalPrincipal = getAccountNetTotal(accId);
+  let totalValue = stockValue + accCash;
+  let totalPrincipal = getAccountNetTotal(accId);
+
+  // C-1: 서버 선계산 스냅샷의 계좌 평가 소비 — 동기화 일치 시 value·principal·xirr 사용(아니면 클라 계산 폴백).
+  let _accSnap = null;
+  { const _s = getDisplayDerived(); const _a = _s && _s.data && _s.data.accounts && _s.data.accounts[accId];
+    if (_a) _accSnap = { a: _a, pricedAt: _s.pricedAt }; }
+  if (_accSnap && typeof _accSnap.a.value === 'number')     totalValue = _accSnap.a.value;
+  if (_accSnap && typeof _accSnap.a.principal === 'number') totalPrincipal = _accSnap.a.principal;
+
   const totalProfit = totalValue - totalPrincipal;
   const profitBase = totalPrincipal;
   const totalProfitRate = profitBase > 0 ? (totalProfit / profitBase) * 100 : null;
   const accDayChange = items.reduce((s, x) => s + x.dayChange, 0);
 
   document.getElementById('detailTitle').textContent = '💼 ' + accName;
-  document.getElementById('detailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${formatKRW(accCash)}`;
+  document.getElementById('detailSubtitle').textContent = `보유 종목 ${items.length}개 · 현금 ${formatKRW(accCash)}`
+    + (_accSnap && _accSnap.pricedAt ? ` · 기준 ${new Date(_accSnap.pricedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})}` : '');
 
   const profitSign = totalProfit >= 0 ? '+' : '';
   const profitCls = totalProfit >= 0 ? 'diff-positive' : 'diff-negative';
 
-  const accXirrRate = calcXIRR(totalValue, accId);
+  const accXirrRate = (_accSnap && typeof _accSnap.a.xirr === 'number') ? _accSnap.a.xirr : calcXIRR(totalValue, accId);
   const accXirrSign = accXirrRate != null && accXirrRate >= 0 ? '+' : '';
   const accXirrCls  = accXirrRate != null && accXirrRate >= 0 ? 'diff-positive' : 'diff-negative';
   const accXirrText = accXirrRate != null ? accXirrSign + (accXirrRate * 100).toFixed(2) + '%' : '-';
