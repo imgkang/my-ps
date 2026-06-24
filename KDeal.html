@@ -1498,7 +1498,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.571';
+const APP_VERSION = 'KDeal v0.572';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1834,19 +1834,16 @@ function kdTotalDeposited(accId = null, accIds = null) {
 }
 
 // C-4b: KDeal XIRR 계산은 서버 전용으로 이전됨(server/src/compute/kdeal.ts).
-// 표시는 부모(MyPM)가 캐시한 서버 선계산 스냅샷(mypm_derived_v1 의 .kd)을 동기화 일치 시에만 사용.
-// 게이트: ① snap.dataVersion === synced_version  ② 로컬 시세가 스냅샷 pricedAt 보다 신선하지 않을 것.
-// 부재/불일치/오프라인이면 XIRR은 '-'로 표시(클라 재계산 없음).
+// 표시는 부모(MyPM)가 캐시한 서버 선계산 스냅샷(mypm_derived_v1 의 .kd)을 사용.
+// 이 함수는 XIRR 에만 쓰이므로 dataVersion 일치만 확인하고 시세 신선도(freshness)는 보지 않는다.
+// (XIRR은 분 단위 시세에 거의 불변. freshness 로 막으면 시세 새로고침만 해도 XIRR 이 사라짐.)
+// 부재(.kd 없음)/불일치/오프라인이면 XIRR은 '-'로 표시(클라 재계산 없음).
 function kdDisplayDerived() {
   try {
     const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
     if (!snap || !snap.kd) return null;
     const localVer = localStorage.getItem('mypm_synced_version');
     if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
-    const pricedTs = snap.pricedAt ? Date.parse(snap.pricedAt) : 0;
-    const localTs = (typeof kdHoldings !== 'undefined' && Array.isArray(kdHoldings) && kdHoldings.length)
-      ? Math.max(...kdHoldings.map(h => h.updatedAt || 0)) : 0;
-    if (localTs && pricedTs && localTs > pricedTs + 5000) return null;
     return snap.kd;
   } catch (_) { return null; }
 }
