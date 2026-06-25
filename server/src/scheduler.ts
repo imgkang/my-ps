@@ -59,19 +59,33 @@ export function startScheduler() {
     { timezone: 'Asia/Seoul' }
   );
 
-  // 장중 2분마다 사용자별 파생상태 선계산(라이브 시세) → 클라는 준비된 결과를 받아 즉시 표시.
+  // 국내장(평일 09:00~15:40 KST) 2분마다 → KR 시세로 선계산.
   cron.schedule(
     '*/2 9-15 * * 1-5',
-    () => recomputeAllDerived().catch((e) => console.error('[scheduler] derived tick error', e)),
+    () => recomputeAllDerived(['kr']).catch((e) => console.error('[scheduler] KR derived tick error', e)),
+    { timezone: 'Asia/Seoul' }
+  );
+
+  // 미국장 2분마다 → US 시세(Finnhub)로 선계산. 미국 정규장 09:30~16:00 ET 는
+  // KST 로 대략 22:30~06:00(서머타임/표준시에 따라 ±1h). 여유 있게 22~23시(월~금) +
+  // 00~06시(화~토, 미국 기준 전일 야간)를 커버한다. KR 종가는 캐시로 유지되므로 함께 반영됨.
+  cron.schedule(
+    '*/2 22,23 * * 1-5',
+    () => recomputeAllDerived(['us']).catch((e) => console.error('[scheduler] US derived tick error', e)),
+    { timezone: 'Asia/Seoul' }
+  );
+  cron.schedule(
+    '*/2 0-6 * * 2-6',
+    () => recomputeAllDerived(['us']).catch((e) => console.error('[scheduler] US derived tick error', e)),
     { timezone: 'Asia/Seoul' }
   );
 }
 
 // 번들이 있는 모든 사용자의 파생상태를 라이브 시세로 재계산·저장.
-async function recomputeAllDerived() {
+async function recomputeAllDerived(markets: Array<'kr' | 'us'>) {
   const users = db.prepare('SELECT user_id FROM data_bundle').all() as { user_id: number }[];
   for (const u of users) {
-    try { await recomputeWithLivePrices(u.user_id); }
+    try { await recomputeWithLivePrices(u.user_id, markets); }
     catch (e: any) { console.error('[derived tick] user', u.user_id, e?.message); }
   }
 }

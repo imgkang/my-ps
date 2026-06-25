@@ -21,4 +21,12 @@ export default async function derivedRoutes(app: FastifyInstance) {
     return d ? { dataVersion: d.dataVersion, pricedAt: d.pricedAt, data: d.data }
              : { dataVersion: 0, pricedAt: null, data: null };
   });
+
+  // 보유종목 최신 시세 맵만 경량 반환 — 프론트가 행별 가격을 per-code fetch 없이 그릴 때.
+  //   GET /api/prices → { pricedAt, prices: { "005930": {price,change}, "AAPL": {...} } }
+  app.get('/api/prices', async (req) => {
+    const uid = userId(req);
+    const d = getDerivedForUser(uid) || recomputeDerivedForUser(uid);
+    return d ? { pricedAt: d.pricedAt, prices: d.data.prices || {} } : { pricedAt: null, prices: {} };
+  });
 }
