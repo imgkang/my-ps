@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.589';
+const APP_VERSION = 'MyGP v0.590';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -3913,7 +3913,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem('open_onboarding')) {
     sessionStorage.removeItem('open_onboarding');
     setTimeout(() => openOnboardingModal(), 300);
-  } else if (appSettings.myBirthYear === 0 && getActiveAccounts().length === 0 && !localStorage.getItem('setup_skipped')) {
+  } else if (
+    appSettings.myBirthYear === 0 &&
+    getActiveAccounts().length === 0 &&
+    !localStorage.getItem('setup_skipped') &&
+    !localStorage.getItem('onboarding_started') &&
+    !localStorage.getItem('google_login_done') &&
+    !(window.MyPMApi && MyPMApi.isAuthenticated())
+  ) {
     setTimeout(() => openOnboardingModal(), 300);
   }
   document.addEventListener('touchstart', e => {
@@ -11778,6 +11785,7 @@ function openOnboardingModal() {
   });
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   renderOnboardingStep();
+  localStorage.setItem('onboarding_started', '1');
   document.getElementById('onboardingModal').classList.add('open');
   document.getElementById('appVersion')?.style.setProperty('display', 'none');
 }
@@ -12745,6 +12753,11 @@ function finishOnboarding() {
 
   _obOpenedFromSetup = false;
   closeOnboardingModal();
+  if (!localStorage.getItem('google_login_suggested') &&
+      !localStorage.getItem('google_login_done') &&
+      !(window.MyPMApi && MyPMApi.isAuthenticated())) {
+    setTimeout(() => openGoogleSuggestModal(), 400);
+  }
   render();
   if (typeof renderPortfolio === 'function') renderPortfolio();
   if (typeof renderPrincipalTable === 'function') renderPrincipalTable();
@@ -13002,6 +13015,8 @@ function doReset(andOnboard) {
     'kd_cash_v1', 'kd_accounts_v1', 'kd_monthly_v1',
     'kd_dividends_v1', 'kd_watchlist_v1', 'kd_migration_done_v1',
     'setup_skipped', 'setup_banner_dismissed',
+    'onboarding_started', 'google_login_suggested',
+    // google_login_done 은 초기화해도 유지 (한 번 로그인한 기기에서 온보딩 재실행 방지)
     // SETUP_SCENARIO_KEY 는 초기화해도 유지 (시나리오는 보존)
   ].forEach(k => localStorage.removeItem(k));
   if (savedClientId) {
@@ -17732,6 +17747,8 @@ function renderBackendGoogleBtn() {
         setBackendStatus('loading', '⏳ 로그인 중...');
         MyPMApi.loginGoogle(resp.credential).then(function () {
           localStorage.setItem('mypm_autosave_v1', '1');
+          localStorage.setItem('google_login_done', '1');
+          closeGoogleSuggestModal();
           updateBackendUI();
           backendAutoLoadOnLogin();
         }).catch(function (e) {
@@ -17745,6 +17762,26 @@ function renderBackendGoogleBtn() {
   } catch (e) {
     setBackendStatus('error', 'GIS 초기화 실패: ' + (e && e.message));
   }
+}
+
+function openGoogleSuggestModal() {
+  document.getElementById('googleSuggestModal').classList.add('open');
+}
+function closeGoogleSuggestModal() {
+  document.getElementById('googleSuggestModal').classList.remove('open');
+}
+function googleSuggestDismiss() {
+  localStorage.setItem('google_login_suggested', '1');
+  closeGoogleSuggestModal();
+}
+function googleSuggestLogin() {
+  localStorage.setItem('google_login_suggested', '1');
+  closeGoogleSuggestModal();
+  openSettingsModal();
+  setTimeout(() => {
+    const el = document.getElementById('backendLoginSection');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 200);
 }
 
 function backendLogout() {
@@ -18217,6 +18254,21 @@ window.addEventListener('message', e => {
     <div class="div-focused-edit-footer">
       <button class="btn-secondary" onclick="closeDivAccEdit()">취소</button>
       <button class="btn-primary" onclick="saveDivAccEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 구글 로그인 권유 모달 ===== -->
+<div class="modal-backdrop" id="googleSuggestModal" style="z-index:1250">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <div style="font-size:36px;margin-bottom:8px">☁️</div>
+    <h3 style="margin-bottom:8px;font-size:17px">데이터를 안전하게 보관하세요</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.6">
+      구글 계정으로 로그인하면 기기 간 동기화와<br>자동 백업이 활성화됩니다.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn-primary" onclick="googleSuggestLogin()" style="width:100%">구글로 로그인</button>
+      <button class="btn-secondary" onclick="googleSuggestDismiss()" style="width:100%">나중에</button>
     </div>
   </div>
 </div>
