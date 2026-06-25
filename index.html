@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.598';
+const APP_VERSION = 'MyGP v0.599';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17781,6 +17781,33 @@ function googleSuggestLogin() {
   ensureGsiScript();
   function _render() {
     if (window.google && google.accounts && google.accounts.id) {
+      google.accounts.id.initialize({
+        client_id: BACKEND_GOOGLE_CLIENT_ID,
+        callback: function(resp) {
+          if (!(window.MyPMApi && typeof MyPMApi.loginGoogle === 'function')) {
+            alert('앱 업데이트가 필요합니다 — 새로고침(또는 앱 종료 후 재실행) 해주세요.');
+            return;
+          }
+          try {
+            const b64 = resp.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(atob(b64));
+            if (payload.picture) {
+              localStorage.setItem('cfgGooglePicture', payload.picture);
+              _applyCfgProfilePicture(payload.picture);
+            }
+          } catch (_) {}
+          MyPMApi.loginGoogle(resp.credential).then(function() {
+            localStorage.setItem('mypm_autosave_v1', '1');
+            localStorage.setItem('google_login_done', '1');
+            closeGoogleSuggestModal();
+            updateBackendUI();
+            backendAutoLoadOnLogin();
+          }).catch(function(e) {
+            const msg = (e && e.status === 403) ? '허용되지 않은 계정입니다' : (e && e.message) || '로그인 실패';
+            alert('❌ ' + msg);
+          });
+        },
+      });
       google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', text: 'signin_with', width: 240 });
     } else {
       setTimeout(_render, 300);
@@ -18316,7 +18343,7 @@ window.addEventListener('message', e => {
       <div style="font-size:36px;margin-bottom:8px">☁️</div>
       <h3 style="margin-bottom:16px;font-size:17px">구글 계정으로 로그인</h3>
       <div id="googleSuggestGoogleBtn" style="display:flex;justify-content:center;margin-bottom:16px"></div>
-      <button class="btn-secondary" onclick="googleSuggestShowMain()" style="width:100%">뒤로</button>
+      <button class="btn-secondary" onclick="googleSuggestDismiss()" style="width:100%">나중에</button>
     </div>
   </div>
 </div>
