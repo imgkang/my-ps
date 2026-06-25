@@ -1663,16 +1663,6 @@ registerMobileTooltipDismiss();
 
   <div id="panel-portfolio" class="tab-panel active">
 
-  <!-- 신규 사용자 시작하기 배너 -->
-  <div id="setupBanner" class="setup-banner" style="display:none">
-    <div class="setup-banner-title">📊 연금 키우기를 시작해보세요</div>
-    <div class="setup-banner-sub">나의 연금 계획을 설정하고 다양한 시나리오를 비교해보세요</div>
-    <div class="setup-banner-actions">
-      <button class="btn-primary" style="flex:1;padding:9px 0;font-size:13px" onclick="openSetupScreen()">시작하기 →</button>
-      <button onclick="dismissSetupBanner()" style="padding:9px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:13px;color:var(--muted)">나중에</button>
-    </div>
-  </div>
-
   <span id="statusText" style="display:none"></span>
   <div id="holdingsContainer">
     <div class="empty-state">
@@ -3878,7 +3868,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.602';
+const APP_VERSION = 'MyGP v0.603';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17788,15 +17778,20 @@ function _renderGoogleSuggestBtn() {
 }
 
 function backendLogout() {
-  // 로그아웃 = 로컬 데이터 전체 초기화.
-  // 열거식 키 삭제·외부 모듈(MyPMApi.logout)·doReset 에 의존하면, 목록에서 빠진 키
-  // (mypm_derived_v1, mypm_synced_version 등)나 옛 캐시 api.js 로 인해 토큰/데이터가 남아
-  // "로그아웃이 안 되는" 것처럼 보일 수 있다. localStorage 전체를 비워 확실히 초기화한다.
+  // 1) iframe 컨텍스트를 먼저 종료 — NonK/KDeal iframe 의 pending 자동저장이 clear() 후
+  //    localStorage 에 데이터를 다시 쓰는 것을 방지한다.
+  try { ['frame-nonk', 'frame-kdeal'].forEach(id => {
+    const f = document.getElementById(id);
+    if (f && f.dataset.loaded) { f.src = 'about:blank'; delete f.dataset.loaded; }
+  }); } catch (_) {}
+  // 2) Google One Tap 자동 재로그인 방지
+  try { google.accounts.id.disableAutoSelect(); } catch (_) {}
+  // 3) 앱 토큰 삭제 + localStorage 전체 초기화
   try { MyPMApi.logout(); } catch (_) {}
   try { localStorage.clear(); } catch (_) {}
   try { sessionStorage.clear(); } catch (_) {}
   _applyCfgProfilePicture('');
-  // 다음 로드에서 시작하기(온보딩) 강제 표시
+  // 다음 로드에서 온보딩 강제 표시
   try { sessionStorage.setItem('open_onboarding', '1'); } catch (_) {}
   // iOS 홈화면 PWA 에서 클릭 핸들러 내부의 동기 reload 가 무시되는 경우가 있어
   // 핸들러를 벗어난 뒤(setTimeout) 강제 재네비게이션.
