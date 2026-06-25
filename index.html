@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.591';
+const APP_VERSION = 'MyGP v0.592';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -18274,7 +18274,7 @@ window.addEventListener('message', e => {
 </div>
 
 <!-- ===== 임시 테스트 버튼 (온보딩 초기화) ===== -->
-<button id="obTestBtn" onclick="['onboarding_started','google_login_done','google_login_suggested','pension_app_settings_v1'].forEach(k=>localStorage.removeItem(k));location.reload();"
+<button id="obTestBtn" onclick="sessionStorage.setItem('open_onboarding','1');location.reload();"
   style="position:fixed;bottom:80px;right:16px;z-index:9999;background:#ff5722;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-size:12px;opacity:0.85;box-shadow:0 2px 8px rgba(0,0,0,0.3)">
   온보딩 초기화
 </button>
