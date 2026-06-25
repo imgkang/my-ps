@@ -3857,7 +3857,28 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.600';
+// GIS redirect 모드 복귀 시 token 추출 — DOMContentLoaded 전에 실행
+(function() {
+  var params = new URLSearchParams(location.search);
+  var tok = params.get('app_token');
+  var gp  = params.get('gp');
+  if (tok) {
+    try { localStorage.setItem('mypm_auth_token', tok); } catch (_) {}
+    try { localStorage.setItem('google_login_done', '1'); } catch (_) {}
+    try { localStorage.setItem('mypm_autosave_v1', '1'); } catch (_) {}
+    if (gp) try { localStorage.setItem('cfgGooglePicture', decodeURIComponent(gp)); } catch (_) {}
+    params.delete('app_token'); params.delete('gp');
+    try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params.toString() : '')); } catch (_) {}
+  }
+  var err = params.get('login_error');
+  if (err) {
+    params.delete('login_error');
+    try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params.toString() : '')); } catch (_) {}
+    setTimeout(function() { alert('로그인 실패: ' + decodeURIComponent(err)); }, 600);
+  }
+})();
+
+const APP_VERSION = 'MyGP v0.601';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17725,33 +17746,8 @@ function renderBackendGoogleBtn() {
   try {
     google.accounts.id.initialize({
       client_id: BACKEND_GOOGLE_CLIENT_ID,
-      callback: function (resp) {
-        // 옛 캐시(api.js)로 인해 loginGoogle 이 없으면 멈추지 않고 안내.
-        if (!(window.MyPMApi && typeof MyPMApi.loginGoogle === 'function')) {
-          setBackendStatus('error', '앱 업데이트가 필요합니다 — 새로고침(또는 앱 종료 후 재실행) 해주세요.');
-          return;
-        }
-        // JWT 디코딩 — 프로필 이미지 추출 및 저장 (base64url → base64 변환 필수)
-        try {
-          const b64 = resp.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-          const payload = JSON.parse(atob(b64));
-          if (payload.picture) {
-            localStorage.setItem('cfgGooglePicture', payload.picture);
-            _applyCfgProfilePicture(payload.picture);
-          }
-        } catch (_) {}
-        setBackendStatus('loading', '⏳ 로그인 중...');
-        MyPMApi.loginGoogle(resp.credential).then(function () {
-          localStorage.setItem('mypm_autosave_v1', '1');
-          localStorage.setItem('google_login_done', '1');
-          closeGoogleSuggestModal();
-          updateBackendUI();
-          backendAutoLoadOnLogin();
-        }).catch(function (e) {
-          const msg = (e && e.status === 403) ? '허용되지 않은 계정입니다' : (e && e.message) || '로그인 실패';
-          setBackendStatus('error', '❌ ' + msg);
-        });
-      },
+      ux_mode: 'redirect',
+      login_uri: location.origin + '/api/auth/google-redirect',
     });
     host.innerHTML = '';
     google.accounts.id.renderButton(host, { theme: 'outline', size: 'large', text: 'signin_with', width: 240 });
@@ -17762,53 +17758,26 @@ function renderBackendGoogleBtn() {
 
 function openGoogleSuggestModal() {
   document.getElementById('googleSuggestModal').classList.add('open');
+  _renderGoogleSuggestBtn();
 }
 function closeGoogleSuggestModal() {
   document.getElementById('googleSuggestModal').classList.remove('open');
-  googleSuggestShowMain();
 }
 function googleSuggestDismiss() {
   localStorage.setItem('google_login_suggested', '1');
   closeGoogleSuggestModal();
 }
-function googleSuggestLogin() {
-  localStorage.setItem('google_login_suggested', '1');
-  document.getElementById('googleSuggestMain').style.display = 'none';
-  const area = document.getElementById('googleSuggestLoginArea');
-  area.style.display = 'block';
+function _renderGoogleSuggestBtn() {
   const container = document.getElementById('googleSuggestGoogleBtn');
+  if (!container) return;
   container.innerHTML = '';
   ensureGsiScript();
   function _render() {
     if (window.google && google.accounts && google.accounts.id) {
       google.accounts.id.initialize({
         client_id: BACKEND_GOOGLE_CLIENT_ID,
-        callback: function(resp) {
-          if (!(window.MyPMApi && typeof MyPMApi.loginGoogle === 'function')) {
-            alert('앱 업데이트가 필요합니다 — 새로고침(또는 앱 종료 후 재실행) 해주세요.');
-            return;
-          }
-          // baseUrl 이 미설정 상태(로그아웃 직후 등)일 수 있으므로 명시적으로 보장
-          try { if (!MyPMApi.isConfigured()) MyPMApi.configure({ baseUrl: location.origin }); } catch (_) {}
-          try {
-            const b64 = resp.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(atob(b64));
-            if (payload.picture) {
-              localStorage.setItem('cfgGooglePicture', payload.picture);
-              _applyCfgProfilePicture(payload.picture);
-            }
-          } catch (_) {}
-          MyPMApi.loginGoogle(resp.credential).then(function() {
-            localStorage.setItem('mypm_autosave_v1', '1');
-            localStorage.setItem('google_login_done', '1');
-            closeGoogleSuggestModal();
-            updateBackendUI();
-            backendAutoLoadOnLogin();
-          }).catch(function(e) {
-            const msg = (e && e.status === 403) ? '허용되지 않은 계정입니다' : (e && e.message) || '로그인 실패';
-            alert('❌ ' + msg);
-          });
-        },
+        ux_mode: 'redirect',
+        login_uri: location.origin + '/api/auth/google-redirect',
       });
       google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', text: 'signin_with', width: 240 });
     } else {
@@ -17816,10 +17785,6 @@ function googleSuggestLogin() {
     }
   }
   _render();
-}
-function googleSuggestShowMain() {
-  document.getElementById('googleSuggestMain').style.display = '';
-  document.getElementById('googleSuggestLoginArea').style.display = 'none';
 }
 
 function backendLogout() {
@@ -18336,16 +18301,10 @@ window.addEventListener('message', e => {
       <p style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.6">
         구글 계정으로 로그인하면 기기 간 동기화와<br>자동 백업이 활성화됩니다.
       </p>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="btn-primary" onclick="googleSuggestLogin()" style="width:100%">구글로 로그인</button>
+      <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+        <div id="googleSuggestGoogleBtn" style="min-height:44px"></div>
         <button class="btn-secondary" onclick="googleSuggestDismiss()" style="width:100%">나중에</button>
       </div>
-    </div>
-    <div id="googleSuggestLoginArea" style="display:none">
-      <div style="font-size:36px;margin-bottom:8px">☁️</div>
-      <h3 style="margin-bottom:16px;font-size:17px">구글 계정으로 로그인</h3>
-      <div id="googleSuggestGoogleBtn" style="display:flex;justify-content:center;margin-bottom:16px"></div>
-      <button class="btn-secondary" onclick="googleSuggestDismiss()" style="width:100%">나중에</button>
     </div>
   </div>
 </div>

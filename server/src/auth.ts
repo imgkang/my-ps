@@ -135,4 +135,43 @@ export default async function authRoutes(app: FastifyInstance) {
     const row = db.prepare('SELECT email, name FROM users WHERE id = ?').get(userId(req));
     return row ?? {};
   });
+
+  // GIS redirect 모드 — Google이 인증 후 form POST로 credential 전달
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    (_req, body, done) => {
+      const params = new URLSearchParams(body as string);
+      const obj: Record<string, string> = {};
+      params.forEach((v, k) => { obj[k] = v; });
+      done(null, obj);
+    }
+  );
+
+  app.post('/api/auth/google-redirect', async (req, reply) => {
+    const credential = (req.body as Record<string, string>)?.credential;
+    if (!credential)
+      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('credential 없음'));
+    if (!env.GOOGLE_CLIENT_ID)
+      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('서버 설정 오류'));
+    let payload;
+    try {
+      const ticket = await getGoogleClient().verifyIdToken({
+        idToken: credential, audience: env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('Google 인증 실패'));
+    }
+    if (!payload?.email || !payload.email_verified || !payload.sub)
+      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('이메일 미인증'));
+    if (!isEmailAllowed(payload.email.toLowerCase()))
+      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('허용되지 않은 계정'));
+    const user = upsertGoogleUser({ sub: payload.sub, email: payload.email.toLowerCase(), name: payload.name ?? null });
+    const token = signToken(user.id);
+    const base = `/my-ps/?app_token=${encodeURIComponent(token)}`;
+    return payload.picture
+      ? reply.redirect(base + '&gp=' + encodeURIComponent(payload.picture))
+      : reply.redirect(base);
+  });
 }
