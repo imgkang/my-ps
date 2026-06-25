@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.581';
+const APP_VERSION = 'NonK v0.582';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1826,6 +1826,24 @@ function nkDisplayDerived() {
     return snap.data.nk;
   } catch (_) { return null; }
 }
+// 서버 스냅샷의 pricedAt(서버 계산 시각) — .nk 유효(동기화 일치)할 때만. 히어로 '오늘' 라벨용.
+function nkSnapPricedAt() {
+  try {
+    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
+    if (!snap || !snap.data || !snap.data.nk) return null;
+    const localVer = localStorage.getItem('mypm_synced_version');
+    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
+    return snap.pricedAt || null;
+  } catch (_) { return null; }
+}
+// 서버 계산 시각 → "MM/DD HH:MM". 없으면 null.
+function fmtHeroAsOf(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return null;
+  const p = (n) => ('0' + n).slice(-2);
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 function nkRender() {
   const container = document.getElementById('nkHoldingsContainer');
@@ -1917,7 +1935,7 @@ function nkRender() {
   const heroEl = document.getElementById('nkHeroContainer');
   if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
     <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtUSD(totalValue)}</div></div>
-    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">오늘</span></div>
+    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">${fmtHeroAsOf(nkSnapPricedAt()) || '오늘'}</span></div>
     <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtUSD(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
     <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtUSD(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
   </div>`;

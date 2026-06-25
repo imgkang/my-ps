@@ -3851,7 +3851,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.581';
+const APP_VERSION = 'MyGP v0.582';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -6954,7 +6954,7 @@ function render() {
         <div class="pf-hero-value">${fmtT(totalValue)}</div>
         <div class="pf-hero-unit">(천원)</div>
       </div>
-      <div class="pf-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</span><span class="pf-hero-label">${_snapPricedAt ? new Date(_snapPricedAt).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}) : '오늘'}</span></div>
+      <div class="pf-hero-row ${dayChangeCls}"><span>${fmtTS(totalDayChange)} ${fmtPct(totalDayRate)}</span><span class="pf-hero-label">${fmtHeroAsOf(_snapPricedAt) || '오늘'}</span></div>
       <div class="pf-hero-row ${thisMonCls}"><span>${thisMonChange != null ? fmtTS(thisMonChange, thisMonSign) + ' ' + fmtPct(thisMonRate, thisMonSign) : '-'}</span><span class="pf-hero-label">${thisMonLabel}</span></div>
       <div class="pf-hero-row ${profitCls}"><span>${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</span><span class="pf-hero-label">누적</span></div>
       ${sinceHtml}
@@ -17804,6 +17804,14 @@ function getDisplayDerivedForXirr() {
     if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
     return snap;
   } catch (_) { return null; }
+}
+// 서버 스냅샷의 pricedAt(서버 계산 시각) → "MM/DD HH:MM" 표시 문자열. 없으면 null.
+function fmtHeroAsOf(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return null;
+  const p = (n) => ('0' + n).slice(-2);
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 // 서버에서 최신 파생 스냅샷을 받아 캐시(최선노력, 비차단).
 async function refreshDerivedCache() {
