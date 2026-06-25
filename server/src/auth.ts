@@ -151,9 +151,9 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post('/api/auth/google-redirect', async (req, reply) => {
     const credential = (req.body as Record<string, string>)?.credential;
     if (!credential)
-      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('credential 없음'));
+      return reply.redirect('/?login_error=' + encodeURIComponent('credential 없음'));
     if (!env.GOOGLE_CLIENT_ID)
-      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('서버 설정 오류'));
+      return reply.redirect('/?login_error=' + encodeURIComponent('서버 설정 오류'));
     let payload;
     try {
       const ticket = await getGoogleClient().verifyIdToken({
@@ -161,15 +161,15 @@ export default async function authRoutes(app: FastifyInstance) {
       });
       payload = ticket.getPayload();
     } catch {
-      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('Google 인증 실패'));
+      return reply.redirect('/?login_error=' + encodeURIComponent('Google 인증 실패'));
     }
     if (!payload?.email || !payload.email_verified || !payload.sub)
-      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('이메일 미인증'));
+      return reply.redirect('/?login_error=' + encodeURIComponent('이메일 미인증'));
     if (!isEmailAllowed(payload.email.toLowerCase()))
-      return reply.redirect('/my-ps/?login_error=' + encodeURIComponent('허용되지 않은 계정'));
+      return reply.redirect('/?login_error=' + encodeURIComponent('허용되지 않은 계정'));
     const user = upsertGoogleUser({ sub: payload.sub, email: payload.email.toLowerCase(), name: payload.name ?? null });
     const token = signToken(user.id);
-    const base = `/my-ps/?app_token=${encodeURIComponent(token)}`;
+    const base = `/?app_token=${encodeURIComponent(token)}`;
     return payload.picture
       ? reply.redirect(base + '&gp=' + encodeURIComponent(payload.picture))
       : reply.redirect(base);
