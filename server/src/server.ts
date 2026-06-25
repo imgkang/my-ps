@@ -72,7 +72,7 @@ if (env.SERVE_STATIC) {
 
 try {
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
-  app.log.info(`My PM 백엔드 실행 중 — http://0.0.0.0:${env.PORT} [v0.545]`);
+  app.log.info(`My PM 백엔드 실행 중 — http://0.0.0.0:${env.PORT} [v0.601]`);
   startScheduler();
   // 배포(서버 소스 변경→재시작) 후 1회 성과측정·푸시. 같은 sha 면 내부에서 스킵.
   recordBenchAndNotify((s) => app.log.info(s), (s) => app.log.error(s));
