@@ -632,7 +632,7 @@
     height: 0; overflow: hidden;
     background: var(--primary);
     color: #fff; font-size: 13px; font-weight: 600;
-    z-index: 1000;
+    z-index: 400;
     transition: background 0.15s;
   }
   .ptr-indicator.ptr-ready { background: var(--primary-dark); }
@@ -1498,7 +1498,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.584';
+const APP_VERSION = 'KDeal v0.585';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
