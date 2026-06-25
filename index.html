@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.593';
+const APP_VERSION = 'MyGP v0.594';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -3914,12 +3914,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionStorage.removeItem('open_onboarding');
     setTimeout(() => openOnboardingModal(), 300);
   } else if (!(window.MyPMApi && MyPMApi.isAuthenticated())) {
-    // 로그인 안 된 상태: 최초 실행이면 온보딩 마법사, 재방문이면 로그인 권유
-    if (appSettings.myBirthYear === 0 && getActiveAccounts().length === 0 && !localStorage.getItem('setup_skipped')) {
-      setTimeout(() => openOnboardingModal(), 300);
-    } else {
-      setTimeout(() => openGoogleSuggestModal(), 300);
-    }
+    // 비로그인 시 항상 온보딩 마법사 표시 → 완료 후 로그인 권유
+    setTimeout(() => openOnboardingModal(), 300);
   }
   document.addEventListener('touchstart', e => {
     if (!e.target.closest('#wd-cell-info') && !e.target.closest('[data-cell-type]') && !e.target.closest('canvas[id^="wdChart"]')) wdDismissPanel();
