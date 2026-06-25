@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.596';
+const APP_VERSION = 'MyGP v0.597';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -13016,7 +13016,11 @@ function doReset(andOnboard) {
   }
   closeResetConfirmModal();
   if (andOnboard) sessionStorage.setItem('open_onboarding', '1');
-  location.reload();
+  // iOS 홈화면 PWA 에서 클릭 핸들러 내부의 동기 location.reload() 가 무시되는 경우가 있어
+  // 핸들러를 벗어난 뒤(setTimeout) 강제 재네비게이션. (앱 내 다른 reload 들과 동일한 지연 패턴)
+  setTimeout(() => {
+    try { location.replace(location.href); } catch (_) { location.reload(); }
+  }, 60);
 }
 
 let _cfgActiveAccIds  = { my: [], wife: [] };
