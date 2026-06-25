@@ -994,7 +994,6 @@
 </style>
 </head>
 <body>
-<div class="container">
   <header>
     <a href="./" class="hdr-btn" title="My PM">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1019,6 +1018,7 @@
     <span id="nkRefreshStatus" style="font-size:11px;color:var(--muted);padding:0 8px"></span>
   </header>
 
+<div class="container">
   <div id="nkHeroContainer"></div>
 
   <div class="status-bar">
@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.586';
+const APP_VERSION = 'NonK v0.587';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3637,9 +3637,9 @@ document.addEventListener('keydown', e => {
   // iframe(iOS)에서는 스크롤 위치가 window.scrollY 가 아니라 documentElement/body.scrollTop 에
   // 잡히고 정확히 0이 아닐 수 있어, 여러 소스로 "맨 위"를 견고하게 판정한다(이게 없으면 발동 안 됨).
   const atTop = () => (window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0) <= 0;
-  // iframe(iOS)은 네이티브 오버스크롤 바운스가 없어, 당기는 동안 루트를 직접 아래로 밀고
-  // 손을 떼면 스프링백시켜 MyPM(최상위 페이지)과 같은 "화면이 내려갔다 올라옴" 효과를 낸다.
-  const root = document.documentElement;
+  // iframe(iOS)은 네이티브 오버스크롤 바운스가 없어, 당기는 동안 콘텐츠(.container)를 직접
+  // 아래로 밀고 손을 떼면 스프링백시켜 바운스를 흉내낸다. 헤더는 .container 밖이라 고정 유지.
+  const root = document.querySelector('.container') || document.documentElement;
   document.addEventListener('touchstart', e => {
     if (e.target.closest?.('.modal-backdrop')) { pulling = false; return; }
     if (atTop()) { startY = e.touches[0].clientY; pulling = true; root.style.transition = ''; }
