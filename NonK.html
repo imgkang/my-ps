@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.585';
+const APP_VERSION = 'NonK v0.586';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -3637,14 +3637,18 @@ document.addEventListener('keydown', e => {
   // iframe(iOS)에서는 스크롤 위치가 window.scrollY 가 아니라 documentElement/body.scrollTop 에
   // 잡히고 정확히 0이 아닐 수 있어, 여러 소스로 "맨 위"를 견고하게 판정한다(이게 없으면 발동 안 됨).
   const atTop = () => (window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0) <= 0;
+  // iframe(iOS)은 네이티브 오버스크롤 바운스가 없어, 당기는 동안 루트를 직접 아래로 밀고
+  // 손을 떼면 스프링백시켜 MyPM(최상위 페이지)과 같은 "화면이 내려갔다 올라옴" 효과를 낸다.
+  const root = document.documentElement;
   document.addEventListener('touchstart', e => {
     if (e.target.closest?.('.modal-backdrop')) { pulling = false; return; }
-    if (atTop()) { startY = e.touches[0].clientY; pulling = true; }
+    if (atTop()) { startY = e.touches[0].clientY; pulling = true; root.style.transition = ''; }
   }, { passive: true });
   document.addEventListener('touchmove', e => {
     if (!pulling || refreshing) return;
     const dy = e.touches[0].clientY - startY;
-    if (dy <= 0) { pulling = false; return; }
+    if (dy <= 0) { pulling = false; root.style.transform = ''; return; }
+    root.style.transform = 'translateY(' + Math.min(dy * 0.4, 90) + 'px)'; // 화면을 아래로 (저항 적용)
     indicator.style.height = Math.min(dy * 0.5, 56) + 'px';
     const t = document.getElementById('ptrText');
     indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
@@ -3654,6 +3658,10 @@ document.addEventListener('keydown', e => {
     if (!pulling || refreshing) return;
     const dy = e.changedTouches[0].clientY - startY;
     pulling = false;
+    // 손을 떼면 즉시 스프링백 (네이티브 바운스처럼)
+    root.style.transition = 'transform .28s cubic-bezier(.22,1,.36,1)';
+    root.style.transform = '';
+    setTimeout(() => { root.style.transition = ''; }, 300);
     if (dy >= THRESHOLD) {
       refreshing = true; indicator.style.height = '48px';
       const sp = document.getElementById('ptrSpinner'), tx = document.getElementById('ptrText');
