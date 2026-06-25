@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.597';
+const APP_VERSION = 'MyGP v0.598';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17794,13 +17794,21 @@ function googleSuggestShowMain() {
 }
 
 function backendLogout() {
+  // 로그아웃 = 로컬 데이터 전체 초기화.
+  // 열거식 키 삭제·외부 모듈(MyPMApi.logout)·doReset 에 의존하면, 목록에서 빠진 키
+  // (mypm_derived_v1, mypm_synced_version 등)나 옛 캐시 api.js 로 인해 토큰/데이터가 남아
+  // "로그아웃이 안 되는" 것처럼 보일 수 있다. localStorage 전체를 비워 확실히 초기화한다.
   try { MyPMApi.logout(); } catch (_) {}
-  // 로그아웃 시 로컬 데이터 전체 초기화
-  ['cfgGooglePicture', 'google_login_done', 'google_login_suggested',
-   'mypm_cache_bundle', 'mypm_cache_bundle_meta', 'mypm_autosave_v1'
-  ].forEach(k => localStorage.removeItem(k));
+  try { localStorage.clear(); } catch (_) {}
+  try { sessionStorage.clear(); } catch (_) {}
   _applyCfgProfilePicture('');
-  doReset(false);
+  // 다음 로드에서 시작하기(온보딩) 강제 표시
+  try { sessionStorage.setItem('open_onboarding', '1'); } catch (_) {}
+  // iOS 홈화면 PWA 에서 클릭 핸들러 내부의 동기 reload 가 무시되는 경우가 있어
+  // 핸들러를 벗어난 뒤(setTimeout) 강제 재네비게이션.
+  setTimeout(() => {
+    try { location.replace(location.href); } catch (_) { location.reload(); }
+  }, 60);
 }
 
 function confirmSettingsLogout() {
