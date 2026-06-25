@@ -1002,7 +1002,7 @@
         <polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
     </a>
-    <a href="NonK.html" class="hdr-btn active" onclick="nkRefreshAll(); return false;" title="가격 갱신">
+    <a href="NonK.html" class="hdr-btn active" onclick="nkRefreshAll(false, false); return false;" title="가격 갱신">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><line x1="2" y1="12" x2="22" y2="12"/>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.582';
+const APP_VERSION = 'NonK v0.583';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1729,18 +1729,47 @@ function switchPage(page) {
   }
 }
 
-async function nkRefreshAll(suppressDone = false) {
+// 부모(MyPM)가 캐시한 서버 스냅샷의 시세맵(data.prices, ticker→{price,change})을 보유종목에 적용.
+// 반환: 적용된 ticker Set (개별 Finnhub 조회 폴백에서 제외용).
+function nkApplyServerPrices() {
+  const covered = new Set();
+  try {
+    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
+    const pm = snap && snap.data && snap.data.prices;
+    if (!pm) return covered;
+    nkHoldings.forEach(h => {
+      const p = pm[h.ticker];
+      if (p && typeof p.price === 'number' && p.price > 0) {
+        h.price = p.price;
+        h.change = Number(p.change) || 0;
+        const prev = p.price - h.change;
+        h.changeRate = prev > 0 ? (h.change / prev * 100) : 0;
+        h.updatedAt = new Date().toISOString();
+        covered.add(h.ticker);
+      }
+    });
+  } catch (_) {}
+  return covered;
+}
+
+// preferSnapshot=true(기본): 서버 선계산 시세를 먼저 적용하고 못 받은 종목만 Finnhub 조회(빠름).
+// 수동 '가격 갱신' 버튼은 preferSnapshot=false 로 호출해 항상 라이브 조회.
+async function nkRefreshAll(suppressDone = false, preferSnapshot = true) {
   const statusEl = document.getElementById('nkRefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
 
-  // 배치 우선조회 — 보유+관심 티커를 한 요청으로 받아 브라우저 연결제한 우회.
+  // 서버 스냅샷 우선 적용 → 커버된 보유종목은 Finnhub 조회에서 제외.
+  const covered = preferSnapshot ? nkApplyServerPrices() : new Set();
+
+  // 배치 우선조회 — (미커버)보유+관심 티커를 한 요청으로 받아 브라우저 연결제한 우회.
   // 배치에 없는(=Finnhub 미커버) 종목만 개별 fetchNkPrice(Finnhub단건→Yahoo→Stooq) 폴백.
   const holdTickers = new Set(nkHoldings.map(h => h.ticker));
   const watchTickers = nkWatchlist.filter(w => !holdTickers.has(w.ticker)).map(w => w.ticker);
-  const batch = await nkBatchFinnhub([...nkHoldings.map(h => h.ticker), ...watchTickers]);
+  const pendingHold = nkHoldings.filter(h => !covered.has(h.ticker)).map(h => h.ticker);
+  const batch = await nkBatchFinnhub([...pendingHold, ...watchTickers]);
 
-  await Promise.all(nkHoldings.map(async h => {
+  await Promise.all(nkHoldings.filter(h => !covered.has(h.ticker)).map(async h => {
     try {
       const info = batch[h.ticker] || await fetchNkPrice(h.ticker);
       h.price = info.price; h.change = info.change;

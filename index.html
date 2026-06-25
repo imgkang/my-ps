@@ -3851,7 +3851,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.582';
+const APP_VERSION = 'MyGP v0.583';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5562,7 +5562,16 @@ function importFromFile(event) {
 
 async function refreshPricesSilent(suppressSync = false) {
   if (!holdings.length) return;
-  await Promise.all(holdings.map(async h => {
+  // 1) 서버 선계산 스냅샷의 시세를 먼저 적용(빠른 페인트) → 2) 서버가 못 준 종목만 개별 조회.
+  let covered = new Set();
+  try {
+    if (window.MyPMApi && MyPMApi.isAuthenticated()) {
+      await refreshDerivedCache();              // 최신 스냅샷(시세 포함) 수신 + 적용 + render
+      covered = applyServerPricesToHoldings();
+    }
+  } catch (_) {}
+  const pending = holdings.filter(h => !covered.has(h.code));
+  await Promise.all(pending.map(async h => {
     try {
       const info = await fetchStockInfo(h.code);
       h.price = info.price; h.change = info.change; h.changeRate = info.changeRate;
@@ -17813,10 +17822,39 @@ function fmtHeroAsOf(ts) {
   const p = (n) => ('0' + n).slice(-2);
   return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-// 서버에서 최신 파생 스냅샷을 받아 캐시(최선노력, 비차단).
+// 서버 선계산 스냅샷의 시세맵(data.prices, code→{price,change})을 보유종목에 적용해
+// 행별 가격을 per-code fetch 없이 즉시 페인트한다. (메모리만 갱신 — saveHoldings/ dirty 표시 안 함)
+// 반환: 시세가 적용된 종목 code 의 Set (refreshPricesSilent 의 폴백 조회에서 제외용).
+function applyServerPricesToHoldings() {
+  const covered = new Set();
+  try {
+    const snap = getCachedDerived();
+    const pm = snap && snap.data && snap.data.prices;
+    if (!pm) return covered;
+    for (const h of holdings) {
+      const p = pm[h.code];
+      if (p && typeof p.price === 'number' && p.price > 0) {
+        h.price = p.price;
+        h.change = Number(p.change) || 0;
+        const prev = p.price - h.change;
+        h.changeRate = prev > 0 ? (h.change / prev * 100) : 0;
+        h.updatedAt = Date.now();
+        covered.add(h.code);
+      }
+    }
+  } catch (_) {}
+  return covered;
+}
+// 서버에서 최신 파생 스냅샷을 받아 캐시(최선노력, 비차단). 받은 즉시 행별 가격 페인트.
 async function refreshDerivedCache() {
   if (!(window.MyPMApi && MyPMApi.isAuthenticated() && typeof MyPMApi.getDerived === 'function')) return null;
-  try { const d = await MyPMApi.getDerived(); cacheDerived(d); return d; } catch (_) { return null; }
+  try {
+    const d = await MyPMApi.getDerived();
+    cacheDerived(d);
+    applyServerPricesToHoldings();
+    try { if (typeof render === 'function') render(); } catch (_) {}
+    return d;
+  } catch (_) { return null; }
 }
 // 백그라운드 폴링 — 서버가 시세틱마다 선계산한 최신 스냅샷을 받아 캐시 유지.
 // (pricedAt 이 바뀐 경우에만 전체 수신) 화면 갱신 시 클라는 이 캐시를 즉시 쓸 수 있다.

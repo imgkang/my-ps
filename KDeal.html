@@ -1006,7 +1006,7 @@
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn active" onclick="kdRefreshAll(); return false;" title="가격 갱신">
+    <a href="KDeal.html" class="hdr-btn active" onclick="kdRefreshAll(false, false); return false;" title="가격 갱신">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
         <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
@@ -1498,7 +1498,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.582';
+const APP_VERSION = 'KDeal v0.583';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
@@ -1755,12 +1755,39 @@ function switchPage(page) {
   }
 }
 
-async function kdRefreshAll(suppressDone = false) {
+// 부모(MyPM)가 캐시한 서버 스냅샷의 시세맵(data.prices, 코드→{price,change})을 보유종목에 적용.
+// KDeal 은 종목코드를 h.ticker 에 저장하므로 그 값을 키로 사용. 반환: 적용된 ticker Set.
+function kdApplyServerPrices() {
+  const covered = new Set();
+  try {
+    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
+    const pm = snap && snap.data && snap.data.prices;
+    if (!pm) return covered;
+    kdHoldings.forEach(h => {
+      const p = pm[h.ticker];
+      if (p && typeof p.price === 'number' && p.price > 0) {
+        h.price = p.price;
+        h.change = Number(p.change) || 0;
+        const prev = p.price - h.change;
+        h.changeRate = prev > 0 ? (h.change / prev * 100) : 0;
+        h.updatedAt = new Date().toISOString();
+        covered.add(h.ticker);
+      }
+    });
+  } catch (_) {}
+  return covered;
+}
+
+// preferSnapshot=true(기본): 서버 선계산 시세를 먼저 적용하고 못 받은 종목만 Naver 조회(빠름).
+// 수동 '가격 갱신' 버튼은 preferSnapshot=false 로 호출해 항상 라이브 조회.
+async function kdRefreshAll(suppressDone = false, preferSnapshot = true) {
   const statusEl = document.getElementById('kdRefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
 
-  await Promise.all(kdHoldings.map(async h => {
+  const covered = preferSnapshot ? kdApplyServerPrices() : new Set();
+
+  await Promise.all(kdHoldings.filter(h => !covered.has(h.ticker)).map(async h => {
     try {
       const info = await fetchKdPrice(h.ticker);
       h.price = info.price; h.change = info.change;

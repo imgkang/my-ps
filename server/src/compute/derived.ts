@@ -33,6 +33,9 @@ export interface DerivedSnapshot {
   computedAt: string;
   kd?: import('./kdeal.js').KdDerived; // KDeal(국내보조) 파생 — 부가 섹션(있을 때만)
   nk?: import('./nonk.js').NkDerived; // NonK(해외/USD) 파생 — 부가 섹션(있을 때만)
+  // 보유 종목별 최신 시세 맵(국내 6자리 코드 / 미국 티커 키). 프론트가 보유목록 행을
+  // per-code fetch 없이 즉시 그릴 수 있도록 동봉한다(가격은 비밀 아님 — 알고리즘만 숨김).
+  prices?: PriceMap;
 }
 
 // ── 활성 계좌 id (index.html getActiveAccounts 와 동일 규칙) ──
