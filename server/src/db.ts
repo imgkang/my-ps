@@ -33,6 +33,14 @@ db.exec(`
     value TEXT NOT NULL
   );
 
+  -- 로그인 허용 이메일 (구글 로그인 화이트리스트). 관리자 화면에서 추가/삭제.
+  -- 기존 .env ALLOWED_EMAILS 값은 서버 시작 시 이 테이블로 자동 시딩된다.
+  CREATE TABLE IF NOT EXISTS allowed_emails (
+    email    TEXT PRIMARY KEY,   -- 소문자 정규화된 이메일
+    note     TEXT,               -- 메모(예: "처남", "회사 동료")
+    added_at TEXT NOT NULL
+  );
+
   -- 사용자별 전체 데이터 번들 (Drive 의 mypm-data.json 과 동일 구조).
   CREATE TABLE IF NOT EXISTS data_bundle (
     user_id    INTEGER PRIMARY KEY,

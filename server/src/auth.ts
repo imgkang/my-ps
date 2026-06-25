@@ -12,6 +12,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { env } from './env.js';
 import { db, getTokenSecret } from './db.js';
 import { upsertGoogleUser } from './users.js';
+import { isEmailAllowed } from './allowlist.js';
 
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30일
 
@@ -119,7 +120,7 @@ export default async function authRoutes(app: FastifyInstance) {
     }
 
     const email = payload.email.toLowerCase();
-    if (!env.ALLOWED_EMAILS.includes(email)) {
+    if (!isEmailAllowed(email)) {
       bump();
       return reply.code(403).send({ error: 'email not allowed' });
     }

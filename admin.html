@@ -222,6 +222,23 @@
     </div>
   </div>
 
+  <!-- 테스터 허용목록 (로그인 화이트리스트) -->
+  <div class="card">
+    <div class="card-title">테스터 허용목록 (구글 로그인 허용)</div>
+    <form id="allowForm" onsubmit="addAllowed(); return false;" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <input type="email" id="allowEmail" placeholder="example@gmail.com"
+             style="flex:1 1 160px;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.85rem">
+      <input type="text" id="allowNote" placeholder="메모(선택)"
+             style="flex:1 1 100px;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.85rem">
+      <button type="submit" style="flex:0 0 auto;background:var(--green);color:#0f172a;border:none;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer">추가</button>
+    </form>
+    <div id="allowList"><div class="status-sub">불러오는 중...</div></div>
+    <div class="section-note">
+      ※ 구글 계정(지메일/워크스페이스) 이메일만 가능. 추가 즉시 적용 — 서버 재시작 불필요.
+      <b>가입</b> = 해당 이메일로 실제 로그인한 적 있음.
+    </div>
+  </div>
+
   <!-- Task Scheduler 상태 -->
   <div class="card">
     <div class="card-title">Task Scheduler</div>
@@ -328,6 +345,7 @@ async function loadStatus() {
     renderStatus(d);
     loadLogs();
     loadDerived();
+    loadAllowlist();
     startAutoRefresh();
   } catch (e) {
     // 서버 다운
@@ -375,6 +393,79 @@ async function loadDerived() {
       note.textContent = '이 브라우저엔 앱 캐시 없음 — 앱과 다른 저장소(PWA 독립 실행 등)일 수 있음. 위 서버 값이 진실값입니다.';
     }
   } catch (_) {}
+}
+
+// ── 테스터 허용목록 ──
+let allowOwner = null;
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+}
+
+async function loadAllowlist() {
+  const box = document.getElementById('allowList');
+  try {
+    const res = await fetch(`${getBase()}/api/admin/allowlist?token=${encodeURIComponent(token)}`);
+    if (!res.ok) { box.innerHTML = '<div class="status-sub">조회 실패 — 서버가 최신 빌드(/api/admin/allowlist 포함)인지 확인</div>'; return; }
+    const d = await res.json();
+    allowOwner = d.owner || null;
+    const emails = d.emails || [];
+    if (!emails.length) { box.innerHTML = '<div class="status-sub">허용된 이메일이 없습니다</div>'; return; }
+    box.innerHTML = emails.map(e => {
+      const isOwner = allowOwner && e.email === allowOwner;
+      const badge = e.signed_up
+        ? '<span style="font-size:.65rem;color:var(--green);background:rgba(34,197,94,.15);border-radius:4px;padding:1px 6px">가입</span>'
+        : '<span style="font-size:.65rem;color:var(--muted);background:rgba(148,163,184,.15);border-radius:4px;padding:1px 6px">미가입</span>';
+      const ownerTag = isOwner ? ' <span style="font-size:.65rem;color:var(--accent)">(소유자)</span>' : '';
+      const noteHtml = e.note ? `<span style="font-size:.7rem;color:var(--muted)"> · ${escHtml(e.note)}</span>` : '';
+      const delBtn = isOwner ? ''
+        : `<button onclick="removeAllowed('${escHtml(e.email).replace(/'/g, "\\'")}')" style="flex:0 0 auto;background:none;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:4px 10px;font-size:.72rem;cursor:pointer">삭제</button>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.85rem;word-break:break-all">${escHtml(e.email)}${ownerTag}</div>
+          <div style="margin-top:2px">${badge}${noteHtml}</div>
+        </div>
+        ${delBtn}
+      </div>`;
+    }).join('');
+  } catch {
+    box.innerHTML = '<div class="status-sub">조회 중 오류</div>';
+  }
+}
+
+async function addAllowed() {
+  const emailEl = document.getElementById('allowEmail');
+  const noteEl = document.getElementById('allowNote');
+  const email = emailEl.value.trim();
+  const note = noteEl.value.trim();
+  if (!email) return;
+  try {
+    const res = await fetch(`${getBase()}/api/admin/allowlist?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, note }),
+    });
+    const d = await res.json();
+    if (!res.ok) { showToast(d.error || '추가 실패', 3000); return; }
+    showToast(d.added ? `추가됨: ${email}` : `이미 목록에 있음: ${email}`, 2500);
+    emailEl.value = ''; noteEl.value = '';
+    loadAllowlist();
+  } catch {
+    showToast('추가 요청 실패 — 서버 상태 확인', 3000);
+  }
+}
+
+async function removeAllowed(email) {
+  if (!confirm(`${email} 을(를) 허용목록에서 제거합니다.\n이 사람은 더 이상 로그인할 수 없습니다. 계속할까요?`)) return;
+  try {
+    const res = await fetch(`${getBase()}/api/admin/allowlist?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`, { method: 'DELETE' });
+    const d = await res.json();
+    if (!res.ok) { showToast(d.error || '삭제 실패', 3000); return; }
+    showToast(d.removed ? `삭제됨: ${email}` : `목록에 없음: ${email}`, 2500);
+    loadAllowlist();
+  } catch {
+    showToast('삭제 요청 실패 — 서버 상태 확인', 3000);
+  }
 }
 
 let logErrorsOnly = true;

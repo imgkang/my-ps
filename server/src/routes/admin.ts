@@ -8,6 +8,7 @@ import { env } from '../env.js';
 import { db } from '../db.js';
 import { metrics } from '../metrics.js';
 import { restartSelf } from './webhook.js';
+import { listAllowedEmails, addAllowedEmail, removeAllowedEmail } from '../allowlist.js';
 import { runBench, storeSnapshot, latestSnapshot, history, withDeltas, frontendCompare } from '../bench/index.js';
 
 // 큰 로그 파일에서 끝부분 maxBytes 만 읽어온다 (전체 로딩 방지).
@@ -246,5 +247,40 @@ export default async function adminRoutes(app: FastifyInstance) {
       `powershell -NoProfile -Command "Stop-ScheduledTask ${task}; Start-ScheduledTask ${task}"`,
       (err) => { if (err) app.log.error(`[admin] ${task} 재시작 실패: ${err.message}`); }
     );
+  });
+
+  // ── 로그인 허용목록(테스터 관리) ──
+  // GET /api/admin/allowlist?token=...  — 허용 이메일 목록(가입 여부 포함)
+  app.get('/api/admin/allowlist', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    return { emails: listAllowedEmails(), owner: env.OWNER_EMAIL || null };
+  });
+
+  // POST /api/admin/allowlist?token=...  body: { email, note? }  — 이메일 추가
+  app.post('/api/admin/allowlist', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const { email, note } = (req.body ?? {}) as { email?: string; note?: string };
+    if (!email || !email.trim()) return reply.code(400).send({ error: 'missing email' });
+    try {
+      const added = addAllowedEmail(email, note);
+      app.log.info(`[admin] 허용목록 추가: ${email.trim().toLowerCase()} (신규=${added})`);
+      return { ok: true, added };
+    } catch (e: any) {
+      return reply.code(400).send({ error: e?.message === 'invalid email' ? '이메일 형식이 올바르지 않습니다' : '추가 실패' });
+    }
+  });
+
+  // DELETE /api/admin/allowlist?token=...&email=...  — 이메일 제거(소유자 제외)
+  app.delete('/api/admin/allowlist', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const email = (req.query as any).email as string | undefined;
+    if (!email || !email.trim()) return reply.code(400).send({ error: 'missing email' });
+    try {
+      const removed = removeAllowedEmail(email);
+      app.log.info(`[admin] 허용목록 삭제: ${email.trim().toLowerCase()} (삭제됨=${removed})`);
+      return { ok: true, removed };
+    } catch (e: any) {
+      return reply.code(400).send({ error: e?.message === 'cannot remove owner' ? '소유자 이메일은 삭제할 수 없습니다' : '삭제 실패' });
+    }
   });
 }

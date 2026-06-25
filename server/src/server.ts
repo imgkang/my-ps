@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { env } from './env.js';
 import './db.js';
+import { seedAllowedEmails } from './allowlist.js';
 import authRoutes from './auth.js';
 import priceRoutes from './routes/price.js';
 import syncRoutes from './routes/sync.js';
@@ -27,6 +28,9 @@ process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] unhandledRejection:', reason);
   process.exit(1);
 });
+
+// .env ALLOWED_EMAILS + OWNER_EMAIL 을 DB 허용목록으로 시딩(기존 설정 이관, 1회).
+seedAllowedEmails();
 
 const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 }); // 번들이 클 수 있어 25MB
 
