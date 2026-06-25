@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.592';
+const APP_VERSION = 'MyGP v0.593';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -3913,15 +3913,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem('open_onboarding')) {
     sessionStorage.removeItem('open_onboarding');
     setTimeout(() => openOnboardingModal(), 300);
-  } else if (
-    appSettings.myBirthYear === 0 &&
-    getActiveAccounts().length === 0 &&
-    !localStorage.getItem('setup_skipped') &&
-    !localStorage.getItem('onboarding_started') &&
-    !localStorage.getItem('google_login_done') &&
-    !(window.MyPMApi && MyPMApi.isAuthenticated())
-  ) {
-    setTimeout(() => openOnboardingModal(), 300);
+  } else if (!(window.MyPMApi && MyPMApi.isAuthenticated())) {
+    // 로그인 안 된 상태: 최초 실행이면 온보딩 마법사, 재방문이면 로그인 권유
+    if (appSettings.myBirthYear === 0 && getActiveAccounts().length === 0 && !localStorage.getItem('setup_skipped')) {
+      setTimeout(() => openOnboardingModal(), 300);
+    } else {
+      setTimeout(() => openGoogleSuggestModal(), 300);
+    }
   }
   document.addEventListener('touchstart', e => {
     if (!e.target.closest('#wd-cell-info') && !e.target.closest('[data-cell-type]') && !e.target.closest('canvas[id^="wdChart"]')) wdDismissPanel();
@@ -12753,9 +12751,7 @@ function finishOnboarding() {
 
   _obOpenedFromSetup = false;
   closeOnboardingModal();
-  if (!localStorage.getItem('google_login_suggested') &&
-      !localStorage.getItem('google_login_done') &&
-      !(window.MyPMApi && MyPMApi.isAuthenticated())) {
+  if (!(window.MyPMApi && MyPMApi.isAuthenticated())) {
     setTimeout(() => openGoogleSuggestModal(), 400);
   }
   render();
@@ -18272,12 +18268,6 @@ window.addEventListener('message', e => {
     </div>
   </div>
 </div>
-
-<!-- ===== 임시 테스트 버튼 (온보딩 초기화) ===== -->
-<button id="obTestBtn" onclick="sessionStorage.setItem('open_onboarding','1');location.reload();"
-  style="position:fixed;bottom:80px;right:16px;z-index:9999;background:#ff5722;color:#fff;border:none;border-radius:20px;padding:8px 14px;font-size:12px;opacity:0.85;box-shadow:0 2px 8px rgba(0,0,0,0.3)">
-  온보딩 초기화
-</button>
 </body>
 </html>
 
