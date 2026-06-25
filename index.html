@@ -1731,6 +1731,12 @@ registerMobileTooltipDismiss();
       <button class="rec-period-btn" data-period="1y" onclick="setPortfolioChartPeriod('1y')">1Y</button>
       <button class="rec-period-btn" data-period="ytd" onclick="setPortfolioChartPeriod('ytd')">올해</button>
     </div>
+    <div style="text-align:right;margin-top:6px;font-size:12px;color:var(--muted)">
+      예상 수익률
+      <input type="number" id="expectedRateInput" min="0" max="50" step="0.5"
+             style="width:52px;padding:2px 4px;font-size:12px;text-align:right;border:1px solid var(--border);border-radius:6px"
+             oninput="setExpectedReturnRate(this.value)">%/년
+    </div>
   </div>
   </div><!-- /panel-portfolio -->
 </div><!-- /container -->
@@ -3851,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.587';
+const APP_VERSION = 'MyGP v0.588';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4018,6 +4024,7 @@ function getDefaultAppSettings() {
     showNonK: false, showKDeal: false, showWdDebugBtn: false, showSyncDebugBtn: false,
     wdrecPreview: false,
     allowZoom: true,
+    expectedReturnRate: 7,  // 차트 "예상" 벤치마크선 연수익률(%) — 입금액을 이 율로 복리 성장
     wdChartPV: { 1: false, 2: false, 3: false, 4: false, 5: false },
     my:   getDefaultPersonCfg(false),
     wife: getDefaultPersonCfg(true),
@@ -6159,19 +6166,11 @@ function renderRecChart() {
   if (!canvas) return;
   if (typeof Chart === 'undefined') { setTimeout(renderRecChart, 200); return; }
 
-  const now = new Date();
-  const curYM = now.getFullYear() * 12 + now.getMonth() + 1;
-  let cutoffX = 0;
-  if (_recChartPeriod === 'ytd') cutoffX = now.getFullYear() * 12 + 1;
-  else if (_recChartPeriod === '1y') cutoffX = curYM - 11;
-  else if (_recChartPeriod === '5y') cutoffX = curYM - 59;
+  // 포트폴리오 차트와 동일한 공용 헬퍼 사용 (이전엔 데이터·그라디언트·Chart 설정을 복붙했음).
+  const { cutoffX, xAxisOpts } = _calcPeriodOpts(_recChartPeriod);
+  const series = buildChartSeries(null, cutoffX);
 
-  const activeAccs = getActiveAccounts();
-  const sorted = [...monthlyRecords]
-    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
-    .filter(r => r.year * 12 + r.month >= cutoffX);
-
-  if (!sorted.length) {
+  if (!series.evalData.length) {
     if (_recChart) { _recChart.destroy(); _recChart = null; }
     canvas.style.display = 'none';
     if (empty) empty.style.display = 'block';
@@ -6180,97 +6179,10 @@ function renderRecChart() {
   canvas.style.display = '';
   if (empty) empty.style.display = 'none';
 
-  const evalData = sorted.map(r => ({
-    x: r.year * 12 + r.month,
-    y: Math.round(activeAccs.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0) / 100000) / 10
-  }));
-  const principalData = sorted.map(r => ({
-    x: r.year * 12 + r.month,
-    y: Math.round(activeAccs.reduce((s, a) => s + getAccountPrincipalAt(a.id, r.year, r.month), 0) / 100000) / 10
-  }));
-
-  const xVals = evalData.map(d => d.x);
-  const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
-  const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
-
-  // 올해: x축을 1월~12월 고정, 눈금을 "N월" 표시
-  const isYtd = _recChartPeriod === 'ytd';
-  const ytdBase = now.getFullYear() * 12;
-  const xAxisOpts = isYtd
-    ? {
-        type: 'linear',
-        min: ytdBase + 1,
-        max: ytdBase + 12,
-        ticks: {
-          stepSize: 1,
-          callback: v => Number.isInteger(v) ? (v - ytdBase) + '월' : '',
-          font: { size: 10 }
-        },
-        grid: { display: false }
-      }
-    : {
-        type: 'linear',
-        ticks: { stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
-        grid: { display: false }
-      };
-
-  const ctx2d = canvas.getContext('2d');
-  const h = canvas.offsetHeight || 200;
-  const gradEval = ctx2d.createLinearGradient(0, 0, 0, h);
-  gradEval.addColorStop(0, 'rgba(239,68,68,0.22)');
-  gradEval.addColorStop(1, 'rgba(239,68,68,0)');
-  const gradPrincipal = ctx2d.createLinearGradient(0, 0, 0, h);
-  gradPrincipal.addColorStop(0, 'rgba(156,163,175,0.2)');
-  gradPrincipal.addColorStop(1, 'rgba(156,163,175,0)');
+  series.expectedData = expectedSeriesMonthly(null, series.evalData, getExpectedRate());
 
   if (_recChart) { _recChart.destroy(); _recChart = null; }
-  _recChart = new Chart(ctx2d, {
-    type: 'line',
-    data: {
-      datasets: [
-        {
-          label: '자산',
-          data: evalData,
-          borderColor: '#ef4444',
-          backgroundColor: gradEval,
-          fill: 'origin',
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          borderWidth: 2,
-          order: 2
-        },
-        {
-          label: '원금',
-          data: principalData,
-          borderColor: '#9ca3af',
-          backgroundColor: gradPrincipal,
-          fill: 'origin',
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          borderWidth: 1.5,
-          order: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
-        tooltip: { enabled: false }
-      },
-      scales: {
-        x: xAxisOpts,
-        y: {
-          beginAtZero: false,
-          ticks: { callback: v => v + 'M', font: { size: 10 } },
-          grid: { color: 'rgba(0,0,0,0.05)' }
-        }
-      }
-    }
-  });
+  _recChart = createLineChart(canvas.getContext('2d'), series, xAxisOpts);
 }
 
 function toggleRecForm(forceOpen) {
@@ -6623,72 +6535,127 @@ function xToYM(x) {
   return `${y}.${String(m).padStart(2, '0')}`;
 }
 
-// 공통 라인 차트 빌더 (자산: 빨간 선+그라디언트 / 원금: 회색 선+그라디언트)
-// X축: 선형 시간 비례 (1년 간격 = 12개월 간격의 12배)
+// ===== 예상수익률 벤치마크 (입금액을 고정 연 r%로 복리 성장시킨 "예상 평가금액" 선) =====
+// 고정 연수익률(설정값, 기본 7%).
+function getExpectedRate() {
+  const v = Number(appSettings && appSettings.expectedReturnRate);
+  return (isFinite(v) && v > 0 ? v : 7) / 100;
+}
+// 순수 함수: 시점별 원금 증가분(increments)을 rate 복리로 각 point 시점까지 키워 합산.
+//   increments: [{ t:ms, amount:원 }] (출금은 음수)   points: [{ x, t:ms }]
+//   반환: [{ x, y(백만원, 소수1자리) }]
+// ⚠️ 전역 상태 미접근 — 추후 서버(compute/derived.ts)로 그대로 이식 가능.
+function buildExpectedSeries(increments, points, rate) {
+  const YEAR_MS = 365.25 * 24 * 3600 * 1000;
+  return points.map(p => {
+    let sum = 0;
+    for (const inc of increments) {
+      if (inc.t > p.t) continue;
+      sum += inc.amount * Math.pow(1 + rate, (p.t - inc.t) / YEAR_MS);
+    }
+    return { x: p.x, y: Math.round(sum / 100000) / 10 };
+  });
+}
+// 월 단위 차트(포트폴리오/계좌상세/계좌기록)용 예상선. evalData 의 x(=year*12+month)를 월말 시점으로.
+function expectedSeriesMonthly(accId, evalData, rate) {
+  if (!evalData || !evalData.length) return [];
+  const txns = (depositData && Array.isArray(depositData.transactions)) ? depositData.transactions : [];
+  const increments = txns
+    .filter(t => (!accId || t.accId === accId) && typeof t.date === 'string')
+    .map(t => ({ t: new Date(t.date + 'T00:00:00').getTime(), amount: Number(t.amount) || 0 }))
+    .filter(i => isFinite(i.t));
+  const points = evalData.map(d => {
+    const xi = Math.round(d.x);
+    const m = ((xi - 1) % 12) + 1, y = Math.floor((xi - 1) / 12);
+    return { x: d.x, t: new Date(y, m, 0, 23, 59, 59).getTime() }; // 그 달 말일
+  });
+  return buildExpectedSeries(increments, points, rate);
+}
+
+// ===== 통합 추이 라인차트 팩토리 =====
+// 자산/원금/예상 선을 한 곳에서 그린다. 월 단위(선형 x)·연 단위(카테고리 x) 공용.
+// cfg.lines[i]: { label, data, colorBorder, fillRgb?, fillAlpha?, fillFlat?, dash?, segmentDash?, tension?, pointRadius?, width?, order? }
+// cfg.x: { type:'linear', stepSize?, axisOpts? } | { type:'category', labels }
+// cfg.y: { unit?:'M', title?, beginAtZero? }  cfg.legend, cfg.tooltip:'mil'|false,
+// cfg.yAxisID?, cfg.interactionIndex?, cfg.chartPlugins?
+function renderTrendChart(target, cfg) {
+  // target 은 canvas 엘리먼트 또는 2D 컨텍스트 둘 다 허용
+  const canvasEl = target.canvas || target;
+  const c2d = target.getContext ? target.getContext('2d') : target;
+  const h = (canvasEl && canvasEl.offsetHeight) || 200;
+  const mkGrad = (rgb, a) => {
+    const g = c2d.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`);
+    return g;
+  };
+  const datasets = cfg.lines.map(L => ({
+    label: L.label,
+    data: L.data,
+    borderColor: L.colorBorder,
+    backgroundColor: L.fillRgb ? mkGrad(L.fillRgb, L.fillAlpha != null ? L.fillAlpha : 0.2) : (L.fillFlat || 'transparent'),
+    fill: (L.fillRgb || L.fillFlat) ? 'origin' : false,
+    borderDash: L.dash || [],
+    tension: L.tension != null ? L.tension : 0.3,
+    pointRadius: L.pointRadius != null ? L.pointRadius : 0,
+    pointHoverRadius: 0,
+    borderWidth: L.width != null ? L.width : 2,
+    order: L.order != null ? L.order : 1,
+    ...(L.segmentDash ? { segment: { borderDash: L.segmentDash } } : {}),
+    ...(cfg.yAxisID ? { yAxisID: cfg.yAxisID } : {})
+  }));
+  const xScale = cfg.x.type === 'category'
+    ? { ticks: { font: { size: 10 }, maxRotation: 45 } }
+    : (cfg.x.axisOpts || {
+        type: 'linear',
+        ticks: { stepSize: cfg.x.stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
+        grid: { display: false }
+      });
+  const yScale = {
+    beginAtZero: !!cfg.y.beginAtZero,
+    ...(cfg.y.title ? { title: { display: true, text: cfg.y.title, font: { size: 10 } } } : {}),
+    ticks: { callback: cfg.y.unit === 'M' ? (v => v + 'M') : (v => v.toLocaleString('ko-KR')), font: { size: 10 } },
+    grid: { color: 'rgba(0,0,0,0.05)' }
+  };
+  const scales = { x: xScale };
+  scales[cfg.yAxisID || 'y'] = yScale;
+  const data = { datasets };
+  if (cfg.x.type === 'category') data.labels = cfg.x.labels;
+  return new Chart(canvasEl, {
+    type: 'line',
+    data,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      ...(cfg.interactionIndex ? { interaction: { mode: 'index', intersect: false } } : {}),
+      plugins: {
+        legend: { position: cfg.legend || 'top', align: cfg.legend === 'bottom' ? 'center' : 'end', labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
+        tooltip: cfg.tooltip === 'mil'
+          ? { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y != null ? Math.round(c.parsed.y).toLocaleString('ko-KR') + ' 백만원' : '-'}` } }
+          : { enabled: false }
+      },
+      scales
+    },
+    plugins: cfg.chartPlugins || []
+  });
+}
+
+// 월 단위 자산/원금(+예상) 라인차트 — 포트폴리오·계좌상세·계좌기록 공용 래퍼.
 function createLineChart(ctx, series, xAxisOpts = null) {
   const xVals = series.evalData.map(d => d.x);
   const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
   const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
-  const defaultXAxis = {
-    type: 'linear',
-    ticks: { stepSize, callback: v => Number.isInteger(v) ? xToYM(v) : '', font: { size: 10 } },
-    grid: { display: false }
-  };
-
-  const h = ctx.canvas.offsetHeight || 200;
-  const gradEval = ctx.createLinearGradient(0, 0, 0, h);
-  gradEval.addColorStop(0, 'rgba(239,68,68,0.22)');
-  gradEval.addColorStop(1, 'rgba(239,68,68,0)');
-  const gradPrincipal = ctx.createLinearGradient(0, 0, 0, h);
-  gradPrincipal.addColorStop(0, 'rgba(156,163,175,0.2)');
-  gradPrincipal.addColorStop(1, 'rgba(156,163,175,0)');
-
-  return new Chart(ctx, {
-    type: 'line',
-    data: {
-      datasets: [
-        {
-          label: '자산',
-          data: series.evalData,
-          borderColor: '#ef4444',
-          backgroundColor: gradEval,
-          fill: 'origin',
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          borderWidth: 2,
-          order: 2
-        },
-        {
-          label: '원금',
-          data: series.principalData,
-          borderColor: '#9ca3af',
-          backgroundColor: gradPrincipal,
-          fill: 'origin',
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          borderWidth: 1.5,
-          order: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 }, padding: 10 } },
-        tooltip: { enabled: false }
-      },
-      scales: {
-        x: xAxisOpts || defaultXAxis,
-        y: {
-          beginAtZero: false,
-          ticks: { callback: v => v + 'M', font: { size: 10 } },
-          grid: { color: 'rgba(0,0,0,0.05)' }
-        }
-      }
-    }
+  const lines = [
+    { label: '자산', data: series.evalData, colorBorder: '#ef4444', fillRgb: '239,68,68', fillAlpha: 0.22, width: 2, order: 2 },
+    { label: '원금', data: series.principalData, colorBorder: '#9ca3af', fillRgb: '156,163,175', fillAlpha: 0.2, width: 1.5, order: 1 }
+  ];
+  if (series.expectedData && series.expectedData.length) {
+    lines.push({ label: `예상(${Math.round(getExpectedRate() * 100)}%)`, data: series.expectedData, colorBorder: '#10b981', dash: [6, 3], width: 1.5, order: 3 });
+  }
+  return renderTrendChart(ctx, {
+    lines,
+    x: xAxisOpts ? { type: 'linear', axisOpts: xAxisOpts } : { type: 'linear', stepSize },
+    y: { unit: 'M' },
+    legend: 'top'
   });
 }
 
@@ -6716,6 +6683,18 @@ function _calcPeriodOpts(period) {
 let _portfolioChart = null;
 let _portfolioChartPeriod = 'all';
 
+// 예상 벤치마크 수익률(%) 변경 → 저장 후 4개 차트 모두 갱신
+function setExpectedReturnRate(v) {
+  let n = Number(v);
+  if (!isFinite(n) || n < 0) n = 7;
+  appSettings.expectedReturnRate = n;
+  saveAppSettings();
+  try { renderPortfolioChart(); } catch (_) {}
+  try { renderRecChart(); } catch (_) {}
+  try { renderAnnualCharts(); } catch (_) {}
+  try { if (_accDetailChartAccId) renderAccountDetailChart(_accDetailChartAccId); } catch (_) {}
+}
+
 function setPortfolioChartPeriod(period) {
   _portfolioChartPeriod = period;
   document.querySelectorAll('#portfolioPeriodBtns .rec-period-btn').forEach(btn => {
@@ -6734,8 +6713,12 @@ function renderPortfolioChart() {
     return;
   }
 
+  const _erEl = document.getElementById('expectedRateInput');
+  if (_erEl && document.activeElement !== _erEl) _erEl.value = (appSettings.expectedReturnRate != null ? appSettings.expectedReturnRate : 7);
+
   const { cutoffX, xAxisOpts } = _calcPeriodOpts(_portfolioChartPeriod);
   const series = buildChartSeries(null, cutoffX);
+  series.expectedData = expectedSeriesMonthly(null, series.evalData, getExpectedRate());
   if (!series.principalData.length) {
     if (_portfolioChart) { _portfolioChart.destroy(); _portfolioChart = null; }
     canvas.style.display = 'none';
@@ -6775,6 +6758,7 @@ function renderAccountDetailChart(accId) {
 
   const { cutoffX, xAxisOpts } = _calcPeriodOpts(_accDetailChartPeriod);
   const series = buildChartSeries(accId, cutoffX);
+  series.expectedData = expectedSeriesMonthly(accId, series.evalData, getExpectedRate());
   if (!series.principalData.length) {
     if (_accountDetailChart) { _accountDetailChart.destroy(); _accountDetailChart = null; }
     canvas.style.display = 'none';
@@ -9059,56 +9043,35 @@ function renderAnnualCharts() {
     }
   };
 
+  // 예상수익률 벤치마크: 연도별 원금 증분을 고정 r%로 복리 성장 (미래연도는 계획 납입 포함)
+  const _expRate = getExpectedRate();
+  const _yearEndT = yr => new Date(yr, 11, 31, 23, 59, 59).getTime();
+  const _annualIncrements = years.map((yr, i) => ({
+    t: _yearEndT(yr),
+    amount: ((prinAll[i] || 0) - (i > 0 ? (prinAll[i - 1] || 0) : 0)) * 1_000_000
+  }));
+  const expectedAll = buildExpectedSeries(
+    _annualIncrements,
+    years.map((yr, i) => ({ x: i, t: _yearEndT(yr) })),
+    _expRate
+  ).map(p => p.y);
+  const _projDash = seg => years[seg.p1DataIndex] > lastRecYear ? [5, 3] : [];
+
   if (_annualCombinedChart) { _annualCombinedChart.destroy(); _annualCombinedChart = null; }
 
-  _annualCombinedChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: '평가금액',
-          data: evalAll,
-          borderColor: '#60a5fa',
-          backgroundColor: 'rgba(147,197,253,0.45)',
-          fill: 'origin',
-          tension: 0.25, pointRadius: 2, borderWidth: 2,
-          yAxisID: 'yAmt',
-          segment: { borderDash: ctx => years[ctx.p1DataIndex] > lastRecYear ? [5,3] : [] }
-        },
-        {
-          label: '원금',
-          data: prinAll,
-          borderColor: '#1d4ed8',
-          backgroundColor: 'rgba(59,130,246,0.5)',
-          fill: 'origin',
-          tension: 0.25, pointRadius: 2, borderWidth: 2,
-          yAxisID: 'yAmt',
-          segment: { borderDash: ctx => years[ctx.p1DataIndex] > lastRecYear ? [5,3] : [] }
-        },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
-            label: c => `${c.dataset.label}: ${c.parsed.y != null ? Math.round(c.parsed.y).toLocaleString('ko-KR')+' 백만원' : '-'}`
-          }
-        }
-      },
-      scales: {
-        x: { ticks: { font: { size: 10 }, maxRotation: 45 } },
-        yAmt: {
-          type: 'linear', position: 'left', beginAtZero: true,
-          title: { display: true, text: '백만원', font: { size: 10 } },
-          ticks: { font: { size: 10 }, callback: v => v.toLocaleString('ko-KR') }
-        }
-      }
-    },
-    plugins: [vertLinePlugin]
+  _annualCombinedChart = renderTrendChart(ctx, {
+    x: { type: 'category', labels },
+    yAxisID: 'yAmt',
+    y: { title: '백만원', beginAtZero: true },
+    legend: 'bottom',
+    tooltip: 'mil',
+    interactionIndex: true,
+    chartPlugins: [vertLinePlugin],
+    lines: [
+      { label: '평가금액', data: evalAll, colorBorder: '#60a5fa', fillFlat: 'rgba(147,197,253,0.45)', tension: 0.25, pointRadius: 2, width: 2, order: 2, segmentDash: _projDash },
+      { label: '원금', data: prinAll, colorBorder: '#1d4ed8', fillFlat: 'rgba(59,130,246,0.5)', tension: 0.25, pointRadius: 2, width: 2, order: 1, segmentDash: _projDash },
+      { label: `예상(${Math.round(_expRate * 100)}%)`, data: expectedAll, colorBorder: '#10b981', dash: [6, 3], tension: 0.25, pointRadius: 2, width: 1.5, order: 3 }
+    ]
   });
 
   // 이익률 막대 차트
