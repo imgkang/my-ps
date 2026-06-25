@@ -34,4 +34,7 @@
 - 거의 없음 — Webhook이 git pull + CF 퍼지까지 자동 처리.
   **브라우저에서 `Ctrl+Shift+R`** 만 하면 됨 (SW 캐시 갱신용)
 - Webhook 미동작 등 폴백 절차는 docs/DEPLOY.md 참고
-- ⚠️ `server/src/` TypeScript 변경 시에만 집 PC에서 수동 빌드·재시작 필요
+- ✅ `server/src/` TypeScript 변경도 Webhook이 자동 빌드·재시작까지 처리 — **수동 작업 불필요**.
+  (webhook이 `git diff` 로 `server/src/`·`server/package.json` 변경 감지 → `npm run build` → `restartSelf()`.
+  구현: `server/src/routes/webhook.ts`, 상세: docs/PROGRESS.md 2026-06-22 항목)
+  Webhook이 죽어 있을 때만 폴백으로 집 PC에서 수동 빌드·재시작.
