@@ -3857,7 +3857,7 @@ registerMobileTooltipDismiss();
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'MyGP v0.595';
+const APP_VERSION = 'MyGP v0.596';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -17761,6 +17761,7 @@ function openGoogleSuggestModal() {
 }
 function closeGoogleSuggestModal() {
   document.getElementById('googleSuggestModal').classList.remove('open');
+  googleSuggestShowMain();
 }
 function googleSuggestDismiss() {
   localStorage.setItem('google_login_suggested', '1');
@@ -17768,12 +17769,24 @@ function googleSuggestDismiss() {
 }
 function googleSuggestLogin() {
   localStorage.setItem('google_login_suggested', '1');
-  closeGoogleSuggestModal();
-  openSettingsModal();
-  setTimeout(() => {
-    const el = document.getElementById('backendLoginSection');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 200);
+  document.getElementById('googleSuggestMain').style.display = 'none';
+  const area = document.getElementById('googleSuggestLoginArea');
+  area.style.display = 'block';
+  const container = document.getElementById('googleSuggestGoogleBtn');
+  container.innerHTML = '';
+  ensureGsiScript();
+  function _render() {
+    if (window.google && google.accounts && google.accounts.id) {
+      google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', text: 'signin_with', width: 240 });
+    } else {
+      setTimeout(_render, 300);
+    }
+  }
+  _render();
+}
+function googleSuggestShowMain() {
+  document.getElementById('googleSuggestMain').style.display = '';
+  document.getElementById('googleSuggestLoginArea').style.display = 'none';
 }
 
 function backendLogout() {
@@ -17787,8 +17800,13 @@ function backendLogout() {
 }
 
 function confirmSettingsLogout() {
-  if (!confirm('로그아웃하시겠습니까?\n로컬 데이터가 모두 초기화됩니다.')) return;
-  backendLogout();
+  openLogoutConfirmModal();
+}
+function openLogoutConfirmModal() {
+  document.getElementById('logoutConfirmModal').classList.add('open');
+}
+function closeLogoutConfirmModal() {
+  document.getElementById('logoutConfirmModal').classList.remove('open');
 }
 
 // ===== 파생상태(서버 선계산) 캐시 =====
@@ -18253,17 +18271,40 @@ window.addEventListener('message', e => {
   </div>
 </div>
 
+<!-- ===== 로그아웃 확인 모달 ===== -->
+<div class="modal-backdrop" id="logoutConfirmModal" style="z-index:1200">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <h3 style="margin-bottom:10px">로그아웃</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.6">
+      로그아웃하면 로컬 데이터가 모두 초기화됩니다.<br>
+      <strong style="color:#dc2626">이 작업은 되돌릴 수 없습니다.</strong>
+    </p>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn-secondary" onclick="closeLogoutConfirmModal()">취소</button>
+      <button class="btn-primary" onclick="closeLogoutConfirmModal();backendLogout()">로그아웃</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 구글 로그인 권유 모달 ===== -->
 <div class="modal-backdrop" id="googleSuggestModal" style="z-index:1250">
   <div class="modal" style="max-width:340px;text-align:center">
-    <div style="font-size:36px;margin-bottom:8px">☁️</div>
-    <h3 style="margin-bottom:8px;font-size:17px">데이터를 안전하게 보관하세요</h3>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.6">
-      구글 계정으로 로그인하면 기기 간 동기화와<br>자동 백업이 활성화됩니다.
-    </p>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn-primary" onclick="googleSuggestLogin()" style="width:100%">구글로 로그인</button>
-      <button class="btn-secondary" onclick="googleSuggestDismiss()" style="width:100%">나중에</button>
+    <div id="googleSuggestMain">
+      <div style="font-size:36px;margin-bottom:8px">☁️</div>
+      <h3 style="margin-bottom:8px;font-size:17px">데이터를 안전하게 보관하세요</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.6">
+        구글 계정으로 로그인하면 기기 간 동기화와<br>자동 백업이 활성화됩니다.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn-primary" onclick="googleSuggestLogin()" style="width:100%">구글로 로그인</button>
+        <button class="btn-secondary" onclick="googleSuggestDismiss()" style="width:100%">나중에</button>
+      </div>
+    </div>
+    <div id="googleSuggestLoginArea" style="display:none">
+      <div style="font-size:36px;margin-bottom:8px">☁️</div>
+      <h3 style="margin-bottom:16px;font-size:17px">구글 계정으로 로그인</h3>
+      <div id="googleSuggestGoogleBtn" style="display:flex;justify-content:center;margin-bottom:16px"></div>
+      <button class="btn-secondary" onclick="googleSuggestShowMain()" style="width:100%">뒤로</button>
     </div>
   </div>
 </div>
