@@ -278,6 +278,7 @@
     }
     .account-row label { grid-column: 1 / -1; font-size: 13px; margin-bottom: 2px; }
     .account-row input, .account-row .total-display { font-size: 13px; padding: 8px; }
+    .account-row .total-display { grid-column: 2; }
     .account-row .field-label { display: block; }
   }
   .modal-total {
@@ -1505,7 +1506,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.613';
+const APP_VERSION = 'KDeal v0.614';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
