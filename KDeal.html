@@ -858,8 +858,8 @@
   .nk-hero-label { font-size: 12px; font-weight: 500; color: rgba(120,53,15,0.75); }
   .nk-hero .diff-positive { color: #e53935; }
   .nk-hero .diff-negative { color: #1e88e5; }
-  .nk-action-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-  .nk-action-btns button { font-size: 12px; padding: 6px 12px; }
+  .nk-action-btns { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 14px; }
+  .nk-action-btns button { flex: 1 1 0; min-width: 0; font-size: 11px; padding: 6px 4px; white-space: nowrap; }
   /* 관심종목 */
   .kdw-table { width:100%; border-collapse:collapse; }
   .kdw-table th { background:#f9fafb; padding:6px 5px; text-align:left; font-size:11px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; }
@@ -1509,7 +1509,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.622';
+const APP_VERSION = 'KDeal v0.623';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -1918,10 +1918,10 @@ function kdRender() {
     </div>`;
     container.innerHTML = `<div class="empty-state"><div class="icon">🇰🇷</div><div>'+ 종목 추가' 버튼을 눌러 한국 주식을 추가해 주세요</div></div>
     <div class="nk-action-btns">
+      <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
       <button class="btn-primary" onclick="kdOpenAddModal()">+ 종목 추가</button>
       <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
-      <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     kdRenderAccountButtons();
@@ -2131,10 +2131,10 @@ function kdRender() {
 
   container.innerHTML = tableHtml
     + `<div class="nk-action-btns">
+      <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
       <button class="btn-primary" onclick="kdOpenAddModal()">+ 종목 추가</button>
       <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
-      <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
   kdRenderAccountButtons();
