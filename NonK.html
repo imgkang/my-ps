@@ -1512,7 +1512,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.624';
+const APP_VERSION = 'NonK v0.625';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -1631,6 +1631,64 @@ const NK_DEP_KEY   = 'nonk_deposits_v1';
 const NK_MON_KEY   = 'nonk_monthly_v1';
 const NK_DIV_KEY   = 'nonk_dividends_v1';
 const NK_WATCH_KEY = 'nonk_watchlist_v1';
+
+// ===== 종목 리스트 컬럼 정의 (순서 편집 가능) =====
+// 종목(이름)은 항상 첫 열, 액션 열(거래/✏️/🗑️)은 항상 마지막 — 아래 11개 데이터 열만 재배열 대상.
+const NK_PORTFOLIO_COLS = [
+  { id:'price', header:'현재가',
+    cell:(it)=>`<div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price>0?fmtUSDDec(it.price):'-'}</div><div class="${it._crCls}" style="font-size:13px;white-space:nowrap">${it.change?(it.change>0?'+':'')+fmtUSDDec(it.change):''}${it.changeRate?' ('+(it.changeRate>0?'+':'')+it.changeRate.toFixed(2)+'%)':(it.price>0?' -':'')}</div>` },
+  { id:'todayPnl', header:'오늘<br>손익',
+    tdAttr:(it)=>`class="${it._chCls}" style="font-size:14px"`,
+    cell:(it)=>it._dayAmt?fmtUSDIntSigned(it._dayAmt):'-',
+    footAttr:(c)=>`class="${c.dayCls}"`,
+    foot:(c)=>c.todayPnl?fmtUSDIntSigned(c.todayPnl):'-' },
+  { id:'buyWeight', header:'매입<br>비중',
+    cell:(it)=>it.hasCost?it._buyWeight.toFixed(1)+'%':'-',
+    foot:(c)=>c.totalCost>0?'100.0%':'-' },
+  { id:'cost', header:'매입액',
+    cell:(it)=>it.hasCost?fmtUSDInt(it.cost):'-',
+    foot:(c)=>c.totalCost>0?fmtUSDInt(c.totalCost):'-' },
+  { id:'qty', header:'보유수',
+    cell:(it)=>`<a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a>` },
+  { id:'avgPrice', header:'매입단가',
+    cell:(it)=>it.avgPrice>0?fmtUSDDec(it.avgPrice):'-' },
+  { id:'value', header:'평가금액',
+    cell:(it)=>`<strong>${fmtUSDInt(it.currentValue)}</strong>`,
+    cash:(c)=>`<strong>${fmtUSDInt(c.totalCash)}</strong>`,
+    foot:(c)=>fmtUSDInt(c.totalValue) },
+  { id:'totalPnl', header:'총손익',
+    tdAttr:(it)=>`class="${it._pCls}"`,
+    cell:(it)=>it.hasCost?fmtUSDIntSigned(it.profit):'-',
+    footAttr:(c)=>`class="${c.totPCls}"`,
+    foot:(c)=>c.deposited>0?fmtUSDIntSigned(c.pnl):'-' },
+  { id:'pnlRate', header:'손익률',
+    tdAttr:(it)=>`class="${it._pCls}"`,
+    cell:(it)=>it.profitRate!=null?it._pSign+it.profitRate.toFixed(2)+'%':'-',
+    footAttr:(c)=>`class="${c.totPCls}"`,
+    foot:(c)=>c.deposited>0?c.totPSign+c.pnlRate.toFixed(2)+'%':'-' },
+  { id:'weight', header:'비중',
+    cell:(it)=>it._curWeight.toFixed(1)+'%',
+    cash:(c)=>c.cashWeight.toFixed(1)+'%',
+    foot:(c)=>c.totalValue>0?'100.0%':'-' },
+  { id:'weightDiff', header:'비중차이',
+    tdAttr:(it)=>`class="${it._dCls}"`,
+    cell:(it)=>it.hasCost?it._dSign+it._diff.toFixed(1)+'%':'-' },
+];
+const NK_PORTFOLIO_COL_IDS = NK_PORTFOLIO_COLS.map(c => c.id);
+const NK_COLORDER_KEY = 'nonk_colorder_v1';
+function orderedCols(savedOrder, COLS) {
+  const byId = new Map(COLS.map(c => [c.id, c]));
+  const out = [], seen = new Set();
+  for (const id of (savedOrder || [])) {
+    if (byId.has(id) && !seen.has(id)) { out.push(byId.get(id)); seen.add(id); }
+  }
+  for (const c of COLS) if (!seen.has(c.id)) out.push(c);
+  return out;
+}
+function nkLoadColOrder() { try { const r = JSON.parse(localStorage.getItem(NK_COLORDER_KEY)); return Array.isArray(r) ? r : NK_PORTFOLIO_COL_IDS.slice(); } catch(_) { return NK_PORTFOLIO_COL_IDS.slice(); } }
+function nkSaveColOrder(arr) { localStorage.setItem(NK_COLORDER_KEY, JSON.stringify(arr)); }
+let nkColOrder = nkLoadColOrder();
+
 let nkHoldings        = nkLoadHoldings();
 let nkCashAccounts    = nkLoadCash();
 let nkDepositData     = nkLoadDeposits();
@@ -2021,102 +2079,48 @@ function nkRender() {
     }
   }
 
-  let tableHtml = `<div class="detail-table-wrap"><table class="detail-table">
-    <thead><tr>
-      <th>종목</th>
-      <th>현재가</th>
-      <th>오늘<br>손익</th>
-      <th>매입<br>비중</th>
-      <th>매입액</th>
-      <th>보유수</th>
-      <th>매입단가</th>
-      <th>평가금액</th>
-      <th>총손익</th>
-      <th>손익률</th>
-      <th>비중</th>
-      <th>비중차이</th>
-      <th></th>
-    </tr></thead>
-    <tbody>`;
+  // ===== 종목 리스트: 저장된 컬럼 순서대로 렌더 =====
+  const _nkCashWeight   = totalValue > 0 ? totalCash / totalValue * 100 : 0;
+  const _nkCashAccCount = _activeAccs.filter(a => (Number(nkCashAccounts[a.id]) || 0) > 0).length;
+  const _nkDayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
+  const _nkTotPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const _nkTotPSign = pnl >= 0 ? '+' : '';
+  const nkColCtx = { totalCost, totalValue, totalCash, todayPnl, dayCls: _nkDayCls, deposited, pnl, pnlRate, totPCls: _nkTotPCls, totPSign: _nkTotPSign, cashWeight: _nkCashWeight };
+  const nkCols = orderedCols(nkColOrder, NK_PORTFOLIO_COLS);
+
+  let tableHtml = `<div class="detail-table-wrap"><table class="detail-table">`
+    + `<thead><tr><th>종목</th>${nkCols.map(c => `<th>${c.header}</th>`).join('')}<th></th></tr></thead><tbody>`;
 
   for (const it of items) {
-    const buyWeight = totalCost > 0 ? it.cost / totalCost * 100 : 0;
-    const curWeight = totalValue > 0 ? it.currentValue / totalValue * 100 : 0;
-    const diff      = curWeight - buyWeight;
-    const pCls  = it.profit >= 0 ? 'diff-positive' : 'diff-negative';
-    const dCls  = diff >= 0 ? 'diff-positive' : 'diff-negative';
-    const pSign = it.profit >= 0 ? '+' : '';
-    const dSign = diff >= 0 ? '+' : '';
-    const crCls = it.changeRate > 0 ? 'diff-positive' : (it.changeRate < 0 ? 'diff-negative' : '');
-    const chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
-    const dayAmt = it.change * it.qty;
-    tableHtml += `
-      <tr>
-        <td onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" style="cursor:pointer">
-          <div class="stock-name">${nkEscape(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div>
-          <div class="stock-code">${it.ticker}</div>
-        </td>
-        <td>
-          <div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price > 0 ? fmtUSDDec(it.price) : '-'}</div>
-          <div class="${crCls}" style="font-size:13px;white-space:nowrap">${it.change ? (it.change > 0 ? '+' : '') + fmtUSDDec(it.change) : ''}${it.changeRate ? ' (' + (it.changeRate > 0 ? '+' : '') + it.changeRate.toFixed(2) + '%)' : (it.price > 0 ? ' -' : '')}</div>
-        </td>
-        <td class="${chCls}" style="font-size:14px">${dayAmt ? fmtUSDIntSigned(dayAmt) : '-'}</td>
-        <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
-        <td>${it.hasCost ? fmtUSDInt(it.cost) : '-'}</td>
-        <td><a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a></td>
-        <td>${it.avgPrice > 0 ? fmtUSDDec(it.avgPrice) : '-'}</td>
-        <td><strong>${fmtUSDInt(it.currentValue)}</strong></td>
-        <td class="${pCls}">${it.hasCost ? fmtUSDIntSigned(it.profit) : '-'}</td>
-        <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
-        <td>${curWeight.toFixed(1)}%</td>
-        <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
-        <td style="white-space:nowrap">
-          <button class="tbl-trade-btn" onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" title="거래">거래</button>
-          <button class="tbl-icon-btn" onclick="nkOpenAccountModal('${it.ticker}')" title="편집">✏️</button>
-          <button class="tbl-icon-btn" onclick="nkDeleteHolding('${it.ticker}')" title="삭제">🗑️</button>
-        </td>
-      </tr>`;
+    it._buyWeight = totalCost > 0 ? it.cost / totalCost * 100 : 0;
+    it._curWeight = totalValue > 0 ? it.currentValue / totalValue * 100 : 0;
+    it._diff  = it._curWeight - it._buyWeight;
+    it._pCls  = it.profit >= 0 ? 'diff-positive' : 'diff-negative';
+    it._dCls  = it._diff >= 0 ? 'diff-positive' : 'diff-negative';
+    it._pSign = it.profit >= 0 ? '+' : '';
+    it._dSign = it._diff >= 0 ? '+' : '';
+    it._crCls = it.changeRate > 0 ? 'diff-positive' : (it.changeRate < 0 ? 'diff-negative' : '');
+    it._chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
+    it._dayAmt = it.change * it.qty;
+    tableHtml += `<tr>`
+      + `<td onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" style="cursor:pointer"><div class="stock-name">${nkEscape(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
+      + nkCols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, nkColCtx) : ''}>${c.cell(it, nkColCtx)}</td>`).join('')
+      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="nkOpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="nkDeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
+      + `</tr>`;
   }
 
   // 현금 행
-  const cashWeight   = totalValue > 0 ? totalCash / totalValue * 100 : 0;
-  const cashAccCount = _activeAccs.filter(a => (Number(nkCashAccounts[a.id]) || 0) > 0).length;
-  tableHtml += `
-    <tr class="row-cash">
-      <td onclick="nkOpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)">
-        <div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${cashAccCount ? '<span class="account-dot"></span>' : ''}</div>
-        <div class="stock-code">CASH${cashAccCount ? ' · ' + cashAccCount + '개 계좌' : ''}</div>
-      </td>
-      <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-      <td><strong>${fmtUSDInt(totalCash)}</strong></td>
-      <td>-</td><td>-</td>
-      <td>${cashWeight.toFixed(1)}%</td>
-      <td>-</td>
-      <td></td>
-    </tr>`;
+  tableHtml += `<tr class="row-cash">`
+    + `<td onclick="nkOpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_nkCashAccCount ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">CASH${_nkCashAccCount ? ' · ' + _nkCashAccCount + '개 계좌' : ''}</div></td>`
+    + nkCols.map(c => `<td ${c.cashAttr ? c.cashAttr(nkColCtx) : ''}>${c.cash ? c.cash(nkColCtx) : '-'}</td>`).join('')
+    + `<td></td>`
+    + `</tr>`;
 
   // 합계 행
-  const dayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
-  const totPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
-  const totPSign = pnl >= 0 ? '+' : '';
-  const todayRateSign = todayRate >= 0 ? '+' : '';
-  tableHtml += `
-    </tbody>
-    <tfoot><tr>
-      <td>합계</td>
-      <td>-</td>
-      <td class="${dayCls}">${todayPnl ? fmtUSDIntSigned(todayPnl) : '-'}</td>
-      <td>${totalCost > 0 ? '100.0%' : '-'}</td>
-      <td>${totalCost > 0 ? fmtUSDInt(totalCost) : '-'}</td>
-      <td>-</td><td>-</td>
-      <td>${fmtUSDInt(totalValue)}</td>
-      <td class="${totPCls}">${deposited > 0 ? fmtUSDIntSigned(pnl) : '-'}</td>
-      <td class="${totPCls}">${deposited > 0 ? totPSign + pnlRate.toFixed(2) + '%' : '-'}</td>
-      <td>${totalValue > 0 ? '100.0%' : '-'}</td>
-      <td>-</td>
-      <td></td>
-    </tr></tfoot>
-  </table></div>`;
+  tableHtml += `</tbody><tfoot><tr><td>합계</td>`
+    + nkCols.map(c => `<td ${c.footAttr ? c.footAttr(nkColCtx) : ''}>${c.foot ? c.foot(nkColCtx) : '-'}</td>`).join('')
+    + `<td></td>`
+    + `</tr></tfoot></table></div>`;
 
   container.innerHTML = tableHtml
     + `<div class="nk-action-btns">
@@ -3513,11 +3517,33 @@ function nkRenderAccountSettingsBody() {
     <button class="btn-primary" onclick="nkAddAccount()">추가</button>
   </div>`;
 
+  // 종목 리스트 열 순서
+  html += `<div class="nk-acc-section-title" style="margin-top:16px">📊 종목 리스트 열 순서</div>`;
+  html += `<div class="nk-acc-settings-list">` + orderedCols(nkColOrder, NK_PORTFOLIO_COLS).map((c, i, arr) =>
+    `<div class="nk-acc-settings-row" style="justify-content:space-between">
+      <span>${c.header.replace(/<br>/g, ' ')}</span>
+      <span style="display:inline-flex;gap:6px">
+        <button class="edit-btn" onclick="nkMoveCol(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="edit-btn" onclick="nkMoveCol(${i},1)" ${i === arr.length - 1 ? 'disabled' : ''}>↓</button>
+      </span>
+    </div>`).join('') + `</div>`;
+
   body.innerHTML = html;
   setTimeout(() => {
     const inp = document.getElementById('nkNewAccName');
     if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') nkAddAccount(); });
   }, 0);
+}
+
+function nkMoveCol(i, dir) {
+  const order = orderedCols(nkColOrder, NK_PORTFOLIO_COLS).map(c => c.id);
+  const j = i + dir;
+  if (j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  nkColOrder = order;
+  nkSaveColOrder(order);
+  nkRenderAccountSettingsBody();
+  nkRender();
 }
 
 function nkAddAccount() {

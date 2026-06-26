@@ -1966,6 +1966,8 @@ registerMobileTooltipDismiss();
           </div>
         </div>
       </div>
+      <div class="cfg-section">📊 종목 리스트 열 순서</div>
+      <div class="cfg-list" id="colOrderBody"></div>
     </div><!-- /cfgPaneApp -->
 
     <!-- 기본 탭 -->
@@ -3864,7 +3866,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.624';
+const APP_VERSION = 'MyGP v0.625';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -4063,6 +4065,63 @@ function getAccName(id) {
 // ===== 앱 설정 =====
 const APP_SETTINGS_KEY = 'pension_app_settings_v1';
 
+// ===== 종목 리스트 컬럼 정의 (순서 편집 가능) =====
+// 종목(이름)은 항상 첫 열(sticky), 액션 열(거래/✏️/🗑️)은 항상 마지막 — 아래 11개 데이터 열만 재배열 대상.
+// cell/foot/cash 는 <td> "내용"만 반환(태그 제외). tdAttr/footAttr 는 <td> 속성 문자열.
+const PORTFOLIO_COLS = [
+  { id:'price', header:'현재가',
+    cell:(it)=>`<div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price>0?Math.round(it.price).toLocaleString('ko-KR'):'-'}</div>${it._dayChangePerShare?`<div class="${it._dRateCls}" style="font-size:13px;white-space:nowrap">${it._dayChangePerShare>0?'+':''}${Math.round(it._dayChangePerShare).toLocaleString('ko-KR')}(${it._dayRate>0?'+':''}${it._dayRate.toFixed(2)}%)</div>`:''}` },
+  { id:'todayPnl', header:'오늘 손익<br>(원)',
+    tdAttr:(it)=>`class="${it._dCls2}" style="font-size:14px"`,
+    cell:(it)=>it._dayChangeAmount?(it._dayChangeAmount>0?'+':'')+Math.round(it._dayChangeAmount).toLocaleString('ko-KR')+' 원':'-',
+    footAttr:(c)=>`class="${c.dayCls}"`,
+    foot:(c)=>c.totalDayChange?(c.totalDayChange>0?'+':'')+Math.round(c.totalDayChange).toLocaleString('ko-KR')+' 원':'-' },
+  { id:'buyWeight', header:'매입비중',
+    cell:(it)=>it.hasCost?it._buyWeight.toFixed(1)+'%':'-',
+    foot:(c)=>c.totalCost>0?'100.0%':'-' },
+  { id:'cost', header:'매입액<br>(백만)',
+    cell:(it)=>it.hasCost?formatMil(it.cost):'-',
+    foot:(c)=>c.totalCost>0?formatMil(c.totalCost):'-' },
+  { id:'qty', header:'보유수',
+    cell:(it)=>`<a href="#" onclick="event.preventDefault();editQuantity('${it.code}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc;">${it.qty.toLocaleString('ko-KR')}</a>` },
+  { id:'avgPrice', header:'매입단가',
+    cell:(it)=>it.avgPrice>0?Math.round(it.avgPrice).toLocaleString('ko-KR'):'-' },
+  { id:'value', header:'평가금액<br>(백만)',
+    cell:(it)=>`<strong>${formatMil(it.currentValue)}</strong>`,
+    cash:(c)=>`<strong>${formatMil(c.totalCash)}</strong>`,
+    foot:(c)=>formatMil(c.totalValue) },
+  { id:'totalPnl', header:'총손익<br>(백만)',
+    tdAttr:(it)=>`class="${it.profit>=0?'diff-positive':'diff-negative'}"`,
+    cell:(it)=>it.hasCost?formatMilSigned(it.profit):'-',
+    footAttr:(c)=>`class="${c.profitCls}"`,
+    foot:(c)=>c.totalCost>0?formatMilSigned(c.totalProfit):'-' },
+  { id:'pnlRate', header:'손익률',
+    tdAttr:(it)=>`class="${it.profit>=0?'diff-positive':'diff-negative'}"`,
+    cell:(it)=>it.profitRate!=null?(it.profit>=0?'+':'')+it.profitRate.toFixed(2)+'%':'-',
+    footAttr:(c)=>`class="${c.profitCls}"`,
+    foot:(c)=>c.totalProfitRate!=null?c.profitSign+c.totalProfitRate.toFixed(2)+'%':'-' },
+  { id:'weight', header:'비중',
+    cell:(it)=>it._curWeight.toFixed(1)+'%',
+    cash:(c)=>c.cashWeight.toFixed(1)+'%',
+    foot:(c)=>c.totalValue>0?'100.0%':'-' },
+  { id:'weightDiff', header:'비중차이',
+    tdAttr:(it)=>`class="${it._diff>=0?'diff-positive':'diff-negative'}"`,
+    cell:(it)=>it.hasCost?(it._diff>=0?'+':'')+it._diff.toFixed(1)+'%':'-' },
+];
+const PORTFOLIO_COL_IDS = PORTFOLIO_COLS.map(c => c.id);
+
+// 저장된 순서(savedOrder)대로 컬럼 descriptor 배열 반환. 알 수 없는 id는 무시, 누락된 새 컬럼은 뒤에 추가.
+function orderedCols(savedOrder, COLS) {
+  const byId = new Map(COLS.map(c => [c.id, c]));
+  const out = [], seen = new Set();
+  for (const id of (savedOrder || [])) {
+    if (byId.has(id) && !seen.has(id)) { out.push(byId.get(id)); seen.add(id); }
+  }
+  for (const c of COLS) if (!seen.has(c.id)) out.push(c);
+  return out;
+}
+function getPortfolioColOrder() { return (appSettings && appSettings.portfolioColOrder) || PORTFOLIO_COL_IDS; }
+
 function npStartAge(birthYear) {
   if (!birthYear) return 65;
   if (birthYear <= 1952) return 60;
@@ -4113,6 +4172,7 @@ function getDefaultAppSettings() {
     allowZoom: true,
     expectedReturnRate: 7,  // 차트 "예상" 벤치마크선 연수익률(%) — 입금액을 이 율로 복리 성장
     wdChartPV: { 1: false, 2: false, 3: false, 4: false, 5: false },
+    portfolioColOrder: PORTFOLIO_COL_IDS.slice(),  // 종목 리스트 데이터 컬럼 순서
     my:   getDefaultPersonCfg(false),
     wife: getDefaultPersonCfg(true),
   };
@@ -4128,6 +4188,7 @@ function loadAppSettings() {
     result.my   = _deepMergePersonCfg(def.my,   saved.my);
     result.wife = _deepMergePersonCfg(def.wife,  saved.wife);
     result.wdChartPV = { ...def.wdChartPV, ...(saved.wdChartPV || {}) };
+    result.portfolioColOrder = Array.isArray(saved.portfolioColOrder) ? saved.portfolioColOrder : def.portfolioColOrder;
     return result;
   } catch(_) { return getDefaultAppSettings(); }
 }
@@ -7064,129 +7125,54 @@ function render() {
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
       <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     </div>
+  `;
+  // ===== 종목 리스트: 저장된 컬럼 순서대로 렌더 =====
+  const dayCls = totalDayChange > 0 ? 'diff-positive' : (totalDayChange < 0 ? 'diff-negative' : '');
+  const _cashWeight = totalValue > 0 ? (totalCash / totalValue) * 100 : 0;
+  const _cashAccountCount = Object.entries(cashAccounts).filter(([id, v]) => _activeAccIdSet.has(id) && (Number(v) || 0) > 0).length;
+  const colCtx = { totalCost, totalValue, totalCash, totalDayChange, totalProfit, totalProfitRate, profitCls, profitSign, dayCls, cashWeight: _cashWeight };
+  const cols = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS);
+  html += `
     <div class="detail-table-wrap">
       <table class="detail-table">
         <thead>
-          <tr>
-            <th>종목</th>
-            <th>현재가</th>
-            <th>오늘 손익<br>(원)</th>
-            <th>매입비중</th>
-            <th>매입액<br>(백만)</th>
-            <th>보유수</th>
-            <th>매입단가</th>
-            <th>평가금액<br>(백만)</th>
-            <th>총손익<br>(백만)</th>
-            <th>손익률</th>
-            <th>비중</th>
-            <th>비중차이</th>
-            <th>매수/매도</th>
-            <th></th>
-          </tr>
+          <tr><th>종목</th>${cols.map(c => `<th>${c.header}</th>`).join('')}<th>매수/매도</th><th></th></tr>
         </thead>
         <tbody>
   `;
 
   for (const it of items) {
-    const buyWeight = totalCost > 0 ? (it.cost / totalCost) * 100 : 0;
-    const curWeight = totalValue > 0 ? (it.currentValue / totalValue) * 100 : 0;
-    const diff = curWeight - buyWeight;
-    const pCls = it.profit >= 0 ? 'diff-positive' : 'diff-negative';
-    const dCls = diff >= 0 ? 'diff-positive' : 'diff-negative';
-    const pSign = it.profit >= 0 ? '+' : '';
-    const dSign = diff >= 0 ? '+' : '';
-
-    // 오늘의 손익
+    // 행 파생값 선계산 (컬럼 descriptor 가 it._* 로 참조)
+    it._buyWeight = totalCost > 0 ? (it.cost / totalCost) * 100 : 0;
+    it._curWeight = totalValue > 0 ? (it.currentValue / totalValue) * 100 : 0;
+    it._diff = it._curWeight - it._buyWeight;
     const h = holdings.find(x => x.code === it.code);
-    const dayRate = h ? (Number(h.changeRate) || 0) : 0;
-    const dayChangePerShare = h ? (Number(h.change) || 0) : 0;
-    const dayChangeAmount = dayChangePerShare * it.qty;
-    const dCls2 = dayChangeAmount > 0 ? 'diff-positive' : (dayChangeAmount < 0 ? 'diff-negative' : '');
-    const dRateCls = dayRate > 0 ? 'diff-positive' : (dayRate < 0 ? 'diff-negative' : '');
+    it._dayRate = h ? (Number(h.changeRate) || 0) : 0;
+    it._dayChangePerShare = h ? (Number(h.change) || 0) : 0;
+    it._dayChangeAmount = it._dayChangePerShare * it.qty;
+    it._dCls2 = it._dayChangeAmount > 0 ? 'diff-positive' : (it._dayChangeAmount < 0 ? 'diff-negative' : '');
+    it._dRateCls = it._dayRate > 0 ? 'diff-positive' : (it._dayRate < 0 ? 'diff-negative' : '');
 
-    html += `
-      <tr>
-        <td class="stock-name-cell" onclick="openTradeModal('${it.code}','buy')" title="클릭하여 매수/매도">
-          <div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? `<span class="account-dot" title="${it.accountCount}개 계좌에 분산"></span>` : ''}</div>
-          <div class="stock-code">${it.code}</div>
-        </td>
-        <td>
-          <div style="font-weight:700;white-space:nowrap;font-size:14px">${it.price > 0 ? Math.round(it.price).toLocaleString('ko-KR') : '-'}</div>
-          ${dayChangePerShare ? `<div class="${dRateCls}" style="font-size:13px;white-space:nowrap">${dayChangePerShare > 0 ? '+' : ''}${Math.round(dayChangePerShare).toLocaleString('ko-KR')}(${dayRate > 0 ? '+' : ''}${dayRate.toFixed(2)}%)</div>` : ''}
-        </td>
-        <td class="${dCls2}" style="font-size:14px">${dayChangeAmount ? (dayChangeAmount > 0 ? '+' : '') + Math.round(dayChangeAmount).toLocaleString('ko-KR') + ' 원' : '-'}</td>
-        <td>${it.hasCost ? buyWeight.toFixed(1) + '%' : '-'}</td>
-        <td>${it.hasCost ? formatMil(it.cost) : '-'}</td>
-        <td><a href="#" onclick="event.preventDefault();editQuantity('${it.code}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc;">${it.qty.toLocaleString('ko-KR')}</a></td>
-        <td>${it.avgPrice > 0 ? Math.round(it.avgPrice).toLocaleString('ko-KR') : '-'}</td>
-        <td><strong>${formatMil(it.currentValue)}</strong></td>
-        <td class="${pCls}">${it.hasCost ? formatMilSigned(it.profit) : '-'}</td>
-        <td class="${pCls}">${it.profitRate != null ? pSign + it.profitRate.toFixed(2) + '%' : '-'}</td>
-        <td>${curWeight.toFixed(1)}%</td>
-        <td class="${dCls}">${it.hasCost ? dSign + diff.toFixed(1) + '%' : '-'}</td>
-        <td style="white-space:nowrap">
-          <button class="tbl-trade-btn" onclick="openTradeModal('${it.code}')" title="거래">거래</button>
-        </td>
-        <td>
-          <button class="tbl-icon-btn" onclick="openAccountModal('${it.code}')" title="계좌별 수량 입력">✏️</button>
-          <button class="tbl-icon-btn" onclick="removeStock('${it.code}')" title="삭제">🗑️</button>
-        </td>
-      </tr>
-    `;
+    html += `<tr>`
+      + `<td class="stock-name-cell" onclick="openTradeModal('${it.code}','buy')" title="클릭하여 매수/매도"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? `<span class="account-dot" title="${it.accountCount}개 계좌에 분산"></span>` : ''}</div><div class="stock-code">${it.code}</div></td>`
+      + cols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, colCtx) : ''}>${c.cell(it, colCtx)}</td>`).join('')
+      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="openTradeModal('${it.code}')" title="거래">거래</button></td>`
+      + `<td><button class="tbl-icon-btn" onclick="openAccountModal('${it.code}')" title="계좌별 수량 입력">✏️</button><button class="tbl-icon-btn" onclick="removeStock('${it.code}')" title="삭제">🗑️</button></td>`
+      + `</tr>`;
   }
 
-  // 현금 행 (평가금액·비중만 표시)
-  {
-    const cashWeight = totalValue > 0 ? (totalCash / totalValue) * 100 : 0;
-    const cashAccountCount = Object.entries(cashAccounts).filter(([id, v]) => _activeAccIdSet.has(id) && (Number(v) || 0) > 0).length;
-    html += `
-      <tr class="row-cash">
-        <td onclick="openCashAccountModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)">
-          <div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${cashAccountCount > 0 ? `<span class="account-dot" title="${cashAccountCount}개 계좌에 분산"></span>` : ''}</div>
-          <div class="stock-code">CASH${cashAccountCount ? ` · ${cashAccountCount}개 계좌` : ''}</div>
-        </td>
-        <td>-</td>
-        <td>-</td>
-        <td>-</td>
-        <td>-</td>
-        <td>-</td>
-        <td>-</td>
-        <td><strong>${formatMil(totalCash)}</strong></td>
-        <td>-</td>
-        <td>-</td>
-        <td>${cashWeight.toFixed(1)}%</td>
-        <td>-</td>
-        <td></td>
-        <td></td>
-      </tr>
-    `;
-  }
+  // 현금 행 (값/비중만 표시, 나머지는 '-')
+  html += `<tr class="row-cash">`
+    + `<td onclick="openCashAccountModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_cashAccountCount > 0 ? `<span class="account-dot" title="${_cashAccountCount}개 계좌에 분산"></span>` : ''}</div><div class="stock-code">CASH${_cashAccountCount ? ` · ${_cashAccountCount}개 계좌` : ''}</div></td>`
+    + cols.map(c => `<td ${c.cashAttr ? c.cashAttr(colCtx) : ''}>${c.cash ? c.cash(colCtx) : '-'}</td>`).join('')
+    + `<td></td><td></td>`
+    + `</tr>`;
 
   // 합계 행
-  const dayCls = totalDayChange > 0 ? 'diff-positive' : (totalDayChange < 0 ? 'diff-negative' : '');
-  html += `
-        </tbody>
-        <tfoot>
-          <tr>
-            <td>합계</td>
-            <td>-</td>
-            <td class="${dayCls}">${totalDayChange ? (totalDayChange > 0 ? '+' : '') + Math.round(totalDayChange).toLocaleString('ko-KR') + ' 원' : '-'}</td>
-            <td>${totalCost > 0 ? '100.0%' : '-'}</td>
-            <td>${totalCost > 0 ? formatMil(totalCost) : '-'}</td>
-            <td>-</td>
-            <td>-</td>
-            <td>${formatMil(totalValue)}</td>
-            <td class="${profitCls}">${totalCost > 0 ? formatMilSigned(totalProfit) : '-'}</td>
-            <td class="${profitCls}">${totalProfitRate != null ? profitSign + totalProfitRate.toFixed(2) + '%' : '-'}</td>
-            <td>${totalValue > 0 ? '100.0%' : '-'}</td>
-            <td>-</td>
-            <td></td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  `;
+  html += `</tbody><tfoot><tr><td>합계</td>`
+    + cols.map(c => `<td ${c.footAttr ? c.footAttr(colCtx) : ''}>${c.foot ? c.foot(colCtx) : '-'}</td>`).join('')
+    + `<td></td><td></td>`
+    + `</tr></tfoot></table></div>`;
 
   container.innerHTML = html;
 }
@@ -13170,6 +13156,32 @@ function switchCfgTab(tab) {
     document.getElementById(`cfgTab${cap}`)?.classList.toggle('active', t === tab);
     document.getElementById(`cfgPane${cap}`)?.classList.toggle('active', t === tab);
   });
+  if (tab === 'app') renderColOrder();
+}
+
+// ===== 종목 리스트 열 순서 편집 =====
+function renderColOrder() {
+  const wrap = document.getElementById('colOrderBody');
+  if (!wrap) return;
+  const cols = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS);
+  wrap.innerHTML = cols.map((c, i) => `
+    <div class="cfg-row-static">
+      <span class="cfg-row-label">${c.header.replace(/<br>/g, ' ')}</span>
+      <span style="display:inline-flex;gap:6px">
+        <button class="wdrec-prio-btn" onclick="moveCol(${i},-1)" ${i === 0 ? 'disabled' : ''} title="위로">↑</button>
+        <button class="wdrec-prio-btn" onclick="moveCol(${i},1)" ${i === cols.length - 1 ? 'disabled' : ''} title="아래로">↓</button>
+      </span>
+    </div>`).join('');
+}
+function moveCol(i, dir) {
+  const order = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS).map(c => c.id);
+  const j = i + dir;
+  if (j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  appSettings.portfolioColOrder = order;
+  saveAppSettings();
+  renderColOrder();
+  render();
 }
 
 // ===== 카카오톡식 스위치 / 탭편집 / 값 표시 =====
@@ -13389,6 +13401,7 @@ function openSettingsModal() {
   setCfgShowApp('WdDbg', !!s.showWdDebugBtn);
   setCfgShowApp('SyncDbg', !!s.showSyncDebugBtn);
   setCfgZoom(s.allowZoom !== false);
+  renderColOrder();
   sv('cfg_cellInfoDuration', s.cellInfoDuration ?? 5);
   sv('cfg_npTaxRate',            wp.npTaxRate            ?? 4);
   sv('cfg_pensionTaxRateU70',  wp.pensionTaxRateU70  ?? 5.5);
@@ -13557,6 +13570,7 @@ function _persistSettingsFromForm() {
     myBirthMonth:  n('cfg_myBirthMonth') || 1,
     hasWife,
     wdChartPV: appSettings.wdChartPV || {},
+    portfolioColOrder: appSettings.portfolioColOrder || PORTFOLIO_COL_IDS.slice(),
     wifeTitle:      hasWife ? wifeTitle : appSettings.wifeTitle,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
