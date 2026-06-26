@@ -15,6 +15,9 @@
 <meta name="theme-color" content="#03c75a">
 <meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
 <title>MyGP</title>
+<!-- 설정 직접 진입(openSettings=1) 시 대시보드가 깜빡 보이지 않도록 설정창이 열릴 때까지 흰 화면으로 덮는다 -->
+<script>try{if(new URLSearchParams(location.search).get('openSettings')==='1')document.documentElement.classList.add('cfg-direct');}catch(e){}</script>
+<style>html.cfg-direct::before{content:'';position:fixed;inset:0;background:#fff;z-index:999;pointer-events:none}</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script>
 // Chart.js 가 로드 실패해도 페이지가 깨지지 않도록 가드
@@ -3858,7 +3861,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.618';
+const APP_VERSION = 'MyGP v0.619';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -13382,6 +13385,8 @@ function openSettingsModal() {
 }
 function closeSettingsModal() {
   _cfgCloseAllEdits();
+  // 설정 직접 진입 덮개 해제 (대시보드로 닫히는 경우 다시 보이도록)
+  document.documentElement.classList.remove('cfg-direct');
   document.getElementById('settingsModal').classList.remove('open');
   // 다음 진입 시 홈 화면부터 보이도록 리셋
   document.getElementById('cfgDetail')?.classList.add('hidden');
