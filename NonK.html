@@ -1305,13 +1305,13 @@
   <div class="modal modal-wide modal-deposit">
     <div class="modal-header">
       <div><h2>💰 계좌 입출금 관리</h2><div class="modal-subtitle">계좌별 입금·출금 내역 (USD)</div></div>
-      <button class="close-btn" onclick="nkCloseDepositModal()" aria-label="닫기">×</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <button class="btn-primary" onclick="nkOpenTxnEditor()" style="padding:8px 16px;font-size:13px;font-weight:600">➕ 입출금 추가</button>
+        <button class="close-btn" onclick="nkCloseDepositModal()" aria-label="닫기">×</button>
+      </div>
     </div>
     <div class="deposit-grand" id="nkDepositGrand"></div>
     <div class="deposit-totals" id="nkDepositTotals"></div>
-    <div class="deposit-toolbar">
-      <button class="btn-primary" onclick="nkOpenTxnEditor()">➕ 입출금 추가</button>
-    </div>
     <div class="deposit-list-header"><span>입출금일</span><span>계좌</span><span>금액</span><span></span></div>
     <div class="deposit-list-wrap"><div id="nkDepositList"></div></div>
     <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseDepositModal()">닫기</button></div>
@@ -1493,7 +1493,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.603';
+const APP_VERSION = 'NonK v0.604';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('appVersion');
