@@ -75,6 +75,14 @@
   .log-empty { color: var(--muted); font-size: 0.78rem; text-align: center; padding: 20px 0; }
   #loginSection { display: block; }
   #dashSection { display: none; }
+  /* 로딩 프로그레스바 */
+  #loadProgress { margin-bottom: 14px; display: none; }
+  #loadProgressBar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  #loadProgressFill { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width .3s ease; }
+  #loadProgressLabel { font-size: .7rem; color: var(--muted); margin-top: 5px; text-align: center; }
+  /* 스켈레톤 애니메이션 */
+  @keyframes shimmer { 0%{opacity:.4} 50%{opacity:.9} 100%{opacity:.4} }
+  .skel { background: var(--border); border-radius: 4px; animation: shimmer 1.4s infinite; display: inline-block; }
 </style>
 </head>
 <body>
@@ -104,6 +112,12 @@
 
 <!-- 대시보드 -->
 <div id="dashSection">
+
+  <!-- 로딩 프로그레스바 -->
+  <div id="loadProgress">
+    <div id="loadProgressBar"><div id="loadProgressFill"></div></div>
+    <div id="loadProgressLabel">연결 중...</div>
+  </div>
 
   <div class="refresh-bar">
     <span class="refresh-info" id="lastUpdated">—</span>
@@ -290,12 +304,45 @@ function getBase() {
   return 'https://mypm.growpension.com';
 }
 
+// 프로그레스바 헬퍼
+let _loadDone = 0, _loadTotal = 0;
+function progressStart(total, label) {
+  _loadDone = 0; _loadTotal = total;
+  const el = document.getElementById('loadProgress');
+  el.style.display = 'block';
+  document.getElementById('loadProgressFill').style.width = '0%';
+  document.getElementById('loadProgressLabel').textContent = label || '불러오는 중...';
+}
+function progressTick(label) {
+  _loadDone++;
+  const pct = Math.round(_loadDone / _loadTotal * 100);
+  document.getElementById('loadProgressFill').style.width = pct + '%';
+  document.getElementById('loadProgressLabel').textContent = label || `${_loadDone}/${_loadTotal} 완료`;
+  if (_loadDone >= _loadTotal) setTimeout(() => { document.getElementById('loadProgress').style.display = 'none'; }, 600);
+}
+function progressError(label) {
+  document.getElementById('loadProgressFill').style.width = '100%';
+  document.getElementById('loadProgressFill').style.background = 'var(--red)';
+  document.getElementById('loadProgressLabel').textContent = label || '오류';
+  setTimeout(() => {
+    document.getElementById('loadProgress').style.display = 'none';
+    document.getElementById('loadProgressFill').style.background = '';
+  }, 2000);
+}
+
+function showDash() {
+  document.getElementById('loginSection').style.display = 'none';
+  document.getElementById('dashSection').style.display = 'block';
+}
+
 // 페이지 로드 시 저장된 토큰 자동 복원
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     token = saved;
     document.getElementById('tokenInput').value = saved;
+    // 대시보드 즉시 표시 (스켈레톤 상태)
+    showDash();
     loadStatus();
   }
 });
@@ -304,6 +351,7 @@ function saveToken() {
   const val = document.getElementById('tokenInput').value.trim();
   if (!val) return;
   token = val;
+  showDash();
   loadStatus();
 }
 
@@ -326,6 +374,7 @@ function showToast(msg, duration = 2500) {
 
 async function loadStatus() {
   countdown = 30;
+  progressStart(4, '서버 상태 확인 중...');
   try {
     const res = await fetch(`${getBase()}/api/admin/status?token=${encodeURIComponent(token)}`);
     if (res.status === 401 || res.status === 403) {
@@ -333,27 +382,32 @@ async function loadStatus() {
       document.getElementById('loginError').style.display = 'block';
       document.getElementById('loginSection').style.display = 'block';
       document.getElementById('dashSection').style.display = 'none';
+      progressError('인증 실패');
       return;
     }
-    // 인증 성공 → 토큰 저장
+    // 인증 성공 → 토큰 저장 & 대시보드 표시
     localStorage.setItem(STORAGE_KEY, token);
     document.getElementById('loginError').style.display = 'none';
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('dashSection').style.display = 'block';
+    showDash();
 
     const d = await res.json();
     renderStatus(d);
-    loadLogs();
-    loadDerived();
-    loadAllowlist();
+    progressTick('서버 상태 ✓');
+
+    // 나머지 3개 API 병렬 실행
+    await Promise.all([
+      loadLogs().then(() => progressTick('로그 ✓')).catch(() => progressTick('로그 실패')),
+      loadDerived().then(() => progressTick('파생상태 ✓')).catch(() => progressTick('파생상태 실패')),
+      loadAllowlist().then(() => progressTick('허용목록 ✓')).catch(() => progressTick('허용목록 실패')),
+    ]);
     startAutoRefresh();
   } catch (e) {
     // 서버 다운
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('dashSection').style.display = 'block';
+    showDash();
     renderOffline();
     document.getElementById('logBox').innerHTML =
       '<div class="log-empty">서버 다운 — 로그를 읽을 수 없습니다.<br>(PC의 data/server.log 파일을 직접 확인하세요)</div>';
+    progressError('서버 연결 실패');
     startAutoRefresh();
   }
 }
