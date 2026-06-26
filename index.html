@@ -3899,7 +3899,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.627';
+const APP_VERSION = 'MyGP v0.628';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -4160,7 +4160,10 @@ function loadColOrder(DEFAULT_IDS) {
   try { const r = JSON.parse(localStorage.getItem(COL_ORDER_KEY)); return Array.isArray(r) ? r : DEFAULT_IDS.slice(); }
   catch(_) { return DEFAULT_IDS.slice(); }
 }
-function saveColOrder(arr) { localStorage.setItem(COL_ORDER_KEY, JSON.stringify(arr)); }
+function saveColOrder(arr) {
+  localStorage.setItem(COL_ORDER_KEY, JSON.stringify(arr));
+  if (typeof scheduleBackendAutoSave === 'function') scheduleBackendAutoSave();  // 서버(집 PC) 동기화 트리거
+}
 function getPortfolioColOrder() { return loadColOrder(PORTFOLIO_COL_IDS); }
 
 function npStartAge(birthYear) {
@@ -5507,6 +5510,7 @@ function exportToFile() {
   const payload = {
     version: 11,
     exportedAt: new Date().toISOString(),
+    colOrder: tryParse('mypm_col_order_v1') || null,   // 종목 리스트 열 순서 (세 앱 공유)
     mypm: {
       appSettings: appSettings,
       cashAccounts: cashAccounts,
@@ -5726,6 +5730,7 @@ function importFromFile(event) {
       if (newWdScenarios) localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(newWdScenarios));
       if (Array.isArray(src.setupScenarios)) localStorage.setItem(SETUP_SCENARIO_KEY, JSON.stringify(src.setupScenarios));
       if (Array.isArray(src.cashAdjRecords)) { cashAdjRecords = src.cashAdjRecords; saveCashAdjRecords(); }
+      if (Array.isArray(data.colOrder)) localStorage.setItem('mypm_col_order_v1', JSON.stringify(data.colOrder));
       render();
       renderPortfolioChart();
       _refreshCfgHomeDynamic();
@@ -17704,6 +17709,7 @@ function buildDriveBundle() {
   return {
     version: 12,
     exportedAt: new Date().toISOString(),
+    colOrder: tryParse('mypm_col_order_v1') || null,   // 종목 리스트 열 순서 (세 앱 공유)
     mypm: {
       appSettings: appSettings,
       cashAccounts: cashAccounts,
@@ -17880,6 +17886,7 @@ function _applyImportData(data) {
     if (kd.watchlist) localStorage.setItem('kd_watchlist_v1', JSON.stringify(kd.watchlist));
     localStorage.setItem('kd_migration_done_v1', '1');
   }
+  if (Array.isArray(data.colOrder)) localStorage.setItem('mypm_col_order_v1', JSON.stringify(data.colOrder));
   // 전역 변수 즉시 반영 — 자동저장 타이머가 구버전 메모리 데이터로 서버에 저장되는 것을 방지
   try { appSettings = loadAppSettings(); } catch(_) {}
   if (window._mypmAutoSaveTimer) { clearTimeout(window._mypmAutoSaveTimer); window._mypmAutoSaveTimer = null; }
