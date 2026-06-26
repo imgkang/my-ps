@@ -3899,7 +3899,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.626';
+const APP_VERSION = 'MyGP v0.627';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -13210,31 +13210,34 @@ function renderColEditList() {
 function openColEditModal() { renderColEditList(); document.getElementById('colEditModal').classList.add('open'); }
 function closeColEditModal() { document.getElementById('colEditModal').classList.remove('open'); }
 
-let _ceRow = null;
+// 드래그는 document 레벨 리스너로 처리 — 그립에 직접 바인딩 + setPointerCapture 방식은
+// 행을 insertBefore로 옮기는 순간 capture가 풀려 실제 터치/마우스에서 move가 끊긴다.
+let _ceRow = null, _cePid = null;
 function colEditDragStart(e) {
-  e.preventDefault();
   _ceRow = e.currentTarget.closest('.col-edit-row');
   if (!_ceRow) return;
+  e.preventDefault();
+  _cePid = e.pointerId;
   _ceRow.classList.add('dragging');
-  const g = e.currentTarget;
-  try { g.setPointerCapture(e.pointerId); } catch(_) {}
-  g.onpointermove = colEditDragMove;
-  g.onpointerup = colEditDragEnd;
-  g.onpointercancel = colEditDragEnd;
+  document.addEventListener('pointermove', colEditDragMove, { passive: false });
+  document.addEventListener('pointerup', colEditDragEnd);
+  document.addEventListener('pointercancel', colEditDragEnd);
 }
 function colEditDragMove(e) {
-  if (!_ceRow) return;
+  if (!_ceRow || (e.pointerId != null && e.pointerId !== _cePid)) return;
+  e.preventDefault();   // iOS 스크롤 가로채기 방지
   const list = document.getElementById('colEditList');
   const others = [...list.querySelectorAll('.col-edit-row:not(.dragging)')];
   const next = others.find(r => { const b = r.getBoundingClientRect(); return e.clientY < b.top + b.height / 2; });
   if (next) list.insertBefore(_ceRow, next); else list.appendChild(_ceRow);
 }
 function colEditDragEnd(e) {
-  const g = e.currentTarget;
-  g.onpointermove = null; g.onpointerup = null; g.onpointercancel = null;
-  try { g.releasePointerCapture(e.pointerId); } catch(_) {}
+  if (e.pointerId != null && e.pointerId !== _cePid) return;
+  document.removeEventListener('pointermove', colEditDragMove);
+  document.removeEventListener('pointerup', colEditDragEnd);
+  document.removeEventListener('pointercancel', colEditDragEnd);
   if (_ceRow) _ceRow.classList.remove('dragging');
-  _ceRow = null;
+  _ceRow = null; _cePid = null;
   const order = [...document.querySelectorAll('#colEditList .col-edit-row')].map(r => r.dataset.id);
   saveColOrder(order);
   render();   // 표 실시간 반영
