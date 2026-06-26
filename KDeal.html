@@ -1132,23 +1132,18 @@
         <div class="kdt-field">
           <label>단가 (원)</label>
           <input type="text" inputmode="numeric" id="kdtTradePrice" placeholder="예: 55,000"
-            onfocus="this.value=this.value.replace(/,/g,'')"
-            onblur="kdFmtAccInput(this,0)"
-            oninput="kdtUpdateTradePreview()">
+            oninput="kdLiveKRW(this); kdtUpdateTradePreview()">
         </div>
         <div class="kdt-field">
           <label>수량 (주)</label>
           <input type="text" inputmode="numeric" id="kdtTradeQty" placeholder="예: 10"
-            onfocus="this.value=this.value.replace(/,/g,'')"
-            onblur="kdFmtAccInput(this,0)"
-            oninput="kdtUpdateTradePreview()">
+            oninput="kdLiveKRW(this); kdtUpdateTradePreview()">
         </div>
       </div>
       <div class="kdt-field">
         <label>수수료 (원)</label>
         <input type="text" inputmode="numeric" id="kdtTradeFee" placeholder="0"
-          onfocus="this.value=this.value.replace(/,/g,'')"
-          onblur="kdFmtAccInput(this,0)">
+          oninput="kdLiveKRW(this)">
       </div>
       <div class="kdt-field">
         <label>메모 (선택)</label>
@@ -1348,8 +1343,7 @@
       <label><span>구분</span><select id="kdTxnType"><option value="deposit">입금 (+)</option><option value="withdraw">출금 (−)</option></select></label>
       <label><span>입출금일</span><input type="date" id="kdTxnDate"></label>
       <label><span>금액 (원)</span><input type="text" inputmode="numeric" id="kdTxnAmount" placeholder="0"
-        onfocus="this.value=this.value.replace(/,/g,'')"
-        onblur="kdFmtAccInput(this,0)"></label>
+        oninput="kdLiveKRW(this)"></label>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="kdCloseTxnEditor()">취소</button>
@@ -1467,9 +1461,7 @@
     <div class="div-focused-ps-row">
       <label style="font-size:13px;white-space:nowrap">주당 배당금</label>
       <input type="text" inputmode="numeric" id="kdDivStockEditPs" placeholder="0"
-        onfocus="this.value=this.value.replace(/,/g,'')"
-        onblur="kdFmtAccInput(this,0)"
-        oninput="kdUpdateDivStockEditPreview()">
+        oninput="kdLiveKRW(this); kdUpdateDivStockEditPreview()">
     </div>
     <div class="div-focused-col3 div-focused-acc-header">
       <span>계좌</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
@@ -1517,7 +1509,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.616';
+const APP_VERSION = 'KDeal v0.617';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -2230,11 +2222,11 @@ function kdOpenAddModal() {
       <label>${a.name}</label>
       <div class="field-wrap">
         <span class="field-label">수량 (주)</span>
-        <input type="number" id="kdAddQty_${a.id}" min="0" step="1" placeholder="예: 10">
+        <input type="text" inputmode="numeric" id="kdAddQty_${a.id}" placeholder="예: 10" oninput="kdLiveKRW(this)">
       </div>
       <div class="field-wrap">
         <span class="field-label">매입단가 (원)</span>
-        <input type="number" id="kdAddAvg_${a.id}" min="0" step="1" placeholder="예: 55000">
+        <input type="text" inputmode="numeric" id="kdAddAvg_${a.id}" placeholder="예: 55,000" oninput="kdLiveKRW(this)">
       </div>
       <span id="kdAddTotal_${a.id}" class="total-display zero">0원</span>
     </div>`).join('');
@@ -2278,8 +2270,8 @@ function kdOnAddSearchInput(val) {
 
 function kdUpdateAddTotals() {
   KD_ACCOUNTS.filter(a => a.active !== false).forEach(a => {
-    const qty = Number(document.getElementById(`kdAddQty_${a.id}`)?.value) || 0;
-    const avg = Number(document.getElementById(`kdAddAvg_${a.id}`)?.value) || 0;
+    const qty = Number(document.getElementById(`kdAddQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
+    const avg = Number(document.getElementById(`kdAddAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const el = document.getElementById(`kdAddTotal_${a.id}`);
     if (el) el.textContent = fmtKRW(qty * avg);
   });
@@ -2302,8 +2294,8 @@ function kdAddStock() {
   const accounts = {};
   let totalQty = 0;
   for (const a of KD_ACCOUNTS.filter(x => x.active !== false)) {
-    const qty = Number(document.getElementById(`kdAddQty_${a.id}`)?.value) || 0;
-    const avg = Number(document.getElementById(`kdAddAvg_${a.id}`)?.value) || 0;
+    const qty = Number(document.getElementById(`kdAddQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
+    const avg = Number(document.getElementById(`kdAddAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     accounts[a.id] = { qty, avgPrice: avg };
     totalQty += qty;
   }
@@ -2364,6 +2356,11 @@ function kdOpenAccountModal(ticker) {
 function kdFmtAccInput(el, dec) {
   const v = parseFloat(el.value.replace(/,/g, ''));
   el.value = isNaN(v) || !v ? '' : v.toLocaleString('ko-KR', { maximumFractionDigits: dec });
+}
+
+function kdLiveKRW(el) {
+  const d = el.value.replace(/[^\d]/g, '');
+  el.value = d ? Number(d).toLocaleString('ko-KR') : '';
 }
 
 function kdUpdateAccTotals() {
@@ -2560,8 +2557,7 @@ function kdOpenCashModal() {
   grid.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<div class="account-row">
     <span>${a.name}</span>
     <input type="text" inputmode="numeric" id="kdCashInput_${a.id}" value="${(Number(kdCashAccounts[a.id])||0).toLocaleString('ko-KR')}" style="grid-column:span 2"
-      onfocus="this.value=this.value.replace(/,/g,'')"
-      onblur="kdFmtAccInput(this,0)">
+      oninput="kdLiveKRW(this)">
     <span>${fmtKRW(Number(kdCashAccounts[a.id])||0)}</span>
   </div>`).join('');
   document.getElementById('kdCashModal').classList.add('open');
@@ -2757,9 +2753,7 @@ function kdRenderRecAccountInputs() {
   div.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<label>
     <span>${a.name}</span>
     <input type="text" inputmode="numeric" id="kdRecVal_${a.id}" placeholder="0"
-      onfocus="this.value=this.value.replace(/,/g,'')"
-      onblur="kdFmtAccInput(this,0)"
-      oninput="kdUpdateRecTotal()">
+      oninput="kdLiveKRW(this); kdUpdateRecTotal()">
   </label>`).join('');
   document.getElementById('kdRecTotal').textContent = fmtKRW(0);
 }
@@ -3027,17 +3021,15 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
         <span style="color:var(--muted)">${a.name}</span>
         <input type="text" inputmode="numeric" class="div-acc-qty"
           value="${(Number(byAcc[a.id]) || 0).toLocaleString('ko-KR')}"
-          onfocus="this.value=this.value.replace(/,/g,'')"
-          onblur="kdFmtAccInput(this,0)"
-          oninput="kdUpdateAccQty('${h.ticker}','${a.id}', this.value.replace(/,/g,''))"
+          oninput="kdLiveKRW(this); kdUpdateAccQty('${h.ticker}','${a.id}', this.value.replace(/,/g,''))"
           style="width:70px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;text-align:right">
       </label>
     `).join('');
     return `<tr data-code="${h.ticker}">
       <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
-      <td><input class="div-ps" type="number" min="0" step="1"
-        value="${ps}" placeholder="0"
-        oninput="kdUpdateDivRow('${h.ticker}')"
+      <td><input class="div-ps" type="text" inputmode="numeric"
+        value="${ps !== '' ? Number(ps).toLocaleString('ko-KR') : ''}" placeholder="0"
+        oninput="kdLiveKRW(this); kdUpdateDivRow('${h.ticker}')"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
       <td class="div-qty-cell" onclick="kdToggleDivRow('${h.ticker}')"
           style="text-align:right;cursor:pointer;user-select:none">
@@ -3077,7 +3069,7 @@ function kdUpdateDivRow(code) {
   const sumEl = document.getElementById('kdDivQtySum_' + code);
   if (sumEl) sumEl.textContent = total.toLocaleString('ko-KR');
   const psInp = document.querySelector(`#kdDivStockInputs tr[data-code="${code}"] .div-ps`);
-  const ps = Number(psInp?.value) || 0;
+  const ps = Number(psInp?.value?.replace(/,/g,'')) || 0;
   const cell = document.getElementById('kdDivTotal_' + code);
   if (cell) cell.textContent = (ps > 0 && total > 0) ? fmtKRW(Math.round(ps * total)) : '-';
   kdUpdateDivTotal();
@@ -3087,7 +3079,7 @@ function kdUpdateDivTotal() {
   let grand = 0;
   document.querySelectorAll('#kdDivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
-    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
     const byAcc = kdDivFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) grand += Math.round(ps * totalQty);
@@ -3111,7 +3103,7 @@ function kdAddDividendRecord() {
   let hasAny = false;
   document.querySelectorAll('#kdDivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
-    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
     const byAcc = kdDivFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) {
@@ -3257,8 +3249,8 @@ function kdRenderDivMiscInputs(values) {
     const v = values && values[a.id] != null ? values[a.id] : '';
     return `<label style="display:flex;align-items:center;gap:8px">
       <span style="min-width:90px;font-size:13px">${a.name}</span>
-      <input type="number" step="1" class="kd-div-misc-amt" data-acc="${a.id}" value="${v}"
-             oninput="kdUpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
+      <input type="text" inputmode="numeric" class="kd-div-misc-amt" data-acc="${a.id}" value="${v !== '' ? Number(v).toLocaleString('ko-KR') : ''}"
+             oninput="kdLiveKRW(this); kdUpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
       <span style="font-size:12px;color:var(--muted,#888)">원</span>
     </label>`;
   }).join('');
@@ -3268,7 +3260,7 @@ function kdRenderDivMiscInputs(values) {
 function kdUpdateDivMiscTotal() {
   let t = 0;
   document.querySelectorAll('#kdDivMiscAccInputs .kd-div-misc-amt').forEach(inp => {
-    t += Math.round(Number(inp.value) || 0);
+    t += Math.round(Number(inp.value?.replace(/,/g,'')) || 0);
   });
   const el = document.getElementById('kdDivMiscGrandTotal');
   if (el) el.textContent = fmtKRW(t);
@@ -3299,7 +3291,7 @@ function kdAddMiscDividendRecord() {
   const accounts = {};
   let total = 0;
   document.querySelectorAll('#kdDivMiscAccInputs .kd-div-misc-amt').forEach(inp => {
-    const v = Math.round(Number(inp.value) || 0);
+    const v = Math.round(Number(inp.value?.replace(/,/g,'')) || 0);
     if (v) { accounts[inp.dataset.acc] = v; total += v; }
   });
   if (total === 0 && !confirm('모든 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
@@ -3482,9 +3474,7 @@ function kdOpenDivAccEdit(recId, accId) {
       <span>${ticker}</span>
       <span>${fmtKRW(perShare)}</span>
       <input type="text" inputmode="numeric" class="div-focused-qty-input" value="${qty.toLocaleString('ko-KR')}"
-        onfocus="this.value=this.value.replace(/,/g,'')"
-        onblur="kdFmtAccInput(this,0)"
-        oninput="kdUpdateDivAccEditPreview()">
+        oninput="kdLiveKRW(this); kdUpdateDivAccEditPreview()">
       <span class="kd-acc-amt-cell">${fmtKRW(amt)}</span>
     </div>`;
   }).join('');
@@ -3520,7 +3510,7 @@ function kdSaveDivAccEdit() {
   if (!rec.stocksShares) rec.stocksShares = {};
   document.querySelectorAll('#kdDivAccEditStockRows .div-focused-stock-row').forEach(row => {
     const ticker = row.dataset.ticker;
-    const newQty = parseFloat(row.querySelector('.div-focused-qty-input').value) || 0;
+    const newQty = parseFloat(row.querySelector('.div-focused-qty-input').value.replace(/,/g,'')) || 0;
     if (!rec.stocksShares[ticker]) rec.stocksShares[ticker] = {};
     rec.stocksShares[ticker][accId] = newQty;
   });
