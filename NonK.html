@@ -21,12 +21,6 @@
     --minus: #dc2626;
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
-  .app-version {
-    position: fixed; top: 58px; right: 4px; z-index: 9999;
-    font-size: 12px; color: rgba(0,0,0,0.35); font-weight: 700;
-    pointer-events: none;
-    font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
-  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
@@ -1493,11 +1487,9 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.604';
+const APP_VERSION = 'NonK v0.605';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
-  const el = document.getElementById('appVersion');
-  if (el) el.textContent = APP_VERSION;
   try {
     const s = JSON.parse(localStorage.getItem('pension_app_settings_v1')) || {};
     if (s.showNonK  === false) document.querySelectorAll('a[href="NonK.html"]').forEach(e => e.style.display = 'none');
@@ -4474,7 +4466,6 @@ window.addEventListener('message', e => {
 })();
 
 </script>
-<div class="app-version" id="appVersion"></div>
 <input type="file" id="nkImportInput" accept=".json" style="display:none" onchange="nkImportFromFile(event)">
 
 </body>

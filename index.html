@@ -66,12 +66,6 @@ registerMobileTooltipDismiss();
     --minus: #1e88e5;
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
-  .app-version {
-    position: fixed; top: 58px; right: 4px; z-index: 9999;
-    font-size: 12px; color: rgba(0,0,0,0.35); font-weight: 700;
-    pointer-events: none;
-    font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
-  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
@@ -2813,6 +2807,7 @@ registerMobileTooltipDismiss();
       <h2>📒 계좌 기록 관리</h2>
       <div class="modal-subtitle">월별 계좌 평가금액 기록 (연도·월 + 계좌별 평가금액)</div>
     </div>
+    <button id="recFormToggleBtn" class="btn-primary" onclick="toggleRecForm()" style="padding:8px 16px;font-size:13px;font-weight:600;flex-shrink:0">➕ 새 기록 추가</button>
   </div>
 
     <!-- 계좌 잔액 추이 차트 -->
@@ -2826,9 +2821,6 @@ registerMobileTooltipDismiss();
         <button class="rec-period-btn" data-period="ytd" onclick="setRecChartPeriod('ytd')">올해</button>
       </div>
     </div>
-
-    <!-- 입력 폼 토글 버튼 -->
-    <button id="recFormToggleBtn" class="rec-form-toggle" onclick="toggleRecForm()">➕ 새 기록 추가</button>
 
     <!-- 접히는 입력 폼 -->
     <div id="recFormPanel" style="display:none">
@@ -3661,12 +3653,8 @@ registerMobileTooltipDismiss();
       <h2>💸 배당 기록 관리</h2>
       <div class="modal-subtitle">월별 배당금/분배금 수령 내역</div>
     </div>
+    <button class="btn-primary" onclick="openDivRecModal()" style="padding:8px 16px;font-size:13px;font-weight:600;flex-shrink:0">➕ 새 기록 추가</button>
   </div>
-
-    <!-- 입력 폼 열기 버튼 -->
-    <button class="rec-form-toggle" onclick="openDivRecModal()">➕ 새 기록 추가</button>
-
-
 
     <div class="div-sections">
 
@@ -3868,7 +3856,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.604';
+const APP_VERSION = 'MyGP v0.605';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -3916,8 +3904,6 @@ window.showSyncDebugPanel = function() {
 
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
-  const el = document.getElementById('appVersion');
-  if (el) el.textContent = APP_VERSION;
   applyNavVisibility();
   if (typeof applyWithdrawalTabVisibility === 'function') applyWithdrawalTabVisibility();
   // 시작하기 마법사 자동 실행
@@ -6964,6 +6950,9 @@ function render() {
       <div class="pf-hero-row ${profitCls}"><span>${totalGrandPricipal > 0 ? fmtTS(totalProfit, profitSign) + ' ' + fmtPct(totalProfitRate, profitSign) : '-'}</span><span class="pf-hero-label">누적</span></div>
       ${sinceHtml}
     </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
+    </div>
     <div class="detail-table-wrap">
       <table class="detail-table">
         <thead>
@@ -7085,9 +7074,6 @@ function render() {
           </tr>
         </tfoot>
       </table>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:0">
-      <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     </div>
   `;
 
@@ -11792,12 +11778,10 @@ function openOnboardingModal() {
   renderOnboardingStep();
   localStorage.setItem('onboarding_started', '1');
   document.getElementById('onboardingModal').classList.add('open');
-  document.getElementById('appVersion')?.style.setProperty('display', 'none');
 }
 
 function closeOnboardingModal() {
   document.getElementById('onboardingModal').classList.remove('open');
-  document.getElementById('appVersion')?.style.removeProperty('display');
   if (_obSimChart) { _obSimChart.destroy(); _obSimChart = null; }
   const tip = document.getElementById('ob-tip');
   if (tip) tip.classList.remove('visible');
@@ -13360,13 +13344,11 @@ function openSettingsModal() {
   const homeScroll = document.querySelector('#cfgHome .settings-scroll');
   if (homeScroll) homeScroll.scrollTop = 0;
   _refreshCfgHomeDynamic();
-  document.getElementById('appVersion')?.style.setProperty('display', 'none');
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() {
   _cfgCloseAllEdits();
   document.getElementById('settingsModal').classList.remove('open');
-  document.getElementById('appVersion')?.style.removeProperty('display');
   // 다음 진입 시 홈 화면부터 보이도록 리셋
   document.getElementById('cfgDetail')?.classList.add('hidden');
   document.getElementById('cfgHome')?.classList.remove('hidden');
@@ -18209,7 +18191,6 @@ window.addEventListener('message', e => {
   </div>
 </div>
 
-<div class="app-version" id="appVersion"></div>
 <div id="wd-cell-info"></div>
 <div id="ob-tip"></div>
 <!-- 계좌별 배분 모달 -->
