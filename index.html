@@ -1901,6 +1901,9 @@ registerMobileTooltipDismiss();
         <div style="display:flex;gap:6px">
           <button class="btn-secondary" style="flex:1;padding:9px 6px;font-size:13px" onclick="openTransferEditor()" title="연금계좌 간 원금·안세공을 이전할 때 사용합니다">🔁 계좌이전</button>
         </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-secondary" style="flex:1;padding:9px 6px;font-size:13px" onclick="openBackupModal()" title="버전 업데이트 등으로 데이터가 깨졌을 때 자동 백업 시점으로 되돌립니다">🛟 백업 · 복원</button>
+        </div>
       </div>
       <div class="cfg-section">🔄 자동 새로고침</div>
       <div class="cfg-list">
@@ -3861,7 +3864,88 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.620';
+const APP_VERSION = 'MyGP v0.621';
+
+// ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
+// 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
+// 한 번 깨져도 되돌릴 수 있게 하는 안전망. 인증 토큰 등 민감/대용량 키는 제외.
+const LOCAL_BACKUPS_KEY = 'mypm_local_backups_v1';
+const _BACKUP_SKIP = new Set([LOCAL_BACKUPS_KEY, 'mypm_auth_token', 'drive_token_v2', 'drive_user_hint']);
+const _BACKUP_KEY_RE = /^(pension_|nonk_|kdeal_|kd_|mypm_|setup_|onboarding_|google_login|autoRefreshMinutes)/;
+function createLocalBackup(reason) {
+  try {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || _BACKUP_SKIP.has(k)) continue;
+      if (_BACKUP_KEY_RE.test(k)) data[k] = localStorage.getItem(k);
+    }
+    if (!Object.keys(data).length) return false;
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(LOCAL_BACKUPS_KEY)) || []; } catch (_) {}
+    arr.push({ v: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''), ts: Date.now(), reason: reason || '', data });
+    while (arr.length > 3) arr.shift();
+    try {
+      localStorage.setItem(LOCAL_BACKUPS_KEY, JSON.stringify(arr));
+    } catch (e) {
+      // 용량 초과: 오래된 백업부터 버리며 재시도
+      while (arr.length > 1) {
+        arr.shift();
+        try { localStorage.setItem(LOCAL_BACKUPS_KEY, JSON.stringify(arr)); return true; } catch (_) {}
+      }
+      return false;
+    }
+    return true;
+  } catch (_) { return false; }
+}
+function restoreLocalBackup(idx) {
+  try {
+    const arr = JSON.parse(localStorage.getItem(LOCAL_BACKUPS_KEY)) || [];
+    const snap = arr[idx];
+    if (!snap) return;
+    const when = new Date(snap.ts).toLocaleString('ko-KR');
+    if (!confirm(`${when} 시점(${snap.v || ''})으로 데이터를 되돌립니다.\n현재 데이터는 사라집니다. 계속할까요?`)) return;
+    createLocalBackup('before-restore'); // 되돌리기 취소 대비
+    Object.keys(snap.data || {}).forEach(k => {
+      try {
+        if (snap.data[k] == null) localStorage.removeItem(k);
+        else localStorage.setItem(k, snap.data[k]);
+      } catch (_) {}
+    });
+    location.reload();
+  } catch (e) { alert('복원 실패: ' + (e && e.message ? e.message : e)); }
+}
+function openBackupModal() { renderBackupList(); document.getElementById('backupModal').classList.add('open'); }
+function closeBackupModal() { document.getElementById('backupModal').classList.remove('open'); }
+function renderBackupList() {
+  const wrap = document.getElementById('backupList');
+  if (!wrap) return;
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(LOCAL_BACKUPS_KEY)) || []; } catch (_) {}
+  if (!arr.length) { wrap.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:14px 0;text-align:center">저장된 백업이 없습니다.</div>'; return; }
+  const reasonKo = { 'version-change':'버전 변경','first-run':'최초 실행','manual':'수동 백업','sw-update':'업데이트','before-import':'불러오기 전','before-reset':'초기화 전','before-restore':'복원 전','force-update':'강제 업데이트' };
+  wrap.innerHTML = arr.map((s, i) => {
+    const t = new Date(s.ts).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const n = Object.keys(s.data || {}).length;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eee">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${t} <span style="color:#9ca3af;font-weight:400">· ${reasonKo[s.reason] || s.reason || ''}</span></div>
+        <div style="font-size:11px;color:#9ca3af">${s.v || ''} · ${n}개 항목</div>
+      </div>
+      <button class="btn-secondary" style="padding:6px 12px;font-size:12px;flex:none" onclick="restoreLocalBackup(${i})">복원</button>
+    </div>`;
+  }).reverse().join('');
+}
+// 버전이 바뀐 첫 로드라면, 새 코드가 마이그레이션/되쓰기로 데이터를 건드리기 전에 원본 백업.
+try {
+  const _seen = localStorage.getItem('mypm_last_seen_version');
+  if (_seen !== APP_VERSION) {
+    createLocalBackup(_seen ? 'version-change' : 'first-run');
+    localStorage.setItem('mypm_last_seen_version', APP_VERSION);
+  }
+} catch (_) {}
+// 초기 동기화(syncPullOnStartup) 완료 전에는 자동저장을 막아 빈/오래된 데이터가 서버를 덮지 않게 함.
+window._appReady = false;
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -7799,7 +7883,8 @@ let annualPlan = loadAnnualPlan();
 init();  //render();
 
 // 시작 시 백엔드에서 최신본 자동 불러오기 (Phase 3 ②) — 미인증/오프라인이면 조용히 skip
-syncPullOnStartup();
+// 초기 pull이 끝난(또는 skip된) 뒤에야 자동저장 허용 → 시작 직후 빈/오래된 데이터 업로드 방지.
+syncPullOnStartup().finally(() => { window._appReady = true; });
 
 // 페이지 로드(F5) 시 init()에서 이미 refreshAll()이 호출되므로 별도 처리 불필요
 
@@ -13005,6 +13090,7 @@ function initSetupBanner() {
 
 async function forceUpdate() {
   if (!confirm('캐시를 모두 삭제하고 최신 버전을 새로 받아옵니다.\n계속하시겠습니까?')) return;
+  try { createLocalBackup('force-update'); } catch (_) {} // 강제 업데이트 전 백업
   if ('caches' in window) {
     const keys = await caches.keys();
     await Promise.all(keys.map(k => caches.delete(k)));
@@ -13024,6 +13110,7 @@ function closeResetConfirmModal() {
   document.getElementById('resetConfirmModal').classList.remove('open');
 }
 function doReset(andOnboard) {
+  try { createLocalBackup('before-reset'); } catch (_) {} // 초기화 전 현재 데이터 백업
   const savedClientId = driveClientId;
   [
     APP_SETTINGS_KEY, STORAGE_KEY, CASH_KEY, CASH_ACCOUNTS_KEY,
@@ -17587,6 +17674,23 @@ function buildDriveBundle() {
   };
 }
 
+// 번들이 사실상 비었는지(보유/입출금/매매/월별/생년·MyPM 설정·NonK/KD 보유 모두 없음) 판단.
+// 자동(silent) 저장에서 빈 상태가 서버를 덮는 것을 막는 가드.
+function isBundleEmpty(b) {
+  try {
+    const m = b && b.mypm; if (!m) return false;
+    const has = v => Array.isArray(v) && v.length > 0;
+    const s = m.appSettings || {};
+    return !has(m.holdings)
+      && !(m.deposits && has(m.deposits.transactions))
+      && !has(m.trades)
+      && !has(m.monthlyRecords)
+      && !s.myBirthYear && !s.wifeBirthYear
+      && !(b.nonk && has(b.nonk.holdings))
+      && !(b.kd && has(b.kd.holdings));
+  } catch (_) { return false; }
+}
+
 async function driveSave() {
   if (!driveAccessToken) { driveSignIn(); return; }
   setDriveStatus('loading', '⏳ Drive에 저장 중...');
@@ -17650,6 +17754,7 @@ async function driveLoad() {
 
 // importFromFile의 데이터 적용 로직 분리 (Drive load에서 재사용)
 function _applyImportData(data) {
+  try { createLocalBackup('before-import'); } catch (_) {} // 덮어쓰기 전 현재 데이터 백업
   const src = (data.version >= 8 && data.mypm) ? data.mypm : data;
   const newHoldings = Array.isArray(src.holdings) ? src.holdings : [];
   const newCashAccounts = {};
@@ -17936,6 +18041,8 @@ async function backendSave(silent, force) {
   if (!silent) setBackendStatus('loading', '⏳ 백엔드에 저장 중...');
   try {
     const bundle = buildDriveBundle();
+    // 자동저장에서 빈 번들은 업로드하지 않음(빈 상태가 서버 데이터를 덮어 다른 기기 손실 방지)
+    if (silent && isBundleEmpty(bundle)) { if (window._syncLog) window._syncLog('backendSave: 빈 번들 → skip'); return; }
     // buildDriveBundle 의 version 은 스키마 버전(고정 12)이므로, 백엔드 충돌감지를 위해
     // version 을 단조 증가 리비전으로 보정한다(마지막 동기화 리비전 + 1). 서버 규칙: incoming < current → 409.
     const base = Number(localStorage.getItem('mypm_synced_version') || bundle.version || 0);
@@ -18030,6 +18137,7 @@ function toggleAutoSave(on) {
 function scheduleBackendAutoSave() {
   try {
     window._mypmDirty = true; // 데이터 변경 표시 — 자동저장 토글과 무관하게 추적(갱신 시 flush 용)
+    if (!window._appReady) return; // 초기 동기화 완료 전에는 자동저장 금지(빈/오래된 데이터 업로드 방지)
     if (localStorage.getItem('mypm_autosave_v1') !== '1') return;
     if (!(window.MyPMApi && MyPMApi.isConfigured() && MyPMApi.isAuthenticated())) return;
     if (window._mypmAutoSaveTimer) clearTimeout(window._mypmAutoSaveTimer);
@@ -18081,8 +18189,13 @@ if ('serviceWorker' in navigator) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               if (confirm('새 버전이 있습니다. 지금 업데이트할까요?')) {
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                location.reload();
+                // 리로드 전: 현재 데이터 백업 + 미저장 변경 서버 flush (저장 도중 끊김 방지)
+                try { createLocalBackup('sw-update'); } catch (_) {}
+                (async () => {
+                  try { if (window._mypmDirty) await backendSave(true); } catch (_) {}
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  location.reload();
+                })();
               }
             }
           });
@@ -18238,6 +18351,21 @@ window.addEventListener('message', e => {
       <button class="btn-secondary" onclick="closeResetConfirmModal()">취소</button>
       <button onclick="doReset(false)" style="padding:8px 16px;border-radius:8px;border:1.5px solid #dc2626;color:#dc2626;background:#fff;cursor:pointer;font-size:13px;font-weight:500">초기화만</button>
       <button class="btn-primary" onclick="doReset(true)">초기화 + 시작하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🛟 백업 · 복원 -->
+<div class="modal-backdrop" id="backupModal" style="z-index:1200">
+  <div class="modal" style="max-width:380px">
+    <h3 style="margin-bottom:6px">🛟 백업 · 복원</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+      버전 변경·불러오기·초기화 직전에 자동으로 백업됩니다(최근 3개).<br>데이터가 깨졌을 때 아래에서 되돌릴 수 있어요.
+    </p>
+    <div id="backupList" style="max-height:300px;overflow-y:auto;margin-bottom:14px"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between">
+      <button class="btn-secondary" onclick="createLocalBackup('manual'); renderBackupList();">💾 지금 백업</button>
+      <button class="btn-secondary" onclick="closeBackupModal()">닫기</button>
     </div>
   </div>
 </div>
