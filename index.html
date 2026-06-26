@@ -3856,7 +3856,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.606';
+const APP_VERSION = 'MyGP v0.607';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -12777,7 +12777,7 @@ function closeSetupScreen() {
   }
 }
 function setupStartNew() {
-  if (!confirm('새로 시작하시겠습니까?\n\n현재 모든 데이터가 초기화됩니다.\n저장된 시나리오는 유지됩니다.')) return;
+  if (!confirm('새로 시작하시겠습니까?\n\n현재 모든 데이터와 저장된 시나리오가 초기화됩니다.')) return;
   closeSetupScreen();
   doReset(true);
 }
@@ -13004,8 +13004,8 @@ function doReset(andOnboard) {
     'kd_dividends_v1', 'kd_watchlist_v1', 'kd_migration_done_v1',
     'setup_skipped', 'setup_banner_dismissed',
     'onboarding_started', 'google_login_suggested',
+    SETUP_SCENARIO_KEY,
     // google_login_done 은 초기화해도 유지 (한 번 로그인한 기기에서 온보딩 재실행 방지)
-    // SETUP_SCENARIO_KEY 는 초기화해도 유지 (시나리오는 보존)
   ].forEach(k => localStorage.removeItem(k));
   if (savedClientId) {
     localStorage.setItem(DRIVE_SETTINGS_KEY, JSON.stringify({ clientId: savedClientId, fileId: null, lastSync: null }));
