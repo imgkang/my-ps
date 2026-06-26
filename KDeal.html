@@ -264,6 +264,12 @@
     color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px;
   }
   .account-head div:not(:first-child) { text-align: right; }
+  .account-row .field-label {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    margin-bottom: 3px; display: none;
+  }
+  .account-row .field-wrap { display: flex; flex-direction: column; }
+  .account-row .field-wrap input { width: 100%; box-sizing: border-box; }
   @media (max-width: 640px) {
     .account-head { display: none; }
     .account-row {
@@ -272,6 +278,7 @@
     }
     .account-row label { grid-column: 1 / -1; font-size: 13px; margin-bottom: 2px; }
     .account-row input, .account-row .total-display { font-size: 13px; padding: 8px; }
+    .account-row .field-label { display: block; }
   }
   .modal-total {
     background: #f9fafb; padding: 14px 16px; border-radius: 8px;
@@ -1498,7 +1505,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.611';
+const APP_VERSION = 'KDeal v0.612';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -2208,10 +2215,16 @@ function kdOpenAddModal() {
   const activeAccs = KD_ACCOUNTS.filter(a => a.active !== false);
   grid.innerHTML = activeAccs.map(a => `
     <div class="account-row">
-      <span>${a.name}</span>
-      <input type="number" id="kdAddQty_${a.id}" min="0" step="1" value="0" placeholder="0">
-      <input type="number" id="kdAddAvg_${a.id}" min="0" step="1" value="0" placeholder="0">
-      <span id="kdAddTotal_${a.id}">0원</span>
+      <label>${a.name}</label>
+      <div class="field-wrap">
+        <span class="field-label">수량 (주)</span>
+        <input type="number" id="kdAddQty_${a.id}" min="0" step="1" value="0" placeholder="예: 10">
+      </div>
+      <div class="field-wrap">
+        <span class="field-label">매입단가 (원)</span>
+        <input type="number" id="kdAddAvg_${a.id}" min="0" step="1" value="0" placeholder="예: 55000">
+      </div>
+      <span id="kdAddTotal_${a.id}" class="total-display zero">0원</span>
     </div>`).join('');
   activeAccs.forEach(a => {
     document.getElementById(`kdAddQty_${a.id}`).addEventListener('input', kdUpdateAddTotals);
