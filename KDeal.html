@@ -1505,7 +1505,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.612';
+const APP_VERSION = 'KDeal v0.613';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -2218,11 +2218,11 @@ function kdOpenAddModal() {
       <label>${a.name}</label>
       <div class="field-wrap">
         <span class="field-label">수량 (주)</span>
-        <input type="number" id="kdAddQty_${a.id}" min="0" step="1" value="0" placeholder="예: 10">
+        <input type="number" id="kdAddQty_${a.id}" min="0" step="1" placeholder="예: 10">
       </div>
       <div class="field-wrap">
         <span class="field-label">매입단가 (원)</span>
-        <input type="number" id="kdAddAvg_${a.id}" min="0" step="1" value="0" placeholder="예: 55000">
+        <input type="number" id="kdAddAvg_${a.id}" min="0" step="1" placeholder="예: 55000">
       </div>
       <span id="kdAddTotal_${a.id}" class="total-display zero">0원</span>
     </div>`).join('');
