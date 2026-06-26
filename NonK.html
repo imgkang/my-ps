@@ -1512,7 +1512,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.625';
+const APP_VERSION = 'NonK v0.626';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -1675,7 +1675,6 @@ const NK_PORTFOLIO_COLS = [
     cell:(it)=>it.hasCost?it._dSign+it._diff.toFixed(1)+'%':'-' },
 ];
 const NK_PORTFOLIO_COL_IDS = NK_PORTFOLIO_COLS.map(c => c.id);
-const NK_COLORDER_KEY = 'nonk_colorder_v1';
 function orderedCols(savedOrder, COLS) {
   const byId = new Map(COLS.map(c => [c.id, c]));
   const out = [], seen = new Set();
@@ -1685,9 +1684,12 @@ function orderedCols(savedOrder, COLS) {
   for (const c of COLS) if (!seen.has(c.id)) out.push(c);
   return out;
 }
-function nkLoadColOrder() { try { const r = JSON.parse(localStorage.getItem(NK_COLORDER_KEY)); return Array.isArray(r) ? r : NK_PORTFOLIO_COL_IDS.slice(); } catch(_) { return NK_PORTFOLIO_COL_IDS.slice(); } }
-function nkSaveColOrder(arr) { localStorage.setItem(NK_COLORDER_KEY, JSON.stringify(arr)); }
-let nkColOrder = nkLoadColOrder();
+// 컬럼 순서는 세 앱 공유 — MyPM 설정에서 편집, NonK/KDeal은 읽기 전용으로 동일 적용.
+const COL_ORDER_KEY = 'mypm_col_order_v1';
+function loadColOrder(DEFAULT_IDS) {
+  try { const r = JSON.parse(localStorage.getItem(COL_ORDER_KEY)); return Array.isArray(r) ? r : DEFAULT_IDS.slice(); }
+  catch(_) { return DEFAULT_IDS.slice(); }
+}
 
 let nkHoldings        = nkLoadHoldings();
 let nkCashAccounts    = nkLoadCash();
@@ -2086,7 +2088,7 @@ function nkRender() {
   const _nkTotPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
   const _nkTotPSign = pnl >= 0 ? '+' : '';
   const nkColCtx = { totalCost, totalValue, totalCash, todayPnl, dayCls: _nkDayCls, deposited, pnl, pnlRate, totPCls: _nkTotPCls, totPSign: _nkTotPSign, cashWeight: _nkCashWeight };
-  const nkCols = orderedCols(nkColOrder, NK_PORTFOLIO_COLS);
+  const nkCols = orderedCols(loadColOrder(NK_PORTFOLIO_COL_IDS), NK_PORTFOLIO_COLS);
 
   let tableHtml = `<div class="detail-table-wrap"><table class="detail-table">`
     + `<thead><tr><th>종목</th>${nkCols.map(c => `<th>${c.header}</th>`).join('')}<th></th></tr></thead><tbody>`;
@@ -3517,33 +3519,11 @@ function nkRenderAccountSettingsBody() {
     <button class="btn-primary" onclick="nkAddAccount()">추가</button>
   </div>`;
 
-  // 종목 리스트 열 순서
-  html += `<div class="nk-acc-section-title" style="margin-top:16px">📊 종목 리스트 열 순서</div>`;
-  html += `<div class="nk-acc-settings-list">` + orderedCols(nkColOrder, NK_PORTFOLIO_COLS).map((c, i, arr) =>
-    `<div class="nk-acc-settings-row" style="justify-content:space-between">
-      <span>${c.header.replace(/<br>/g, ' ')}</span>
-      <span style="display:inline-flex;gap:6px">
-        <button class="edit-btn" onclick="nkMoveCol(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
-        <button class="edit-btn" onclick="nkMoveCol(${i},1)" ${i === arr.length - 1 ? 'disabled' : ''}>↓</button>
-      </span>
-    </div>`).join('') + `</div>`;
-
   body.innerHTML = html;
   setTimeout(() => {
     const inp = document.getElementById('nkNewAccName');
     if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') nkAddAccount(); });
   }, 0);
-}
-
-function nkMoveCol(i, dir) {
-  const order = orderedCols(nkColOrder, NK_PORTFOLIO_COLS).map(c => c.id);
-  const j = i + dir;
-  if (j < 0 || j >= order.length) return;
-  [order[i], order[j]] = [order[j], order[i]];
-  nkColOrder = order;
-  nkSaveColOrder(order);
-  nkRenderAccountSettingsBody();
-  nkRender();
 }
 
 function nkAddAccount() {
