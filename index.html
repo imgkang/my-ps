@@ -3858,7 +3858,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.617';
+const APP_VERSION = 'MyGP v0.618';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4923,9 +4923,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// URL 파라미터로 설정창 자동 오픈 (NonK/KDeal 설정 버튼용)
+// URL 파라미터로 설정창 자동 오픈 (settings.html / NonK / KDeal 설정 버튼용)
+// 설정 종료 시 돌아갈 위치(return). 허용 목록으로 제한해 오픈리다이렉트 방지.
+let _settingsReturnUrl = null;
+const _SETTINGS_RETURN_ALLOW = ['index.html', 'NonK.html', 'KDeal.html'];
 document.addEventListener('DOMContentLoaded', () => {
-  if (new URLSearchParams(location.search).get('openSettings') === '1') {
+  const params = new URLSearchParams(location.search);
+  if (params.get('openSettings') === '1') {
+    const ret = params.get('return');
+    // index.html 로 복귀 = 현재 페이지이므로 분기 불필요 → null 유지(기존 닫기 동작)
+    if (ret && ret !== 'index.html' && _SETTINGS_RETURN_ALLOW.includes(ret)) {
+      _settingsReturnUrl = ret;
+    }
     history.replaceState(null, '', location.pathname);
     setTimeout(() => openSettingsModal(), 300);
   }
@@ -13490,6 +13499,9 @@ function _persistSettingsFromForm() {
 // 설정 닫기(저장 후 전체화면 종료 + 메인 재렌더)
 function saveSettingsModal() {
   _persistSettingsFromForm();
+  // 다른 앱(NonK/KDeal)에서 진입한 경우 설정을 닫으며 원래 화면으로 복귀.
+  // 떠나는 길이므로 대시보드 재렌더는 건너뛴다.
+  if (_settingsReturnUrl) { location.href = _settingsReturnUrl; return; }
   closeSettingsModal();
   render();
   const _activePanelNow = _TAB_NAMES.find(t => document.getElementById('panel-' + t)?.classList.contains('active'));
