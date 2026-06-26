@@ -3856,7 +3856,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.607';
+const APP_VERSION = 'MyGP v0.608';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -11746,7 +11746,7 @@ function openOnboardingModal() {
     wifeTitle: appSettings.wifeTitle || '아내',
     myAccIds: [...new Set([...(appSettings.my?.activeAccIds || []), 'pension1', 'irp'])],
     wifeAccIds: [...new Set([...(appSettings.wife?.activeAccIds || []), 'wife_pension1', 'wife_irp'])],
-    retireAge: wdPlan.retireAge || (wdPlan.startYear && appSettings.myBirthYear ? wdPlan.startYear - appSettings.myBirthYear : 60),
+    retireAge: (() => { const by = appSettings.myBirthYear; if (wdPlan.periods?.length && by) return wdPlan.periods[0].startYear - by; if (wdPlan.retireAge) return wdPlan.retireAge; return (wdPlan.startYear && by) ? wdPlan.startYear - by : 60; })(),
     wifeRetireAge: wdPlan.wifeRetireAge || 60,
     startYear: wdPlan.startYear || (cy + 10),
     wifeStartYear: wdPlan.wifeStartYear || wdPlan.startYear || (cy + 10),
@@ -11904,7 +11904,7 @@ function renderOnboardingStep() {
     const wAge = _obData.wifeRetireAge || 60;
     const wBirthY = _obData.wifeBirthYear || (cy - 40);
     const wRetireYr = wBirthY + wAge;
-    const initMonthly = Math.round((_obData.annualTarget || 60) * 1000000 / 12);
+    const initMonthly = Math.round((_obData.annualTarget || 60) * 100 / 12); // 百万원/년 → 万원/월
     const myBM = _obData.myBirthMonth || 1;
     const wifeBM = _obData.wifeBirthMonth || 1;
     // 나이 기반 연금 개시 기본값 (현행법 기준)
@@ -11936,7 +11936,7 @@ function renderOnboardingStep() {
           <input type="checkbox" id="ob_${key}_use" ${p.use?'checked':''} onchange="obPensionToggle('${key}')"> ${label}
         </label>
         <div id="ob_${key}_det" style="${p.use?'':'display:none'};display:${p.use?'flex':'none'};align-items:center;gap:5px;flex-wrap:wrap;flex:1">
-          <input type="text" inputmode="numeric" id="ob_${key}_mo" value="${p.monthly ? (p.monthly * 10000).toLocaleString('ko-KR') : ''}" min="0" step="1" class="ob-p4-input" style="flex:6;min-width:80px" placeholder="0" oninput="obFmtAmt(this)">원/월
+          <input type="text" inputmode="numeric" id="ob_${key}_mo" value="${p.monthly ? p.monthly.toLocaleString('ko-KR') : ''}" min="0" step="1" class="ob-p4-input" style="flex:6;min-width:60px" placeholder="0" oninput="obFmtAmt(this)">만원/월
           <input type="number" id="ob_${key}_yr" value="${p.startYear}" min="2020" max="2070" class="ob-p4-input" style="flex:7;min-width:55px;font-size:12px;padding:4px 7px">년
           <input type="number" id="ob_${key}_mon" value="${p.startMonth}" min="1" max="12" class="ob-p4-input" style="flex:4;min-width:35px;font-size:12px;padding:4px 7px">월~
         </div>
@@ -11958,9 +11958,9 @@ function renderOnboardingStep() {
       </div>
       ${wifeRetireRow}
       <div class="ob-field-row">
-        <label onmouseenter="obShowTip('은퇴 후 매년 인출하고 싶은 금액(현재가치 기준)입니다. 일반적으로 은퇴 직전 연봉의 70~80%를 권장합니다.')" ontouchstart="obShowTip('은퇴 후 매년 인출하고 싶은 금액(현재가치 기준)입니다. 일반적으로 은퇴 직전 연봉의 70~80%를 권장합니다.')">목표 연간 인출액 ⓘ</label>
-        <input type="text" inputmode="numeric" id="ob_annualTarget" value="${((_obData.annualTarget||60)*1000000).toLocaleString('ko-KR')}" placeholder="0" style="width:120px" oninput="obFmtAmt(this);obUpdateMonthly()">원/년
-        <span style="color:var(--muted);font-size:12px" id="ob_monthlyLabel">≈ ${initMonthly.toLocaleString('ko-KR')}원/월</span>
+        <label onmouseenter="obShowTip('은퇴 후 매달 인출하고 싶은 금액(현재가치 기준)입니다. 일반적으로 은퇴 직전 월급의 70~80%를 권장합니다.')" ontouchstart="obShowTip('은퇴 후 매달 인출하고 싶은 금액(현재가치 기준)입니다. 일반적으로 은퇴 직전 월급의 70~80%를 권장합니다.')">목표인출액(월) ⓘ</label>
+        <input type="text" inputmode="numeric" id="ob_annualTarget" value="${initMonthly.toLocaleString('ko-KR')}" placeholder="0" style="width:90px" oninput="obFmtAmt(this);obUpdateMonthly()">만원/월
+        <span style="color:var(--muted);font-size:12px" id="ob_monthlyLabel">= ${(initMonthly * 12 * 10000).toLocaleString('ko-KR')}원/년</span>
       </div>
       <div style="font-size:14px;font-weight:700;color:var(--text);margin:22px 0 6px">연금 수급 정보 🏛️</div>
       <div class="ob-sub" style="margin-bottom:12px">예상 연금 수급액을 입력해 주세요. 시뮬레이션에서 포트폴리오 필요액 계산에 반영됩니다.</div>
@@ -12003,6 +12003,7 @@ function renderOnboardingStep() {
         <div class="ob-sim-slogan">
           <div class="ob-sim-slogan-year" id="obSimSloganYear">-</div>
           <div class="ob-sim-slogan-main" id="obSimSloganMain">-</div>
+          <div class="ob-sim-slogan-main" id="obSimSloganCurrent" style="color:#2563eb">-</div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
           <span style="font-size:12px;color:var(--muted)">목표 달성률</span>
@@ -12044,10 +12045,10 @@ function renderOnboardingStep() {
     const pensionStr = pensionAnnual > 0 ? `연금 ${pensionAnnual.toFixed(1)}백만원/년 공제 후 ` : '';
     let obExtraItems = '';
     const _mnp = _obData.myNP||{}, _wnp = _obData.wifeNP||{}, _mgp = _obData.myGP||{}, _msp = _obData.mySP||{};
-    if (_mnp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${_mnp.startYear||'-'}년~ ${((_mnp.monthly||0)*10000).toLocaleString('ko-KR')}원/월</div></div>`;
-    if (_obData.hasWife && _wnp.use) obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>배우자 국민연금</strong>: ${_wnp.startYear||'-'}년~ ${((_wnp.monthly||0)*10000).toLocaleString('ko-KR')}원/월</div></div>`;
-    if (_mgp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${_mgp.startYear||'-'}년~ ${((_mgp.monthly||0)*10000).toLocaleString('ko-KR')}원/월</div></div>`;
-    if (_msp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${_msp.startYear||'-'}년~ ${((_msp.monthly||0)*10000).toLocaleString('ko-KR')}원/월</div></div>`;
+    if (_mnp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>본인 국민연금</strong>: ${_mnp.startYear||'-'}년~ ${(_mnp.monthly||0).toLocaleString('ko-KR')}만원/월</div></div>`;
+    if (_obData.hasWife && _wnp.use) obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>배우자 국민연금</strong>: ${_wnp.startYear||'-'}년~ ${(_wnp.monthly||0).toLocaleString('ko-KR')}만원/월</div></div>`;
+    if (_mgp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>공무원연금</strong>: ${_mgp.startYear||'-'}년~ ${(_mgp.monthly||0).toLocaleString('ko-KR')}만원/월</div></div>`;
+    if (_msp.use)                   obExtraItems += `<div class="ob-summary-item"><span class="ob-summary-icon">🏛️</span><div><strong>특수직연금</strong>: ${_msp.startYear||'-'}년~ ${(_msp.monthly||0).toLocaleString('ko-KR')}만원/월</div></div>`;
     const items = buildObSummaryItems({
       myBirthYear: birthY, retireYr, retireAge,
       hasWife: _obData.hasWife, wifeTitle: _obData.wifeTitle,
@@ -12124,7 +12125,7 @@ function obToggleWife(val) {
   if (sec) sec.style.display = val ? '' : 'none';
   _obData.annualTarget = val ? 80 : 40;
   const tgtEl = document.getElementById('ob_annualTarget');
-  if (tgtEl) { tgtEl.value = (val ? 80000000 : 40000000).toLocaleString('ko-KR'); obUpdateMonthly(); }
+  if (tgtEl) { tgtEl.value = Math.round((val ? 80 : 40) * 100 / 12).toLocaleString('ko-KR'); obUpdateMonthly(); }
 }
 
 function obNpStartAge(birthYear) {
@@ -12507,9 +12508,9 @@ function obUpdateWifeRetireYear() {
 }
 
 function obUpdateMonthly() {
-  const v = obReadAmt(document.getElementById('ob_annualTarget'));
+  const v = obReadAmt(document.getElementById('ob_annualTarget')); // 万원/월
   const lbl = document.getElementById('ob_monthlyLabel');
-  if (lbl) lbl.textContent = `≈ ${Math.round(v / 12).toLocaleString('ko-KR')}원/월`;
+  if (lbl) lbl.textContent = `= ${(v * 12 * 10000).toLocaleString('ko-KR')}원/년`;
 }
 
 function _obPlanMonthlyForYear(yr) {
@@ -12573,6 +12574,7 @@ function updateObSim() {
 
   const sloganYrEl   = document.getElementById('obSimSloganYear');
   const sloganMainEl = document.getElementById('obSimSloganMain');
+  const sloganCurEl  = document.getElementById('obSimSloganCurrent');
   const pctEl        = document.getElementById('obSimPct');
   const barEl        = document.getElementById('obSimBar');
   const baseTgtEl    = document.getElementById('obSimBaseTarget');
@@ -12584,6 +12586,7 @@ function updateObSim() {
 
   if (sloganYrEl)   sloganYrEl.textContent  = `🏆 ${retireYr}년까지`;
   if (sloganMainEl) sloganMainEl.textContent = `${obFmtKRW(nominalTargetMil)} 모으기`;
+  if (sloganCurEl)  sloganCurEl.textContent  = `현재계획은 ${obFmtKRW(nomFVMil)}`;
   if (pctEl)  pctEl.textContent   = `${sloganPct}%`;
   if (barEl)  barEl.style.width   = `${Math.min(100, sloganPct)}%`;
   if (baseTgtEl) baseTgtEl.innerHTML = `· 연 ${obFmtKRW(annualTarget)} × 25 = <strong>${obFmtKRW(baseTargetMil)}</strong>`;
@@ -12657,7 +12660,7 @@ function collectObStep(step) {
     if (!age || age < 40 || age > 80) { alert('은퇴 희망 나이를 입력해 주세요. (40~80세)'); return false; }
     _obData.retireAge  = age;
     _obData.startYear  = (_obData.myBirthYear || new Date().getFullYear() - 40) + age;
-    _obData.annualTarget = (obReadAmt(g('ob_annualTarget')) || 60000000) / 1000000;  // 원→백만원
+    _obData.annualTarget = (obReadAmt(g('ob_annualTarget')) || 500) * 12 / 100;  // 万원/월 → 百万원/년
     if (_obData.hasWife) {
       const wAge = parseInt(g('ob_wifeRetireAge')?.value) || 60;
       _obData.wifeRetireAge = wAge;
@@ -12667,7 +12670,7 @@ function collectObStep(step) {
     ['myNP','myGP','mySP','wifeNP','wifeGP','wifeSP'].forEach(key => {
       if (!_obData[key]) return;
       _obData[key].use        = g(`ob_${key}_use`)?.checked || false;
-      _obData[key].monthly    = Math.round(obReadAmt(g(`ob_${key}_mo`)) / 10000);
+      _obData[key].monthly    = obReadAmt(g(`ob_${key}_mo`));  // 万원/월 직접 저장
       _obData[key].startYear  = Number(g(`ob_${key}_yr`)?.value) || (_obData.startYear || new Date().getFullYear() + 7);
       _obData[key].startMonth = Number(g(`ob_${key}_mon`)?.value) || 1;
     });
@@ -12741,11 +12744,17 @@ function finishOnboarding() {
   annualPlan.monthlyPlans = annualPlan.monthlyPlans.filter(p => keepSet.has(String(p.id)));
   saveAnnualPlan();
 
+  // '현재설정' 시나리오 자동 저장 (이름 고정, 덮어쓰기)
+  const _obCurId = '__ob_current__';
+  const _obScList = loadSetupScenarios().filter(s => s.id !== _obCurId);
+  const _obNow = new Date();
+  _obScList.unshift({ id: _obCurId, name: '현재설정', savedAt: `${_obNow.getFullYear()}.${String(_obNow.getMonth()+1).padStart(2,'0')}`, appSettings: JSON.parse(JSON.stringify(appSettings)), wdPlan: JSON.parse(JSON.stringify(wdPlan)) });
+  localStorage.setItem(SETUP_SCENARIO_KEY, JSON.stringify(_obScList));
+  if (typeof scheduleBackendAutoSave === 'function') scheduleBackendAutoSave();
+  _activeSetupScenarioId = _obCurId;
+
   _obOpenedFromSetup = false;
   closeOnboardingModal();
-  if (!(window.MyPMApi && MyPMApi.isAuthenticated())) {
-    setTimeout(() => openGoogleSuggestModal(), 400);
-  }
   render();
   if (typeof renderPortfolio === 'function') renderPortfolio();
   if (typeof renderPrincipalTable === 'function') renderPrincipalTable();
@@ -12754,6 +12763,7 @@ function finishOnboarding() {
   if (typeof loadQuickWdValues === 'function') loadQuickWdValues();
   applyNavVisibility();
   applyAutoDeposits();
+  setTimeout(() => openSetupScreen(), 200);
 }
 
 // ===== 📊 연금 키우기 시작하기 =====
