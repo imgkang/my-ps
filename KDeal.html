@@ -1492,7 +1492,7 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.608';
+const APP_VERSION = 'KDeal v0.609';
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -1905,8 +1905,6 @@ function kdRender() {
       <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-secondary" onclick="kdExportToFile()">📤 내보내기</button>
-      <button class="btn-secondary" onclick="document.getElementById('kdImportInput').click()">📥 가져오기</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
     kdRenderAccountButtons();
@@ -2120,8 +2118,6 @@ function kdRender() {
       <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
       <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
       <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-secondary" onclick="kdExportToFile()">📤 내보내기</button>
-      <button class="btn-secondary" onclick="document.getElementById('kdImportInput').click()">📥 가져오기</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
   kdRenderAccountButtons();
@@ -3500,84 +3496,6 @@ function kdSaveDivAccEdit() {
   kdCloseDivAccEdit();
 }
 
-// --- Export / Import ---
-function kdExportToFile() {
-  const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
-  const payload = {
-    version: 9, exportedAt: new Date().toISOString(),
-    mypm: {
-      appSettings:     tryParse('pension_app_settings_v1')    || {},
-      wdPlan:          tryParse('pension_withdrawal_v1')      || {},
-      wdScenarios:     tryParse('mypm_wdScenarios')           || [],
-      cashAdjRecords:  tryParse('pension_cash_adj_v1')        || [],
-      holdings:        tryParse('pension_portfolio_v1')       || [],
-      cashAccounts:    tryParse('pension_cash_accounts_v1')   || {},
-      deposits:        tryParse('pension_deposits_v1')        || {},
-      monthlyRecords:  tryParse('pension_monthly_records_v1') || [],
-      dividendRecords: tryParse('pension_dividends_v1')       || [],
-      annualPlan:      tryParse('pension_annual_plan_v1')     || {}
-    },
-    kd: {
-      holdings:  kdHoldings,
-      cash:      kdCashAccounts,
-      deposits:  kdDepositData,
-      monthly:   kdMonthlyRecords,
-      dividends: kdDividendRecords,
-      accounts:  KD_ACCOUNTS,
-      trades:    kdtTrades,
-      watchlist: kdWatchlist
-    }
-  };
-  const now = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `포트폴리오_통합백업_${stamp}.json`;
-  a.click();
-}
-
-function kdImportFromFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      // data.kd 우선 (v0.271+), 없으면 data.nonk 폴백 (version<=9 구 KDeal export만)
-      const src = data.kd
-        || (data.nonk && (data.version == null || data.version <= 9) ? data.nonk : null)
-        || {};
-      if (src.holdings)  { kdHoldings       = src.holdings;  kdSaveHoldings(); }
-      if (src.cash)      { kdCashAccounts    = src.cash;      kdSaveCashData(); }
-      if (src.deposits)  { kdDepositData     = src.deposits;  kdSaveDeposits(); }
-      if (src.monthly)   { kdMonthlyRecords  = src.monthly;   kdSaveMonthly(); }
-      if (src.dividends) { kdDividendRecords = src.dividends; kdSaveDividends(); }
-      if (src.accounts)  { KD_ACCOUNTS       = src.accounts;  kdSaveAccounts(); }
-      if (src.trades)    { kdtTrades         = src.trades;    kdtSaveTrades(); }
-      if (src.watchlist) { kdWatchlist       = src.watchlist; kdSaveWatchlist(); }
-      localStorage.setItem('kd_migration_done_v1', '1');
-      if (data.mypm) {
-        const mp = data.mypm;
-        if (mp.holdings)        localStorage.setItem('pension_portfolio_v1',       JSON.stringify(mp.holdings));
-        if (mp.cashAccounts)    localStorage.setItem('pension_cash_accounts_v1',   JSON.stringify(mp.cashAccounts));
-        if (mp.deposits)        localStorage.setItem('pension_deposits_v1',        JSON.stringify(mp.deposits));
-        if (mp.monthlyRecords)  localStorage.setItem('pension_monthly_records_v1', JSON.stringify(mp.monthlyRecords));
-        if (mp.dividendRecords) localStorage.setItem('pension_dividends_v1',       JSON.stringify(mp.dividendRecords));
-        if (mp.annualPlan)      localStorage.setItem('pension_annual_plan_v1',     JSON.stringify(mp.annualPlan));
-        if (mp.appSettings && typeof mp.appSettings === 'object')
-          localStorage.setItem('pension_app_settings_v1', JSON.stringify(mp.appSettings));
-      }
-      try { window.parent.postMessage({ type: 'APP_SETTINGS_UPDATED' }, '*'); } catch(_) {}
-      alert('불러오기 완료' + (data.mypm ? '\n(My PM + KDeal 통합 데이터)' : ''));
-      kdRender();
-      kdRenderChart();
-    } catch(err) { alert('파일 형식 오류: ' + err.message); }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
 
 
 // ===== 계좌 관리 =====
@@ -4663,6 +4581,5 @@ window.addEventListener('message', e => {
   });
 })();
 </script>
-<input type="file" id="kdImportInput" accept=".json" style="display:none" onchange="kdImportFromFile(event)">
 </body>
 </html>
