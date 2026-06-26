@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.620';
+const CACHE_NAME = 'mypm-v0.621';
 
 const BASE = '/my-ps/';
 
@@ -20,25 +20,26 @@ const ASSETS = [
 
 // 설치: 핵심 파일을 캐시에 저장 (개별 add로 일부 누락 허용 — tickers.json 등이 아직 없을 수 있음)
 self.addEventListener('install', event => {
+  // skipWaiting() 자동 호출하지 않음 — 새 SW가 대기하다가, 페이지가 사용자 확인 +
+  // 백업/저장 flush 후 SKIP_WAITING 메시지를 보낼 때만 활성화(저장 도중 강제 리로드 방지).
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => Promise.all(
         ASSETS.map(url => cache.add(url).catch(() => null))
       ))
-      .then(() => self.skipWaiting())
   );
 });
 
 // 활성화: 이전 버전 캐시 삭제 후 모든 탭 강제 리로드
 self.addEventListener('activate', event => {
+  // 이전 버전 캐시만 삭제하고 제어권을 가져온다. 열린 탭을 강제로 navigate/reload 하지 않음 —
+  // 저장 도중 리로드로 데이터가 깨지는 것을 막기 위해, 리로드는 페이지가 안전한 시점에 직접 수행.
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then(clients => clients.forEach(c => { try { c.navigate(c.url); } catch(_) {} }))
   );
 });
 
