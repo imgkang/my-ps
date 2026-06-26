@@ -3352,9 +3352,8 @@ registerMobileTooltipDismiss();
         </div>
         <div>
           <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">매도가 (원/주)</label>
-          <input type="text" inputmode="numeric" id="wdrecSellPrice" oninput="onWdrecSellChange()"
-            onfocus="this.value=this.value.replace(/,/g,'')"
-            onblur="fmtAccModalInput(this,0)"
+          <input type="text" inputmode="numeric" id="wdrecSellPrice"
+            oninput="liveKRWInput(this); onWdrecSellChange()"
             style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
         </div>
       </div>
@@ -3368,9 +3367,8 @@ registerMobileTooltipDismiss();
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div>
         <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 금액 (만원, 세전)</label>
-        <input type="text" inputmode="numeric" id="wdrecAmount" oninput="onWdrecAmountInput()"
-          onfocus="this.value=this.value.replace(/,/g,'')"
-          onblur="fmtAccModalInput(this,0)"
+        <input type="text" inputmode="numeric" id="wdrecAmount"
+          oninput="liveKRWInput(this); onWdrecAmountInput()"
           style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
       </div>
       <div>
@@ -3860,7 +3858,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.616';
+const APP_VERSION = 'MyGP v0.617';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4794,17 +4792,13 @@ function openAccountModal(code) {
             <span>수량</span>
             <input type="text" inputmode="numeric" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty"
               value="${qty ? (+qty).toLocaleString('ko-KR') : ''}" placeholder="0"
-              onfocus="this.value=this.value.replace(/,/g,'')"
-              onblur="fmtAccModalInput(this,0)"
-              oninput="updateModalTotal()">
+              oninput="liveKRWInput(this); updateModalTotal()">
           </label>
           <label>
             <span>단가 (원)</span>
             <input type="text" inputmode="numeric" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg"
               value="${avg ? Math.round(+avg).toLocaleString('ko-KR') : ''}" placeholder="0"
-              onfocus="this.value=this.value.replace(/,/g,'')"
-              onblur="fmtAccModalInput(this,0)"
-              oninput="updateModalTotal()">
+              oninput="liveKRWInput(this); updateModalTotal()">
           </label>
         </div>
       </div>
@@ -4831,6 +4825,11 @@ function handleBackdropClick(e) {
 function fmtAccModalInput(el, dec) {
   const v = parseFloat(el.value.replace(/,/g, ''));
   el.value = isNaN(v) || !v ? '' : v.toLocaleString('ko-KR', { maximumFractionDigits: dec });
+}
+
+function liveKRWInput(el) {
+  const d = el.value.replace(/[^\d]/g, '');
+  el.value = d ? Number(d).toLocaleString('ko-KR') : '';
 }
 
 function updateModalTotal() {
@@ -5814,13 +5813,9 @@ function openAddStockModal() {
     <div class="account-row">
       <label>${a.name}</label>
       <input type="text" inputmode="numeric" id="addQty_${a.id}" placeholder="0"
-        onfocus="this.value=this.value.replace(/,/g,'')"
-        onblur="fmtAccModalInput(this,0)"
-        oninput="updateAddStockTotal()">
+        oninput="liveKRWInput(this); updateAddStockTotal()">
       <input type="text" inputmode="numeric" id="addAvg_${a.id}" placeholder="0"
-        onfocus="this.value=this.value.replace(/,/g,'')"
-        onblur="fmtAccModalInput(this,0)"
-        oninput="updateAddStockTotal()">
+        oninput="liveKRWInput(this); updateAddStockTotal()">
       <div class="total-display zero" id="addTotal_${a.id}">0 원</div>
     </div>`).join('');
   // 계좌 입력 영역 접힌 상태로 초기화
@@ -6251,9 +6246,7 @@ function renderRecordInputs(values) {
       <div class="acc-field">
         <label>${getAccName(a.id)}</label>
         <input type="text" inputmode="numeric" data-acc-id="${a.id}" value="${displayV}"
-          onfocus="this.value=this.value.replace(/,/g,'')"
-          onblur="fmtAccModalInput(this,0)"
-          oninput="updateRecordTotal()" placeholder="0">
+          oninput="liveKRWInput(this); updateRecordTotal()" placeholder="0">
       </div>
     `;
   }).join('');
@@ -9328,9 +9321,9 @@ function renderDivStockInputs(perShareMap, sharesOverride) {
     const accInputs = activeAccs.map(a => `
       <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;background:white;padding:3px 6px;border-radius:4px;border:1px solid var(--border)">
         <span style="color:var(--muted)">${a.name}</span>
-        <input type="number" min="0" step="1" class="div-acc-qty"
-          value="${Number(byAcc[a.id]) || 0}"
-          oninput="updateAccQty('${h.code}','${a.id}', this.value)"
+        <input type="text" inputmode="numeric" class="div-acc-qty"
+          value="${(Number(byAcc[a.id]) || 0).toLocaleString('ko-KR')}"
+          oninput="liveKRWInput(this); updateAccQty('${h.code}','${a.id}', this.value.replace(/,/g,''))"
           style="width:70px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;text-align:right">
       </label>
     `).join('');
@@ -9341,9 +9334,9 @@ function renderDivStockInputs(perShareMap, sharesOverride) {
           <div style="font-size:11px;color:var(--muted)">${h.code}</div>
         </td>
         <td>
-          <input class="div-ps" type="number" min="0" step="1"
-            value="${ps}" placeholder="0"
-            oninput="updateDivRow('${h.code}')"
+          <input class="div-ps" type="text" inputmode="numeric"
+            value="${ps !== '' ? Number(ps).toLocaleString('ko-KR') : ''}" placeholder="0"
+            oninput="liveKRWInput(this); updateDivRow('${h.code}')"
             style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right">
         </td>
         <td class="div-qty-cell" onclick="toggleDivRow('${h.code}')"
@@ -9385,7 +9378,7 @@ function updateDivRow(code) {
   const sumEl = document.getElementById('divQtySum_' + code);
   if (sumEl) sumEl.textContent = total.toLocaleString('ko-KR');
   const psInp = document.querySelector(`tr[data-code="${code}"] .div-ps`);
-  const ps = Number(psInp?.value) || 0;
+  const ps = Number(psInp?.value?.replace(/,/g,'')) || 0;
   const cell = document.getElementById('divTotal_' + code);
   if (cell) cell.textContent = (ps > 0 && total > 0) ? Math.round(ps * total).toLocaleString('ko-KR') + ' 원' : '-';
   updateDivGrandTotal();
@@ -9395,7 +9388,7 @@ function updateDivGrandTotal() {
   let grand = 0;
   document.querySelectorAll('#divStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
-    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
     const byAcc = _divFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) grand += Math.round(ps * totalQty);
@@ -9864,7 +9857,7 @@ function addDividendRecord() {
   let totalDiv = 0;
   document.querySelectorAll('#divStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
-    const ps = Number(tr.querySelector('.div-ps')?.value) || 0;
+    const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
     const byAcc = _divFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) {
