@@ -1249,6 +1249,16 @@ registerMobileTooltipDismiss();
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfg-row-chev { color: #c4c7cc; font-size: 19px; line-height: 1; flex-shrink: 0; }
   .cfg-row-edit { display: none; }
+  /* 종목 리스트 열 순서 편집 모달 */
+  .col-edit-hint { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+  .col-edit-row { display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 4px 13px 8px; border-bottom: 1px solid var(--border); background: #fff;
+    user-select: none; -webkit-user-select: none; }
+  .col-edit-row:first-child { border-top: 1px solid var(--border); }
+  .col-edit-label { font-size: 15px; font-weight: 600; color: #1f2937; }
+  .col-edit-grip { cursor: grab; touch-action: none; color: #9aa0a6; font-size: 22px;
+    line-height: 1; padding: 4px 8px; flex-shrink: 0; }
+  .col-edit-row.dragging { opacity: 0.55; background: #eef2ff; }
   .cfg-edit-host { padding: 2px; }
   .cfg-edit-host .cfg-row-edit { display: block; padding: 0; }
   .cfg-edit-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -1966,8 +1976,16 @@ registerMobileTooltipDismiss();
           </div>
         </div>
       </div>
-      <div class="cfg-section">📊 종목 리스트 열 순서</div>
-      <div class="cfg-list" id="colOrderBody"></div>
+      <div class="cfg-section">📊 종목 리스트</div>
+      <div class="cfg-list">
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="openColEditModal()">
+            <span class="cfg-row-label">열 순서 편집</span>
+            <span class="cfg-row-value">드래그</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+        </div>
+      </div>
     </div><!-- /cfgPaneApp -->
 
     <!-- 기본 탭 -->
@@ -2511,6 +2529,21 @@ registerMobileTooltipDismiss();
     <div class="cfg-edit-host" id="cfgEditHost"></div>
     <div class="modal-actions" style="margin-top:18px">
       <button class="btn-primary" style="width:100%" onclick="closeCfgEdit()">완료</button>
+    </div>
+  </div>
+</div>
+
+<!-- 종목 리스트 열 순서 편집 모달 (드래그) -->
+<div class="modal-backdrop" id="colEditModal" style="z-index:1200" onclick="if(event.target.id==='colEditModal') closeColEditModal()">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <div><h2>종목 리스트 열 순서</h2></div>
+      <button class="close-btn" onclick="closeColEditModal()" aria-label="닫기">×</button>
+    </div>
+    <div class="col-edit-hint">오른쪽 <b>≡</b> 를 끌어 원하는 위치로 옮기세요. (종목·거래 열은 고정)</div>
+    <div id="colEditList"></div>
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn-primary" style="width:100%" onclick="closeColEditModal()">완료</button>
     </div>
   </div>
 </div>
@@ -3866,7 +3899,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.625';
+const APP_VERSION = 'MyGP v0.626';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -4120,7 +4153,15 @@ function orderedCols(savedOrder, COLS) {
   for (const c of COLS) if (!seen.has(c.id)) out.push(c);
   return out;
 }
-function getPortfolioColOrder() { return (appSettings && appSettings.portfolioColOrder) || PORTFOLIO_COL_IDS; }
+// 종목 리스트 컬럼 순서는 세 앱(MyPM/NonK/KDeal) 공유 — 같은 origin localStorage 키 1개.
+// 편집은 MyPM에서만, NonK/KDeal은 읽기 전용으로 동일 순서 적용.
+const COL_ORDER_KEY = 'mypm_col_order_v1';
+function loadColOrder(DEFAULT_IDS) {
+  try { const r = JSON.parse(localStorage.getItem(COL_ORDER_KEY)); return Array.isArray(r) ? r : DEFAULT_IDS.slice(); }
+  catch(_) { return DEFAULT_IDS.slice(); }
+}
+function saveColOrder(arr) { localStorage.setItem(COL_ORDER_KEY, JSON.stringify(arr)); }
+function getPortfolioColOrder() { return loadColOrder(PORTFOLIO_COL_IDS); }
 
 function npStartAge(birthYear) {
   if (!birthYear) return 65;
@@ -4172,7 +4213,6 @@ function getDefaultAppSettings() {
     allowZoom: true,
     expectedReturnRate: 7,  // 차트 "예상" 벤치마크선 연수익률(%) — 입금액을 이 율로 복리 성장
     wdChartPV: { 1: false, 2: false, 3: false, 4: false, 5: false },
-    portfolioColOrder: PORTFOLIO_COL_IDS.slice(),  // 종목 리스트 데이터 컬럼 순서
     my:   getDefaultPersonCfg(false),
     wife: getDefaultPersonCfg(true),
   };
@@ -4188,7 +4228,6 @@ function loadAppSettings() {
     result.my   = _deepMergePersonCfg(def.my,   saved.my);
     result.wife = _deepMergePersonCfg(def.wife,  saved.wife);
     result.wdChartPV = { ...def.wdChartPV, ...(saved.wdChartPV || {}) };
-    result.portfolioColOrder = Array.isArray(saved.portfolioColOrder) ? saved.portfolioColOrder : def.portfolioColOrder;
     return result;
   } catch(_) { return getDefaultAppSettings(); }
 }
@@ -13156,32 +13195,49 @@ function switchCfgTab(tab) {
     document.getElementById(`cfgTab${cap}`)?.classList.toggle('active', t === tab);
     document.getElementById(`cfgPane${cap}`)?.classList.toggle('active', t === tab);
   });
-  if (tab === 'app') renderColOrder();
 }
 
-// ===== 종목 리스트 열 순서 편집 =====
-function renderColOrder() {
-  const wrap = document.getElementById('colOrderBody');
-  if (!wrap) return;
-  const cols = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS);
-  wrap.innerHTML = cols.map((c, i) => `
-    <div class="cfg-row-static">
-      <span class="cfg-row-label">${c.header.replace(/<br>/g, ' ')}</span>
-      <span style="display:inline-flex;gap:6px">
-        <button class="wdrec-prio-btn" onclick="moveCol(${i},-1)" ${i === 0 ? 'disabled' : ''} title="위로">↑</button>
-        <button class="wdrec-prio-btn" onclick="moveCol(${i},1)" ${i === cols.length - 1 ? 'disabled' : ''} title="아래로">↓</button>
-      </span>
+// ===== 종목 리스트 열 순서 편집 (드래그 모달) =====
+function renderColEditList() {
+  const list = document.getElementById('colEditList');
+  if (!list) return;
+  list.innerHTML = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS).map(c => `
+    <div class="col-edit-row" data-id="${c.id}">
+      <span class="col-edit-label">${c.header.replace(/<br>/g, ' ')}</span>
+      <span class="col-edit-grip" onpointerdown="colEditDragStart(event)" title="끌어서 이동">≡</span>
     </div>`).join('');
 }
-function moveCol(i, dir) {
-  const order = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS).map(c => c.id);
-  const j = i + dir;
-  if (j < 0 || j >= order.length) return;
-  [order[i], order[j]] = [order[j], order[i]];
-  appSettings.portfolioColOrder = order;
-  saveAppSettings();
-  renderColOrder();
-  render();
+function openColEditModal() { renderColEditList(); document.getElementById('colEditModal').classList.add('open'); }
+function closeColEditModal() { document.getElementById('colEditModal').classList.remove('open'); }
+
+let _ceRow = null;
+function colEditDragStart(e) {
+  e.preventDefault();
+  _ceRow = e.currentTarget.closest('.col-edit-row');
+  if (!_ceRow) return;
+  _ceRow.classList.add('dragging');
+  const g = e.currentTarget;
+  try { g.setPointerCapture(e.pointerId); } catch(_) {}
+  g.onpointermove = colEditDragMove;
+  g.onpointerup = colEditDragEnd;
+  g.onpointercancel = colEditDragEnd;
+}
+function colEditDragMove(e) {
+  if (!_ceRow) return;
+  const list = document.getElementById('colEditList');
+  const others = [...list.querySelectorAll('.col-edit-row:not(.dragging)')];
+  const next = others.find(r => { const b = r.getBoundingClientRect(); return e.clientY < b.top + b.height / 2; });
+  if (next) list.insertBefore(_ceRow, next); else list.appendChild(_ceRow);
+}
+function colEditDragEnd(e) {
+  const g = e.currentTarget;
+  g.onpointermove = null; g.onpointerup = null; g.onpointercancel = null;
+  try { g.releasePointerCapture(e.pointerId); } catch(_) {}
+  if (_ceRow) _ceRow.classList.remove('dragging');
+  _ceRow = null;
+  const order = [...document.querySelectorAll('#colEditList .col-edit-row')].map(r => r.dataset.id);
+  saveColOrder(order);
+  render();   // 표 실시간 반영
 }
 
 // ===== 카카오톡식 스위치 / 탭편집 / 값 표시 =====
@@ -13401,7 +13457,6 @@ function openSettingsModal() {
   setCfgShowApp('WdDbg', !!s.showWdDebugBtn);
   setCfgShowApp('SyncDbg', !!s.showSyncDebugBtn);
   setCfgZoom(s.allowZoom !== false);
-  renderColOrder();
   sv('cfg_cellInfoDuration', s.cellInfoDuration ?? 5);
   sv('cfg_npTaxRate',            wp.npTaxRate            ?? 4);
   sv('cfg_pensionTaxRateU70',  wp.pensionTaxRateU70  ?? 5.5);
@@ -13570,7 +13625,6 @@ function _persistSettingsFromForm() {
     myBirthMonth:  n('cfg_myBirthMonth') || 1,
     hasWife,
     wdChartPV: appSettings.wdChartPV || {},
-    portfolioColOrder: appSettings.portfolioColOrder || PORTFOLIO_COL_IDS.slice(),
     wifeTitle:      hasWife ? wifeTitle : appSettings.wifeTitle,
     wifeBirthYear:  hasWife ? n('cfg_wifeBirthYear')  : 0,
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
