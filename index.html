@@ -1809,31 +1809,10 @@ registerMobileTooltipDismiss();
           <div class="cfg-profile-name" id="cfgProfileName">나의 연금 키우기</div>
           <div class="cfg-profile-sub" id="cfgProfileSub"></div>
         </div>
-        <button class="cfg-manage-btn" onclick="openCfgDetail('basic')">관리</button>
+        <button class="cfg-manage-btn" onclick="openCfgDetail('app')">앱관리</button>
       </div>
 
-      <!-- 백엔드 동기화 -->
-      <div class="cfg-highlight" id="backendSyncSection">
-        <div id="backendLoginSection">
-          <div class="cfg-highlight-title">☁️ 클라우드 동기화</div>
-          <div class="cfg-highlight-sub">구글 계정으로 로그인하면 데이터가 자동으로 동기화됩니다.</div>
-          <div id="backendGoogleBtn" style="margin-top:10px;display:flex;justify-content:center"></div>
-        </div>
-        <div id="backendActionSection" style="display:none">
-          <div class="cfg-highlight-title">☁️ 동기화 연결됨</div>
-          <div id="backendStatusMsg" class="drive-status ok" style="margin-top:6px;font-size:13px"></div>
-          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;user-select:none">
-            <input type="checkbox" id="backendAutoSaveChk" onchange="toggleAutoSave(this.checked)" style="width:16px;height:16px;flex:none">
-            <span>자동저장 — 데이터 변경 시 서버에 자동 동기화</span>
-          </label>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn-secondary" style="flex:1;font-size:13px;padding:8px" onclick="backendSave(false)">⬆️ 저장</button>
-            <button class="btn-secondary" style="flex:1;font-size:13px;padding:8px" onclick="backendLoad()">⬇️ 불러오기</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 메뉴 리스트 -->
+      <!-- 메뉴 리스트 (구글동기화 카드 위) -->
       <div class="cfg-menu">
         <button class="cfg-menu-item" onclick="saveSettingsModal();openSetupScreen(true)">
           <span class="cfg-menu-ic">📊</span>
@@ -1855,11 +1834,27 @@ registerMobileTooltipDismiss();
           <span class="cfg-menu-label">배우자 정보<small>계좌 · 연금 · 퇴직세</small></span>
           <span class="cfg-menu-arrow">›</span>
         </button>
-        <button class="cfg-menu-item" onclick="openCfgDetail('app')">
-          <span class="cfg-menu-ic">⚙️</span>
-          <span class="cfg-menu-label">앱 · 데이터<small>표시 · 자동 새로고침 · 백업/초기화</small></span>
-          <span class="cfg-menu-arrow">›</span>
-        </button>
+      </div>
+
+      <!-- 백엔드 동기화 -->
+      <div class="cfg-highlight" id="backendSyncSection">
+        <div id="backendLoginSection">
+          <div class="cfg-highlight-title">☁️ 클라우드 동기화</div>
+          <div class="cfg-highlight-sub">구글 계정으로 로그인하면 데이터가 자동으로 동기화됩니다.</div>
+          <div id="backendGoogleBtn" style="margin-top:10px;display:flex;justify-content:center"></div>
+        </div>
+        <div id="backendActionSection" style="display:none">
+          <div class="cfg-highlight-title">☁️ 동기화 연결됨</div>
+          <div id="backendStatusMsg" class="drive-status ok" style="margin-top:6px;font-size:13px"></div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="backendAutoSaveChk" onchange="toggleAutoSave(this.checked)" style="width:16px;height:16px;flex:none">
+            <span>자동저장 — 데이터 변경 시 서버에 자동 동기화</span>
+          </label>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn-secondary" style="flex:1;font-size:13px;padding:8px" onclick="backendSave(false)">⬆️ 저장</button>
+            <button class="btn-secondary" style="flex:1;font-size:13px;padding:8px" onclick="backendLoad()">⬇️ 불러오기</button>
+          </div>
+        </div>
       </div>
       <div class="cfg-logout-row">
         <button class="cfg-logout-btn" onclick="confirmSettingsLogout()">
@@ -3856,7 +3851,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.609';
+const APP_VERSION = 'MyGP v0.610';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -4920,6 +4915,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// URL 파라미터로 설정창 자동 오픈 (NonK/KDeal 설정 버튼용)
+document.addEventListener('DOMContentLoaded', () => {
+  if (new URLSearchParams(location.search).get('openSettings') === '1') {
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => openSettingsModal(), 300);
+  }
+});
+
 // ===== 계좌별 상세 보기 =====
 function renderAccountButtons() {
   const grid = document.getElementById('accountButtonsGrid');
@@ -5550,7 +5553,6 @@ function importFromFile(event) {
         if (kd.watchlist) localStorage.setItem('kd_watchlist_v1', JSON.stringify(kd.watchlist));
         localStorage.setItem('kd_migration_done_v1', '1');
       }
-      alert('불러오기 완료' + ((data.nonk || data.kd) ? '\n(My PM + NonK/KDeal 통합 데이터)' : ''));
       // 파일 불러오기 완료 즉시 서버에 강제 저장 (await → 결과 확인 후 진행)
       if (window.MyPMApi && typeof MyPMApi.isAuthenticated === 'function' && MyPMApi.isAuthenticated()) {
         await backendSave(false, true);
