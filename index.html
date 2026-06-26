@@ -3352,7 +3352,10 @@ registerMobileTooltipDismiss();
         </div>
         <div>
           <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">매도가 (원/주)</label>
-          <input type="number" id="wdrecSellPrice" min="0" step="1" oninput="onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
+          <input type="text" inputmode="numeric" id="wdrecSellPrice" oninput="onWdrecSellChange()"
+            onfocus="this.value=this.value.replace(/,/g,'')"
+            onblur="fmtAccModalInput(this,0)"
+            style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
         </div>
       </div>
       <div style="font-size:12px;color:#9a3412;display:flex;justify-content:space-between;align-items:center">
@@ -3365,7 +3368,10 @@ registerMobileTooltipDismiss();
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div>
         <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인출 금액 (만원, 세전)</label>
-        <input type="number" id="wdrecAmount" min="0" step="1" oninput="onWdrecAmountInput()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+        <input type="text" inputmode="numeric" id="wdrecAmount" oninput="onWdrecAmountInput()"
+          onfocus="this.value=this.value.replace(/,/g,'')"
+          onblur="fmtAccModalInput(this,0)"
+          style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
       </div>
       <div>
         <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">세금 유형</label>
@@ -3383,7 +3389,10 @@ registerMobileTooltipDismiss();
 
     <div style="margin-bottom:12px">
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">세금 (만원) <span style="font-weight:400">— 자동계산, 직접 입력 가능</span></label>
-      <input type="number" id="wdrecTax" min="0" step="0.1" oninput="onWdrecTaxManualEdit()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+      <input type="text" inputmode="decimal" id="wdrecTax" oninput="onWdrecTaxManualEdit()"
+        onfocus="this.value=this.value.replace(/,/g,'')"
+        onblur="fmtAccModalInput(this,1)"
+        style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
     </div>
 
     <div style="margin-bottom:12px">
@@ -3851,7 +3860,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.615';
+const APP_VERSION = 'MyGP v0.616';
 
 // 모바일 디버그 패널: WD-DEBUG 로그를 화면에 표시
 window._wdDebugLines = [];
@@ -5804,8 +5813,14 @@ function openAddStockModal() {
   grid.innerHTML = getActiveAccounts().map(a => `
     <div class="account-row">
       <label>${a.name}</label>
-      <input type="number" id="addQty_${a.id}" min="0" step="1" value="" placeholder="0" inputmode="numeric" oninput="updateAddStockTotal()">
-      <input type="number" id="addAvg_${a.id}" min="0" step="1" value="" placeholder="0" inputmode="numeric" oninput="updateAddStockTotal()">
+      <input type="text" inputmode="numeric" id="addQty_${a.id}" placeholder="0"
+        onfocus="this.value=this.value.replace(/,/g,'')"
+        onblur="fmtAccModalInput(this,0)"
+        oninput="updateAddStockTotal()">
+      <input type="text" inputmode="numeric" id="addAvg_${a.id}" placeholder="0"
+        onfocus="this.value=this.value.replace(/,/g,'')"
+        onblur="fmtAccModalInput(this,0)"
+        oninput="updateAddStockTotal()">
       <div class="total-display zero" id="addTotal_${a.id}">0 원</div>
     </div>`).join('');
   // 계좌 입력 영역 접힌 상태로 초기화
@@ -5833,8 +5848,8 @@ function toggleAddStockAccInputs() {
 function updateAddStockTotal() {
   let totalQty = 0, totalCost = 0, filledAccs = 0;
   for (const acc of getActiveAccounts()) {
-    const qty = Number(document.getElementById('addQty_' + acc.id)?.value) || 0;
-    const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
+    const qty = Number(document.getElementById('addQty_' + acc.id)?.value.replace(/,/g,'')) || 0;
+    const avg = Number(document.getElementById('addAvg_' + acc.id)?.value.replace(/,/g,'')) || 0;
     const rowTotal = qty * avg;
     const el = document.getElementById('addTotal_' + acc.id);
     if (el) {
@@ -5871,8 +5886,8 @@ async function addStock() {
   const accounts = {};
   let totalQty = 0;
   for (const acc of getActiveAccounts()) {
-    const qty = Number(document.getElementById('addQty_' + acc.id)?.value) || 0;
-    const avg = Number(document.getElementById('addAvg_' + acc.id)?.value) || 0;
+    const qty = Number(document.getElementById('addQty_' + acc.id)?.value.replace(/,/g,'')) || 0;
+    const avg = Number(document.getElementById('addAvg_' + acc.id)?.value.replace(/,/g,'')) || 0;
     if (qty > 0) { accounts[acc.id] = { qty, avgPrice: avg }; totalQty += qty; }
   }
   // 이름이 비어있으면 조회로 자동 입력
@@ -6231,10 +6246,14 @@ function renderRecordInputs(values) {
   if (!wrap) return;
   wrap.innerHTML = getActiveAccounts().map(a => {
     const v = values && values[a.id] != null ? values[a.id] : '';
+    const displayV = v !== '' ? Number(v).toLocaleString('ko-KR') : '';
     return `
       <div class="acc-field">
         <label>${getAccName(a.id)}</label>
-        <input type="number" min="0" step="1" data-acc-id="${a.id}" value="${v}" oninput="updateRecordTotal()" placeholder="0">
+        <input type="text" inputmode="numeric" data-acc-id="${a.id}" value="${displayV}"
+          onfocus="this.value=this.value.replace(/,/g,'')"
+          onblur="fmtAccModalInput(this,0)"
+          oninput="updateRecordTotal()" placeholder="0">
       </div>
     `;
   }).join('');
@@ -6245,7 +6264,7 @@ function getRecordInputAmounts() {
   const result = {};
   document.querySelectorAll('#recAccountInputs input[data-acc-id]').forEach(inp => {
     const id = inp.getAttribute('data-acc-id');
-    const v = Number(inp.value);
+    const v = Number(inp.value.replace(/,/g,''));
     result[id] = isNaN(v) ? 0 : v;
   });
   return result;
@@ -11247,7 +11266,7 @@ function populateWdrecSellCodeSelect() {
 function onWdrecSellChange() {
   const sel = document.getElementById('wdrecSellCode');
   const qty = Number(document.getElementById('wdrecSellQty').value) || 0;
-  const price = Number(document.getElementById('wdrecSellPrice').value) || 0;
+  const price = Number(document.getElementById('wdrecSellPrice').value.replace(/,/g,'')) || 0;
   const total = qty * price;
   const totalManwon = Math.round(total / 10000);
   const totalEl = document.getElementById('wdrecSellTotal');
@@ -11257,7 +11276,7 @@ function onWdrecSellChange() {
   if (_wdrecSource === 'sell') {
     const amtField = document.getElementById('wdrecAmount');
     if (amtField && !amtField.dataset.touched && totalManwon > 0) {
-      amtField.value = totalManwon;
+      amtField.value = totalManwon.toLocaleString('ko-KR');
       onWdrecAmountInput();
     }
   }
@@ -11269,7 +11288,7 @@ function _currentAccBalanceManwon(accId) {
 
 function updateWdrecBalanceHint() {
   const accId = document.getElementById('wdrecAcc')?.value;
-  const amount = Number(document.getElementById('wdrecAmount')?.value) || 0;
+  const amount = Number(document.getElementById('wdrecAmount')?.value.replace(/,/g,'')) || 0;
   const warn = document.getElementById('wdrecBalanceWarn');
   if (!warn) return;
   if (!accId || amount <= 0) { warn.style.display = 'none'; return; }
@@ -11308,9 +11327,9 @@ function onWdrecAmountInput() {
   // 금액 바뀌면 (수동 입력 안 한 경우) 세금 재계산
   const taxField = document.getElementById('wdrecTax');
   if (!taxField.dataset.manual) {
-    const amount = Number(amtField.value) || 0;
+    const amount = Number(amtField.value.replace(/,/g,'')) || 0;
     const rate = getWdTaxRateByType(document.getElementById('wdrecTaxType').value);
-    taxField.value = (Math.round(amount * rate * 10) / 1000).toFixed(1);
+    taxField.value = (Math.round(amount * rate * 10) / 1000).toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1});
   }
   updateWdrecTotalPreview();
   updateWdrecBalanceHint();
@@ -11326,8 +11345,8 @@ function onWdrecTaxManualEdit() {
   updateWdrecTotalPreview();
 }
 function updateWdrecTotalPreview() {
-  const amount = Number(document.getElementById('wdrecAmount').value) || 0;
-  const tax = Number(document.getElementById('wdrecTax').value) || 0;
+  const amount = Number(document.getElementById('wdrecAmount').value.replace(/,/g,'')) || 0;
+  const tax = Number(document.getElementById('wdrecTax').value.replace(/,/g,'')) || 0;
   const net = amount - tax;
   const rate = getWdTaxRateByType(document.getElementById('wdrecTaxType').value);
   const rateLabel = document.getElementById('wdrecRateLabel');
@@ -11356,9 +11375,9 @@ function openWdrecAddModal(id) {
     document.getElementById('wdrecDate').value = t.date;
     document.getElementById('wdrecPerson').value = t.person;
     populateWdrecAccountSelect(t.person, t.accId);
-    amtField.value = t.amount;
+    amtField.value = t.amount ? Number(t.amount).toLocaleString('ko-KR') : '';
     document.getElementById('wdrecTaxType').value = t.taxType;
-    taxField.value = t.taxAmount.toFixed(1);
+    taxField.value = t.taxAmount ? t.taxAmount.toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1}) : '';
     taxField.dataset.manual = '1';
     document.getElementById('wdrecMemo').value = t.memo || '';
     document.getElementById('wdrecDeleteBtn').style.display = '';
@@ -11419,9 +11438,9 @@ function saveWdrec() {
   const date = document.getElementById('wdrecDate').value;
   const person = document.getElementById('wdrecPerson').value;
   const accId = document.getElementById('wdrecAcc').value;
-  const amount = Number(document.getElementById('wdrecAmount').value) || 0;
+  const amount = Number(document.getElementById('wdrecAmount').value.replace(/,/g,'')) || 0;
   const taxType = document.getElementById('wdrecTaxType').value;
-  const taxAmount = Number(document.getElementById('wdrecTax').value) || 0;
+  const taxAmount = Number(document.getElementById('wdrecTax').value.replace(/,/g,'')) || 0;
   const memo = document.getElementById('wdrecMemo').value.trim();
   const isEditing = !!editingWdrecId;
   // 편집 시: 기존 source 유지. 신규: _wdrecSource
@@ -11441,7 +11460,7 @@ function saveWdrec() {
   if (!isEditing && source === 'sell') {
     const code = document.getElementById('wdrecSellCode').value;
     const sellQty = Number(document.getElementById('wdrecSellQty').value) || 0;
-    const sellPrice = Number(document.getElementById('wdrecSellPrice').value) || 0;
+    const sellPrice = Number(document.getElementById('wdrecSellPrice').value.replace(/,/g,'')) || 0;
 
     if (!code) { alert('매도 종목을 선택하세요'); return; }
     if (sellQty <= 0) { alert('매도 수량을 입력하세요'); return; }
