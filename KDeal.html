@@ -554,47 +554,25 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
+<script src="js/market-core.js"></script>
 <script>
 const APP_VERSION = 'KDeal v0.652';
-InputUX.setNumberDefaults({ locale: 'ko-KR' });  // Stage 2: KDeal 기본 숫자 locale
-// Stage 1: 숫자/금액 입력 탭 시 기존값 자동선택
-InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');
-if (window.TickerSearch) window.TickerSearch.init();
-document.addEventListener('DOMContentLoaded', () => {
-  try {
-    const s = JSON.parse(localStorage.getItem('pension_app_settings_v1')) || {};
-    if (s.showNonK  === false) document.querySelectorAll('a[href="NonK.html"]').forEach(e => e.style.display = 'none');
-    if (s.showKDeal === false) document.querySelectorAll('a[href="KDeal.html"]').forEach(e => e.style.display = 'none');
-    if (s.allowZoom === false) {
-      const m = document.querySelector('meta[name="viewport"]');
-      if (m) m.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-    }
-  } catch(_) {}
-});
+const MARKET_CONFIG = {
+  market: 'kdeal', version: APP_VERSION, locale: 'ko-KR',
+  storageKeys: {
+    accounts: 'kd_accounts_v1', holdings: 'kd_holdings_v1', cash: 'kd_cash_v1',
+    deposits: 'kd_deposits_v1', monthly: 'kd_monthly_v1', dividends: 'kd_dividends_v1',
+    watchlist: 'kd_watchlist_v1', trades: 'kd_trades_v1', migrationDone: 'kd_migration_done_v1',
+  },
+  labels: { currency: '원', flag: '🇰🇷', tickerLabel: '종목코드', inputMode: 'numeric' },
+};
+MarketCore.init(MARKET_CONFIG);
 
 // 시세는 자체 백엔드 /api/price 로 단일화(외부 CORS 프록시 제거).
 // query2가 더 빠름(테스트 기준 ~370ms), query1은 백업
-const YAHOO_HOSTS = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com'];
 
-async function fetchWithTimeout(url, ms = 9000) {
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
-    clearTimeout(tid);
-    return res;
-  } catch(e) { clearTimeout(tid); throw e; }
-}
 
 // 백엔드 /api/price 패스스루. 반환은 기존과 동일하게 응답 본문 텍스트(호출부가 JSON.parse).
-async function fetchViaProxy(targetUrl) {
-  const base = (window.MyPMApi && MyPMApi.getBaseUrl()) || '';
-  const res = await fetchWithTimeout(base + '/api/price?url=' + encodeURIComponent(targetUrl));
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const text = await res.text();
-  if (!text || text.length < 10) throw new Error('빈 응답');
-  return text;
-}
 
 async function fetchKdPrice(code) {
   const padded = String(code).padStart(6, '0');
@@ -736,21 +714,7 @@ const KD_PORTFOLIO_COLS = [
     cell:(it)=>it.hasCost?it._dSign+it._diff.toFixed(1)+'%':'-' },
 ];
 const KD_PORTFOLIO_COL_IDS = KD_PORTFOLIO_COLS.map(c => c.id);
-function orderedCols(savedOrder, COLS) {
-  const byId = new Map(COLS.map(c => [c.id, c]));
-  const out = [], seen = new Set();
-  for (const id of (savedOrder || [])) {
-    if (byId.has(id) && !seen.has(id)) { out.push(byId.get(id)); seen.add(id); }
-  }
-  for (const c of COLS) if (!seen.has(c.id)) out.push(c);
-  return out;
-}
 // 컬럼 순서는 세 앱 공유 — MyPM 설정에서 편집, NonK/KDeal은 읽기 전용으로 동일 적용.
-const COL_ORDER_KEY = 'mypm_col_order_v1';
-function loadColOrder(DEFAULT_IDS) {
-  try { const r = JSON.parse(localStorage.getItem(COL_ORDER_KEY)); return Array.isArray(r) ? r : DEFAULT_IDS.slice(); }
-  catch(_) { return DEFAULT_IDS.slice(); }
-}
 
 let kdHoldings        = kdLoadHoldings();
 let kdCashAccounts    = kdLoadCash();
@@ -1003,13 +967,6 @@ function kdSnapPricedAt() {
   } catch (_) { return null; }
 }
 // 서버 계산 시각 → "MM/DD HH:MM". 없으면 null.
-function fmtHeroAsOf(ts) {
-  if (!ts) return null;
-  const d = new Date(ts);
-  if (isNaN(d.getTime())) return null;
-  const p = (n) => ('0' + n).slice(-2);
-  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
 
 function kdRender() {
   const container = document.getElementById('HoldingsContainer');
