@@ -211,6 +211,7 @@
 
   function updateTitle() {
     if (_st.mode === 'age') { _dp.querySelector('.iux-dp-tt').textContent = `${_st.age}세 → ${_st.baseYear + _st.age}년`; return; }
+    if (_st.mode === 'yr') { _dp.querySelector('.iux-dp-tt').textContent = _st.baseYear ? `${_st.year}년 (${_st.year - _st.baseYear}세)` : `${_st.year}년`; return; }
     const y = _st.view === 'cal' ? _st.calY : _st.y;
     const m = _st.view === 'cal' ? _st.calM : _st.m;
     _dp.querySelector('.iux-dp-tt').textContent = `${y}년 ${m}월`;
@@ -253,6 +254,17 @@
       for (let a = _st.minAge; a <= _st.maxAge; a++)
         ages.push({ html: '<span>' + a + '세</span><span style="margin-left:16px;color:#94a3b8;font-weight:400">' + (_st.baseYear + a) + '년</span>', val: a });
       const col = buildCol(ages, _st.age - _st.minAge, (i) => { _st.age = ages[i].val; updateTitle(); });
+      wheel.appendChild(col);
+      return;
+    }
+
+    if (_st.mode === 'yr') {   // 연도(나이) 단일 휠 — 확정 시 연도만 기록
+      const years = [];
+      for (let y = _st.minYear; y <= _st.maxYear; y++) {
+        const ageHtml = _st.baseYear ? ('<span style="margin-left:16px;color:#94a3b8;font-weight:400">(' + (y - _st.baseYear) + '세)</span>') : '';
+        years.push({ html: '<span>' + y + '년</span>' + ageHtml, val: y });
+      }
+      const col = buildCol(years, _st.year - _st.minYear, (i) => { _st.year = years[i].val; updateTitle(); });
       wheel.appendChild(col);
       return;
     }
@@ -330,6 +342,7 @@
     else if (act === 'next') { _st.calM++; if (_st.calM > 12) { _st.calM = 1; _st.calY++; } renderCal(); updateTitle(); }
     else if (act === 'reset') {
       if (_st.mode === 'age') { _st.age = _st.defAge; setView('wheel'); }
+      else if (_st.mode === 'yr') { _st.year = _st.defYear; setView('wheel'); }
       else { const t = todayYMD(); _st.y = t.y; _st.m = t.m; _st.d = t.d; _st.calY = t.y; _st.calM = t.m; setView(_st.view); }
     }
     else if (act === 'confirm') { commit(); }
@@ -340,6 +353,7 @@
     const tg = _st.target;
     if (tg.type === 'date') { tg.input.value = `${_st.y}-${pad2(_st.m)}-${pad2(_st.d)}`; fire(tg.input); }
     else if (tg.type === 'age') { tg.ageEl.value = _st.age; fire(tg.ageEl); }
+    else if (tg.type === 'yr') { tg.yearEl.value = _st.year; fire(tg.yearEl); }
     else { tg.yearEl.value = _st.y; tg.monthEl.value = _st.m; fire(tg.yearEl); fire(tg.monthEl); }
     close();
   }
@@ -348,7 +362,7 @@
   function openCommon(mode) {
     ensureDom();
     // 'age' 도 휠 전용 레이아웃(달력/네비 숨김)을 'ym' 클래스로 재사용
-    _dp.querySelector('.iux-dp').classList.toggle('ym', mode === 'ym' || mode === 'age');
+    _dp.querySelector('.iux-dp').classList.toggle('ym', mode === 'ym' || mode === 'age' || mode === 'yr');
     setView(mode === 'date' ? 'cal' : 'wheel');
     _dp.classList.add('open');
   }
@@ -379,13 +393,24 @@
             defAge: opts.def || 60, target: { type: 'age', ageEl } };
     openCommon('age');
   };
+  // 연도 휠 — 각 행에 "{연도}년 ({연도-baseYear}세)" 표시. 확정 시 연도만 기록.
+  // opts: { baseYear(나이 표시용, 0이면 나이 숨김), minYear, maxYear, def }
+  UX.openYearFor = function (yearEl, opts) {
+    opts = opts || {};
+    const minYear = opts.minYear || 2020, maxYear = opts.maxYear || 2100;
+    let cur = parseInt(yearEl.value, 10); if (!cur) cur = opts.def || new Date().getFullYear();
+    cur = Math.max(minYear, Math.min(maxYear, cur));
+    _st = { mode: 'yr', year: cur, minYear: minYear, maxYear: maxYear, baseYear: opts.baseYear || 0,
+            defYear: opts.def || cur, target: { type: 'yr', yearEl } };
+    openCommon('yr');
+  };
 
   // 마커가 붙은 입력을 커스텀 전용으로 전환(네이티브 피커/키보드 차단) ----------------
   // ※ iOS Safari 는 readonly 로 type=date/number 네이티브 피커를 막지 못한다(탭하면 애플 달력이
   //   먼저 떴다가 커스텀으로 바뀌는 깜빡임 발생). 그래서 type 자체를 text 로 바꿔 네이티브 UI 를
   //   원천 제거한다. 값은 문자열(YYYY-MM-DD / 숫자) 그대로 보존되어 기존 read/save 로직과 무관.
   function scanDateInputs(root) {
-    (root || document).querySelectorAll('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year]').forEach((el) => {
+    (root || document).querySelectorAll('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year],input[data-iux-year]').forEach((el) => {
       if (el._iuxRO) return;
       el._iuxRO = true;
       try { if (el.type !== 'text') el.type = 'text'; } catch (_) {}
@@ -398,7 +423,7 @@
   UX.scanDateInputs = scanDateInputs;
 
   function isDateMarker(el) {
-    return !!el && (el.hasAttribute('data-iux-date') || el.hasAttribute('data-iux-ym-month') || el.hasAttribute('data-iux-ym-year'));
+    return !!el && (el.hasAttribute('data-iux-date') || el.hasAttribute('data-iux-ym-month') || el.hasAttribute('data-iux-ym-year') || el.hasAttribute('data-iux-year'));
   }
 
   // 포커스로 인한 깜빡임 차단 ----------------------------------------------------
@@ -418,6 +443,7 @@
     if (el.hasAttribute('data-iux-date')) { e.preventDefault(); el.blur(); UX.openDateFor(el); }
     else if (el.hasAttribute('data-iux-ym-month')) { e.preventDefault(); el.blur(); const mEl = document.getElementById(el.getAttribute('data-iux-ym-month')); if (mEl) UX.openYMFor(el, mEl); }
     else if (el.hasAttribute('data-iux-ym-year')) { e.preventDefault(); el.blur(); const yEl = document.getElementById(el.getAttribute('data-iux-ym-year')); if (yEl) UX.openYMFor(yEl, el); }
+    else if (el.hasAttribute('data-iux-year')) { e.preventDefault(); el.blur(); UX.openYearFor(el, { baseYear: parseInt(el.getAttribute('data-iux-year-base'), 10) || 0, minYear: parseInt(el.getAttribute('min'), 10) || 2020, maxYear: parseInt(el.getAttribute('max'), 10) || 2100, def: parseInt(el.value, 10) || new Date().getFullYear() }); }
   }, true);
 
   /* ----- 연/월 요약 칩 (data-iux-ym-chip="<년input id>") ------------------------
@@ -472,7 +498,7 @@
       new MutationObserver((muts) => {
         for (const mu of muts) for (const n of mu.addedNodes) {
           if (n.nodeType !== 1) continue;
-          if (n.matches && n.matches('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year]')) scanDateInputs(n.parentNode || document);
+          if (n.matches && n.matches('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year],input[data-iux-year]')) scanDateInputs(n.parentNode || document);
           else if (n.querySelector) scanDateInputs(n);
           if (n.matches && n.matches('[data-iux-ym-chip]')) scanYMChips(n.parentNode || document);
           else if (n.querySelector && n.querySelector('[data-iux-ym-chip]')) scanYMChips(n);
