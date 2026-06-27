@@ -50,11 +50,41 @@ async function fetchViaProxy(targetUrl) {
   return text;
 }
 
+// ── 영속 상태 load/save (시장 공통; 키는 MarketCore.cfg.storageKeys, 상태는 ST) ──
+function _K(name) { return MarketCore.cfg.storageKeys[name]; }
+function loadHoldings()  { try { return JSON.parse(localStorage.getItem(_K('holdings'))) || []; } catch(e) { return []; } }
+function saveHoldings()  { localStorage.setItem(_K('holdings'), JSON.stringify(ST.holdings)); }
+function loadCash()      { try { return JSON.parse(localStorage.getItem(_K('cash'))) || {}; } catch(e) { return {}; } }
+function saveCashData()  { localStorage.setItem(_K('cash'), JSON.stringify(ST.cash)); }
+function loadDeposits()  { try { return JSON.parse(localStorage.getItem(_K('deposits'))) || { transactions: [] }; } catch(e) { return { transactions: [] }; } }
+function saveDeposits()  { localStorage.setItem(_K('deposits'), JSON.stringify(ST.deposits)); }
+function loadMonthly()   { try { return JSON.parse(localStorage.getItem(_K('monthly'))) || []; } catch(e) { return []; } }
+function saveMonthly()   { localStorage.setItem(_K('monthly'), JSON.stringify(ST.monthly)); }
+function loadDividends() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(_K('dividends'))) || [];
+    if (!Array.isArray(arr)) return [];
+    return arr.map(r => ({
+      id: String(r.id || (Date.now() + Math.random())),
+      year: parseInt(r.year, 10) || 0,
+      month: parseInt(r.month, 10) || 0,
+      stocks:         (r.stocks         && typeof r.stocks         === 'object') ? r.stocks         : {},
+      stocksPerShare: (r.stocksPerShare && typeof r.stocksPerShare === 'object') ? r.stocksPerShare : {},
+      stocksShares:   (r.stocksShares   && typeof r.stocksShares   === 'object') ? r.stocksShares   : {},
+      accounts:       (r.accounts       && typeof r.accounts       === 'object') ? r.accounts       : {}
+    })).filter(r => r.year > 0 && r.month >= 1 && r.month <= 12);
+  } catch(e) { return []; }
+}
+function saveDividends() { localStorage.setItem(_K('dividends'), JSON.stringify(ST.dividends)); }
+function loadWatchlist() { try { return JSON.parse(localStorage.getItem(_K('watchlist'))) || []; } catch(_) { return []; } }
+function saveWatchlist() { localStorage.setItem(_K('watchlist'), JSON.stringify(ST.watchlist)); }
+
 // ── 부트스트랩 ──
 // 각 HTML 은 MARKET_CONFIG 를 정의한 뒤 MarketCore.init(MARKET_CONFIG) 호출.
 // cfg: { market, version, locale, storageKeys, labels, ... }
 const MarketCore = {
   cfg: null,
+  state: {},   // 영속 상태(accounts/holdings/cash/deposits/monthly/dividends/watchlist/trades)
   init(cfg) {
     this.cfg = cfg;
     if (window.InputUX) {
@@ -78,3 +108,5 @@ const MarketCore = {
   }
 };
 window.MarketCore = MarketCore;
+// 전역 단축 참조 — 인라인 스크립트와 공유 함수가 동일 상태 객체를 가리킨다.
+var ST = MarketCore.state;

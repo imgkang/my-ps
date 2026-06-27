@@ -663,13 +663,7 @@ async function kdFetchAutocompleteKR(query) {
 }
 
 const KD_ACC_KEY   = 'kd_accounts_v1';
-let   KD_ACCOUNTS  = kdLoadAccounts();
-const KD_HOLD_KEY  = 'kd_holdings_v1';
-const KD_CASH_KEY  = 'kd_cash_v1';
-const KD_DEP_KEY   = 'kd_deposits_v1';
-const KD_MON_KEY   = 'kd_monthly_v1';
-const KD_DIV_KEY   = 'kd_dividends_v1';
-const KD_WATCH_KEY = 'kd_watchlist_v1';
+ST.accounts  = kdLoadAccounts();
 
 // ===== 종목 리스트 컬럼 정의 (순서 편집 가능) =====
 // 종목(이름)은 항상 첫 열, 액션 열(거래/✏️/🗑️)은 항상 마지막 — 아래 11개 데이터 열만 재배열 대상.
@@ -716,12 +710,12 @@ const KD_PORTFOLIO_COLS = [
 const KD_PORTFOLIO_COL_IDS = KD_PORTFOLIO_COLS.map(c => c.id);
 // 컬럼 순서는 세 앱 공유 — MyPM 설정에서 편집, NonK/KDeal은 읽기 전용으로 동일 적용.
 
-let kdHoldings        = kdLoadHoldings();
-let kdCashAccounts    = kdLoadCash();
-let kdDepositData     = kdLoadDeposits();
-let kdMonthlyRecords  = kdLoadMonthly();
-let kdDividendRecords = kdLoadDividends();
-let kdWatchlist       = kdLoadWatchlist();
+ST.holdings        = loadHoldings();
+ST.cash    = loadCash();
+ST.deposits     = loadDeposits();
+ST.monthly  = loadMonthly();
+ST.dividends = loadDividends();
+ST.watchlist       = loadWatchlist();
 let kdChartInstance       = null;
 let kdDetailChartInstance = null;
 let kdEditingTicker   = null;
@@ -744,31 +738,7 @@ function kdLoadAccounts() {
   try { localStorage.setItem(KD_ACC_KEY, JSON.stringify(defaultAccs)); } catch(_) {}
   return defaultAccs;
 }
-function kdSaveAccounts()  { localStorage.setItem(KD_ACC_KEY, JSON.stringify(KD_ACCOUNTS)); }
-function kdLoadHoldings()  { try { return JSON.parse(localStorage.getItem(KD_HOLD_KEY)) || []; } catch(e) { return []; } }
-function kdSaveHoldings()  { localStorage.setItem(KD_HOLD_KEY, JSON.stringify(kdHoldings)); }
-function kdLoadCash()      { try { return JSON.parse(localStorage.getItem(KD_CASH_KEY)) || {}; } catch(e) { return {}; } }
-function kdSaveCashData()  { localStorage.setItem(KD_CASH_KEY, JSON.stringify(kdCashAccounts)); }
-function kdLoadDeposits()  { try { return JSON.parse(localStorage.getItem(KD_DEP_KEY)) || { transactions: [] }; } catch(e) { return { transactions: [] }; } }
-function kdSaveDeposits()  { localStorage.setItem(KD_DEP_KEY, JSON.stringify(kdDepositData)); }
-function kdLoadMonthly()   { try { return JSON.parse(localStorage.getItem(KD_MON_KEY)) || []; } catch(e) { return []; } }
-function kdSaveMonthly()   { localStorage.setItem(KD_MON_KEY, JSON.stringify(kdMonthlyRecords)); }
-function kdLoadDividends() {
-  try {
-    const arr = JSON.parse(localStorage.getItem(KD_DIV_KEY)) || [];
-    if (!Array.isArray(arr)) return [];
-    return arr.map(r => ({
-      id: String(r.id || (Date.now() + Math.random())),
-      year: parseInt(r.year, 10) || 0,
-      month: parseInt(r.month, 10) || 0,
-      stocks:         (r.stocks         && typeof r.stocks         === 'object') ? r.stocks         : {},
-      stocksPerShare: (r.stocksPerShare && typeof r.stocksPerShare === 'object') ? r.stocksPerShare : {},
-      stocksShares:   (r.stocksShares   && typeof r.stocksShares   === 'object') ? r.stocksShares   : {},
-      accounts:       (r.accounts       && typeof r.accounts       === 'object') ? r.accounts       : {}
-    })).filter(r => r.year > 0 && r.month >= 1 && r.month <= 12);
-  } catch(e) { return []; }
-}
-function kdSaveDividends() { localStorage.setItem(KD_DIV_KEY, JSON.stringify(kdDividendRecords)); }
+function kdSaveAccounts()  { localStorage.setItem(KD_ACC_KEY, JSON.stringify(ST.accounts)); }
 
 function kdDivRecAmount(rec, code) {
   const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
@@ -844,7 +814,7 @@ function kdApplyServerPrices() {
     const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
     const pm = snap && snap.data && snap.data.prices;
     if (!pm) return covered;
-    kdHoldings.forEach(h => {
+    ST.holdings.forEach(h => {
       const p = pm[h.ticker];
       if (p && typeof p.price === 'number' && p.price > 0) {
         h.price = p.price;
@@ -868,7 +838,7 @@ async function kdRefreshAll(suppressDone = false, preferSnapshot = true) {
 
   const covered = preferSnapshot ? kdApplyServerPrices() : new Set();
 
-  await Promise.all(kdHoldings.filter(h => !covered.has(h.ticker)).map(async h => {
+  await Promise.all(ST.holdings.filter(h => !covered.has(h.ticker)).map(async h => {
     try {
       const info = await fetchKdPrice(h.ticker);
       h.price = info.price; h.change = info.change;
@@ -878,21 +848,21 @@ async function kdRefreshAll(suppressDone = false, preferSnapshot = true) {
   }));
 
   // 관심종목 가격 갱신 (보유 종목과 중복 없이)
-  const holdTickers = new Set(kdHoldings.map(h => h.ticker));
-  await Promise.all(kdWatchlist.filter(w => !holdTickers.has(w.ticker)).map(async w => {
+  const holdTickers = new Set(ST.holdings.map(h => h.ticker));
+  await Promise.all(ST.watchlist.filter(w => !holdTickers.has(w.ticker)).map(async w => {
     try {
       const info = await fetchKdPrice(w.ticker);
       if (info) {
         kdWatchPrices[w.ticker] = info;
-        if (info.name && info.name !== w.ticker) { w.name = info.name; kdSaveWatchlist(); }
+        if (info.name && info.name !== w.ticker) { w.name = info.name; saveWatchlist(); }
       }
     } catch(_) {}
   }));
   // 보유 종목이 관심에도 있으면 가격 공유
-  kdHoldings.forEach(h => { if (holdTickers.has(h.ticker) && kdWatchlist.find(w => w.ticker === h.ticker)) kdWatchPrices[h.ticker] = h; });
+  ST.holdings.forEach(h => { if (holdTickers.has(h.ticker) && ST.watchlist.find(w => w.ticker === h.ticker)) kdWatchPrices[h.ticker] = h; });
 
   kdLastRefreshTime = new Date();
-  kdSaveHoldings();
+  saveHoldings();
   kdRender();
   kdRenderChart();
   kdRenderWatchlist();
@@ -919,23 +889,23 @@ function kdInitAutoRefresh() {
   const minutes = parseInt(localStorage.getItem('autoRefreshMinutes'), 10) || 0;
   if (minutes > 0) {
     kdAutoRefreshTimer = setInterval(() => {
-      if (kdHoldings.length) kdRefreshAll();
+      if (ST.holdings.length) kdRefreshAll();
     }, minutes * 60 * 1000);
   }
 }
 
 function kdComputeAccountValue(accId) {
   let total = 0;
-  for (const h of kdHoldings) {
+  for (const h of ST.holdings) {
     const a = h.accounts && h.accounts[accId];
     if (a && a.qty > 0) total += a.qty * (h.price || 0);
   }
-  total += Number(kdCashAccounts[accId]) || 0;
+  total += Number(ST.cash[accId]) || 0;
   return total;
 }
 
 function kdTotalDeposited(accId = null, accIds = null) {
-  let txns = kdDepositData.transactions;
+  let txns = ST.deposits.transactions;
   if (accId) txns = txns.filter(t => t.accId === accId);
   else if (accIds) txns = txns.filter(t => accIds.includes(t.accId));
   return txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
@@ -973,7 +943,7 @@ function kdRender() {
   const statusEl  = document.getElementById('StatusText');
   if (!container) return;
 
-  if (!kdHoldings.length) {
+  if (!ST.holdings.length) {
     const heroEl0 = document.getElementById('HeroContainer');
     if (heroEl0) heroEl0.innerHTML = `<div class="card nk-hero">
       <div class="nk-hero-value-row"><div class="nk-hero-value">0</div><div class="nk-hero-unit">(천원)</div></div>
@@ -994,9 +964,9 @@ function kdRender() {
   }
 
   // Summary calculations (active accounts only)
-  const _activeAccs = KD_ACCOUNTS.filter(a => a.active !== false);
+  const _activeAccs = ST.accounts.filter(a => a.active !== false);
   let totalCost = 0, totalValue = 0, todayPnl = 0;
-  for (const h of kdHoldings) {
+  for (const h of ST.holdings) {
     let hQty = 0, hCost = 0;
     for (const acc of _activeAccs) {
       const a = h.accounts && h.accounts[acc.id];
@@ -1010,7 +980,7 @@ function kdRender() {
     todayPnl   += hQty * (h.change || 0);
   }
   // add cash (active accounts only)
-  const totalCash = _activeAccs.reduce((s, a) => s + (Number(kdCashAccounts[a.id]) || 0), 0);
+  const totalCash = _activeAccs.reduce((s, a) => s + (Number(ST.cash[a.id]) || 0), 0);
   totalValue += totalCash;
   const _activeAccIds = _activeAccs.map(a => a.id);
   const deposited  = kdTotalDeposited(null, _activeAccIds);
@@ -1025,13 +995,13 @@ function kdRender() {
   // 이번달 손익
   const _now = new Date();
   const _yr = _now.getFullYear(), _thisM = _now.getMonth() + 1;
-  const prevRecs = kdMonthlyRecords.filter(r => r.year < _yr || (r.year === _yr && r.month < _thisM));
+  const prevRecs = ST.monthly.filter(r => r.year < _yr || (r.year === _yr && r.month < _thisM));
   let monthPnl = null, monthPnlRate = null;
   if (prevRecs.length) {
     const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0))[0];
     const prevVal = _activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
     const cutoff = `${_yr}-${String(_thisM).padStart(2,'0')}-01`;
-    const moDeposits = kdDepositData.transactions
+    const moDeposits = ST.deposits.transactions
       .filter(t => t.date >= cutoff && _activeAccIds.includes(t.accId))
       .reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
     monthPnl = totalValue - prevVal - moDeposits;
@@ -1061,7 +1031,7 @@ function kdRender() {
   </div>`;
 
   // Holdings table — My PM style
-  const items = kdHoldings.map(h => {
+  const items = ST.holdings.map(h => {
     let qty = 0, cost = 0;
     const hasAccounts = h.accounts && _activeAccs.some(a => (h.accounts[a.id]?.qty || 0) > 0);
     for (const acc of _activeAccs) {
@@ -1088,7 +1058,7 @@ function kdRender() {
     const ss = String(kdLastRefreshTime.getSeconds()).padStart(2,'0');
     lastUpdate = `${_mo}/${_dd} ${hh}:${mm}:${ss}`;
   } else {
-    const updatedAts = kdHoldings.filter(h => h.updatedAt).map(h => h.updatedAt);
+    const updatedAts = ST.holdings.filter(h => h.updatedAt).map(h => h.updatedAt);
     if (updatedAts.length) {
       const d = new Date(Math.max(...updatedAts.map(d => new Date(d))));
       const _mo = String(d.getMonth()+1).padStart(2,'0');
@@ -1099,7 +1069,7 @@ function kdRender() {
 
   // ===== 종목 리스트: 저장된 컬럼 순서대로 렌더 =====
   const _kdCashWeight   = totalValue > 0 ? totalCash / totalValue * 100 : 0;
-  const _kdCashAccCount = _activeAccs.filter(a => (Number(kdCashAccounts[a.id]) || 0) > 0).length;
+  const _kdCashAccCount = _activeAccs.filter(a => (Number(ST.cash[a.id]) || 0) > 0).length;
   const _kdDayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
   const _kdTotPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
   const _kdTotPSign = pnl >= 0 ? '+' : '';
@@ -1154,7 +1124,7 @@ function kdRender() {
 function kdRenderAccountButtons() {
   const grid = document.getElementById('AccountButtonsGrid');
   if (!grid) return;
-  const active = KD_ACCOUNTS.filter(a => a.active !== false);
+  const active = ST.accounts.filter(a => a.active !== false);
   grid.innerHTML = active.map(a => {
     const val = kdComputeAccountValue(a.id);
     return `<button class="btn-account-view" onclick="kdOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${formatMil(val)}</span></button>`;
@@ -1167,8 +1137,8 @@ function kdEscape(s) {
 
 function kdDeleteHolding(ticker) {
   if (!confirm(`${ticker} 종목을 삭제하시겠습니까?`)) return;
-  kdHoldings = kdHoldings.filter(h => h.ticker !== ticker);
-  kdSaveHoldings();
+  ST.holdings = ST.holdings.filter(h => h.ticker !== ticker);
+  saveHoldings();
   kdRender();
   kdRenderChart();
 }
@@ -1177,7 +1147,7 @@ function kdRenderChart() {
   const canvas = document.getElementById('PortfolioChart');
   const empty  = document.getElementById('ChartEmpty');
   if (!canvas) return;
-  if (!kdMonthlyRecords.length) {
+  if (!ST.monthly.length) {
     canvas.style.display = 'none';
     if (empty) empty.style.display = '';
     return;
@@ -1185,14 +1155,14 @@ function kdRenderChart() {
   canvas.style.display = '';
   if (empty) empty.style.display = 'none';
 
-  const sorted = [...kdMonthlyRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  const sorted = [...ST.monthly].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
   const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2,'0')}`);
-  const _activeForChart = KD_ACCOUNTS.filter(a => a.active !== false);
+  const _activeForChart = ST.accounts.filter(a => a.active !== false);
   const evalVals = sorted.map(r => _activeForChart.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0));
 
   // Deposit principal: cumulative deposits up to each month (active accounts only)
   const _activeChartIds = _activeForChart.map(a => a.id);
-  const txns = [...kdDepositData.transactions]
+  const txns = [...ST.deposits.transactions]
     .filter(t => _activeChartIds.includes(t.accId))
     .sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
   const depVals = sorted.map(r => {
@@ -1227,7 +1197,7 @@ function kdOpenAddModal() {
   if (listEl) listEl.classList.remove('open');
   // Render account inputs
   const grid = document.getElementById('AddAccountInputs');
-  const activeAccs = KD_ACCOUNTS.filter(a => a.active !== false);
+  const activeAccs = ST.accounts.filter(a => a.active !== false);
   grid.innerHTML = activeAccs.map(a => `
     <div class="account-row">
       <label>${a.name}</label>
@@ -1280,7 +1250,7 @@ function kdOnAddSearchInput(val) {
 }
 
 function kdUpdateAddTotals() {
-  KD_ACCOUNTS.filter(a => a.active !== false).forEach(a => {
+  ST.accounts.filter(a => a.active !== false).forEach(a => {
     const qty = Number(document.getElementById(`AddQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const avg = Number(document.getElementById(`AddAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const el = document.getElementById(`AddTotal_${a.id}`);
@@ -1300,38 +1270,38 @@ function kdAddStock() {
     _kdAddPending = { ticker: val, name: val };
   }
   const { ticker, name } = _kdAddPending;
-  if (kdHoldings.some(h => h.ticker === ticker)) { alert('이미 추가된 종목입니다'); return; }
+  if (ST.holdings.some(h => h.ticker === ticker)) { alert('이미 추가된 종목입니다'); return; }
 
   const accounts = {};
   let totalQty = 0;
-  for (const a of KD_ACCOUNTS.filter(x => x.active !== false)) {
+  for (const a of ST.accounts.filter(x => x.active !== false)) {
     const qty = Number(document.getElementById(`AddQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const avg = Number(document.getElementById(`AddAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     accounts[a.id] = { qty, avgPrice: avg };
     totalQty += qty;
   }
 
-  kdHoldings.push({ ticker, name, accounts, price: 0, change: 0, changeRate: 0, updatedAt: null });
-  kdSaveHoldings();
+  ST.holdings.push({ ticker, name, accounts, price: 0, change: 0, changeRate: 0, updatedAt: null });
+  saveHoldings();
   kdCloseAddModal();
   kdRender();
   // Fetch price in background
   fetchKdPrice(ticker).then(info => {
-    const h = kdHoldings.find(x => x.ticker === ticker);
-    if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); kdSaveHoldings(); kdRender(); }
+    const h = ST.holdings.find(x => x.ticker === ticker);
+    if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); saveHoldings(); kdRender(); }
   }).catch(() => {});
 }
 
 // --- Account qty modal ---
 function kdOpenAccountModal(ticker) {
-  const h = kdHoldings.find(x => x.ticker === ticker);
+  const h = ST.holdings.find(x => x.ticker === ticker);
   if (!h) return;
   kdEditingTicker = ticker;
   document.getElementById('ModalTitle').textContent = `${ticker} 계좌별 수량 및 매입가`;
   document.getElementById('ModalSubtitle').textContent = h.name || '';
 
   const grid = document.getElementById('AccountInputs');
-  const activeAccs2 = KD_ACCOUNTS.filter(a => a.active !== false);
+  const activeAccs2 = ST.accounts.filter(a => a.active !== false);
   grid.innerHTML = activeAccs2.map(a => {
     const acc = h.accounts && h.accounts[a.id] || { qty: 0, avgPrice: 0 };
     const total = (acc.qty || 0) * (acc.avgPrice || 0);
@@ -1369,7 +1339,7 @@ function kdLiveKRW(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR'
 
 function kdUpdateAccTotals() {
   let totalQty = 0, totalCost = 0;
-  KD_ACCOUNTS.filter(a => a.active !== false).forEach(a => {
+  ST.accounts.filter(a => a.active !== false).forEach(a => {
     const qty = Number(document.getElementById(`AccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const avg = Number(document.getElementById(`AccAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const el = document.getElementById(`AccTotal_${a.id}`);
@@ -1388,28 +1358,28 @@ function kdCloseAccountModal() {
 }
 
 function kdSaveAccountQuantities() {
-  const h = kdHoldings.find(x => x.ticker === kdEditingTicker);
+  const h = ST.holdings.find(x => x.ticker === kdEditingTicker);
   if (!h) return;
   if (!h.accounts) h.accounts = {};
-  for (const a of KD_ACCOUNTS.filter(x => x.active !== false)) {
+  for (const a of ST.accounts.filter(x => x.active !== false)) {
     h.accounts[a.id] = {
       qty:      Number(document.getElementById(`AccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0,
       avgPrice: Number(document.getElementById(`AccAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0
     };
   }
-  kdSaveHoldings();
+  saveHoldings();
   kdCloseAccountModal();
   kdRender();
 }
 
 // --- Account detail modal ---
 function kdOpenAccountDetail(accId) {
-  const acc = KD_ACCOUNTS.find(a => a.id === accId);
+  const acc = ST.accounts.find(a => a.id === accId);
   if (!acc) return;
   document.getElementById('DetailTitle').textContent = acc.name + ' 상세';
   document.getElementById('DetailSubtitle').textContent = '';
 
-  const items = kdHoldings.filter(h => h.accounts && h.accounts[accId] && h.accounts[accId].qty > 0).map(h => {
+  const items = ST.holdings.filter(h => h.accounts && h.accounts[accId] && h.accounts[accId].qty > 0).map(h => {
     const a   = h.accounts[accId];
     const qty = Number(a.qty) || 0;
     const avg = Number(a.avgPrice) || 0;
@@ -1422,7 +1392,7 @@ function kdOpenAccountDetail(accId) {
              rate: cost > 0 ? pnl/cost*100 : 0 };
   }).sort((a, b) => b.val - a.val);
 
-  const cash         = Number(kdCashAccounts[accId]) || 0;
+  const cash         = Number(ST.cash[accId]) || 0;
   const totalVal     = items.reduce((s, i) => s + i.val, 0) + cash;
   const todayPnl     = items.reduce((s, i) => s + i.dayChange, 0);
   const accDeposited = kdTotalDeposited(accId);
@@ -1514,7 +1484,7 @@ function kdOpenAccountDetail(accId) {
 
   // Monthly trend chart
   const chartWrap = document.getElementById('DetailChartWrap');
-  const sorted = [...kdMonthlyRecords].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  const sorted = [...ST.monthly].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
   const accRecords = sorted.filter(r => r.accounts && r.accounts[accId] != null);
   if (accRecords.length < 2) {
     chartWrap.style.display = 'none';
@@ -1522,7 +1492,7 @@ function kdOpenAccountDetail(accId) {
     chartWrap.style.display = '';
     const labels   = accRecords.map(r => `${r.year}.${String(r.month).padStart(2,'0')}`);
     const evalVals = accRecords.map(r => Number(r.accounts[accId]) || 0);
-    const txns     = [...kdDepositData.transactions].filter(t => t.accId === accId).sort((a, b) => (a.date||'') < (b.date||'') ? -1 : 1);
+    const txns     = [...ST.deposits.transactions].filter(t => t.accId === accId).sort((a, b) => (a.date||'') < (b.date||'') ? -1 : 1);
     const depVals  = accRecords.map(r => {
       const cutoff = `${r.year}-${String(r.month).padStart(2,'0')}-31`;
       return txns.filter(t => (t.date||'') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
@@ -1558,11 +1528,11 @@ function kdCloseAccountDetail() {
 // --- Cash modal ---
 function kdOpenCashModal() {
   const grid = document.getElementById('CashInputs');
-  grid.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<div class="account-row">
+  grid.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<div class="account-row">
     <span>${a.name}</span>
-    <input type="text" inputmode="numeric" id="CashInput_${a.id}" value="${(Number(kdCashAccounts[a.id])||0).toLocaleString('ko-KR')}" style="grid-column:span 2"
+    <input type="text" inputmode="numeric" id="CashInput_${a.id}" value="${(Number(ST.cash[a.id])||0).toLocaleString('ko-KR')}" style="grid-column:span 2"
       oninput="kdLiveKRW(this)">
-    <span>${fmtKRW(Number(kdCashAccounts[a.id])||0)}</span>
+    <span>${fmtKRW(Number(ST.cash[a.id])||0)}</span>
   </div>`).join('');
   document.getElementById('CashModal').classList.add('open');
 }
@@ -1573,15 +1543,15 @@ function kdCloseCashModal() {
 
 function kdAdjustCash(accId, delta) {
   if (!accId) return;
-  kdCashAccounts[accId] = (Number(kdCashAccounts[accId]) || 0) + delta;
-  kdSaveCashData();
+  ST.cash[accId] = (Number(ST.cash[accId]) || 0) + delta;
+  saveCashData();
 }
 
 function kdSaveCash() {
-  for (const a of KD_ACCOUNTS.filter(x => x.active !== false)) {
-    kdCashAccounts[a.id] = Number(document.getElementById(`CashInput_${a.id}`)?.value.replace(/,/g,'')) || 0;
+  for (const a of ST.accounts.filter(x => x.active !== false)) {
+    ST.cash[a.id] = Number(document.getElementById(`CashInput_${a.id}`)?.value.replace(/,/g,'')) || 0;
   }
-  kdSaveCashData();
+  saveCashData();
   kdCloseCashModal();
   kdRender();
 }
@@ -1602,12 +1572,12 @@ function kdRenderDepositList() {
   const list = document.getElementById('DepositList');
   if (!list) return;
 
-  const txns = kdDepositData.transactions;
+  const txns = ST.deposits.transactions;
   const total = txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
   if (grand) grand.innerHTML = `<strong>순 입금액 합계: ${fmtKRW(total)}</strong>`;
 
   if (totals) {
-    totals.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => {
+    totals.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => {
       const v = txns.filter(t => t.accId === a.id).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
       return `<span>${a.name}: ${fmtKRW(v)}</span>`;
     }).join('');
@@ -1644,7 +1614,7 @@ function kdRenderDepositList() {
       </div>`;
     if (collapsed) return header;
     const rows = ytx.map(t => {
-      const accName = KD_ACCOUNTS.find(a => a.id === t.accId)?.name || t.accId;
+      const accName = ST.accounts.find(a => a.id === t.accId)?.name || t.accId;
       const sign = t.type === 'withdraw' ? '-' : '+';
       return `<div class="deposit-row">
         <span>${t.date || '-'}</span>
@@ -1668,28 +1638,28 @@ function kdToggleDepositYear(year) {
 }
 
 function kdDeleteTxn(id) {
-  const t = kdDepositData.transactions.find(x => x.id === id);
+  const t = ST.deposits.transactions.find(x => x.id === id);
   if (!t) return;
   if (!confirm('이 입출금 내역을 삭제하시겠습니까?')) return;
   // 현금 역산
   kdAdjustCash(t.accId, t.type === 'deposit' ? -t.amount : +t.amount);
-  kdDepositData.transactions = kdDepositData.transactions.filter(x => x.id !== id);
-  kdSaveDeposits();
+  ST.deposits.transactions = ST.deposits.transactions.filter(x => x.id !== id);
+  saveDeposits();
   kdRenderDepositList();
   kdRender();
 }
 
 function kdOpenTxnEditor(editId) {
   kdEditingTxnId = editId || null;
-  if (!KD_ACCOUNTS.filter(a => a.active !== false).length) {
-    KD_ACCOUNTS.push({ id: 'acc1', name: '기본계좌', active: true });
+  if (!ST.accounts.filter(a => a.active !== false).length) {
+    ST.accounts.push({ id: 'acc1', name: '기본계좌', active: true });
     kdSaveAccounts();
   }
   const sel = document.getElementById('TxnAccount');
-  sel.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  sel.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
   const titleEl = document.getElementById('TxnEditorTitle');
   if (editId) {
-    const t = kdDepositData.transactions.find(x => x.id === editId);
+    const t = ST.deposits.transactions.find(x => x.id === editId);
     if (t) {
       sel.value = t.accId;
       document.getElementById('TxnType').value = t.type;
@@ -1719,7 +1689,7 @@ function kdSaveTxn() {
   if (!amount || amount === 0) { alert('금액을 입력하세요'); return; }
   const absAmt = Math.abs(amount);
   if (kdEditingTxnId) {
-    const t = kdDepositData.transactions.find(x => x.id === kdEditingTxnId);
+    const t = ST.deposits.transactions.find(x => x.id === kdEditingTxnId);
     if (t) {
       // 기존 효과 역산
       const oldDelta = t.type === 'deposit' ? -t.amount : +t.amount;
@@ -1727,11 +1697,11 @@ function kdSaveTxn() {
       t.accId = accId; t.type = type; t.date = date; t.amount = absAmt;
     }
   } else {
-    kdDepositData.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount: absAmt });
+    ST.deposits.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount: absAmt });
   }
   // 현금 자동 조정
   kdAdjustCash(accId, type === 'deposit' ? absAmt : -absAmt);
-  kdSaveDeposits();
+  saveDeposits();
   kdCloseTxnEditor();
   kdRenderDepositList();
   kdRender();
@@ -1754,7 +1724,7 @@ function kdCloseRecordsModal() {
 function kdRenderRecAccountInputs() {
   const div = document.getElementById('RecAccountInputs');
   if (!div) return;
-  div.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<label>
+  div.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<label>
     <span>${a.name}</span>
     <input type="text" inputmode="numeric" id="RecVal_${a.id}" placeholder="0"
       oninput="kdLiveKRW(this); kdUpdateRecTotal()">
@@ -1763,12 +1733,12 @@ function kdRenderRecAccountInputs() {
 }
 
 function kdUpdateRecTotal() {
-  const total = KD_ACCOUNTS.filter(a => a.active !== false).reduce((s, a) => s + (Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0), 0);
+  const total = ST.accounts.filter(a => a.active !== false).reduce((s, a) => s + (Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0), 0);
   document.getElementById('RecTotal').textContent = fmtKRW(total);
 }
 
 function kdFillCurrentValues() {
-  KD_ACCOUNTS.filter(a => a.active !== false).forEach(a => {
+  ST.accounts.filter(a => a.active !== false).forEach(a => {
     const el = document.getElementById(`RecVal_${a.id}`);
     if (el) el.value = Math.round(kdComputeAccountValue(a.id)).toLocaleString('ko-KR');
   });
@@ -1803,7 +1773,7 @@ async function kdLoadHistoricalValues() {
   if (!year || year < 2000 || year > 2100) { alert('연도를 올바르게 입력해 주세요.'); return; }
   if (!month || month < 1 || month > 12)   { alert('월을 1~12 사이로 입력해 주세요.'); return; }
 
-  const targets = kdHoldings.filter(h =>
+  const targets = ST.holdings.filter(h =>
     h.accounts && Object.values(h.accounts).some(a => (Number(a.qty) || 0) > 0)
   );
   if (!targets.length) { alert('계좌별 수량이 입력된 종목이 없습니다.'); return; }
@@ -1823,7 +1793,7 @@ async function kdLoadHistoricalValues() {
     }));
 
     const values = {};
-    KD_ACCOUNTS.forEach(a => { values[a.id] = 0; });
+    ST.accounts.forEach(a => { values[a.id] = 0; });
     for (const h of targets) {
       const info = priceMap[h.ticker];
       if (!info) continue;
@@ -1833,7 +1803,7 @@ async function kdLoadHistoricalValues() {
       }
     }
 
-    KD_ACCOUNTS.forEach(a => {
+    ST.accounts.forEach(a => {
       const el = document.getElementById(`RecVal_${a.id}`);
       if (el) el.value = Math.round(values[a.id] || 0).toLocaleString('ko-KR');
     });
@@ -1841,7 +1811,7 @@ async function kdLoadHistoricalValues() {
 
     const dates = [...new Set(Object.values(priceMap).map(r => r.date))].sort();
     const refDate = dates.pop() || '';
-    const total = KD_ACCOUNTS.reduce((s, a) => s + (values[a.id] || 0), 0);
+    const total = ST.accounts.reduce((s, a) => s + (values[a.id] || 0), 0);
     const msg = errors.length
       ? `조회 완료 (일부 실패):\n${errors.join('\n')}\n\n기준일: ${refDate}\n총 주식 평가액: ${fmtKRW(total)}`
       : `기준일: ${refDate} 종가\n총 주식 평가액: ${fmtKRW(total)}\n\n※ 현금은 포함되지 않습니다.`;
@@ -1857,31 +1827,31 @@ function kdAddMonthlyRecord() {
   const [year, month, day] = dateVal.split('-').map(Number);
   if (!year || !month || !day) { alert('날짜를 올바르게 입력하세요'); return; }
   const accounts = {};
-  KD_ACCOUNTS.forEach(a => { accounts[a.id] = Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0; });
+  ST.accounts.forEach(a => { accounts[a.id] = Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0; });
   if (kdEditingRecordId) {
-    const rec = kdMonthlyRecords.find(r => r.id === kdEditingRecordId);
+    const rec = ST.monthly.find(r => r.id === kdEditingRecordId);
     if (rec) { rec.year = year; rec.month = month; rec.day = day; rec.accounts = accounts; }
     kdCancelRecordEdit();
   } else {
-    if (kdMonthlyRecords.some(r => r.year === year && r.month === month && (r.day || 1) === day)) {
+    if (ST.monthly.some(r => r.year === year && r.month === month && (r.day || 1) === day)) {
       if (!confirm(`${year}년 ${month}월 ${day}일 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
-      kdMonthlyRecords = kdMonthlyRecords.filter(r => !(r.year === year && r.month === month && (r.day || 1) === day));
+      ST.monthly = ST.monthly.filter(r => !(r.year === year && r.month === month && (r.day || 1) === day));
     }
-    kdMonthlyRecords.push({ id: String(Date.now()), year, month, day, accounts });
+    ST.monthly.push({ id: String(Date.now()), year, month, day, accounts });
   }
-  kdSaveMonthly();
+  saveMonthly();
   kdRenderRecordsList();
   kdRenderChart();
 }
 
 function kdEditMonthlyRecord(id) {
-  const rec = kdMonthlyRecords.find(r => r.id === id);
+  const rec = ST.monthly.find(r => r.id === id);
   if (!rec) return;
   kdEditingRecordId = id;
   const d = rec.day || 1;
   document.getElementById('RecDate').value = `${rec.year}-${String(rec.month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   kdRenderRecAccountInputs();
-  KD_ACCOUNTS.forEach(a => {
+  ST.accounts.forEach(a => {
     const inp = document.getElementById(`RecVal_${a.id}`);
     if (inp) inp.value = rec.accounts[a.id] ? Number(rec.accounts[a.id]).toLocaleString('ko-KR') : '';
   });
@@ -1902,10 +1872,10 @@ function kdCancelRecordEdit() {
 }
 
 function kdDeleteMonthlyRecord(id) {
-  const rec = kdMonthlyRecords.find(r => r.id === id);
+  const rec = ST.monthly.find(r => r.id === id);
   if (!rec || !confirm(`${rec.year}년 ${rec.month}월 기록을 삭제하시겠습니까?`)) return;
-  kdMonthlyRecords = kdMonthlyRecords.filter(r => r.id !== id);
-  kdSaveMonthly();
+  ST.monthly = ST.monthly.filter(r => r.id !== id);
+  saveMonthly();
   kdRenderRecordsList();
   kdRenderChart();
 }
@@ -1914,15 +1884,15 @@ function kdRenderRecordsList() {
   const header = document.getElementById('RecordsTableHeader');
   const list   = document.getElementById('RecordsList');
   if (!header || !list) return;
-  if (!kdMonthlyRecords.length) {
+  if (!ST.monthly.length) {
     header.innerHTML = '';
     list.innerHTML = '<div class="records-empty">아직 기록이 없습니다.</div>';
     return;
   }
-  const cols = `80px ${KD_ACCOUNTS.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 90px`;
+  const cols = `80px ${ST.accounts.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 90px`;
   header.style.gridTemplateColumns = cols;
-  header.innerHTML = `<span>날짜</span>${KD_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
-  const sorted = [...kdMonthlyRecords].sort((a, b) => {
+  header.innerHTML = `<span>날짜</span>${ST.accounts.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
+  const sorted = [...ST.monthly].sort((a, b) => {
     if (b.year !== a.year) return b.year - a.year;
     if (b.month !== a.month) return b.month - a.month;
     return (b.day || 1) - (a.day || 1);
@@ -1931,8 +1901,8 @@ function kdRenderRecordsList() {
     const dateLabel = rec.day
       ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
       : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
-    const total = KD_ACCOUNTS.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
-    const cells = KD_ACCOUNTS.map(a => `<span class="amount">${fmtKRW(Number(rec.accounts[a.id])||0)}</span>`).join('');
+    const total = ST.accounts.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
+    const cells = ST.accounts.map(a => `<span class="amount">${fmtKRW(Number(rec.accounts[a.id])||0)}</span>`).join('');
     return `<div class="records-row" style="grid-template-columns:${cols}">
       <span>${dateLabel}</span>
       ${cells}
@@ -1970,9 +1940,9 @@ function kdCloseDividendModal() {
 function kdRenderDivStockInputs(perShareMap, sharesOverride) {
   const tbody = document.getElementById('DivStockInputs');
   if (!tbody) return;
-  const activeAccs = KD_ACCOUNTS.filter(a => a.active !== false);
+  const activeAccs = ST.accounts.filter(a => a.active !== false);
   const activeAccIds = new Set(activeAccs.map(a => a.id));
-  const active = kdHoldings.map(h => {
+  const active = ST.holdings.map(h => {
     let qty = 0;
     if (h.accounts && Object.keys(h.accounts).length > 0) {
       for (const [id, a] of Object.entries(h.accounts)) {
@@ -1988,7 +1958,7 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
     const presentCodes = new Set(active.map(h => h.ticker));
     for (const code of Object.keys(sharesOverride)) {
       if (!presentCodes.has(code)) {
-        const orig = kdHoldings.find(x => x.ticker === code);
+        const orig = ST.holdings.find(x => x.ticker === code);
         active.push({ ticker: code, name: orig ? orig.name : '', activeQty: 0 });
       }
     }
@@ -1997,7 +1967,7 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
   kdDivFormShares = {};
   for (const h of active) {
     kdDivFormShares[h.ticker] = {};
-    const orig = kdHoldings.find(x => x.ticker === h.ticker);
+    const orig = ST.holdings.find(x => x.ticker === h.ticker);
     if (orig && orig.accounts) {
       for (const acc of activeAccs) {
         const a = orig.accounts[acc.id];
@@ -2122,7 +2092,7 @@ function kdAddDividendRecord() {
 
   // 계좌별 분배: 저장된 스냅샷에서 derive
   const accounts = {};
-  KD_ACCOUNTS.forEach(a => { accounts[a.id] = 0; });
+  ST.accounts.forEach(a => { accounts[a.id] = 0; });
   for (const code of Object.keys(stocksShares)) {
     const ps = Number(stocksPerShare[code]) || 0;
     for (const [accId, qty] of Object.entries(stocksShares[code])) {
@@ -2133,9 +2103,9 @@ function kdAddDividendRecord() {
   }
 
   if (kdEditingDivId) {
-    const idx = kdDividendRecords.findIndex(r => r.id === kdEditingDivId);
+    const idx = ST.dividends.findIndex(r => r.id === kdEditingDivId);
     if (idx >= 0) {
-      kdDividendRecords[idx] = { id: kdEditingDivId, year, month, stocksPerShare, stocksShares, accounts };
+      ST.dividends[idx] = { id: kdEditingDivId, year, month, stocksPerShare, stocksShares, accounts };
     }
     kdEditingDivId = null;
     const saveBtn = document.getElementById('DivSaveBtn');
@@ -2143,23 +2113,23 @@ function kdAddDividendRecord() {
     const cancelBtn = document.getElementById('DivCancelBtn');
     if (cancelBtn) cancelBtn.style.display = 'none';
   } else {
-    kdDividendRecords.push({
+    ST.dividends.push({
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
       year, month, stocksPerShare, stocksShares, accounts
     });
   }
 
-  kdSaveDividends();
+  saveDividends();
   kdClearDividendInputs();
   kdRenderDividendLists();
 }
 
 function kdDeleteDividendRecord(id) {
-  const rec = kdDividendRecords.find(r => r.id === id);
+  const rec = ST.dividends.find(r => r.id === id);
   if (!rec) return;
   const miscLabel = rec.misc ? ` (기타: ${rec.misc.memo || ''})` : '';
   if (!confirm(`${rec.year}년 ${rec.month}월${miscLabel} 배당 기록을 삭제하시겠습니까?`)) return;
-  kdDividendRecords = kdDividendRecords.filter(r => r.id !== id);
+  ST.dividends = ST.dividends.filter(r => r.id !== id);
   if (kdEditingDivId === id) {
     kdEditingDivId = null;
     const saveBtn = document.getElementById('DivSaveBtn');
@@ -2169,12 +2139,12 @@ function kdDeleteDividendRecord(id) {
     kdClearDividendInputs();
   }
   if (kdDivMiscEditingId === id) kdCancelDivMiscEdit();
-  kdSaveDividends();
+  saveDividends();
   kdRenderDividendLists();
 }
 
 function kdEditDividendRecord(id) {
-  const rec = kdDividendRecords.find(r => r.id === id);
+  const rec = ST.dividends.find(r => r.id === id);
   if (!rec) return;
   document.getElementById('DivYear').value = rec.year;
   document.getElementById('DivMonth').value = rec.month;
@@ -2246,7 +2216,7 @@ function kdToggleDivMiscForm(forceOpen) {
 function kdRenderDivMiscInputs(values) {
   const wrap = document.getElementById('DivMiscAccInputs');
   if (!wrap) return;
-  const accs = KD_ACCOUNTS.filter(a => a.active !== false);
+  const accs = ST.accounts.filter(a => a.active !== false);
   if (!accs.length) {
     wrap.innerHTML = '<div style="font-size:12px;color:var(--muted,#888)">활성 계좌가 없습니다.</div>';
     return;
@@ -2303,9 +2273,9 @@ function kdAddMiscDividendRecord() {
   if (total === 0 && !confirm('모든 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
 
   if (kdDivMiscEditingId) {
-    const idx = kdDividendRecords.findIndex(r => r.id === kdDivMiscEditingId);
+    const idx = ST.dividends.findIndex(r => r.id === kdDivMiscEditingId);
     if (idx >= 0) {
-      kdDividendRecords[idx] = {
+      ST.dividends[idx] = {
         id: kdDivMiscEditingId, year, month,
         stocksPerShare: {}, stocksShares: {}, accounts,
         misc: { memo, accounts: { ...accounts } }
@@ -2313,7 +2283,7 @@ function kdAddMiscDividendRecord() {
     }
     kdCancelDivMiscEdit();
   } else {
-    kdDividendRecords.push({
+    ST.dividends.push({
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
       year, month,
       stocksPerShare: {}, stocksShares: {}, accounts,
@@ -2321,7 +2291,7 @@ function kdAddMiscDividendRecord() {
     });
     kdClearDivMiscInputs();
   }
-  kdSaveDividends();
+  saveDividends();
   kdRenderDividendLists();
 }
 
@@ -2330,15 +2300,15 @@ function kdRenderDividendLists() {
   const sHeader = document.getElementById('DivStockTableHeader');
   const sList   = document.getElementById('DivStockRecordsList');
   if (sHeader && sList) {
-    if (!kdDividendRecords.length) {
+    if (!ST.dividends.length) {
       sHeader.innerHTML = ''; sList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
     } else {
-      const allTickers = [...new Set(kdDividendRecords.flatMap(r => kdDivRecCodes(r)))];
+      const allTickers = [...new Set(ST.dividends.flatMap(r => kdDivRecCodes(r)))];
       const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
       const spanCount = Math.max(allTickers.length, 1);
       sHeader.style.gridTemplateColumns = cols;
       sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
-      const sorted = [...kdDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
+      const sorted = [...ST.dividends].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       sList.innerHTML = sorted.map(rec => {
         const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
         if (kdDivRecIsMisc(rec)) {
@@ -2372,17 +2342,17 @@ function kdRenderDividendLists() {
   const aHeader = document.getElementById('DivAccTableHeader');
   const aList   = document.getElementById('DivAccRecordsList');
   if (aHeader && aList) {
-    if (!kdDividendRecords.length) {
+    if (!ST.dividends.length) {
       aHeader.innerHTML = ''; aList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
     } else {
-      const cols = `80px ${KD_ACCOUNTS.map(()=>'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
+      const cols = `80px ${ST.accounts.map(()=>'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
       aHeader.style.gridTemplateColumns = cols;
-      aHeader.innerHTML = `<span>연/월</span>${KD_ACCOUNTS.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span>`;
-      const sorted = [...kdDividendRecords].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
+      aHeader.innerHTML = `<span>연/월</span>${ST.accounts.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span>`;
+      const sorted = [...ST.dividends].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       aList.innerHTML = sorted.map(rec => {
-        const total = KD_ACCOUNTS.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
+        const total = ST.accounts.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
         const isMisc = kdDivRecIsMisc(rec);
-        const cells = KD_ACCOUNTS.map(a => {
+        const cells = ST.accounts.map(a => {
           const v = Number(rec.accounts[a.id]) || 0;
           if (!v) return `<span class="amount">-</span>`;
           if (isMisc) return `<span class="amount">${fmtKRW(v)}</span>`;
@@ -2405,7 +2375,7 @@ let _kdDivStockEditRecId = null, _kdDivStockEditTicker = null;
 let _kdDivAccEditRecId = null, _kdDivAccEditAccId = null;
 
 function kdOpenDivStockEdit(recId, ticker) {
-  const rec = kdDividendRecords.find(r => r.id === recId);
+  const rec = ST.dividends.find(r => r.id === recId);
   if (!rec) return;
   _kdDivStockEditRecId = recId;
   _kdDivStockEditTicker = ticker;
@@ -2418,12 +2388,12 @@ function kdOpenDivStockEdit(recId, ticker) {
 }
 
 function kdUpdateDivStockEditPreview() {
-  const rec = kdDividendRecords.find(r => r.id === _kdDivStockEditRecId);
+  const rec = ST.dividends.find(r => r.id === _kdDivStockEditRecId);
   if (!rec) return;
   const ticker = _kdDivStockEditTicker;
   const newPs = parseFloat(document.getElementById('DivStockEditPs').value.replace(/,/g,'')) || 0;
   let total = 0;
-  const rows = KD_ACCOUNTS.map(acc => {
+  const rows = ST.accounts.map(acc => {
     const qty = Number((rec.stocksShares && rec.stocksShares[ticker] && rec.stocksShares[ticker][acc.id]) || 0);
     const amt = Math.round(qty * newPs);
     total += amt;
@@ -2441,14 +2411,14 @@ function kdCloseDivStockEdit() {
 }
 
 function kdSaveDivStockEdit() {
-  const rec = kdDividendRecords.find(r => r.id === _kdDivStockEditRecId);
+  const rec = ST.dividends.find(r => r.id === _kdDivStockEditRecId);
   if (!rec) return;
   const ticker = _kdDivStockEditTicker;
   const newPs = Math.round(parseFloat(document.getElementById('DivStockEditPs').value.replace(/,/g,'')) || 0);
   if (!rec.stocksPerShare) rec.stocksPerShare = {};
   rec.stocksPerShare[ticker] = newPs;
   if (!rec.accounts) rec.accounts = {};
-  KD_ACCOUNTS.forEach(acc => {
+  ST.accounts.forEach(acc => {
     let total = 0;
     for (const t of Object.keys(rec.stocksPerShare)) {
       const ps = Number(rec.stocksPerShare[t]) || 0;
@@ -2457,17 +2427,17 @@ function kdSaveDivStockEdit() {
     }
     rec.accounts[acc.id] = Math.round(total);
   });
-  kdSaveDividends();
+  saveDividends();
   kdRenderDividendLists();
   kdCloseDivStockEdit();
 }
 
 function kdOpenDivAccEdit(recId, accId) {
-  const rec = kdDividendRecords.find(r => r.id === recId);
+  const rec = ST.dividends.find(r => r.id === recId);
   if (!rec) return;
   _kdDivAccEditRecId = recId;
   _kdDivAccEditAccId = accId;
-  const acc = KD_ACCOUNTS.find(a => a.id === accId);
+  const acc = ST.accounts.find(a => a.id === accId);
   const accName = acc ? acc.name : accId;
   const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
   document.getElementById('DivAccEditTitle').textContent = `${accName} · ${dateLabel}`;
@@ -2490,7 +2460,7 @@ function kdOpenDivAccEdit(recId, accId) {
 }
 
 function kdUpdateDivAccEditPreview() {
-  const rec = kdDividendRecords.find(r => r.id === _kdDivAccEditRecId);
+  const rec = ST.dividends.find(r => r.id === _kdDivAccEditRecId);
   if (!rec) return;
   let total = 0;
   document.querySelectorAll('#DivAccEditStockRows .div-focused-stock-row').forEach(row => {
@@ -2510,7 +2480,7 @@ function kdCloseDivAccEdit() {
 }
 
 function kdSaveDivAccEdit() {
-  const rec = kdDividendRecords.find(r => r.id === _kdDivAccEditRecId);
+  const rec = ST.dividends.find(r => r.id === _kdDivAccEditRecId);
   if (!rec) return;
   const accId = _kdDivAccEditAccId;
   if (!rec.stocksShares) rec.stocksShares = {};
@@ -2528,7 +2498,7 @@ function kdSaveDivAccEdit() {
     total += ps * qty;
   }
   rec.accounts[accId] = Math.round(total);
-  kdSaveDividends();
+  saveDividends();
   kdRenderDividendLists();
   kdCloseDivAccEdit();
 }
@@ -2550,7 +2520,7 @@ function kdRenderAccountSettingsBody() {
 
   let html = '';
 
-  html += `<div class="nk-acc-settings-list">` + KD_ACCOUNTS.map(a => {
+  html += `<div class="nk-acc-settings-list">` + ST.accounts.map(a => {
     const isActive = a.active !== false;
     return `<div class="nk-acc-settings-row">
         <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="kdToggleAccountActive('${a.id}')">${kdEscape(a.name)}</button>
@@ -2577,7 +2547,7 @@ function kdAddAccount() {
   const name = (inp?.value || '').trim();
   if (!name) { alert('계좌 이름을 입력하세요'); return; }
   const id = 'acc_' + Date.now();
-  KD_ACCOUNTS.push({ id, name, active: true });
+  ST.accounts.push({ id, name, active: true });
   kdSaveAccounts();
   kdRenderAccountSettingsBody();
   kdRenderAccountButtons();
@@ -2586,7 +2556,7 @@ function kdAddAccount() {
 }
 
 function kdToggleAccountActive(id) {
-  const acc = KD_ACCOUNTS.find(a => a.id === id);
+  const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   acc.active = (acc.active === false) ? true : false;
   kdSaveAccounts();
@@ -2597,7 +2567,7 @@ function kdToggleAccountActive(id) {
 }
 
 function kdRenameAccount(id) {
-  const acc = KD_ACCOUNTS.find(a => a.id === id);
+  const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   const newName = prompt('새 계좌 이름을 입력하세요', acc.name);
   if (!newName || !newName.trim()) return;
@@ -2609,7 +2579,7 @@ function kdRenameAccount(id) {
     const sel = document.getElementById(selId);
     if (sel) {
       const cur = sel.value;
-      sel.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+      sel.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
       sel.value = cur;
     }
   });
@@ -2619,17 +2589,17 @@ function kdRenameAccount(id) {
 }
 
 function kdDeleteAccount(id) {
-  const acc = KD_ACCOUNTS.find(a => a.id === id);
+  const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   // 보유 데이터 확인
-  const hasHoldings = kdHoldings.some(h => h.accounts && (h.accounts[id]?.qty || 0) > 0);
-  const hasCash = (Number(kdCashAccounts[id]) || 0) > 0;
+  const hasHoldings = ST.holdings.some(h => h.accounts && (h.accounts[id]?.qty || 0) > 0);
+  const hasCash = (Number(ST.cash[id]) || 0) > 0;
   if (hasHoldings || hasCash) {
     alert(`'${acc.name}' 계좌에 보유 주식 또는 현금이 있어 삭제할 수 없습니다.\n먼저 해당 계좌의 보유 수량과 현금을 0으로 변경하세요.`);
     return;
   }
   if (!confirm(`'${acc.name}' 계좌를 삭제하시겠습니까?`)) return;
-  KD_ACCOUNTS = KD_ACCOUNTS.filter(a => a.id !== id);
+  ST.accounts = ST.accounts.filter(a => a.id !== id);
   kdSaveAccounts();
   kdRenderAccountSettingsBody();
   kdRenderAccountButtons();
@@ -2700,8 +2670,6 @@ document.addEventListener('keydown', e => {
 })();
 
 // ===== 관심종목 =====
-function kdLoadWatchlist() { try { return JSON.parse(localStorage.getItem(KD_WATCH_KEY)) || []; } catch(_) { return []; } }
-function kdSaveWatchlist() { localStorage.setItem(KD_WATCH_KEY, JSON.stringify(kdWatchlist)); }
 
 const kdWatchPrices = {};
 let _kdWatchPending = null;
@@ -2762,17 +2730,17 @@ function kdSaveWatch() {
     _kdWatchPending = { ticker: val, name: val };
   }
   const { ticker, name } = _kdWatchPending;
-  if (kdWatchlist.find(w => w.ticker === ticker)) { alert('이미 추가된 종목입니다.'); return; }
-  kdWatchlist.push({ ticker, name });
-  kdSaveWatchlist();
+  if (ST.watchlist.find(w => w.ticker === ticker)) { alert('이미 추가된 종목입니다.'); return; }
+  ST.watchlist.push({ ticker, name });
+  saveWatchlist();
   kdCloseWatchModal();
   kdRenderWatchlist();
   fetchKdPrice(ticker).then(info => {
     if (info) {
       kdWatchPrices[ticker] = info;
       if (info.name && info.name !== ticker) {
-        const w = kdWatchlist.find(x => x.ticker === ticker);
-        if (w) { w.name = info.name; kdSaveWatchlist(); }
+        const w = ST.watchlist.find(x => x.ticker === ticker);
+        if (w) { w.name = info.name; saveWatchlist(); }
       }
       kdRenderWatchlist();
     }
@@ -2780,19 +2748,19 @@ function kdSaveWatch() {
 }
 
 function kdDeleteWatch(ticker) {
-  kdWatchlist = kdWatchlist.filter(w => w.ticker !== ticker);
-  kdSaveWatchlist();
+  ST.watchlist = ST.watchlist.filter(w => w.ticker !== ticker);
+  saveWatchlist();
   kdRenderWatchlist();
 }
 
 function kdRenderWatchlist() {
   const c = document.getElementById('WatchContainer');
   if (!c) return;
-  if (!kdWatchlist.length) {
+  if (!ST.watchlist.length) {
     c.innerHTML = '<div class="mw-empty">관심종목이 없습니다.</div>';
     return;
   }
-  const rows = kdWatchlist.map(w => {
+  const rows = ST.watchlist.map(w => {
     const info = kdWatchPrices[w.ticker];
     const cur    = info ? fmtWon(info.price) : '-';
     const chg    = info ? (info.change || 0) : null;
@@ -2817,7 +2785,7 @@ function kdRenderWatchlist() {
 
 // ===== KDeal 거래 추가/내역 =====
 const KDT_TRADES_KEY = 'kd_trades_v1';
-let kdtTrades = kdtLoadTrades();
+ST.trades = kdtLoadTrades();
 let kdtEditingTradeId = null;
 let kdtCurrentTab = 'all';
 let kdtHistoryOpen = false;
@@ -2825,11 +2793,11 @@ let kdtHistoryOpen = false;
 function kdtLoadTrades() {
   try { return JSON.parse(localStorage.getItem(KDT_TRADES_KEY)) || []; } catch(_) { return []; }
 }
-function kdtSaveTrades() { localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(kdtTrades)); }
+function kdtSaveTrades() { localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(ST.trades)); }
 
 // FIFO 분석
 function kdtFifoAnalysis() {
-  const sorted = [...kdtTrades].sort((a, b) =>
+  const sorted = [...ST.trades].sort((a, b) =>
     a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
   const openLots = {};
   const closedMap = {};
@@ -2885,7 +2853,7 @@ function kdtFifoAnalysis() {
 
 // 날짜 기준 보유 종목
 function kdtGetHeldStocksAsOf(date) {
-  const sorted = [...kdtTrades]
+  const sorted = [...ST.trades]
     .filter(t => t.date <= date)
     .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
   const openLots = {};
@@ -2921,7 +2889,7 @@ function kdtUpdateSellStockOptions() {
   const prevTicker = sel.value;
 
   const accId = document.getElementById('tTradeAcc')?.value;
-  const held = (kdHoldings || [])
+  const held = (ST.holdings || [])
     .map(h => {
       const qty = accId
         ? (Number(h.accounts?.[accId]?.qty) || 0)
@@ -2977,10 +2945,10 @@ function kdtOnSellAccChange(accId) {
   if (!hintEl) return;
   if (type !== 'sell') { hintEl.textContent = ''; return; }
   const ticker = document.getElementById('tTradeTicker').value;
-  const holding = (kdHoldings || []).find(h => h.ticker === ticker);
+  const holding = (ST.holdings || []).find(h => h.ticker === ticker);
   if (!holding || !accId) { hintEl.textContent = ''; return; }
   const qty = holding.accounts?.[accId]?.qty || 0;
-  const accName = KD_ACCOUNTS.find(a => a.id === accId)?.name || accId;
+  const accName = ST.accounts.find(a => a.id === accId)?.name || accId;
   hintEl.textContent = qty > 0
     ? `${accName} 계좌: 최대 ${Number(qty).toLocaleString('en-US',{maximumFractionDigits:4})}주 보유 중`
     : '';
@@ -3013,7 +2981,7 @@ function kdtRenderTradeHistory() {
   const container = document.getElementById('tTradeHistoryContainer');
   if (!container) return;
 
-  let trades = [...kdtTrades].sort((a, b) => b.date.localeCompare(a.date));
+  let trades = [...ST.trades].sort((a, b) => b.date.localeCompare(a.date));
   if (kdtCurrentTab === 'open') {
     trades = trades.filter(t => t.type === 'buy' && openTickers.has(t.ticker));
   } else if (kdtCurrentTab === 'closed') {
@@ -3042,7 +3010,7 @@ function kdtRenderTradeHistory() {
     } else {
       pnlCols = '<td colspan="4" class="ta-c" style="color:var(--muted);font-size:11px">-</td>';
     }
-    const accName = t.accId ? (KD_ACCOUNTS.find(a => a.id === t.accId)?.name || t.accId) : '-';
+    const accName = t.accId ? (ST.accounts.find(a => a.id === t.accId)?.name || t.accId) : '-';
     return `<tr class="${isSell?'mt-row-sell':'mt-row-buy'}">
       <td style="white-space:nowrap">${t.date}</td>
       <td><span class="mt-type-badge ${isSell?'sell':'buy'}">${isSell?'매도':'매수'}</span></td>
@@ -3091,11 +3059,11 @@ function kdtOpenTradeModal(editId = null) {
   // 계좌 셀렉터 기본 초기화 (활성 계좌만)
   const accSel = document.getElementById('tTradeAcc');
   if (accSel) {
-    accSel.innerHTML = KD_ACCOUNTS.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+    accSel.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
   }
 
   if (editId) {
-    const t = kdtTrades.find(x => x.id === editId);
+    const t = ST.trades.find(x => x.id === editId);
     if (!t) return;
     if (titleEl) titleEl.textContent = '거래 수정';
     document.getElementById('tTradeDate').value  = t.date;
@@ -3146,7 +3114,7 @@ function kdtOpenTradeModalForTicker(ticker, name) {
   document.getElementById('tFullFormActions').style.display = 'none';
   document.getElementById('tQuickForm').style.display = 'none';
 
-  const activeAccs = KD_ACCOUNTS.filter(a => a.active !== false);
+  const activeAccs = ST.accounts.filter(a => a.active !== false);
   if (activeAccs.length === 1) {
     document.getElementById('tQuickAccList').style.display = 'none';
     kqtOpenForm(activeAccs[0].id);
@@ -3160,9 +3128,9 @@ function kdtOpenTradeModalForTicker(ticker, name) {
 function kqtRenderAccList() {
   const wrap = document.getElementById('tQuickAccList');
   if (!wrap) return;
-  const h = kdHoldings.find(x => x.ticker === _kqtTicker);
+  const h = ST.holdings.find(x => x.ticker === _kqtTicker);
   const price = h ? (Number(h.price) || 0) : 0;
-  const accs = KD_ACCOUNTS.filter(a => a.active !== false);
+  const accs = ST.accounts.filter(a => a.active !== false);
 
   wrap.innerHTML = accs.map(acc => {
     const accData = h?.accounts?.[acc.id];
@@ -3195,8 +3163,8 @@ function kqtRenderAccList() {
 
 function kqtOpenForm(accId) {
   _kqtAccId = accId;
-  const acc = KD_ACCOUNTS.find(a => a.id === accId);
-  const h = kdHoldings.find(x => x.ticker === _kqtTicker);
+  const acc = ST.accounts.find(a => a.id === accId);
+  const h = ST.holdings.find(x => x.ticker === _kqtTicker);
   const price = h ? (Number(h.price) || 0) : 0;
   const accData = h?.accounts?.[accId];
   const qty = accData ? (Number(accData.qty) || 0) : 0;
@@ -3204,11 +3172,11 @@ function kqtOpenForm(accId) {
   const val = qty * price;
   const profitAmt = qty * (price - avg);
   const profit = avg > 0 ? (price - avg) / avg * 100 : 0;
-  const cash = Number(kdCashAccounts[accId]) || 0;
+  const cash = Number(ST.cash[accId]) || 0;
 
   document.getElementById('tAccName').textContent = acc?.name || accId;
   document.getElementById('tBackBtn').style.display =
-    KD_ACCOUNTS.filter(a => a.active !== false).length === 1 ? 'none' : '';
+    ST.accounts.filter(a => a.active !== false).length === 1 ? 'none' : '';
 
   const holdingStr = qty > 0
     ? `보유 ${fmtWon(qty)}주 · 평균 ${fmtWon(avg)}원 · 평가 ${fmtKRW(val)} (${profitAmt >= 0 ? '+' : ''}${fmtKRW(profitAmt)}, ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}%)`
@@ -3249,9 +3217,9 @@ function kqtUpdatePreview() {
   const price = parseFloat(document.getElementById('tPrice').value.replace(/,/g,'')) || 0;
   const fee   = parseFloat(document.getElementById('tFee').value.replace(/,/g,'')) || 0;
   const total = qty * price;
-  const cash  = Number(kdCashAccounts[_kqtAccId]) || 0;
+  const cash  = Number(ST.cash[_kqtAccId]) || 0;
   const cashAfter = type === 'buy' ? cash - total - fee : cash + total - fee;
-  const h = kdHoldings.find(x => x.ticker === _kqtTicker);
+  const h = ST.holdings.find(x => x.ticker === _kqtTicker);
   const curQty = h?.accounts?.[_kqtAccId] ? (Number(h.accounts[_kqtAccId].qty) || 0) : 0;
   const qtyAfter = type === 'buy' ? curQty + qty : curQty - qty;
 
@@ -3282,7 +3250,7 @@ function kqtSave() {
   const delta = type === 'buy' ? -(price * qty + fee) : +(price * qty - fee);
   kdAdjustCash(_kqtAccId, delta);
   kdtApplyHoldingsQty(type, _kqtTicker, _kqtName, _kqtAccId, price, qty, false);
-  kdtTrades.push(entry);
+  ST.trades.push(entry);
   kdtSaveTrades();
   kdtCloseTradeModal();
   if (kdtHistoryOpen) kdtRenderTradeHistory();
@@ -3290,7 +3258,7 @@ function kqtSave() {
 }
 
 function kqtCloseForm() {
-  const multiAcc = KD_ACCOUNTS.filter(a => a.active !== false).length > 1;
+  const multiAcc = ST.accounts.filter(a => a.active !== false).length > 1;
   if (multiAcc) {
     document.getElementById('tQuickForm').style.display = 'none';
     document.getElementById('tQuickAccList').style.display = '';
@@ -3328,7 +3296,7 @@ function kdtUpdateTradePreview() {
 function kdtApplyHoldingsQty(type, ticker, tradeName, accId, price, qty, reverse) {
   // reverse=true: 기존 거래 수량 효과 역산 (편집·삭제 시)
   const isBuy = reverse ? type === 'sell' : type === 'buy';
-  const h = kdHoldings.find(x => x.ticker === ticker);
+  const h = ST.holdings.find(x => x.ticker === ticker);
 
   if (isBuy) {
     if (h) {
@@ -3338,7 +3306,7 @@ function kdtApplyHoldingsQty(type, ticker, tradeName, accId, price, qty, reverse
       const newQty = curQty + qty;
       h.accounts[accId] = { qty: newQty, avgPrice: newQty > 0 ? (curQty * curAvg + qty * price) / newQty : price };
     } else if (!reverse) {
-      kdHoldings.push({ ticker, name: tradeName || ticker, accounts: { [accId]: { qty, avgPrice: price } }, price: 0, change: 0, changeRate: 0 });
+      ST.holdings.push({ ticker, name: tradeName || ticker, accounts: { [accId]: { qty, avgPrice: price } }, price: 0, change: 0, changeRate: 0 });
     }
   } else {
     if (h && h.accounts) {
@@ -3355,7 +3323,7 @@ function kdtApplyHoldingsQty(type, ticker, tradeName, accId, price, qty, reverse
       };
     }
   }
-  kdSaveHoldings();
+  saveHoldings();
 }
 
 function kdtSaveTrade() {
@@ -3377,17 +3345,17 @@ function kdtSaveTrade() {
   if (!accId) { alert('계좌를 선택해주세요.'); return; }
   const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
   if (kdtEditingTradeId) {
-    const idx = kdtTrades.findIndex(x => x.id === kdtEditingTradeId);
+    const idx = ST.trades.findIndex(x => x.id === kdtEditingTradeId);
     if (idx >= 0) {
-      const old = kdtTrades[idx];
+      const old = ST.trades[idx];
       // 기존 거래 현금·수량 효과 역산
       const oldCash = old.type === 'buy' ? +(old.price * old.qty + (old.fee||0)) : -(old.price * old.qty - (old.fee||0));
       kdAdjustCash(old.accId, oldCash);
       kdtApplyHoldingsQty(old.type, old.ticker, old.name, old.accId, old.price, old.qty, true);
-      kdtTrades[idx] = { ...old, ...entry };
+      ST.trades[idx] = { ...old, ...entry };
     }
   } else {
-    kdtTrades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
+    ST.trades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
   }
   // 새 거래 현금·수량 효과 적용
   const delta = type === 'buy' ? -(price * qty + fee) : +(price * qty - fee);
@@ -3400,14 +3368,14 @@ function kdtSaveTrade() {
 }
 
 function kdtDeleteTrade(id) {
-  const t = kdtTrades.find(x => x.id === id);
+  const t = ST.trades.find(x => x.id === id);
   if (!t) return;
   const qtyStr = parseFloat(t.qty).toLocaleString('en-US', { maximumFractionDigits:4 });
   if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
   const reverseDelta = t.type === 'buy' ? +(t.price * t.qty + (t.fee||0)) : -(t.price * t.qty - (t.fee||0));
   kdAdjustCash(t.accId, reverseDelta);
   kdtApplyHoldingsQty(t.type, t.ticker, t.name, t.accId, t.price, t.qty, true);
-  kdtTrades = kdtTrades.filter(x => x.id !== id);
+  ST.trades = ST.trades.filter(x => x.id !== id);
   kdtSaveTrades();
   kdtRenderTradeHistory();
   kdRender();
@@ -3492,7 +3460,7 @@ function kdRunMigration() {
   if (localStorage.getItem(MIGRATION_DONE)) return;
   if (!localStorage.getItem(OLD_TRADES) && !localStorage.getItem(OLD_DEPOSITS) && !localStorage.getItem(OLD_WATCHLIST)) return;
   const _existT = JSON.parse(localStorage.getItem(KDT_TRADES_KEY) || 'null');
-  const _existH = JSON.parse(localStorage.getItem(KD_HOLD_KEY) || 'null');
+  const _existH = JSON.parse(localStorage.getItem(MARKET_CONFIG.storageKeys.holdings) || 'null');
   if ((Array.isArray(_existT) && _existT.length > 0) || (Array.isArray(_existH) && _existH.length > 0)) {
     // 신규 키에 실제 데이터 존재 = 이미 마이그레이션 완료. 구 키만 남은 경우 정리 + 완료 플래그
     localStorage.removeItem(OLD_TRADES);
@@ -3506,7 +3474,7 @@ function kdRunMigration() {
   const DEF_ACC = 'acc1';
 
   if (!localStorage.getItem(KD_ACC_KEY)) {
-    KD_ACCOUNTS = [{ id: DEF_ACC, name: '기본계좌', active: true }];
+    ST.accounts = [{ id: DEF_ACC, name: '기본계좌', active: true }];
     kdSaveAccounts();
   }
 
@@ -3515,7 +3483,7 @@ function kdRunMigration() {
     const raw = JSON.parse(localStorage.getItem(OLD_TRADES));
     if (Array.isArray(raw)) {
       trades = raw.map(({ code, ticker, ...rest }) => ({ ticker: code || ticker || '', accId: DEF_ACC, ...rest }));
-      kdtTrades = trades;
+      ST.trades = trades;
       kdtSaveTrades();
     }
   } catch(e) { console.warn('[KDeal] 거래 마이그레이션 오류:', e); }
@@ -3523,28 +3491,28 @@ function kdRunMigration() {
   try {
     const raw = JSON.parse(localStorage.getItem(OLD_DEPOSITS));
     if (Array.isArray(raw) && raw.length > 0) {
-      kdDepositData = { transactions: raw.map(d => ({ ...d, accId: DEF_ACC })) };
-      kdSaveDeposits();
+      ST.deposits = { transactions: raw.map(d => ({ ...d, accId: DEF_ACC })) };
+      saveDeposits();
     }
   } catch(e) { console.warn('[KDeal] 입출금 마이그레이션 오류:', e); }
 
   try {
     const raw = JSON.parse(localStorage.getItem(OLD_WATCHLIST));
     if (Array.isArray(raw) && raw.length > 0) {
-      kdWatchlist = raw.map(({ code, ticker, ...rest }) => ({ ticker: code || ticker || '', ...rest }));
-      kdSaveWatchlist();
+      ST.watchlist = raw.map(({ code, ticker, ...rest }) => ({ ticker: code || ticker || '', ...rest }));
+      saveWatchlist();
     }
   } catch(e) { console.warn('[KDeal] 관심종목 마이그레이션 오류:', e); }
 
   if (trades.length > 0) {
-    kdHoldings = kdFifoToHoldings(trades);
-    kdSaveHoldings();
+    ST.holdings = kdFifoToHoldings(trades);
+    saveHoldings();
   }
 
   // 입출금 + 거래 내역으로 현금 재계산
   let migratedCash = 0;
-  if (Array.isArray(kdDepositData.transactions)) {
-    kdDepositData.transactions.forEach(d => {
+  if (Array.isArray(ST.deposits.transactions)) {
+    ST.deposits.transactions.forEach(d => {
       migratedCash += d.type === 'deposit' ? d.amount : -d.amount;
     });
   }
@@ -3552,8 +3520,8 @@ function kdRunMigration() {
     if (t.type === 'buy')  migratedCash -= (t.price * t.qty + (t.fee||0));
     if (t.type === 'sell') migratedCash += (t.price * t.qty - (t.fee||0));
   });
-  kdCashAccounts[DEF_ACC] = migratedCash;
-  kdSaveCashData();
+  ST.cash[DEF_ACC] = migratedCash;
+  saveCashData();
 
   // 이전 키 삭제 + 완료 플래그 — 다음 로드 시 재실행 방지
   localStorage.removeItem(OLD_TRADES);
@@ -3561,7 +3529,7 @@ function kdRunMigration() {
   localStorage.removeItem(OLD_WATCHLIST);
   localStorage.setItem(MIGRATION_DONE, '1');
 
-  const msg = `거래 ${trades.length}건 → 보유종목 ${kdHoldings.length}개`;
+  const msg = `거래 ${trades.length}건 → 보유종목 ${ST.holdings.length}개`;
   console.log('[KDeal] 마이그레이션 완료: ' + msg);
   if (trades.length > 0) {
     alert('이전 KDeal 데이터를 자동으로 가져왔습니다.\n' + msg + '\n\n기본계좌로 통합되었습니다. 계좌 설정에서 수정하세요.');
@@ -3569,20 +3537,20 @@ function kdRunMigration() {
 }
 
 function kdInitCashIfEmpty() {
-  if (localStorage.getItem(KD_CASH_KEY)) return;
-  if (!kdtTrades.length && !kdDepositData.transactions.length) return;
+  if (localStorage.getItem(MARKET_CONFIG.storageKeys.cash)) return;
+  if (!ST.trades.length && !ST.deposits.transactions.length) return;
   const cashMap = {};
-  kdDepositData.transactions.forEach(d => {
+  ST.deposits.transactions.forEach(d => {
     const id = d.accId || 'acc1';
     cashMap[id] = (cashMap[id] || 0) + (d.type === 'deposit' ? d.amount : -d.amount);
   });
-  kdtTrades.forEach(t => {
+  ST.trades.forEach(t => {
     const id = t.accId || 'acc1';
     if (t.type === 'buy')  cashMap[id] = (cashMap[id] || 0) - (t.price * t.qty + (t.fee||0));
     if (t.type === 'sell') cashMap[id] = (cashMap[id] || 0) + (t.price * t.qty - (t.fee||0));
   });
-  Object.assign(kdCashAccounts, cashMap);
-  kdSaveCashData();
+  Object.assign(ST.cash, cashMap);
+  saveCashData();
   console.log('[KDeal] 현금 초기계산 완료:', cashMap);
 }
 
@@ -3594,7 +3562,7 @@ kdRenderChart();
 kdRenderAccountButtons();
 kdRenderWatchlist();
 kdInitAutoRefresh();
-if (kdHoldings.length || kdWatchlist.length) setTimeout(() => kdRefreshAll(), 800);
+if (ST.holdings.length || ST.watchlist.length) setTimeout(() => kdRefreshAll(), 800);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
@@ -3602,7 +3570,7 @@ if ('serviceWorker' in navigator) {
 
 window.addEventListener('message', e => {
   if (e.data?.type === 'REFRESH_REQUEST') {
-    if (kdHoldings.length || kdWatchlist.length) kdRefreshAll(true);
+    if (ST.holdings.length || ST.watchlist.length) kdRefreshAll(true);
   }
 });
 
