@@ -2768,7 +2768,7 @@ registerMobileTooltipDismiss();
       </label>
       <label>
         <span>입출금일</span>
-        <input type="date" id="txnDate">
+        <input type="date" id="txnDate" data-iux-date>
       </label>
       <label>
         <span>금액 (원)</span>
@@ -3877,6 +3877,11 @@ registerMobileTooltipDismiss();
 <script src="stock-db.js"></script>
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
+<script src="js/input-ux.js"></script>
+<script>
+// Stage 1 시범: 온보딩 화면의 숫자/금액 입력만 탭 시 자동선택 적용
+InputUX.setAutoSelectSelector('#onboardingModal input[type=number], #onboardingModal input[inputmode=numeric]');
+</script>
 <script>
 // GIS redirect 모드 복귀 시 token 추출 — DOMContentLoaded 전에 실행
 (function() {
@@ -3899,7 +3904,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.631';
+const APP_VERSION = 'MyGP v0.633';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -12003,8 +12008,8 @@ function renderOnboardingStep() {
       <div class="ob-sub">연금 관리를 시작하기 위해 기본 정보를 입력해 주세요.</div>
       <div class="ob-field-row">
         <label>생년월</label>
-        <input type="number" id="ob_myBY" value="${_obData.myBirthYear || 2000}" placeholder="2000" min="1940" max="2010" style="width:90px">년
-        <input type="number" id="ob_myBM" value="${_obData.myBirthMonth || 1}" placeholder="1" min="1" max="12" style="width:55px">월
+        <input type="number" id="ob_myBY" data-iux-ym-month="ob_myBM" value="${_obData.myBirthYear || 2000}" placeholder="2000" min="1940" max="2010" style="width:90px">년
+        <input type="number" id="ob_myBM" data-iux-ym-year="ob_myBY" value="${_obData.myBirthMonth || 1}" placeholder="1" min="1" max="12" style="width:55px">월
       </div>
       <div class="ob-field-row" style="margin-bottom:16px">
         <label>배우자</label>
@@ -12018,8 +12023,8 @@ function renderOnboardingStep() {
         </div>
         <div class="ob-field-row">
           <label>배우자 생년월</label>
-          <input type="number" id="ob_wifeBY" value="${_obData.wifeBirthYear || ''}" placeholder="1982" min="1940" max="2010" style="width:90px">년
-          <input type="number" id="ob_wifeBM" value="${_obData.wifeBirthMonth || 1}" placeholder="1" min="1" max="12" style="width:55px">월
+          <input type="number" id="ob_wifeBY" data-iux-ym-month="ob_wifeBM" value="${_obData.wifeBirthYear || ''}" placeholder="1982" min="1940" max="2010" style="width:90px">년
+          <input type="number" id="ob_wifeBM" data-iux-ym-year="ob_wifeBY" value="${_obData.wifeBirthMonth || 1}" placeholder="1" min="1" max="12" style="width:55px">월
         </div>
       </div>`;
 
