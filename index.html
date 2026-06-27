@@ -1827,7 +1827,7 @@ registerMobileTooltipDismiss();
 
       <!-- 메뉴 리스트 (구글동기화 카드 위) -->
       <div class="cfg-menu">
-        <button class="cfg-menu-item" onclick="saveSettingsModal();openSetupScreen(true)">
+        <button class="cfg-menu-item" onclick="_persistSettingsFromForm();closeSettingsModal();openSetupScreen(true)">
           <span class="cfg-menu-ic">📊</span>
           <span class="cfg-menu-label">연금 키우기 시작하기<small id="setupScenarioCount">시나리오를 저장하고 다양한 계획을 비교해보세요</small></span>
           <span class="cfg-menu-arrow">›</span>
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.648';
+const APP_VERSION = 'MyGP v0.649';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).

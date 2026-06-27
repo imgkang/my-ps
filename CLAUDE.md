@@ -14,7 +14,7 @@
 - 작업 완료 후 커밋된 버전 번호를 사용자에게 알릴 것
 
 ## 현재 버전
-`v0.648` (MyPM / NonK / KDeal 공통)
+`v0.649` (MyPM / NonK / KDeal 공통)
 
 ## 배포 구조 (중요)
 `mypm.growpension.com`은 **GitHub Pages가 아닌 집 Windows PC**에서 서빙된다.
