@@ -213,6 +213,7 @@
     col.addEventListener('scroll', () => {
       clearTimeout(t);
       t = setTimeout(() => {
+        if (!_st) return;   // 피커가 닫힌 뒤(예: commit) 늦게 도착한 스냅 타이머 무시 — _st null 가드
         let idx = Math.round(col.scrollTop / ITEM_H);
         idx = Math.max(0, Math.min(values.length - 1, idx));
         if (col.scrollTop !== idx * ITEM_H) col.scrollTop = idx * ITEM_H;
@@ -221,6 +222,7 @@
     });
     col.addEventListener('click', (e) => {
       const d = e.target.closest('div[data-i]'); if (!d) return;
+      if (!_st) return;
       const idx = +d.dataset.i; col.scrollTop = idx * ITEM_H; mark(idx); onChange(idx);
     });
     col._mark = mark;
