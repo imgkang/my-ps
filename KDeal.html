@@ -780,25 +780,6 @@ function formatMilSigned(n) { if (n == null || isNaN(n)) return '-'; return (n >
 
 // 하위 호환
 
-function switchPage(page) {
-  const mypm = document.getElementById('pageMyPM');
-  const nonk = document.getElementById('pageNonK');
-  const tabM = document.getElementById('tabMyPM');
-  const tabN = document.getElementById('tabNonK');
-  if (page === 'nonk') {
-    mypm.style.display = 'none';
-    nonk.style.display = '';
-    tabM.classList.remove('active');
-    tabN.classList.add('active');
-    Render();
-    RenderChart();
-  } else {
-    nonk.style.display = 'none';
-    mypm.style.display = '';
-    tabN.classList.remove('active');
-    tabM.classList.add('active');
-  }
-}
 
 // 부모(MyPM)가 캐시한 서버 스냅샷의 시세맵(data.prices, 코드→{price,change})을 보유종목에 적용.
 // KDeal 은 종목코드를 h.ticker 에 저장하므로 그 값을 키로 사용. 반환: 적용된 ticker Set.
@@ -858,15 +839,6 @@ async function RefreshAll(suppressDone = false, preferSnapshot = true) {
 // ===== 자동 새로고침 (MyPM 공유 설정 사용) =====
 ST.autoRefreshTimer = null;
 
-function InitAutoRefresh() {
-  if (ST.autoRefreshTimer) { clearInterval(ST.autoRefreshTimer); ST.autoRefreshTimer = null; }
-  const minutes = parseInt(localStorage.getItem('autoRefreshMinutes'), 10) || 0;
-  if (minutes > 0) {
-    ST.autoRefreshTimer = setInterval(() => {
-      if (ST.holdings.length) RefreshAll();
-    }, minutes * 60 * 1000);
-  }
-}
 
 
 
@@ -1082,13 +1054,6 @@ function RenderAccountButtons() {
 }
 
 
-function DeleteHolding(ticker) {
-  if (!confirm(`${ticker} 종목을 삭제하시겠습니까?`)) return;
-  ST.holdings = ST.holdings.filter(h => h.ticker !== ticker);
-  saveHoldings();
-  Render();
-  RenderChart();
-}
 
 function RenderChart() {
   const canvas = document.getElementById('PortfolioChart');
@@ -1299,25 +1264,7 @@ function UpdateAccTotals() {
   if (cEl) cEl.textContent = fmtKRW(totalCost);
 }
 
-function CloseAccountModal() {
-  document.getElementById('AccountModal').classList.remove('open');
-  ST.editingTicker = null;
-}
 
-function SaveAccountQuantities() {
-  const h = ST.holdings.find(x => x.ticker === ST.editingTicker);
-  if (!h) return;
-  if (!h.accounts) h.accounts = {};
-  for (const a of ST.accounts.filter(x => x.active !== false)) {
-    h.accounts[a.id] = {
-      qty:      Number(document.getElementById(`AccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0,
-      avgPrice: Number(document.getElementById(`AccAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0
-    };
-  }
-  saveHoldings();
-  CloseAccountModal();
-  Render();
-}
 
 // --- Account detail modal ---
 function OpenAccountDetail(accId) {
@@ -1467,10 +1414,6 @@ function OpenAccountDetail(accId) {
   document.getElementById('AccountDetailModal').classList.add('open');
 }
 
-function CloseAccountDetail() {
-  document.getElementById('AccountDetailModal').classList.remove('open');
-  if (ST.detailChartInstance) { ST.detailChartInstance.destroy(); ST.detailChartInstance = null; }
-}
 
 // --- Cash modal ---
 function OpenCashModal() {
@@ -1486,20 +1429,8 @@ function OpenCashModal() {
 
 
 
-function SaveCash() {
-  for (const a of ST.accounts.filter(x => x.active !== false)) {
-    ST.cash[a.id] = Number(document.getElementById(`CashInput_${a.id}`)?.value.replace(/,/g,'')) || 0;
-  }
-  saveCashData();
-  closeCashModal();
-  Render();
-}
 
 // --- Deposit modal ---
-function OpenDepositModal() {
-  RenderDepositList();
-  document.getElementById('DepositModal').classList.add('open');
-}
 
 
 function RenderDepositList() {
@@ -1566,12 +1497,6 @@ function RenderDepositList() {
   }).join('');
 }
 
-function ToggleDepositYear(year) {
-  if (!ST.depositCollapsedYears) ST.depositCollapsedYears = new Set();
-  if (ST.depositCollapsedYears.has(year)) ST.depositCollapsedYears.delete(year);
-  else ST.depositCollapsedYears.add(year);
-  RenderDepositList();
-}
 
 function DeleteTxn(id) {
   const t = ST.deposits.transactions.find(x => x.id === id);
@@ -1611,10 +1536,6 @@ function OpenTxnEditor(editId) {
   document.getElementById('TxnEditorModal').classList.add('open');
 }
 
-function CloseTxnEditor() {
-  ST.editingTxnId = null;
-  document.getElementById('TxnEditorModal').classList.remove('open');
-}
 
 function SaveTxn() {
   const accId  = document.getElementById('TxnAccount').value;
@@ -1734,28 +1655,6 @@ async function LoadHistoricalValues() {
   }
 }
 
-function AddMonthlyRecord() {
-  const dateVal = document.getElementById('RecDate').value;
-  if (!dateVal) { alert('기록일을 선택하세요'); return; }
-  const [year, month, day] = dateVal.split('-').map(Number);
-  if (!year || !month || !day) { alert('날짜를 올바르게 입력하세요'); return; }
-  const accounts = {};
-  ST.accounts.forEach(a => { accounts[a.id] = Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0; });
-  if (ST.editingRecordId) {
-    const rec = ST.monthly.find(r => r.id === ST.editingRecordId);
-    if (rec) { rec.year = year; rec.month = month; rec.day = day; rec.accounts = accounts; }
-    CancelRecordEdit();
-  } else {
-    if (ST.monthly.some(r => r.year === year && r.month === month && (r.day || 1) === day)) {
-      if (!confirm(`${year}년 ${month}월 ${day}일 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
-      ST.monthly = ST.monthly.filter(r => !(r.year === year && r.month === month && (r.day || 1) === day));
-    }
-    ST.monthly.push({ id: String(Date.now()), year, month, day, accounts });
-  }
-  saveMonthly();
-  RenderRecordsList();
-  RenderChart();
-}
 
 function EditMonthlyRecord(id) {
   const rec = ST.monthly.find(r => r.id === id);
@@ -1776,22 +1675,7 @@ function EditMonthlyRecord(id) {
   document.getElementById('RecDate').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function CancelRecordEdit() {
-  ST.editingRecordId = null;
-  const addBtn    = document.getElementById('RecAddBtn');
-  const cancelBtn = document.getElementById('RecCancelBtn');
-  if (addBtn)    addBtn.textContent = '➕ 추가';
-  if (cancelBtn) cancelBtn.style.display = 'none';
-}
 
-function DeleteMonthlyRecord(id) {
-  const rec = ST.monthly.find(r => r.id === id);
-  if (!rec || !confirm(`${rec.year}년 ${rec.month}월 기록을 삭제하시겠습니까?`)) return;
-  ST.monthly = ST.monthly.filter(r => r.id !== id);
-  saveMonthly();
-  RenderRecordsList();
-  RenderChart();
-}
 
 function RenderRecordsList() {
   const header = document.getElementById('RecordsTableHeader');
@@ -1829,22 +1713,6 @@ function RenderRecordsList() {
 }
 
 // --- Dividend modal ---
-function OpenDividendModal() {
-  const d = new Date();
-  document.getElementById('DivYear').value  = d.getFullYear();
-  document.getElementById('DivMonth').value = d.getMonth() + 1;
-  if (window.InputUX) InputUX.scanYMChips();
-  ST.editingDivId = null;
-  const saveBtn = document.getElementById('DivSaveBtn');
-  if (saveBtn) saveBtn.textContent = '➕ 추가';
-  const cancelBtn = document.getElementById('DivCancelBtn');
-  if (cancelBtn) cancelBtn.style.display = 'none';
-  RenderDivStockInputs({}, null);
-  ToggleDivMiscForm(false);
-  CancelDivMiscEdit();
-  RenderDividendLists();
-  document.getElementById('DividendModal').classList.add('open');
-}
 
 
 function RenderDivStockInputs(perShareMap, sharesOverride) {
@@ -1934,11 +1802,6 @@ function RenderDivStockInputs(perShareMap, sharesOverride) {
 }
 
 
-function UpdateAccQty(code, accId, val) {
-  ST.divFormShares[code] = ST.divFormShares[code] || {};
-  ST.divFormShares[code][accId] = Number(val) || 0;
-  UpdateDivRow(code);
-}
 
 function UpdateDivRow(code) {
   const byAcc = ST.divFormShares[code] || {};
@@ -1965,10 +1828,6 @@ function UpdateDivTotal() {
   if (el) el.textContent = fmtKRW(grand);
 }
 
-function ClearDividendInputs() {
-  document.querySelectorAll('#DivStockInputs .div-ps').forEach(inp => { inp.value = ''; });
-  UpdateDivTotal();
-}
 
 function AddDividendRecord() {
   const year  = Number(document.getElementById('DivYear').value);
@@ -2026,87 +1885,13 @@ function AddDividendRecord() {
   RenderDividendLists();
 }
 
-function DeleteDividendRecord(id) {
-  const rec = ST.dividends.find(r => r.id === id);
-  if (!rec) return;
-  const miscLabel = rec.misc ? ` (기타: ${rec.misc.memo || ''})` : '';
-  if (!confirm(`${rec.year}년 ${rec.month}월${miscLabel} 배당 기록을 삭제하시겠습니까?`)) return;
-  ST.dividends = ST.dividends.filter(r => r.id !== id);
-  if (ST.editingDivId === id) {
-    ST.editingDivId = null;
-    const saveBtn = document.getElementById('DivSaveBtn');
-    if (saveBtn) saveBtn.textContent = '➕ 추가';
-    const cancelBtn = document.getElementById('DivCancelBtn');
-    if (cancelBtn) cancelBtn.style.display = 'none';
-    ClearDividendInputs();
-  }
-  if (ST.divMiscEditingId === id) CancelDivMiscEdit();
-  saveDividends();
-  RenderDividendLists();
-}
 
-function EditDividendRecord(id) {
-  const rec = ST.dividends.find(r => r.id === id);
-  if (!rec) return;
-  document.getElementById('DivYear').value = rec.year;
-  document.getElementById('DivMonth').value = rec.month;
-  if (window.InputUX) InputUX.scanYMChips();
-  if (divRecIsMisc(rec)) {
-    ST.editingDivId = null;
-    const stockSaveBtn = document.getElementById('DivSaveBtn');
-    if (stockSaveBtn) stockSaveBtn.textContent = '➕ 추가';
-    const stockCancelBtn = document.getElementById('DivCancelBtn');
-    if (stockCancelBtn) stockCancelBtn.style.display = 'none';
-    ST.divMiscEditingId = id;
-    document.getElementById('DivMiscMemo').value = rec.misc.memo || '';
-    ToggleDivMiscForm(true);
-    RenderDivMiscInputs(rec.misc.accounts || {});
-    const saveBtn = document.getElementById('DivMiscSaveBtn');
-    if (saveBtn) saveBtn.textContent = '수정 저장';
-    const cancelBtn = document.getElementById('DivMiscCancelBtn');
-    if (cancelBtn) cancelBtn.style.display = '';
-    document.getElementById('DivMiscBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    return;
-  }
-  ST.editingDivId = id;
-  const perShareMap = (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) ? rec.stocksPerShare : {};
-  const sharesOverride = (rec.stocksShares && Object.keys(rec.stocksShares).length > 0) ? rec.stocksShares : null;
-  RenderDivStockInputs(perShareMap, sharesOverride);
-  const saveBtn = document.getElementById('DivSaveBtn');
-  if (saveBtn) saveBtn.textContent = '수정 저장';
-  const cancelBtn = document.getElementById('DivCancelBtn');
-  if (cancelBtn) cancelBtn.style.display = '';
-  const card = document.querySelector('#DividendModal .records-input-card');
-  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
 
-function CancelDivEdit() {
-  ST.editingDivId = null;
-  const saveBtn = document.getElementById('DivSaveBtn');
-  if (saveBtn) saveBtn.textContent = '➕ 추가';
-  const cancelBtn = document.getElementById('DivCancelBtn');
-  if (cancelBtn) cancelBtn.style.display = 'none';
-  RenderDivStockInputs({}, null);
-}
 
 // === KDeal 기타항목 (종목 없이 금액만) ===
 ST.divMiscEditingId = null;
 
 
-function ToggleDivMiscForm(forceOpen) {
-  const body = document.getElementById('DivMiscBody');
-  const btn  = document.getElementById('DivMiscToggleBtn');
-  if (!body) return;
-  const shouldOpen = forceOpen !== undefined ? forceOpen : body.style.display === 'none';
-  if (shouldOpen) {
-    body.style.display = '';
-    if (btn) btn.textContent = '접기 ▴';
-    RenderDivMiscInputs();
-  } else {
-    body.style.display = 'none';
-    if (btn) btn.textContent = '펼치기 ▾';
-  }
-}
 
 function RenderDivMiscInputs(values) {
   const wrap = document.getElementById('DivMiscAccInputs');
@@ -2143,14 +1928,6 @@ function ClearDivMiscInputs() {
   UpdateDivMiscTotal();
 }
 
-function CancelDivMiscEdit() {
-  ST.divMiscEditingId = null;
-  const saveBtn = document.getElementById('DivMiscSaveBtn');
-  if (saveBtn) saveBtn.textContent = '기타항목 추가';
-  const cancelBtn = document.getElementById('DivMiscCancelBtn');
-  if (cancelBtn) cancelBtn.style.display = 'none';
-  ClearDivMiscInputs();
-}
 
 function AddMiscDividendRecord() {
   const year  = Number(document.getElementById('DivYear').value);
@@ -2300,10 +2077,6 @@ function UpdateDivStockEditPreview() {
   document.getElementById('DivStockEditTotal').textContent = fmtKRW(total);
 }
 
-function CloseDivStockEdit() {
-  document.getElementById('DivStockEditPanel').style.display = 'none';
-  ST.divStockEditRecId = null; ST.divStockEditTicker = null;
-}
 
 function SaveDivStockEdit() {
   const rec = ST.dividends.find(r => r.id === ST.divStockEditRecId);
@@ -2369,10 +2142,6 @@ function UpdateDivAccEditPreview() {
   document.getElementById('DivAccEditTotal').textContent = fmtKRW(total);
 }
 
-function CloseDivAccEdit() {
-  document.getElementById('DivAccEditPanel').style.display = 'none';
-  ST.divAccEditRecId = null; ST.divAccEditAccId = null;
-}
 
 function SaveDivAccEdit() {
   const rec = ST.dividends.find(r => r.id === ST.divAccEditRecId);
@@ -2401,62 +2170,9 @@ function SaveDivAccEdit() {
 
 
 // ===== 계좌 관리 =====
-function OpenAccountSettings() {
-  RenderAccountSettingsBody();
-  document.getElementById('AccountSettingsModal').classList.add('open');
-}
 
-function RenderAccountSettingsBody() {
-  const body = document.getElementById('AccountSettingsBody');
-  if (!body) return;
 
-  let html = '';
 
-  html += `<div class="nk-acc-settings-list">` + ST.accounts.map(a => {
-    const isActive = a.active !== false;
-    return `<div class="nk-acc-settings-row">
-        <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="ToggleAccountActive('${a.id}')">${escapeHtml(a.name)}</button>
-        <button class="edit-btn" onclick="RenameAccount('${a.id}')">이름변경</button>
-        <button class="del-btn" onclick="DeleteAccount('${a.id}')">삭제</button>
-      </div>`;
-  }).join('') + `</div>`;
-
-  html += `<div class="nk-acc-section-title" style="margin-top:12px">새 계좌 추가</div>`;
-  html += `<div class="nk-acc-add-row">
-    <input type="text" id="NewAccName" placeholder="계좌 이름" maxlength="20" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px">
-    <button class="btn-primary" onclick="AddAccount()">추가</button>
-  </div>`;
-
-  body.innerHTML = html;
-  setTimeout(() => {
-    const inp = document.getElementById('NewAccName');
-    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') AddAccount(); });
-  }, 0);
-}
-
-function AddAccount() {
-  const inp = document.getElementById('NewAccName');
-  const name = (inp?.value || '').trim();
-  if (!name) { alert('계좌 이름을 입력하세요'); return; }
-  const id = 'acc_' + Date.now();
-  ST.accounts.push({ id, name, active: true });
-  SaveAccounts();
-  RenderAccountSettingsBody();
-  RenderAccountButtons();
-  Render();
-  RenderChart();
-}
-
-function ToggleAccountActive(id) {
-  const acc = ST.accounts.find(a => a.id === id);
-  if (!acc) return;
-  acc.active = (acc.active === false) ? true : false;
-  SaveAccounts();
-  RenderAccountSettingsBody();
-  RenderAccountButtons();
-  Render();
-  RenderChart();
-}
 
 function RenameAccount(id) {
   const acc = ST.accounts.find(a => a.id === id);
@@ -2480,24 +2196,6 @@ function RenameAccount(id) {
   RenderChart();
 }
 
-function DeleteAccount(id) {
-  const acc = ST.accounts.find(a => a.id === id);
-  if (!acc) return;
-  // 보유 데이터 확인
-  const hasHoldings = ST.holdings.some(h => h.accounts && (h.accounts[id]?.qty || 0) > 0);
-  const hasCash = (Number(ST.cash[id]) || 0) > 0;
-  if (hasHoldings || hasCash) {
-    alert(`'${acc.name}' 계좌에 보유 주식 또는 현금이 있어 삭제할 수 없습니다.\n먼저 해당 계좌의 보유 수량과 현금을 0으로 변경하세요.`);
-    return;
-  }
-  if (!confirm(`'${acc.name}' 계좌를 삭제하시겠습니까?`)) return;
-  ST.accounts = ST.accounts.filter(a => a.id !== id);
-  SaveAccounts();
-  RenderAccountSettingsBody();
-  RenderAccountButtons();
-  Render();
-  RenderChart();
-}
 
 // ESC key closes any open KDeal modal
 document.addEventListener('keydown', e => {
@@ -2567,49 +2265,7 @@ ST.watchPrices = {};
 ST.watchPending = null;
 ST.watchAcTimer = null;
 
-function OpenWatchModal() {
-  ST.watchPending = null;
-  document.getElementById('WatchSearch').value = '';
-  document.getElementById('WatchPreview').style.display = 'none';
-  const listEl = document.getElementById('WatchAcList');
-  if (listEl) listEl.classList.remove('open');
-  document.getElementById('WatchModal').classList.add('open');
-  setTimeout(() => document.getElementById('WatchSearch').focus(), 50);
-}
-function CloseWatchModal() {
-  document.getElementById('WatchModal').classList.remove('open');
-  ST.watchPending = null;
-}
 
-function OnWatchSearchInput(val) {
-  clearTimeout(ST.watchAcTimer);
-  ST.watchPending = null;
-  document.getElementById('WatchPreview').style.display = 'none';
-  const listEl = document.getElementById('WatchAcList');
-  if (!val.trim()) { listEl.classList.remove('open'); return; }
-  ST.watchAcTimer = setTimeout(async () => {
-    const items = await WatchFetchAutocomplete(val.trim());
-    listEl.innerHTML = '';
-    if (!items.length) { listEl.classList.remove('open'); return; }
-    items.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'mw-ac-item';
-      div.innerHTML = `<span class="mw-ac-name">${item.name}</span><span class="mw-ac-ticker">${item.ticker}</span>`;
-      div.addEventListener('mousedown', e => {
-        e.preventDefault();
-        ST.watchPending = item;
-        document.getElementById('WatchSearch').value = item.name;
-        listEl.classList.remove('open');
-        const prev = document.getElementById('WatchPreview');
-        prev.style.display = '';
-        document.getElementById('WatchPreviewName').textContent = item.name;
-        document.getElementById('WatchPreviewTicker').textContent = item.ticker;
-      });
-      listEl.appendChild(div);
-    });
-    listEl.classList.add('open');
-  }, 300);
-}
 
 async function WatchFetchAutocomplete(query) {
   return FetchAutocompleteKR(query);
@@ -2639,11 +2295,6 @@ function SaveWatch() {
   }).catch(() => {});
 }
 
-function DeleteWatch(ticker) {
-  ST.watchlist = ST.watchlist.filter(w => w.ticker !== ticker);
-  saveWatchlist();
-  RenderWatchlist();
-}
 
 function RenderWatchlist() {
   const c = document.getElementById('WatchContainer');
@@ -2747,32 +2398,8 @@ function tOnSellStockSelect(val, skipPrice) {
   tOnSellAccChange(accId);
 }
 
-function tOnSellAccChange(accId) {
-  const type = document.getElementById('tTradeType')?.value;
-  if (type === 'sell') tUpdateSellStockOptions();
-
-  const hintEl = document.getElementById('tSellQtyHint');
-  if (!hintEl) return;
-  if (type !== 'sell') { hintEl.textContent = ''; return; }
-  const ticker = document.getElementById('tTradeTicker').value;
-  const holding = (ST.holdings || []).find(h => h.ticker === ticker);
-  if (!holding || !accId) { hintEl.textContent = ''; return; }
-  const qty = holding.accounts?.[accId]?.qty || 0;
-  const accName = ST.accounts.find(a => a.id === accId)?.name || accId;
-  hintEl.textContent = qty > 0
-    ? `${accName} 계좌: 최대 ${Number(qty).toLocaleString('en-US',{maximumFractionDigits:4})}주 보유 중`
-    : '';
-}
 
 // 거래 내역 토글
-function tToggleHistory() {
-  ST.historyOpen = !ST.historyOpen;
-  const wrap = document.getElementById('tHistoryWrap');
-  const chevron = document.getElementById('tChevron');
-  if (wrap) wrap.style.display = ST.historyOpen ? '' : 'none';
-  if (chevron) chevron.style.transform = ST.historyOpen ? 'rotate(90deg)' : '';
-  if (ST.historyOpen) tRenderTradeHistory();
-}
 
 // 탭 전환
 function tSetTab(tab) {
@@ -2851,16 +2478,6 @@ function tRenderTradeHistory() {
 }
 
 // 모달 제어
-function tSetTradeType(type) {
-  document.getElementById('tTradeType').value = type;
-  document.getElementById('tTypeBuyBtn').className = 'mt-type-btn' + (type==='buy' ? ' active-buy' : '');
-  document.getElementById('tTypeSellBtn').className = 'mt-type-btn' + (type==='sell' ? ' active-sell' : '');
-  const sellRow = document.getElementById('tSellStockRow');
-  if (sellRow) sellRow.style.display = type === 'sell' ? '' : 'none';
-  const hintEl = document.getElementById('tSellQtyHint');
-  if (hintEl) hintEl.textContent = '';
-  if (type === 'sell') tUpdateSellStockOptions();
-}
 
 function tOpenTradeModal(editId = null) {
   ST.editingTradeId = editId;
@@ -3012,14 +2629,6 @@ function tOpenForm(accId) {
   setTimeout(() => document.getElementById('tQty').focus(), 50);
 }
 
-function tSetType(type) {
-  document.getElementById('tBuyBtn').className  = 'trade-type-btn buy'  + (type === 'buy'  ? ' active' : '');
-  document.getElementById('tSellBtn').className = 'trade-type-btn sell' + (type === 'sell' ? ' active' : '');
-  document.getElementById('tType').value = type;
-  document.getElementById('tCashLabel').textContent =
-    type === 'buy' ? '거래 후 현금 (감소)' : '거래 후 현금 (증가)';
-  tUpdatePreview();
-}
 
 function tUpdatePreview() {
   const type  = document.getElementById('tType').value;
@@ -3067,20 +2676,7 @@ function tSave() {
   Render();
 }
 
-function tCloseForm() {
-  const multiAcc = ST.accounts.filter(a => a.active !== false).length > 1;
-  if (multiAcc) {
-    document.getElementById('tQuickForm').style.display = 'none';
-    document.getElementById('tQuickAccList').style.display = '';
-  } else {
-    tCloseTradeModal();
-  }
-}
 
-function tCloseTradeModal() {
-  document.getElementById('tTradeModal').classList.remove('open');
-  ST.editingTradeId = null;
-}
 
 
 function tOnTickerInput(val) {
@@ -3190,19 +2786,6 @@ function tDeleteTrade(id) {
 
 // 자동완성 (한국 주식)
 ST.nameAcTimer = null;
-function tOnNameInput(val) {
-  clearTimeout(ST.nameAcTimer);
-  const listEl = document.getElementById('tNameAcList');
-  if (!val) { if (listEl) listEl.classList.remove('open'); return; }
-  ST.nameAcTimer = setTimeout(async () => {
-    const items = await tFetchAutocomplete(val);
-    if (listEl) tShowAcList(listEl, items, item => {
-      document.getElementById('tTradeName').value  = item.name;
-      document.getElementById('tTradeTicker').value = item.ticker;
-      listEl.classList.remove('open');
-    });
-  }, 300);
-}
 
 async function tFetchAutocomplete(query) {
   return FetchAutocompleteKR(query);
