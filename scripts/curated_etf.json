@@ -17,5 +17,7 @@
   {"t": "ETH-USD", "n": "Ethereum USD", "k": "이더리움", "e": "CRYPTO", "c": "US", "y": "CRY"},
   {"t": "KRW=X", "n": "USD/KRW", "k": "원/달러 환율", "e": "FX", "c": "KR", "y": "FX"},
   {"t": "JPY=X", "n": "USD/JPY", "k": "엔/달러 환율", "e": "FX", "c": "JP", "y": "FX"},
-  {"t": "EURUSD=X", "n": "EUR/USD", "k": "유로/달러 환율", "e": "FX", "c": "EU", "y": "FX"}
+  {"t": "EURUSD=X", "n": "EUR/USD", "k": "유로/달러 환율", "e": "FX", "c": "EU", "y": "FX"},
+
+  {"t": "0105E0", "k": "SOL 코리아고배당", "e": "KOSPI", "c": "KR", "y": "ETF"}
 ]

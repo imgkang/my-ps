@@ -176,14 +176,16 @@
       if (country && it.c !== country) continue;
       const t = (it.t || '').toLowerCase();
       const n = (it.n || '').toLowerCase();
-      const k = it.k || '';
+      // 한글명(k)에도 영문 브랜드(SOL/KODEX/TIGER 등)가 섞여 있으므로
+      // 소문자로 통일 비교 — 한글은 대소문자 개념이 없어 부작용 없음.
+      const k = (it.k || '').toLowerCase();
       if (t === ql) {
         exact.push(it);
       } else if (t.startsWith(ql)) {
         tickerPrefix.push(it);
-      } else if (n.startsWith(ql) || (k && k.startsWith(q))) {
+      } else if (n.startsWith(ql) || (k && k.startsWith(ql))) {
         namePrefix.push(it);
-      } else if (n.includes(ql) || (k && k.indexOf(q) >= 0)) {
+      } else if (n.includes(ql) || (k && k.indexOf(ql) >= 0)) {
         substring.push(it);
       }
       if (exact.length + tickerPrefix.length >= limit * 2 &&
