@@ -370,7 +370,7 @@
     display: flex; flex-direction: column; gap: 4px;
     font-size: 12px; color: var(--muted);
   }
-  .records-input-top input[type="number"] {
+  .records-input-top input[type="number"], .records-input-top input[type="text"] {
     width: 100px; padding: 6px 8px; font-size: 14px;
     border: 1px solid var(--border); border-radius: 6px;
   }
@@ -1393,8 +1393,8 @@
     </div>
     <div class="records-input-card">
       <div class="records-input-top">
-        <label><span>연도</span><input type="number" id="kdDivYear" min="2000" max="2100" step="1" placeholder="YYYY"></label>
-        <label><span>월</span><input type="number" id="kdDivMonth" min="1" max="12" step="1" placeholder="M"></label>
+        <label><span>연도</span><input type="number" id="kdDivYear" data-iux-ym-month="kdDivMonth" min="2000" max="2100" step="1" placeholder="YYYY"></label>
+        <label><span>월</span><input type="number" id="kdDivMonth" data-iux-ym-year="kdDivYear" min="1" max="12" step="1" placeholder="M"></label>
       </div>
       <div style="overflow-x:auto;margin-top:8px">
         <table class="div-stock-table">
@@ -1510,7 +1510,7 @@
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.639';
+const APP_VERSION = 'KDeal v0.644';
 InputUX.setNumberDefaults({ locale: 'ko-KR' });  // Stage 2: KDeal 기본 숫자 locale
 // Stage 1: 숫자/금액 입력 탭 시 기존값 자동선택
 InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');
