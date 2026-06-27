@@ -3899,7 +3899,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.630';
+const APP_VERSION = 'MyGP v0.631';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -13147,6 +13147,11 @@ async function forceUpdate() {
     const keys = await caches.keys();
     await Promise.all(keys.map(k => caches.delete(k)));
   }
+  // 종목 마스터 DB(IndexedDB) 도 비운다 — 캐시/SW 만 지우면 24h 캐시된
+  // 종목 데이터가 남아 새 종목(예: 신규 ETF)이 안 보이는 문제 방지.
+  try {
+    if (window.indexedDB) indexedDB.deleteDatabase('my-ps-tickers');
+  } catch (_) {}
   if ('serviceWorker' in navigator) {
     const regs = await navigator.serviceWorker.getRegistrations();
     await Promise.all(regs.map(r => r.unregister()));

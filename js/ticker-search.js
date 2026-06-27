@@ -121,16 +121,23 @@
       cachedItems = await dbGetAll(db, STORE_ITEMS);
     } catch (_) {}
 
+    const cachedVersion = (meta && meta.version) || '';
     const cachedAt = meta && meta.cached_at ? meta.cached_at : 0;
     const isStale = !cachedAt || (Date.now() - cachedAt) > STALE_MS;
 
     // If we have cache, activate immediately for instant search.
     if (cachedItems.length) activate(cachedItems);
 
-    // Background refresh if stale or no cache.
-    if (isStale || !cachedItems.length) {
-      try {
-        const data = await fetchRemote(url);
+    // Always probe for a newer version so data updates (e.g. new ETFs) show
+    // promptly instead of being stuck behind the 24h window. The request is
+    // conditional (cache:'no-cache') and the service worker serves tickers.json
+    // network-first, so an unchanged file is a cheap 304 and a changed file
+    // refreshes right away. We only rewrite IndexedDB when the version actually
+    // differs (or there was no cache), keeping the common case nearly free.
+    void isStale; // staleness no longer gates the probe; kept for reference
+    try {
+      const data = await fetchRemote(url);
+      if (!cachedItems.length || data.version !== cachedVersion) {
         const newMeta = {
           version: data.version,
           updated_at: data.updated_at,
@@ -139,10 +146,10 @@
         };
         await dbReplaceAll(db, data.items, newMeta);
         activate(data.items);
-      } catch (e) {
-        // Keep cached items active. If nothing cached either, _items stays empty.
-        if (!cachedItems.length) activate([]);
       }
+    } catch (e) {
+      // Keep cached items active. If nothing cached either, _items stays empty.
+      if (!cachedItems.length) activate([]);
     }
   }
 
