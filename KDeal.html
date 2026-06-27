@@ -564,7 +564,7 @@ const MARKET_CONFIG = {
     deposits: 'kd_deposits_v1', monthly: 'kd_monthly_v1', dividends: 'kd_dividends_v1',
     watchlist: 'kd_watchlist_v1', trades: 'kd_trades_v1', migrationDone: 'kd_migration_done_v1',
   },
-  labels: { currency: '원', flag: '🇰🇷', tickerLabel: '종목코드', inputMode: 'numeric' },
+  labels: { currency: '원', flag: '🇰🇷', tickerLabel: '종목코드', inputMode: 'numeric', marketName: '한국 주식', cashEmoji: '💰', heroValueZero: '0', heroUnit: '<div class="nk-hero-unit">(천원)</div>' },
 };
 MarketCore.init(MARKET_CONFIG);
 
@@ -708,6 +708,7 @@ const KD_PORTFOLIO_COLS = [
     cell:(it)=>it.hasCost?it._dSign+it._diff.toFixed(1)+'%':'-' },
 ];
 const KD_PORTFOLIO_COL_IDS = KD_PORTFOLIO_COLS.map(c => c.id);
+MARKET_CONFIG.cols = KD_PORTFOLIO_COLS; MARKET_CONFIG.colIds = KD_PORTFOLIO_COL_IDS; MARKET_CONFIG.fmt = { hero: fmtThou };
 // 컬럼 순서는 세 앱 공유 — MyPM 설정에서 편집, NonK/KDeal은 읽기 전용으로 동일 적용.
 
 ST.holdings        = loadHoldings();
@@ -847,201 +848,9 @@ ST.autoRefreshTimer = null;
 // 이 함수는 XIRR 에만 쓰이므로 dataVersion 일치만 확인하고 시세 신선도(freshness)는 보지 않는다.
 // (XIRR은 분 단위 시세에 거의 불변. freshness 로 막으면 시세 새로고침만 해도 XIRR 이 사라짐.)
 // 부재(.kd 없음)/불일치/오프라인이면 XIRR은 '-'로 표시(클라 재계산 없음).
-function DisplayDerived() {
-  try {
-    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
-    // 와이어 형식: { dataVersion, pricedAt, data:{ accounts, totals, kd } } → .kd 는 data 안에 있다.
-    if (!snap || !snap.data || !snap.data.kd) return null;
-    const localVer = localStorage.getItem('mypm_synced_version');
-    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
-    return snap.data.kd;
-  } catch (_) { return null; }
-}
 // 서버 스냅샷의 pricedAt(서버 계산 시각) — .kd 유효(동기화 일치)할 때만. 히어로 '오늘' 라벨용.
 // 서버 계산 시각 → "MM/DD HH:MM". 없으면 null.
 
-function Render() {
-  const container = document.getElementById('HoldingsContainer');
-  const statusEl  = document.getElementById('StatusText');
-  if (!container) return;
-
-  if (!ST.holdings.length) {
-    const heroEl0 = document.getElementById('HeroContainer');
-    if (heroEl0) heroEl0.innerHTML = `<div class="card nk-hero">
-      <div class="nk-hero-value-row"><div class="nk-hero-value">0</div><div class="nk-hero-unit">(천원)</div></div>
-      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">오늘</span></div>
-      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">누적</span></div>
-      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">XIRR</span></div>
-    </div>`;
-    container.innerHTML = `<div class="empty-state"><div class="icon">🇰🇷</div><div>'+ 종목 추가' 버튼을 눌러 한국 주식을 추가해 주세요</div></div>
-    <div class="nk-action-btns">
-      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
-      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
-      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
-    </div>`;
-    if (statusEl) statusEl.textContent = '보유종목 0개';
-    RenderAccountButtons();
-    return;
-  }
-
-  // Summary calculations (active accounts only)
-  const _activeAccs = ST.accounts.filter(a => a.active !== false);
-  let totalCost = 0, totalValue = 0, todayPnl = 0;
-  for (const h of ST.holdings) {
-    let hQty = 0, hCost = 0;
-    for (const acc of _activeAccs) {
-      const a = h.accounts && h.accounts[acc.id];
-      if (a && a.qty > 0) {
-        hQty += Number(a.qty);
-        hCost += Number(a.qty) * Number(a.avgPrice || 0);
-      }
-    }
-    totalCost  += hCost;
-    totalValue += hQty * (h.price || 0);
-    todayPnl   += hQty * (h.change || 0);
-  }
-  // add cash (active accounts only)
-  const totalCash = _activeAccs.reduce((s, a) => s + (Number(ST.cash[a.id]) || 0), 0);
-  totalValue += totalCash;
-  const _activeAccIds = _activeAccs.map(a => a.id);
-  const deposited  = totalDeposited(null, _activeAccIds);
-  const pnl        = totalValue - deposited;
-  const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
-  const _kdSnap    = DisplayDerived(); // C-4b: 서버 선계산 KDeal 스냅샷
-  const xirrRate   = (_kdSnap && _kdSnap.totals && typeof _kdSnap.totals.xirr === 'number') ? _kdSnap.totals.xirr : null;
-  const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
-  const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
-  const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
-
-  // 이번달 손익
-  const _now = new Date();
-  const _yr = _now.getFullYear(), _thisM = _now.getMonth() + 1;
-  const prevRecs = ST.monthly.filter(r => r.year < _yr || (r.year === _yr && r.month < _thisM));
-  let monthPnl = null, monthPnlRate = null;
-  if (prevRecs.length) {
-    const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0))[0];
-    const prevVal = _activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
-    const cutoff = `${_yr}-${String(_thisM).padStart(2,'0')}-01`;
-    const moDeposits = ST.deposits.transactions
-      .filter(t => t.date >= cutoff && _activeAccIds.includes(t.accId))
-      .reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-    monthPnl = totalValue - prevVal - moDeposits;
-    const moBase = prevVal + Math.max(0, moDeposits);
-    monthPnlRate = moBase > 0 ? monthPnl / moBase * 100 : null;
-  }
-
-  // Hero card
-  const tvYest = totalValue - todayPnl;
-  const todayRate = tvYest > 0 ? todayPnl / tvYest * 100 : 0;
-  const heroDayCls = todayPnl >= 0 ? 'diff-positive' : 'diff-negative';
-  const heroDaySign = todayPnl >= 0 ? '+' : '';
-  const heroDayRSign = todayRate >= 0 ? '+' : '';
-  const heroPnlCls = pnl >= 0 ? 'diff-positive' : 'diff-negative';
-  const heroPnlSign = pnl >= 0 ? '+' : '';
-  const heroPnlRSign = pnlRate >= 0 ? '+' : '';
-  const heroMoCls = monthPnl == null ? '' : monthPnl >= 0 ? 'diff-positive' : 'diff-negative';
-  const heroMoSign = monthPnl != null && monthPnl >= 0 ? '+' : '';
-  const heroMoRSign = monthPnlRate != null && monthPnlRate >= 0 ? '+' : '';
-  const heroXirrCls = (xirrRate == null || xirrRate >= 0) ? 'diff-positive' : 'diff-negative';
-  const heroEl = document.getElementById('HeroContainer');
-  if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
-    <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtThou(totalValue)}</div><div class="nk-hero-unit">(천원)</div></div>
-    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtThou(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">${fmtHeroAsOf(snapPricedAt()) || '오늘'}</span></div>
-    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtThou(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
-    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtThou(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
-  </div>`;
-
-  // Holdings table — My PM style
-  const items = ST.holdings.map(h => {
-    let qty = 0, cost = 0;
-    const hasAccounts = h.accounts && _activeAccs.some(a => (h.accounts[a.id]?.qty || 0) > 0);
-    for (const acc of _activeAccs) {
-      const a = h.accounts && h.accounts[acc.id];
-      if (a && a.qty > 0) { qty += Number(a.qty); cost += Number(a.qty) * Number(a.avgPrice || 0); }
-    }
-    const avgPrice    = qty > 0 && cost > 0 ? cost / qty : 0;
-    const currentValue = qty * (h.price || 0);
-    const profit      = cost > 0 ? currentValue - cost : 0;
-    const profitRate  = cost > 0 ? profit / cost * 100 : null;
-    return {
-      ticker: h.ticker, name: h.name || '', qty, cost, avgPrice, hasCost: cost > 0, hasAccounts,
-      price: h.price || 0, change: h.change || 0, changeRate: h.changeRate || 0,
-      currentValue, profit, profitRate
-    };
-  }).sort((a, b) => b.currentValue - a.currentValue);
-
-  let lastUpdate = '-';
-  if (ST.lastRefreshTime) {
-    const _mo = String(ST.lastRefreshTime.getMonth()+1).padStart(2,'0');
-    const _dd = String(ST.lastRefreshTime.getDate()).padStart(2,'0');
-    const hh = String(ST.lastRefreshTime.getHours()).padStart(2,'0');
-    const mm = String(ST.lastRefreshTime.getMinutes()).padStart(2,'0');
-    const ss = String(ST.lastRefreshTime.getSeconds()).padStart(2,'0');
-    lastUpdate = `${_mo}/${_dd} ${hh}:${mm}:${ss}`;
-  } else {
-    const updatedAts = ST.holdings.filter(h => h.updatedAt).map(h => h.updatedAt);
-    if (updatedAts.length) {
-      const d = new Date(Math.max(...updatedAts.map(d => new Date(d))));
-      const _mo = String(d.getMonth()+1).padStart(2,'0');
-      const _dd = String(d.getDate()).padStart(2,'0');
-      lastUpdate = `${_mo}/${_dd} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-    }
-  }
-
-  // ===== 종목 리스트: 저장된 컬럼 순서대로 렌더 =====
-  const _kdCashWeight   = totalValue > 0 ? totalCash / totalValue * 100 : 0;
-  const _kdCashAccCount = _activeAccs.filter(a => (Number(ST.cash[a.id]) || 0) > 0).length;
-  const _kdDayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
-  const _kdTotPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
-  const _kdTotPSign = pnl >= 0 ? '+' : '';
-  const kdColCtx = { totalCost, totalValue, totalCash, todayPnl, dayCls: _kdDayCls, deposited, pnl, pnlRate, totPCls: _kdTotPCls, totPSign: _kdTotPSign, cashWeight: _kdCashWeight };
-  const kdCols = orderedCols(loadColOrder(KD_PORTFOLIO_COL_IDS), KD_PORTFOLIO_COLS);
-
-  let tableHtml = `<div class="detail-table-wrap"><table class="detail-table">`
-    + `<thead><tr><th>종목</th>${kdCols.map(c => `<th>${c.header}</th>`).join('')}<th></th></tr></thead><tbody>`;
-
-  for (const it of items) {
-    it._buyWeight = totalCost > 0 ? it.cost / totalCost * 100 : 0;
-    it._curWeight = totalValue > 0 ? it.currentValue / totalValue * 100 : 0;
-    it._diff  = it._curWeight - it._buyWeight;
-    it._pCls  = it.profit >= 0 ? 'diff-positive' : 'diff-negative';
-    it._dCls  = it._diff >= 0 ? 'diff-positive' : 'diff-negative';
-    it._pSign = it.profit >= 0 ? '+' : '';
-    it._dSign = it._diff >= 0 ? '+' : '';
-    it._crCls = it.changeRate > 0 ? 'diff-positive' : (it.changeRate < 0 ? 'diff-negative' : '');
-    it._chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
-    it._dayAmt = it.change * it.qty;
-    tableHtml += `<tr>`
-      + `<td onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" style="cursor:pointer"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
-      + kdCols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, kdColCtx) : ''}>${c.cell(it, kdColCtx)}</td>`).join('')
-      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="OpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="DeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
-      + `</tr>`;
-  }
-
-  // 현금 행
-  tableHtml += `<tr class="row-cash">`
-    + `<td onclick="OpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💰 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_kdCashAccCount ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">CASH${_kdCashAccCount ? ' · ' + _kdCashAccCount + '개 계좌' : ''}</div></td>`
-    + kdCols.map(c => `<td ${c.cashAttr ? c.cashAttr(kdColCtx) : ''}>${c.cash ? c.cash(kdColCtx) : '-'}</td>`).join('')
-    + `<td></td>`
-    + `</tr>`;
-
-  // 합계 행
-  tableHtml += `</tbody><tfoot><tr><td>합계</td>`
-    + kdCols.map(c => `<td ${c.footAttr ? c.footAttr(kdColCtx) : ''}>${c.foot ? c.foot(kdColCtx) : '-'}</td>`).join('')
-    + `<td></td>`
-    + `</tr></tfoot></table></div>`;
-
-  container.innerHTML = tableHtml
-    + `<div class="nk-action-btns">
-      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
-      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
-      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
-    </div>`;
-  if (statusEl) statusEl.textContent = '';
-  RenderAccountButtons();
-}
 
 function RenderAccountButtons() {
   const grid = document.getElementById('AccountButtonsGrid');

@@ -705,6 +705,202 @@ function tOnNameInput(val) {
   }, 300);
 }
 
+function DisplayDerived() {
+  try {
+    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
+    const mk = snap && snap.data && snap.data[MarketCore.cfg.snapKey];
+    if (!mk) return null;
+    const localVer = localStorage.getItem('mypm_synced_version');
+    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
+    return mk;
+  } catch (_) { return null; }
+}
+
+// ── 공유 Render (히어로/컬럼/라벨은 CFG) ──
+function Render() {
+  const CFG = MarketCore.cfg;
+  const container = document.getElementById('HoldingsContainer');
+  const statusEl  = document.getElementById('StatusText');
+  if (!container) return;
+
+  if (!ST.holdings.length) {
+    const heroEl0 = document.getElementById('HeroContainer');
+    if (heroEl0) heroEl0.innerHTML = `<div class="card nk-hero">
+      <div class="nk-hero-value-row"><div class="nk-hero-value">${CFG.labels.heroValueZero}</div>${CFG.labels.heroUnit}</div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">오늘</span></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">누적</span></div>
+      <div class="nk-hero-row"><span>-</span><span class="nk-hero-label">XIRR</span></div>
+    </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="icon">${CFG.labels.flag}</div><div>'+ 종목 추가' 버튼을 눌러 ${CFG.labels.marketName}을 추가해 주세요</div></div>
+    <div class="nk-action-btns">
+      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
+    </div>`;
+    if (statusEl) statusEl.textContent = '보유종목 0개';
+    RenderAccountButtons();
+    return;
+  }
+
+  // Summary calculations (active accounts only)
+  const _activeAccs = ST.accounts.filter(a => a.active !== false);
+  let totalCost = 0, totalValue = 0, todayPnl = 0;
+  for (const h of ST.holdings) {
+    let hQty = 0, hCost = 0;
+    for (const acc of _activeAccs) {
+      const a = h.accounts && h.accounts[acc.id];
+      if (a && a.qty > 0) {
+        hQty += Number(a.qty);
+        hCost += Number(a.qty) * Number(a.avgPrice || 0);
+      }
+    }
+    totalCost  += hCost;
+    totalValue += hQty * (h.price || 0);
+    todayPnl   += hQty * (h.change || 0);
+  }
+  // add cash (active accounts only)
+  const totalCash = _activeAccs.reduce((s, a) => s + (Number(ST.cash[a.id]) || 0), 0);
+  totalValue += totalCash;
+  const _activeAccIds = _activeAccs.map(a => a.id);
+  const deposited  = totalDeposited(null, _activeAccIds);
+  const pnl        = totalValue - deposited;
+  const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
+  const _snap    = DisplayDerived();
+  const xirrRate   = (_snap && _snap.totals && typeof _snap.totals.xirr === 'number') ? _snap.totals.xirr : null;
+  const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
+  const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
+  const xirrText   = xirrRate != null ? xirrSign + (xirrRate * 100).toFixed(2) + '%' : '-';
+
+  // 이번달 손익
+  const _now = new Date();
+  const _yr = _now.getFullYear(), _thisM = _now.getMonth() + 1;
+  const prevRecs = ST.monthly.filter(r => r.year < _yr || (r.year === _yr && r.month < _thisM));
+  let monthPnl = null, monthPnlRate = null;
+  if (prevRecs.length) {
+    const prevRec = prevRecs.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0))[0];
+    const prevVal = _activeAccs.reduce((s, a) => s + (Number(prevRec.accounts[a.id]) || 0), 0);
+    const cutoff = `${_yr}-${String(_thisM).padStart(2,'0')}-01`;
+    const moDeposits = ST.deposits.transactions
+      .filter(t => t.date >= cutoff && _activeAccIds.includes(t.accId))
+      .reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+    monthPnl = totalValue - prevVal - moDeposits;
+    const moBase = prevVal + Math.max(0, moDeposits);
+    monthPnlRate = moBase > 0 ? monthPnl / moBase * 100 : null;
+  }
+
+  // Hero card
+  const tvYest = totalValue - todayPnl;
+  const todayRate = tvYest > 0 ? todayPnl / tvYest * 100 : 0;
+  const heroDayCls = todayPnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroDaySign = todayPnl >= 0 ? '+' : '';
+  const heroDayRSign = todayRate >= 0 ? '+' : '';
+  const heroPnlCls = pnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroPnlSign = pnl >= 0 ? '+' : '';
+  const heroPnlRSign = pnlRate >= 0 ? '+' : '';
+  const heroMoCls = monthPnl == null ? '' : monthPnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const heroMoSign = monthPnl != null && monthPnl >= 0 ? '+' : '';
+  const heroMoRSign = monthPnlRate != null && monthPnlRate >= 0 ? '+' : '';
+  const heroXirrCls = (xirrRate == null || xirrRate >= 0) ? 'diff-positive' : 'diff-negative';
+  const heroEl = document.getElementById('HeroContainer');
+  if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
+    <div class="nk-hero-value-row"><div class="nk-hero-value">${CFG.fmt.hero(totalValue)}</div>${CFG.labels.heroUnit}</div>
+    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${CFG.fmt.hero(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">${fmtHeroAsOf(snapPricedAt()) || '오늘'}</span></div>
+    <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + CFG.fmt.hero(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
+    <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + CFG.fmt.hero(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
+  </div>`;
+
+  // Holdings table — My PM style
+  const items = ST.holdings.map(h => {
+    let qty = 0, cost = 0;
+    const hasAccounts = h.accounts && _activeAccs.some(a => (h.accounts[a.id]?.qty || 0) > 0);
+    for (const acc of _activeAccs) {
+      const a = h.accounts && h.accounts[acc.id];
+      if (a && a.qty > 0) { qty += Number(a.qty); cost += Number(a.qty) * Number(a.avgPrice || 0); }
+    }
+    const avgPrice    = qty > 0 && cost > 0 ? cost / qty : 0;
+    const currentValue = qty * (h.price || 0);
+    const profit      = cost > 0 ? currentValue - cost : 0;
+    const profitRate  = cost > 0 ? profit / cost * 100 : null;
+    return {
+      ticker: h.ticker, name: h.name || '', qty, cost, avgPrice, hasCost: cost > 0, hasAccounts,
+      price: h.price || 0, change: h.change || 0, changeRate: h.changeRate || 0,
+      currentValue, profit, profitRate
+    };
+  }).sort((a, b) => b.currentValue - a.currentValue);
+
+  let lastUpdate = '-';
+  if (ST.lastRefreshTime) {
+    const _mo = String(ST.lastRefreshTime.getMonth()+1).padStart(2,'0');
+    const _dd = String(ST.lastRefreshTime.getDate()).padStart(2,'0');
+    const hh = String(ST.lastRefreshTime.getHours()).padStart(2,'0');
+    const mm = String(ST.lastRefreshTime.getMinutes()).padStart(2,'0');
+    const ss = String(ST.lastRefreshTime.getSeconds()).padStart(2,'0');
+    lastUpdate = `${_mo}/${_dd} ${hh}:${mm}:${ss}`;
+  } else {
+    const updatedAts = ST.holdings.filter(h => h.updatedAt).map(h => h.updatedAt);
+    if (updatedAts.length) {
+      const d = new Date(Math.max(...updatedAts.map(d => new Date(d))));
+      const _mo = String(d.getMonth()+1).padStart(2,'0');
+      const _dd = String(d.getDate()).padStart(2,'0');
+      lastUpdate = `${_mo}/${_dd} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    }
+  }
+
+  // ===== 종목 리스트: 저장된 컬럼 순서대로 렌더 =====
+  const _cashWeight   = totalValue > 0 ? totalCash / totalValue * 100 : 0;
+  const _cashAccCount = _activeAccs.filter(a => (Number(ST.cash[a.id]) || 0) > 0).length;
+  const _dayCls   = todayPnl > 0 ? 'diff-positive' : (todayPnl < 0 ? 'diff-negative' : '');
+  const _totPCls  = pnl >= 0 ? 'diff-positive' : 'diff-negative';
+  const _totPSign = pnl >= 0 ? '+' : '';
+  const colCtx = { totalCost, totalValue, totalCash, todayPnl, dayCls: _dayCls, deposited, pnl, pnlRate, totPCls: _totPCls, totPSign: _totPSign, cashWeight: _cashWeight };
+  const cols = orderedCols(loadColOrder(CFG.colIds), CFG.cols);
+
+  let tableHtml = `<div class="detail-table-wrap"><table class="detail-table">`
+    + `<thead><tr><th>종목</th>${cols.map(c => `<th>${c.header}</th>`).join('')}<th></th></tr></thead><tbody>`;
+
+  for (const it of items) {
+    it._buyWeight = totalCost > 0 ? it.cost / totalCost * 100 : 0;
+    it._curWeight = totalValue > 0 ? it.currentValue / totalValue * 100 : 0;
+    it._diff  = it._curWeight - it._buyWeight;
+    it._pCls  = it.profit >= 0 ? 'diff-positive' : 'diff-negative';
+    it._dCls  = it._diff >= 0 ? 'diff-positive' : 'diff-negative';
+    it._pSign = it.profit >= 0 ? '+' : '';
+    it._dSign = it._diff >= 0 ? '+' : '';
+    it._crCls = it.changeRate > 0 ? 'diff-positive' : (it.changeRate < 0 ? 'diff-negative' : '');
+    it._chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
+    it._dayAmt = it.change * it.qty;
+    tableHtml += `<tr>`
+      + `<td onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" style="cursor:pointer"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
+      + cols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, colCtx) : ''}>${c.cell(it, colCtx)}</td>`).join('')
+      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="OpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="DeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
+      + `</tr>`;
+  }
+
+  // 현금 행
+  tableHtml += `<tr class="row-cash">`
+    + `<td onclick="OpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">${CFG.labels.cashEmoji} 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_cashAccCount ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">CASH${_cashAccCount ? ' · ' + _cashAccCount + '개 계좌' : ''}</div></td>`
+    + cols.map(c => `<td ${c.cashAttr ? c.cashAttr(colCtx) : ''}>${c.cash ? c.cash(colCtx) : '-'}</td>`).join('')
+    + `<td></td>`
+    + `</tr>`;
+
+  // 합계 행
+  tableHtml += `</tbody><tfoot><tr><td>합계</td>`
+    + cols.map(c => `<td ${c.footAttr ? c.footAttr(colCtx) : ''}>${c.foot ? c.foot(colCtx) : '-'}</td>`).join('')
+    + `<td></td>`
+    + `</tr></tfoot></table></div>`;
+
+  container.innerHTML = tableHtml
+    + `<div class="nk-action-btns">
+      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
+    </div>`;
+  if (statusEl) statusEl.textContent = '';
+  RenderAccountButtons();
+}
+
 // ── 부트스트랩 ──
 // 각 HTML 은 MARKET_CONFIG 를 정의한 뒤 MarketCore.init(MARKET_CONFIG) 호출.
 // cfg: { market, version, locale, storageKeys, labels, ... }
