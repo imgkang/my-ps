@@ -2120,8 +2120,8 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_myNPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
-                <input id="cfg_myNPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+                <input id="cfg_myNPStartYear" type="number" data-iux-ym-month="cfg_myNPStartMonth" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_myNPStartMonth" type="number" data-iux-ym-year="cfg_myNPStartYear" min="1" max="12" step="1" style="width:64px"><span>월</span>
               </div>
               <div id="cfgMyNPAutoHint" class="cfg-note" style="margin:6px 0 0"></div>
             </div>
@@ -2172,8 +2172,8 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_myGPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
-                <input id="cfg_myGPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+                <input id="cfg_myGPStartYear" type="number" data-iux-ym-month="cfg_myGPStartMonth" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_myGPStartMonth" type="number" data-iux-ym-year="cfg_myGPStartYear" min="1" max="12" step="1" style="width:64px"><span>월</span>
               </div>
             </div>
           </div>
@@ -2221,8 +2221,8 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_mySPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
-                <input id="cfg_mySPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+                <input id="cfg_mySPStartYear" type="number" data-iux-ym-month="cfg_mySPStartMonth" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_mySPStartMonth" type="number" data-iux-ym-year="cfg_mySPStartYear" min="1" max="12" step="1" style="width:64px"><span>월</span>
               </div>
             </div>
           </div>
@@ -2298,8 +2298,8 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeNPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
-                <input id="cfg_wifeNPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+                <input id="cfg_wifeNPStartYear" type="number" data-iux-ym-month="cfg_wifeNPStartMonth" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_wifeNPStartMonth" type="number" data-iux-ym-year="cfg_wifeNPStartYear" min="1" max="12" step="1" style="width:64px"><span>월</span>
               </div>
               <div id="cfgWifeNPAutoHint" class="cfg-note" style="margin:6px 0 0"></div>
             </div>
@@ -2350,8 +2350,8 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeGPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
-                <input id="cfg_wifeGPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+                <input id="cfg_wifeGPStartYear" type="number" data-iux-ym-month="cfg_wifeGPStartMonth" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_wifeGPStartMonth" type="number" data-iux-ym-year="cfg_wifeGPStartYear" min="1" max="12" step="1" style="width:64px"><span>월</span>
               </div>
             </div>
           </div>
@@ -2399,8 +2399,8 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeSPStartYear" type="number" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
-                <input id="cfg_wifeSPStartMonth" type="number" min="1" max="12" step="1" style="width:64px"><span>월</span>
+                <input id="cfg_wifeSPStartYear" type="number" data-iux-ym-month="cfg_wifeSPStartMonth" min="2020" max="2090" step="1" style="width:80px"><span>년</span>
+                <input id="cfg_wifeSPStartMonth" type="number" data-iux-ym-year="cfg_wifeSPStartYear" min="1" max="12" step="1" style="width:64px"><span>월</span>
               </div>
             </div>
           </div>
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.639';
+const APP_VERSION = 'MyGP v0.640';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
