@@ -2134,7 +2134,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_myNPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_myNPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right" oninput="liveKRWInput(this)"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2185,7 +2185,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_myGPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_myGPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right" oninput="liveKRWInput(this)"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2234,7 +2234,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_mySPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_mySPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right" oninput="liveKRWInput(this)"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2312,7 +2312,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeNPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_wifeNPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right" oninput="liveKRWInput(this)"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2363,7 +2363,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeGPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_wifeGPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right" oninput="liveKRWInput(this)"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2412,7 +2412,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeSPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_wifeSPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right" oninput="liveKRWInput(this)"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2636,7 +2636,7 @@ registerMobileTooltipDismiss();
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
           금액 (원)
-          <input type="text" id="cashAdjAmount" inputmode="numeric" placeholder="예: 5,000" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)" oninput="updateCashAdjPreview()">
+          <input type="text" id="cashAdjAmount" inputmode="numeric" placeholder="예: 5,000" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)" oninput="liveKRWInput(this); updateCashAdjPreview()">
         </label>
       </div>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);margin-bottom:8px">
@@ -2772,11 +2772,11 @@ registerMobileTooltipDismiss();
       </label>
       <label>
         <span>금액 (원)</span>
-        <input type="text" id="txnAmount" inputmode="numeric" placeholder="예: 1,000,000">
+        <input type="text" id="txnAmount" inputmode="numeric" placeholder="예: 1,000,000" oninput="liveKRWInput(this)">
       </label>
       <label id="txnAnseRow" style="display:none">
         <span>안세공금액 (원)</span>
-        <input type="text" id="txnAnse" inputmode="numeric" placeholder="0 (없으면 빈칸)">
+        <input type="text" id="txnAnse" inputmode="numeric" placeholder="0 (없으면 빈칸)" oninput="liveKRWInput(this)">
       </label>
       <div id="txnAnseHint" style="display:none;font-size:11px;color:#92400e;padding-left:100px;margin-top:-6px">
         ※ 세액공제를 받지 않는 금액
@@ -2812,9 +2812,9 @@ registerMobileTooltipDismiss();
       </div>
     </div>
     <div class="txn-form">
-      <label><span>이전할 원금 (원)</span><input type="text" id="transferPrin" inputmode="numeric" oninput="updateTransferRemaining()"></label>
-      <label><span>이전할 안세공 (원)</span><input type="text" id="transferAnse" inputmode="numeric" oninput="updateTransferRemaining()"></label>
-      <label><span>이전 후 남는 안세공 (원)</span><input type="text" id="transferAnseRemain" inputmode="numeric" oninput="updateTransferRemaining()"></label>
+      <label><span>이전할 원금 (원)</span><input type="text" id="transferPrin" inputmode="numeric" oninput="liveKRWInput(this); updateTransferRemaining()"></label>
+      <label><span>이전할 안세공 (원)</span><input type="text" id="transferAnse" inputmode="numeric" oninput="liveKRWInput(this); updateTransferRemaining()"></label>
+      <label><span>이전 후 남는 안세공 (원)</span><input type="text" id="transferAnseRemain" inputmode="numeric" oninput="liveKRWInput(this); updateTransferRemaining()"></label>
       <label><span>투자기록 이전</span>
         <select id="transferMoveHistory">
           <option value="yes">이전받는 계좌로 전부 이동</option>
@@ -3389,7 +3389,7 @@ registerMobileTooltipDismiss();
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div>
           <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">수량 (주)</label>
-          <input type="text" inputmode="numeric" id="wdrecSellQty" min="0" step="1" oninput="onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
+          <input type="text" inputmode="numeric" id="wdrecSellQty" min="0" step="1" oninput="liveKRWInput(this); onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
         </div>
         <div>
           <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">매도가 (원/주)</label>
@@ -3482,8 +3482,8 @@ registerMobileTooltipDismiss();
       </div>
       <div class="txn-form" style="margin-bottom:10px">
         <label><span>날짜</span><input type="date" data-iux-date id="taf_date"></label>
-        <label><span>수량</span><input type="text" inputmode="numeric" id="taf_qty" placeholder="수량" oninput="updateAccFormTotal()"></label>
-        <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="taf_price" placeholder="체결 단가" oninput="updateAccFormTotal()"></label>
+        <label><span>수량</span><input type="text" inputmode="numeric" id="taf_qty" placeholder="수량" oninput="liveKRWInput(this); updateAccFormTotal()"></label>
+        <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="taf_price" placeholder="체결 단가" oninput="liveKRWInput(this); updateAccFormTotal()"></label>
       </div>
       <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -3520,8 +3520,8 @@ registerMobileTooltipDismiss();
         <label><span>계좌</span><select id="tradeAccount" onchange="onTradeAccountChange()"></select></label>
         <label><span>날짜</span><input type="date" data-iux-date id="tradeDate"></label>
         <label><span>종목</span><select id="tradeCode" onchange="onTradeCodeChange()"></select></label>
-        <label><span>수량</span><input type="text" id="tradeQty" inputmode="numeric" placeholder="매수/매도 수량" oninput="updateTradeTotal()"></label>
-        <label><span>단가 (원)</span><input type="text" id="tradePrice" inputmode="numeric" placeholder="체결 단가" oninput="updateTradeTotal()"></label>
+        <label><span>수량</span><input type="text" id="tradeQty" inputmode="numeric" placeholder="매수/매도 수량" oninput="liveKRWInput(this); updateTradeTotal()"></label>
+        <label><span>단가 (원)</span><input type="text" id="tradePrice" inputmode="numeric" placeholder="체결 단가" oninput="liveKRWInput(this); updateTradeTotal()"></label>
       </div>
       <div id="tradeTotalBox" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -3600,7 +3600,7 @@ registerMobileTooltipDismiss();
       <!-- 사적연금 기본인출액 (공통) -->
       <div class="cfg-grid">
         <label>사적연금 기본인출액 (백만원/계좌/년)</label>
-        <input id="wd_basicWithdraw" type="text" inputmode="numeric" min="0" step="1">
+        <input id="wd_basicWithdraw" type="text" inputmode="numeric" min="0" step="1" oninput="liveKRWInput(this)">
       </div>
       <!-- 인출 구간 설정 -->
       <div class="cfg-section" style="display:flex;justify-content:space-between;align-items:center">
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.644';
+const APP_VERSION = 'MyGP v0.645';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -9593,7 +9593,7 @@ function renderDivMiscInputs(values) {
     return `<label style="display:flex;align-items:center;gap:8px">
       <span style="min-width:90px;font-size:13px">${getAccName(a.id)}</span>
       <input type="text" inputmode="numeric" step="1" class="div-misc-amt" data-acc="${a.id}" value="${v}"
-             oninput="updateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
+             oninput="liveKRWInput(this); updateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
       <span style="font-size:12px;color:var(--muted)">원</span>
     </label>`;
   }).join('');
@@ -10807,7 +10807,7 @@ function openDivAccEdit(recId, accId) {
     return `<div class="div-focused-col4 div-focused-stock-row" data-code="${code}">
       <span style="font-size:12px">${name}</span>
       <span>${perShare.toLocaleString('ko-KR')}</span>
-      <input type="text" inputmode="numeric" class="div-focused-qty-input" value="${qty}" min="0" oninput="updateDivAccEditPreview()">
+      <input type="text" inputmode="numeric" class="div-focused-qty-input" value="${qty}" min="0" oninput="liveKRWInput(this); updateDivAccEditPreview()">
       <span class="div-acc-amt-cell">${amt.toLocaleString('ko-KR')} 원</span>
     </div>`;
   }).join('');
@@ -12533,7 +12533,7 @@ function obOpenAllocModal(who) {
     const cur = _obData.accAlloc[id] !== undefined ? _obData.accAlloc[id] : Math.round(totalMonthly / (accIds.length||1));
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
       <span style="min-width:80px">${aLabels[id]||id}</span>
-      <input type="text" inputmode="numeric" id="ob_amodal_${id}" value="${cur}" min="0" step="1" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:5px" oninput="obAllocModalChanged()">만원/월
+      <input type="text" inputmode="numeric" id="ob_amodal_${id}" value="${cur}" min="0" step="1" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:5px" oninput="liveKRWInput(this); obAllocModalChanged()">만원/월
     </div>`;
   }).join('');
   const modalBody = document.getElementById('obAllocModalBody');
@@ -16571,7 +16571,7 @@ function wdPrepStep2Html() {
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <input type="text" inputmode="numeric" id="${pp1InputId}" min="${minPP1Anse}" max="${maxPP1Anse}" step="10" value="${cappedPP1}"
                 style="width:90px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;background:#fff"
-                oninput="wdPrepStep2UpdatePreview()">
+                oninput="liveKRWInput(this); wdPrepStep2UpdatePreview()">
               <span style="font-size:11px;color:#166534">유효: ${fmt(minPP1Anse)}~${fmt(maxPP1Anse)}백만원</span>
               ${minPP1Anse === 0
                 ? `<button onclick="document.getElementById('${pp1InputId}').value=0;wdPrepStep2UpdatePreview()"
@@ -17452,7 +17452,7 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
   h += `<tr class="cons-dc"><td rowspan="2">나 퇴직연금</td><td>퇴직금</td><td>${mv(t.myDCPrincipal)}</td></tr>`;
   h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.myDCRegular)}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">나 개인통합1</td><td>안세공</td>
-    <td><input type="text" inputmode="numeric" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxPP1}" oninput="updateConsPP2()"></td></tr>`;
+    <td><input type="text" inputmode="numeric" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxPP1}" oninput="liveKRWInput(this); updateConsPP2()"></td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp1_reg">${pp1Reg}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">나 개인통합2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_reg">${pp2Reg}</td></tr>`;
@@ -17464,9 +17464,9 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
       h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.wifeDCRegular)}</td></tr>`;
     }
     h += `<tr class="cons-anse"><td rowspan="3">${_cWt} 개인통합1</td><td>총잔액</td>
-      <td><input type="text" inputmode="numeric" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="updateConsWP2()"></td></tr>`;
+      <td><input type="text" inputmode="numeric" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="liveKRWInput(this); updateConsWP2()"></td></tr>`;
     h += `<tr class="cons-anse"><td>안세공</td>
-      <td><input type="text" inputmode="numeric" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
+      <td><input type="text" inputmode="numeric" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="liveKRWInput(this); updateConsWP2()"></td></tr>`;
     h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp1_reg">${wp1Reg}</td></tr>`;
     h += `<tr class="cons-anse"><td rowspan="2">${_cWt} 개인통합2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
     h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_reg">${wp2Reg}</td></tr>`;

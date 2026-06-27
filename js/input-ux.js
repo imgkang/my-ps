@@ -93,21 +93,34 @@
   // onfocus 콤마 제거 통합.
   UX.stripCommas = function (el) { if (el) el.value = (el.value || '').replace(/,/g, ''); };
 
+  // 입력 중(라이브) 천단위 콤마 — 정수부만 콤마, 소수부(dec 자리)와 타이핑 중 '.' 은 보존.
+  // 정수 필드는 dec=0(또는 생략). 소수 필드는 dec=N(예: USD 가격 4, 수수료 2).
+  UX.liveFormat = function (el, dec, locale) {
+    if (!el) return;
+    locale = locale || _numLocale;
+    dec = dec || 0;
+    const s = (el.value || '').replace(/[^\d.]/g, '');
+    if (dec <= 0) { el.value = s ? Number(s.replace(/\./g, '')).toLocaleString(locale) : ''; return; }
+    const dot = s.indexOf('.');
+    const hadDot = dot !== -1;
+    const intPart = hadDot ? s.slice(0, dot) : s;
+    const decPart = hadDot ? s.slice(dot + 1).replace(/\./g, '').slice(0, dec) : '';
+    const intOut = intPart ? Number(intPart).toLocaleString(locale) : (hadDot ? '0' : '');
+    el.value = intOut + (hadDot ? '.' + decPart : '');
+  };
+
   // ----- 마커 기반 이벤트 위임 (data-iux-num) — 동적 input 자동 커버 -----
   const _hasNum = (el) => el && el.hasAttribute && el.hasAttribute('data-iux-num');
   const _isDec = (el) => el.getAttribute('data-iux-dec') != null;
   const _loc = (el) => el.getAttribute('data-iux-num-locale') || _numLocale;
-  document.addEventListener('input', function (e) {           // 정수: 입력 즉시 콤마
-    const el = e.target; if (!_hasNum(el) || _isDec(el)) return;
-    _fmtInt(el, _loc(el));
+  const _decOf = (el) => _isDec(el) ? (parseInt(el.getAttribute('data-iux-dec'), 10) || 0) : 0;
+  document.addEventListener('input', function (e) {           // 정수/소수 모두 입력 즉시 라이브 콤마
+    const el = e.target; if (!_hasNum(el)) return;
+    UX.liveFormat(el, _decOf(el), _loc(el));
   });
-  document.addEventListener('focusin', function (e) {          // 소수: 편집 위해 콤마 제거
+  document.addEventListener('focusout', function (e) {        // 소수: 포커스 아웃 시 자릿수 정규화
     const el = e.target; if (!_hasNum(el) || !_isDec(el)) return;
-    UX.stripCommas(el);
-  });
-  document.addEventListener('focusout', function (e) {         // 소수: 포커스 아웃 시 포맷
-    const el = e.target; if (!_hasNum(el) || !_isDec(el)) return;
-    _fmtDec(el, parseInt(el.getAttribute('data-iux-dec'), 10) || 0, _loc(el));
+    _fmtDec(el, _decOf(el), _loc(el));
   });
 })();
 
