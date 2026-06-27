@@ -11,6 +11,50 @@
       "diffPos": "rgb(134, 239, 172)",
       "diffNeg": "rgb(220, 38, 38)"
     },
+    "themed": {
+      ".nk-hero": {
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "linear-gradient(135deg, rgb(30, 41, 59) 0%, rgb(15, 23, 42) 100%)",
+        "boxShadow": "rgba(0, 0, 0, 0.06) 0px 1px 3px 0px, rgba(0, 0, 0, 0.04) 0px 1px 2px 0px"
+      },
+      ".nk-hero-value": {
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".nk-hero-row": {
+        "color": "rgb(134, 239, 172)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".nk-hero-label": {
+        "color": "rgba(255, 255, 255, 0.85)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".nk-hero .diff-positive": {
+        "color": "rgb(134, 239, 172)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      "input": {
+        "color": "rgb(0, 0, 0)",
+        "bg": "rgb(255, 255, 255)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".btn-primary": {
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(26, 115, 232)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      }
+    },
     "hero": "$6,233 +$22 (+0.36%) 오늘 - 2026년 6월 +$3,533 (+130.85%) · XIRR - 누적",
     "status": "",
     "list": "종목 현재가 오늘 손익 매입 비중 매입액 보유수 매입단가 평가금액 총손익 손익률 비중 비중차이 Apple AAPL $190.50 +$2.50 (+1.33%) +$38 66.7% $2,403 15 $160.17 $2,858 +$455 +18.94% 45.8% -20.8% 거래✏️🗑️ Microsoft MSFT $410.20 -$3.80 (-0.92%) -$15 33.3% $1,202 4 $300.50 $1,641 +$439 +36.51% 26.3% -7.0% 거래✏️🗑️ Tesla TSLA $250.00 - - - - 0 - $0 - - 0.0% - 거래✏️🗑️ 💵 현금 (예수금) ✏️ CASH · 2개 계좌 - - - - - - $1,735 - - 27.8% - 합계 - +$22 100.0% $3,605 - - $6,233 +$3,533 +130.85% 100.0% - 💰 계좌 입출금 + 종목 추가 📒 계좌 기록 💸 배당 기록"
@@ -26,6 +70,56 @@
     "renderedColors": {
       "diffPos": "rgb(229, 57, 53)",
       "diffNeg": "rgb(30, 136, 229)"
+    },
+    "themed": {
+      ".nk-hero": {
+        "color": "rgb(120, 53, 15)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "linear-gradient(135deg, rgb(254, 249, 195) 0%, rgb(254, 240, 138) 100%)",
+        "boxShadow": "rgba(0, 0, 0, 0.06) 0px 1px 3px 0px, rgba(0, 0, 0, 0.04) 0px 1px 2px 0px"
+      },
+      ".nk-hero-value": {
+        "color": "rgb(120, 53, 15)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".nk-hero-row": {
+        "color": "rgb(229, 57, 53)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".nk-hero-label": {
+        "color": "rgba(120, 53, 15, 0.75)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".nk-hero-unit": {
+        "color": "rgba(120, 53, 15, 0.65)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".nk-hero .diff-positive": {
+        "color": "rgb(229, 57, 53)",
+        "bg": "rgba(0, 0, 0, 0)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      "input": {
+        "color": "rgb(0, 0, 0)",
+        "bg": "rgb(255, 255, 255)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      },
+      ".btn-primary": {
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(202, 138, 4)",
+        "bgImg": "none",
+        "boxShadow": "none"
+      }
     },
     "hero": "11,455 (천원) +84 (+0.74%) 오늘 - 2026년 6월 +6,455 (+129.10%) · XIRR - 누적",
     "status": "",

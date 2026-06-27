@@ -97,11 +97,22 @@ async function capture(browser, base, seed) {
       diffPos: pickColor('.diff-positive'),
       diffNeg: pickColor('.diff-negative'),
     };
+    // 테마 요소들의 계산된 색/배경 — Phase1(색상 토큰화) 회귀 탐지용.
+    const themedSel = ['.summary-card', '.nk-hero', '.nk-hero-value', '.nk-hero-row',
+      '.nk-hero-label', '.nk-hero-unit', '.nk-hero .diff-positive', '.nk-hero .diff-negative',
+      '.pos', '.neg', '.nkw-pos', '.kdw-pos', '.nkw-neg', '.kdw-neg', 'input', '.btn-primary'];
+    const themed = {};
+    for (const sel of themedSel) {
+      const el = document.querySelector(sel);
+      if (!el) continue;
+      const c = getComputedStyle(el);
+      themed[sel] = { color: c.color, bg: c.backgroundColor, bgImg: c.backgroundImage, boxShadow: c.boxShadow };
+    }
     const container = containerId ? document.getElementById(containerId) : null;
     const hero = heroId ? document.getElementById(heroId) : null;
     const statusEl = document.querySelector('[id$="StatusText"]');
     return {
-      vars, renderedColors,
+      vars, renderedColors, themed,
       hero: norm(hero && hero.innerText),
       status: norm(statusEl && statusEl.innerText),
       list: norm(container && container.innerText),
