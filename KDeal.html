@@ -1510,7 +1510,8 @@
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.635';
+const APP_VERSION = 'KDeal v0.636';
+InputUX.setNumberDefaults({ locale: 'ko-KR' });  // Stage 2: KDeal 기본 숫자 locale
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -2359,15 +2360,10 @@ function kdOpenAccountModal(ticker) {
   document.getElementById('kdAccountModal').classList.add('open');
 }
 
-function kdFmtAccInput(el, dec) {
-  const v = parseFloat(el.value.replace(/,/g, ''));
-  el.value = isNaN(v) || !v ? '' : v.toLocaleString('ko-KR', { maximumFractionDigits: dec });
-}
+// 공통 모듈(InputUX Stage 2)로 위임 — 동작 동일, 구현은 js/input-ux.js 단일화
+function kdFmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'ko-KR' }); }
 
-function kdLiveKRW(el) {
-  const d = el.value.replace(/[^\d]/g, '');
-  el.value = d ? Number(d).toLocaleString('ko-KR') : '';
-}
+function kdLiveKRW(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
 
 function kdUpdateAccTotals() {
   let totalQty = 0, totalCost = 0;

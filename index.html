@@ -3881,6 +3881,8 @@ registerMobileTooltipDismiss();
 <script>
 // Stage 1 시범: 온보딩 화면의 숫자/금액 입력만 탭 시 자동선택 적용
 InputUX.setAutoSelectSelector('#onboardingModal input[type=number], #onboardingModal input[inputmode=numeric]');
+// Stage 2: 이 앱의 기본 숫자 locale (마커 data-iux-num 사용 시 적용)
+InputUX.setNumberDefaults({ locale: 'ko-KR' });
 </script>
 <script>
 // GIS redirect 모드 복귀 시 token 추출 — DOMContentLoaded 전에 실행
@@ -3904,7 +3906,7 @@ InputUX.setAutoSelectSelector('#onboardingModal input[type=number], #onboardingM
   }
 })();
 
-const APP_VERSION = 'MyGP v0.635';
+const APP_VERSION = 'MyGP v0.636';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5017,15 +5019,10 @@ function handleBackdropClick(e) {
   if (e.target.id === 'accountModal') closeAccountModal();
 }
 
-function fmtAccModalInput(el, dec) {
-  const v = parseFloat(el.value.replace(/,/g, ''));
-  el.value = isNaN(v) || !v ? '' : v.toLocaleString('ko-KR', { maximumFractionDigits: dec });
-}
+// 공통 모듈(InputUX Stage 2)로 위임 — 동작 동일, 구현은 js/input-ux.js 단일화
+function fmtAccModalInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'ko-KR' }); }
 
-function liveKRWInput(el) {
-  const d = el.value.replace(/[^\d]/g, '');
-  el.value = d ? Number(d).toLocaleString('ko-KR') : '';
-}
+function liveKRWInput(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
 
 function updateModalTotal() {
   let totalQty = 0;
@@ -12350,13 +12347,8 @@ function obToggleAcc2(accId, who) {
   obAccBalChanged();
 }
 
-function obFmtAmt(el) {
-  const v = el.value.replace(/[^0-9]/g, '');
-  el.value = v ? parseInt(v, 10).toLocaleString('ko-KR') : '';
-}
-function obReadAmt(el) {
-  return parseInt((el?.value || '0').replace(/,/g, ''), 10) || 0;
-}
+function obFmtAmt(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
+function obReadAmt(el) { return Math.round(InputUX.readNumber(el)); }
 
 function obAccBalChanged() {
   const allIds = [..._obData.myAccIds, ...(_obData.hasWife ? _obData.wifeAccIds : [])];

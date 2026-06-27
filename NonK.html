@@ -1513,7 +1513,8 @@
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.635';
+const APP_VERSION = 'NonK v0.636';
+InputUX.setNumberDefaults({ locale: 'en-US' });  // Stage 2: NonK 기본 숫자 locale
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
   try {
@@ -2328,15 +2329,10 @@ function nkOpenAccountModal(ticker) {
   document.getElementById('nkAccountModal').classList.add('open');
 }
 
-function nkFmtAccInput(el, dec) {
-  const v = parseFloat(el.value.replace(/,/g, ''));
-  el.value = isNaN(v) || !v ? '' : v.toLocaleString('en-US', { maximumFractionDigits: dec });
-}
+// 공통 모듈(InputUX Stage 2)로 위임 — 동작 동일(en-US), 구현은 js/input-ux.js 단일화
+function nkFmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'en-US' }); }
 
-function nkLiveInt(el) {
-  const d = el.value.replace(/[^\d]/g, '');
-  el.value = d ? Number(d).toLocaleString('en-US') : '';
-}
+function nkLiveInt(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'en-US' }); }
 
 function nkUpdateAccTotals() {
   let totalQty = 0, totalCost = 0;
