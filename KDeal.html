@@ -708,7 +708,7 @@ const KD_PORTFOLIO_COLS = [
     cell:(it)=>it.hasCost?it._dSign+it._diff.toFixed(1)+'%':'-' },
 ];
 const KD_PORTFOLIO_COL_IDS = KD_PORTFOLIO_COLS.map(c => c.id);
-MARKET_CONFIG.cols = KD_PORTFOLIO_COLS; MARKET_CONFIG.colIds = KD_PORTFOLIO_COL_IDS; MARKET_CONFIG.fmt = { hero: fmtThou };
+MARKET_CONFIG.cols = KD_PORTFOLIO_COLS; MARKET_CONFIG.colIds = KD_PORTFOLIO_COL_IDS; MARKET_CONFIG.fmt = { hero: fmtThou, money: fmtKRW };
 // 컬럼 순서는 세 앱 공유 — MyPM 설정에서 편집, NonK/KDeal은 읽기 전용으로 동일 적용.
 
 ST.holdings        = loadHoldings();
@@ -864,46 +864,6 @@ function RenderAccountButtons() {
 
 
 
-function RenderChart() {
-  const canvas = document.getElementById('PortfolioChart');
-  const empty  = document.getElementById('ChartEmpty');
-  if (!canvas) return;
-  if (!ST.monthly.length) {
-    canvas.style.display = 'none';
-    if (empty) empty.style.display = '';
-    return;
-  }
-  canvas.style.display = '';
-  if (empty) empty.style.display = 'none';
-
-  const sorted = [...ST.monthly].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-  const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2,'0')}`);
-  const _activeForChart = ST.accounts.filter(a => a.active !== false);
-  const evalVals = sorted.map(r => _activeForChart.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0));
-
-  // Deposit principal: cumulative deposits up to each month (active accounts only)
-  const _activeChartIds = _activeForChart.map(a => a.id);
-  const txns = [...ST.deposits.transactions]
-    .filter(t => _activeChartIds.includes(t.accId))
-    .sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
-  const depVals = sorted.map(r => {
-    const cutoff = `${r.year}-${String(r.month).padStart(2,'0')}-31`;
-    return txns.filter(t => (t.date || '') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-  });
-
-  if (ST.chartInstance) ST.chartInstance.destroy();
-  ST.chartInstance = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: '누적 입금액', data: depVals, borderColor: '#2e7d32', backgroundColor: 'rgba(46,125,50,0.15)', fill: true, tension: 0.2 },
-        { label: '평가총액', data: evalVals, borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,0.15)', fill: true, tension: 0.2 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => fmtKRW(v) } } } }
-  });
-}
 
 // --- Add stock modal ---
 let _kdAddPending = null;
@@ -970,14 +930,6 @@ function OnAddSearchInput(val) {
   }, 300);
 }
 
-function UpdateAddTotals() {
-  ST.accounts.filter(a => a.active !== false).forEach(a => {
-    const qty = Number(document.getElementById(`AddQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
-    const avg = Number(document.getElementById(`AddAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
-    const el = document.getElementById(`AddTotal_${a.id}`);
-    if (el) el.textContent = fmtKRW(qty * avg);
-  });
-}
 
 function CloseAddModal() {
   document.getElementById('AddStockModal').classList.remove('open');
@@ -1058,20 +1010,6 @@ function FmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec
 
 function LiveKRW(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
 
-function UpdateAccTotals() {
-  let totalQty = 0, totalCost = 0;
-  ST.accounts.filter(a => a.active !== false).forEach(a => {
-    const qty = Number(document.getElementById(`AccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
-    const avg = Number(document.getElementById(`AccAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
-    const el = document.getElementById(`AccTotal_${a.id}`);
-    if (el) { el.textContent = fmtKRW(qty * avg); el.classList.toggle('zero', !(qty * avg)); }
-    totalQty += qty; totalCost += qty * avg;
-  });
-  const qEl = document.getElementById('ModalTotalQty');
-  const cEl = document.getElementById('ModalTotalCost');
-  if (qEl) qEl.textContent = totalQty.toLocaleString() + ' 주';
-  if (cEl) cEl.textContent = fmtKRW(totalCost);
-}
 
 
 
@@ -1242,69 +1180,6 @@ function OpenCashModal() {
 // --- Deposit modal ---
 
 
-function RenderDepositList() {
-  const grand = document.getElementById('DepositGrand');
-  const totals = document.getElementById('DepositTotals');
-  const list = document.getElementById('DepositList');
-  if (!list) return;
-
-  const txns = ST.deposits.transactions;
-  const total = txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-  if (grand) grand.innerHTML = `<strong>순 입금액 합계: ${fmtKRW(total)}</strong>`;
-
-  if (totals) {
-    totals.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => {
-      const v = txns.filter(t => t.accId === a.id).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-      return `<span>${a.name}: ${fmtKRW(v)}</span>`;
-    }).join('');
-  }
-
-  if (!txns.length) { list.innerHTML = '<div class="deposit-empty">입출금 내역이 없습니다.</div>'; return; }
-  const sorted = [...txns].sort((a, b) => (b.date || '') < (a.date || '') ? -1 : 1);
-
-  // 연도별 그룹핑
-  const byYear = new Map();
-  sorted.forEach(t => {
-    const y = (t.date || '').slice(0, 4) || '미지정';
-    if (!byYear.has(y)) byYear.set(y, []);
-    byYear.get(y).push(t);
-  });
-  const years = [...byYear.keys()].sort((a, b) => b.localeCompare(a));
-  if (ST.depositCollapsedYears === null) {
-    ST.depositCollapsedYears = new Set(years.slice(1));
-  }
-
-  list.innerHTML = years.map(y => {
-    const ytx = byYear.get(y);
-    const yearSum = ytx.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-    const sumCls = yearSum >= 0 ? 'pos' : 'neg';
-    const sumStr = (yearSum >= 0 ? '+' : '−') + fmtKRW(Math.abs(yearSum));
-    const collapsed = ST.depositCollapsedYears.has(y);
-    const chevron = collapsed ? '▶' : '▼';
-    const header = `
-      <div class="txn-year-hdr" onclick="ToggleDepositYear('${y}')">
-        <span class="yh-chev">${chevron}</span>
-        <span class="yh-year">${y}년</span>
-        <span class="yh-count">${ytx.length}건</span>
-        <span class="yh-sum ${sumCls}">${sumStr}</span>
-      </div>`;
-    if (collapsed) return header;
-    const rows = ytx.map(t => {
-      const accName = ST.accounts.find(a => a.id === t.accId)?.name || t.accId;
-      const sign = t.type === 'withdraw' ? '-' : '+';
-      return `<div class="deposit-row">
-        <span>${t.date || '-'}</span>
-        <span>${accName}</span>
-        <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtKRW(Number(t.amount))}</span>
-        <span>
-          <button class="edit-btn" onclick="OpenTxnEditor('${t.id}')">편집</button>
-          <button class="del-btn" onclick="DeleteTxn('${t.id}')">삭제</button>
-        </span>
-      </div>`;
-    }).join('');
-    return header + rows;
-  }).join('');
-}
 
 
 function DeleteTxn(id) {
@@ -1395,10 +1270,6 @@ function RenderRecAccountInputs() {
   document.getElementById('RecTotal').textContent = fmtKRW(0);
 }
 
-function UpdateRecTotal() {
-  const total = ST.accounts.filter(a => a.active !== false).reduce((s, a) => s + (Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0), 0);
-  document.getElementById('RecTotal').textContent = fmtKRW(total);
-}
 
 function FillCurrentValues() {
   ST.accounts.filter(a => a.active !== false).forEach(a => {
@@ -1486,40 +1357,6 @@ function EditMonthlyRecord(id) {
 
 
 
-function RenderRecordsList() {
-  const header = document.getElementById('RecordsTableHeader');
-  const list   = document.getElementById('RecordsList');
-  if (!header || !list) return;
-  if (!ST.monthly.length) {
-    header.innerHTML = '';
-    list.innerHTML = '<div class="records-empty">아직 기록이 없습니다.</div>';
-    return;
-  }
-  const cols = `80px ${ST.accounts.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 90px`;
-  header.style.gridTemplateColumns = cols;
-  header.innerHTML = `<span>날짜</span>${ST.accounts.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
-  const sorted = [...ST.monthly].sort((a, b) => {
-    if (b.year !== a.year) return b.year - a.year;
-    if (b.month !== a.month) return b.month - a.month;
-    return (b.day || 1) - (a.day || 1);
-  });
-  list.innerHTML = sorted.map(rec => {
-    const dateLabel = rec.day
-      ? `${rec.year}.${String(rec.month).padStart(2,'0')}.${String(rec.day).padStart(2,'0')}`
-      : `${rec.year}.${String(rec.month).padStart(2,'0')}`;
-    const total = ST.accounts.reduce((s, a) => s + (Number(rec.accounts[a.id]) || 0), 0);
-    const cells = ST.accounts.map(a => `<span class="amount">${fmtKRW(Number(rec.accounts[a.id])||0)}</span>`).join('');
-    return `<div class="records-row" style="grid-template-columns:${cols}">
-      <span>${dateLabel}</span>
-      ${cells}
-      <span class="total">${fmtKRW(total)}</span>
-      <span>
-        <button class="edit-btn" onclick="EditMonthlyRecord('${rec.id}')">편집</button>
-        <button class="del-btn" onclick="DeleteMonthlyRecord('${rec.id}')">삭제</button>
-      </span>
-    </div>`;
-  }).join('');
-}
 
 // --- Dividend modal ---
 
@@ -1776,80 +1613,6 @@ function AddMiscDividendRecord() {
   RenderDividendLists();
 }
 
-function RenderDividendLists() {
-  // Stock table
-  const sHeader = document.getElementById('DivStockTableHeader');
-  const sList   = document.getElementById('DivStockRecordsList');
-  if (sHeader && sList) {
-    if (!ST.dividends.length) {
-      sHeader.innerHTML = ''; sList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
-    } else {
-      const allTickers = [...new Set(ST.dividends.flatMap(r => divRecCodes(r)))];
-      const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
-      const spanCount = Math.max(allTickers.length, 1);
-      sHeader.style.gridTemplateColumns = cols;
-      sHeader.innerHTML = `<span>연/월</span>${allTickers.map(t=>`<span style="text-align:right">${t}</span>`).join('')}<span style="text-align:right">합계</span><span></span>`;
-      const sorted = [...ST.dividends].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
-      sList.innerHTML = sorted.map(rec => {
-        const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
-        if (divRecIsMisc(rec)) {
-          const total = divRecMiscTotal(rec);
-          const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
-          return `<div class="div-record-row" style="grid-template-columns:${cols}">
-            <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>
-            <span style="grid-column: span ${spanCount};color:var(--muted,#888)">📝 ${memo}</span>
-            <span class="total">${fmtKRW(total)}</span>
-            <span>
-              <button class="edit-btn" onclick="EditDividendRecord('${rec.id}')">수정</button>
-              <button class="del-btn" onclick="DeleteDividendRecord('${rec.id}')">삭제</button>
-            </span>
-          </div>`;
-        }
-        const total = allTickers.reduce((s,t) => s + DivRecAmount(rec, t), 0);
-        const cells = allTickers.map(t => {
-          const v = DivRecAmount(rec, t);
-          if (!v) return `<span class="amount">-</span>`;
-          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="OpenDivStockEdit('${rec.id}','${t}')">✏️</button></span>`;
-        }).join('');
-        return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>${cells}
-          <span class="total">${fmtKRW(total)}</span>
-          <span><button class="del-btn" onclick="DeleteDividendRecord('${rec.id}')">삭제</button></span>
-        </div>`;
-      }).join('');
-    }
-  }
-  // Account table
-  const aHeader = document.getElementById('DivAccTableHeader');
-  const aList   = document.getElementById('DivAccRecordsList');
-  if (aHeader && aList) {
-    if (!ST.dividends.length) {
-      aHeader.innerHTML = ''; aList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
-    } else {
-      const cols = `80px ${ST.accounts.map(()=>'minmax(80px,1fr)').join(' ')} minmax(90px,1fr)`;
-      aHeader.style.gridTemplateColumns = cols;
-      aHeader.innerHTML = `<span>연/월</span>${ST.accounts.map(a=>`<span style="text-align:right">${a.name}</span>`).join('')}<span style="text-align:right">합계</span>`;
-      const sorted = [...ST.dividends].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
-      aList.innerHTML = sorted.map(rec => {
-        const total = ST.accounts.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
-        const isMisc = divRecIsMisc(rec);
-        const cells = ST.accounts.map(a => {
-          const v = Number(rec.accounts[a.id]) || 0;
-          if (!v) return `<span class="amount">-</span>`;
-          if (isMisc) return `<span class="amount">${fmtKRW(v)}</span>`;
-          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="OpenDivAccEdit('${rec.id}','${a.id}')">✏️</button></span>`;
-        }).join('');
-        const miscPrefix = isMisc
-          ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}" style="color:var(--muted,#888)">📝 </small>`
-          : '';
-        return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
-          <span class="total">${fmtKRW(total)}</span>
-        </div>`;
-      }).join('');
-    }
-  }
-}
 
 // --- 배당 포커스드 편집 패널 ---
 ST.divStockEditRecId = null, ST.divStockEditTicker = null;
