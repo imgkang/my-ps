@@ -48,6 +48,70 @@
 })();
 
 /* ===========================================================================
+ * Stage 2 — 숫자/금액 콤마 포맷 (세 앱 공통)
+ * 세 앱에 중복돼 있던 6개 함수(liveKRWInput/nkLiveInt/kdLiveKRW/obFmtAmt/
+ * fmtAccModalInput/nkFmtAccInput/kdFmtAccInput)의 단일 구현. 두 가지 사용법:
+ *   1) 직접 호출: InputUX.formatNumber(el,{mode,dec,locale}) — 기존 래퍼들이 위임.
+ *   2) 마커 위임(신규/시범 화면용):
+ *        <input data-iux-num>                    실시간 정수 콤마(입력 즉시)
+ *        <input data-iux-num data-iux-dec="4">   소수 4자리(focus 시 콤마제거, blur 시 포맷)
+ *        data-iux-num-locale="en-US"             개별 locale override
+ * 빈값/0/NaN → '' (기존 동작 보존). 값만 바꾸므로 기존 input/change·저장 로직과 무관.
+ * =========================================================================*/
+(function () {
+  'use strict';
+  const UX = (window.InputUX = window.InputUX || {});
+  let _numLocale = 'ko-KR';
+
+  // 앱별 기본 locale 지정(index/KDeal=ko-KR, NonK=en-US). 마커 사용 시 기본값.
+  UX.setNumberDefaults = function (opts) { if (opts && opts.locale) _numLocale = opts.locale; };
+
+  // 정수 실시간: 숫자만 남기고 천단위 콤마. 빈값 → ''
+  function _fmtInt(el, locale) {
+    const d = (el.value || '').replace(/[^\d]/g, '');
+    el.value = d ? Number(d).toLocaleString(locale) : '';
+  }
+  // 소수: parseFloat 후 maximumFractionDigits. 빈값/0/NaN → ''
+  function _fmtDec(el, dec, locale) {
+    const v = parseFloat((el.value || '').replace(/,/g, ''));
+    el.value = (isNaN(v) || !v) ? '' : v.toLocaleString(locale, { maximumFractionDigits: dec });
+  }
+
+  // 직접 호출용(기존 래퍼들이 사용). mode:'int'(기본)|'dec'
+  UX.formatNumber = function (el, opts) {
+    if (!el) return;
+    opts = opts || {};
+    const locale = opts.locale || _numLocale;
+    if (opts.mode === 'dec') _fmtDec(el, opts.dec == null ? 0 : opts.dec, locale);
+    else _fmtInt(el, locale);
+  };
+  // 콤마 제거 후 숫자 파싱(없으면 0).
+  UX.readNumber = function (el) {
+    const v = parseFloat(((el && el.value) || '0').replace(/,/g, ''));
+    return isNaN(v) ? 0 : v;
+  };
+  // onfocus 콤마 제거 통합.
+  UX.stripCommas = function (el) { if (el) el.value = (el.value || '').replace(/,/g, ''); };
+
+  // ----- 마커 기반 이벤트 위임 (data-iux-num) — 동적 input 자동 커버 -----
+  const _hasNum = (el) => el && el.hasAttribute && el.hasAttribute('data-iux-num');
+  const _isDec = (el) => el.getAttribute('data-iux-dec') != null;
+  const _loc = (el) => el.getAttribute('data-iux-num-locale') || _numLocale;
+  document.addEventListener('input', function (e) {           // 정수: 입력 즉시 콤마
+    const el = e.target; if (!_hasNum(el) || _isDec(el)) return;
+    _fmtInt(el, _loc(el));
+  });
+  document.addEventListener('focusin', function (e) {          // 소수: 편집 위해 콤마 제거
+    const el = e.target; if (!_hasNum(el) || !_isDec(el)) return;
+    UX.stripCommas(el);
+  });
+  document.addEventListener('focusout', function (e) {         // 소수: 포커스 아웃 시 포맷
+    const el = e.target; if (!_hasNum(el) || !_isDec(el)) return;
+    _fmtDec(el, parseInt(el.getAttribute('data-iux-dec'), 10) || 0, _loc(el));
+  });
+})();
+
+/* ===========================================================================
  * Stage 3 — 날짜 피커 (휠 + 달력)
  * - 전체 날짜(type=date): 달력 기본 + 휠 토글
  * - 연·월(년/월 number 쌍): 휠(년+월)만

@@ -2632,7 +2632,7 @@ registerMobileTooltipDismiss();
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
           날짜
-          <input type="date" id="cashAdjDate" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
+          <input type="date" data-iux-date id="cashAdjDate" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
           금액 (원)
@@ -2802,7 +2802,7 @@ registerMobileTooltipDismiss();
     <div class="txn-form">
       <label><span>이전할 계좌</span><select id="transferFrom"></select></label>
       <label><span>이전받을 계좌</span><select id="transferTo"></select></label>
-      <label><span>이전일</span><input type="date" id="transferDate" oninput="updateTransferRemaining()"></label>
+      <label><span>이전일</span><input type="date" data-iux-date id="transferDate" oninput="updateTransferRemaining()"></label>
     </div>
     <div id="trDateInfoSection" style="display:none;margin:4px 0 10px">
       <div class="transfer-section-title">이전일 기준 현황 (이전 계좌)</div>
@@ -2863,7 +2863,7 @@ registerMobileTooltipDismiss();
       <div class="records-input-card">
         <div class="rec-date-row">
           <label>기록일</label>
-          <input type="date" id="recDate">
+          <input type="date" data-iux-date id="recDate">
           <div class="rec-action-btns" style="margin:0">
             <button class="btn-secondary" onclick="fillCurrentValues()">💾 현재값</button>
             <button class="btn-secondary" onclick="loadHistoricalValues()">📅 이전 가치</button>
@@ -3347,7 +3347,7 @@ registerMobileTooltipDismiss();
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div>
         <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">날짜</label>
-        <input type="date" id="wdrecDate" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+        <input type="date" data-iux-date id="wdrecDate" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
       </div>
       <div>
         <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인물</label>
@@ -3429,7 +3429,7 @@ registerMobileTooltipDismiss();
     <div style="margin-bottom:12px">
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">세금 (만원) <span style="font-weight:400">— 자동계산, 직접 입력 가능</span></label>
       <input type="text" inputmode="decimal" id="wdrecTax" oninput="onWdrecTaxManualEdit()"
-        onfocus="this.value=this.value.replace(/,/g,'')"
+        onfocus="InputUX.stripCommas(this)"
         onblur="fmtAccModalInput(this,1)"
         style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
     </div>
@@ -3481,7 +3481,7 @@ registerMobileTooltipDismiss();
         <button class="trade-type-btn sell"       id="taf_sell_btn" onclick="setAccFormType('sell')">매도</button>
       </div>
       <div class="txn-form" style="margin-bottom:10px">
-        <label><span>날짜</span><input type="date" id="taf_date"></label>
+        <label><span>날짜</span><input type="date" data-iux-date id="taf_date"></label>
         <label><span>수량</span><input type="text" inputmode="numeric" id="taf_qty" placeholder="수량" oninput="updateAccFormTotal()"></label>
         <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="taf_price" placeholder="체결 단가" oninput="updateAccFormTotal()"></label>
       </div>
@@ -3518,7 +3518,7 @@ registerMobileTooltipDismiss();
           </div>
         </label>
         <label><span>계좌</span><select id="tradeAccount" onchange="onTradeAccountChange()"></select></label>
-        <label><span>날짜</span><input type="date" id="tradeDate"></label>
+        <label><span>날짜</span><input type="date" data-iux-date id="tradeDate"></label>
         <label><span>종목</span><select id="tradeCode" onchange="onTradeCodeChange()"></select></label>
         <label><span>수량</span><input type="text" id="tradeQty" inputmode="numeric" placeholder="매수/매도 수량" oninput="updateTradeTotal()"></label>
         <label><span>단가 (원)</span><input type="text" id="tradePrice" inputmode="numeric" placeholder="체결 단가" oninput="updateTradeTotal()"></label>
@@ -3754,7 +3754,7 @@ registerMobileTooltipDismiss();
 
     <div class="rec-date-row" style="margin-bottom:12px">
       <label>기록일</label>
-      <input type="date" id="divDate">
+      <input type="date" data-iux-date id="divDate">
     </div>
 
     <!-- 종목별 배당 입력 -->
@@ -3879,8 +3879,11 @@ registerMobileTooltipDismiss();
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-// Stage 1 시범: 온보딩 화면의 숫자/금액 입력만 탭 시 자동선택 적용
-InputUX.setAutoSelectSelector('#onboardingModal input[type=number], #onboardingModal input[inputmode=numeric]');
+// Stage 1: 앱 전체의 숫자/금액 입력을 탭하면 기존값 자동선택(바로 덮어쓰기)
+// (날짜 마커는 readonly/inputmode=none 이라 Stage 1 에서 자동 제외됨)
+InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');
+// Stage 2: 이 앱의 기본 숫자 locale (마커 data-iux-num 사용 시 적용)
+InputUX.setNumberDefaults({ locale: 'ko-KR' });
 </script>
 <script>
 // GIS redirect 모드 복귀 시 token 추출 — DOMContentLoaded 전에 실행
@@ -3904,7 +3907,7 @@ InputUX.setAutoSelectSelector('#onboardingModal input[type=number], #onboardingM
   }
 })();
 
-const APP_VERSION = 'MyGP v0.635';
+const APP_VERSION = 'MyGP v0.639';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5017,15 +5020,10 @@ function handleBackdropClick(e) {
   if (e.target.id === 'accountModal') closeAccountModal();
 }
 
-function fmtAccModalInput(el, dec) {
-  const v = parseFloat(el.value.replace(/,/g, ''));
-  el.value = isNaN(v) || !v ? '' : v.toLocaleString('ko-KR', { maximumFractionDigits: dec });
-}
+// 공통 모듈(InputUX Stage 2)로 위임 — 동작 동일, 구현은 js/input-ux.js 단일화
+function fmtAccModalInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'ko-KR' }); }
 
-function liveKRWInput(el) {
-  const d = el.value.replace(/[^\d]/g, '');
-  el.value = d ? Number(d).toLocaleString('ko-KR') : '';
-}
+function liveKRWInput(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
 
 function updateModalTotal() {
   let totalQty = 0;
@@ -12350,13 +12348,8 @@ function obToggleAcc2(accId, who) {
   obAccBalChanged();
 }
 
-function obFmtAmt(el) {
-  const v = el.value.replace(/[^0-9]/g, '');
-  el.value = v ? parseInt(v, 10).toLocaleString('ko-KR') : '';
-}
-function obReadAmt(el) {
-  return parseInt((el?.value || '0').replace(/,/g, ''), 10) || 0;
-}
+function obFmtAmt(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
+function obReadAmt(el) { return Math.round(InputUX.readNumber(el)); }
 
 function obAccBalChanged() {
   const allIds = [..._obData.myAccIds, ...(_obData.hasWife ? _obData.wifeAccIds : [])];
@@ -18394,11 +18387,11 @@ window.addEventListener('message', e => {
     </div>
     <div class="mplan-form-row">
       <label>시작일</label>
-      <input type="date" id="mplanFormStart">
+      <input type="date" data-iux-date id="mplanFormStart">
     </div>
     <div class="mplan-form-row">
       <label>종료일</label>
-      <input type="date" id="mplanFormEnd">
+      <input type="date" data-iux-date id="mplanFormEnd">
     </div>
     <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
       <button class="btn-secondary" onclick="closeMplanForm()">취소</button>
