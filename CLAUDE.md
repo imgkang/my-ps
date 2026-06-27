@@ -11,10 +11,14 @@
   예: `v0.101` → `v0.102`
 - **`sw.js`의 `CACHE_NAME`도 반드시 동일 버전으로 함께 올릴 것**  
   예: `mypm-v0.101` → `mypm-v0.102` (올리지 않으면 브라우저 캐시가 갱신 안 됨)
+- **공유 자산 캐시버스팅**: `NonK.html`/`KDeal.html`의 `market-core.js?v=` 및
+  `market.css?v=` 쿼리와 `sw.js` ASSETS의 동일 쿼리도 **버전과 함께 올릴 것**.
+  (HTML이 `market-core.js`의 함수에 강하게 의존 — SW가 옛 버전 JS를 섞어 서빙하면
+  `Render` 등이 undefined가 되어 화면이 빈 채로 멈춤. 쿼리를 올려야 항상 일치.)
 - 작업 완료 후 커밋된 버전 번호를 사용자에게 알릴 것
 
 ## 현재 버전
-`v0.654` (MyPM / NonK / KDeal 공통)
+`v0.655` (MyPM / NonK / KDeal 공통)
 
 ## 배포 구조 (중요)
 `mypm.growpension.com`은 **GitHub Pages가 아닌 집 Windows PC**에서 서빙된다.
