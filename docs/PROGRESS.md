@@ -4,16 +4,44 @@
 > 새 세션은 이 파일 + `server/README.md` + `CLAUDE.md` + `docs/DEPLOY.md` 를 먼저 읽으면 맥락을 파악할 수 있다.
 
 저장소: `imgkang/my-ps`. **브랜치·커밋·버전 규칙은 `CLAUDE.md` 가 최신 기준**(이 문서의 옛 규칙보다 우선).
-최종 클라이언트 버전: **v0.634** (index/NonK/KDeal/sw 공통). 마지막 갱신: 2026-06-27.
+최종 클라이언트 버전: **v0.639** (index/NonK/KDeal/sw 공통). 마지막 갱신: 2026-06-27.
 
 ---
 
 ## 🧭 최신 상태 요약 (2026-06-27 기준)
 
-- **현재 버전 v0.634.** 배포 파이프라인(GitHub Webhook → 집 PC git pull + CF purge, server/src 변경 시 자동 빌드·재시작)은 v0.543~0.545 에서 완성된 상태 그대로 운영 중.
+- **현재 버전 v0.639.** 배포 파이프라인(GitHub Webhook → 집 PC git pull + CF purge, server/src 변경 시 자동 빌드·재시작)은 v0.543~0.545 에서 완성된 상태 그대로 운영 중.
 - **구글 로그인 + 다중 사용자**가 기본 인증(PIN 제거, v0.517). 이후 온보딩/iOS PWA 로그인 안정화까지 마무리됨(v0.590~0.602).
-- 최근 작업 흐름은 **입력 UX 공통화** — `js/input-ux.js` (자동선택 + 날짜 피커 휠/달력 공통 모듈, v0.633~0.634)와 **종목 리스트 컬럼 순서 편집**(#326~329).
-- ⚠️ 이 문서 본문의 v0.543 이후 섹션들은 과거 기록. **아래 "v0.583~0.634 보강" 섹션이 그 이후 변경의 요약**이다. 그 이전(v0.546~0.582)은 shallow clone 으로 히스토리가 잘려 상세 미기재.
+- 최근 작업 흐름은 **입력 UX 공통 모듈(`js/input-ux.js`) 확대 완료** — 자동선택·콤마 포맷·날짜 피커 3종을 세 앱(MyPM/NonK/KDeal)에 일관 적용(v0.633~0.639). 아래 "입력 UX 공통 모듈 확대" 섹션 참고.
+- ⚠️ 이 문서 본문의 v0.543 이후 섹션들은 과거 기록. **아래 두 섹션("입력 UX 공통 모듈 확대", "v0.583~0.634 보강")이 그 이후 변경의 요약**이다. 그 이전(v0.546~0.582)은 shallow clone 으로 히스토리가 잘려 상세 미기재.
+
+---
+
+## ✅ 입력 UX 공통 모듈(js/input-ux.js) 확대 — Stage 1·2·3 통합 (2026-06-27, v0.635~0.639)
+
+> "모든 입력 불편함을 공통 모듈로 개선 + 코드 재사용" 목표의 연장. '시작하기' 마법사 시범
+> (v0.632~0.633) 이후, 자동선택·콤마 포맷·날짜 피커 3종을 `js/input-ux.js` 한 곳에 모아
+> 세 앱에 일관 적용. 모든 단계 회귀 위험 고려해 기존 저장 로직·동작 보존, Playwright 검증(콘솔 오류 0).
+> 작업 브랜치 PR #335(v0.635), #336(v0.636~0.639) 머지 완료.
+
+### 모듈 구조 (`js/input-ux.js`)
+- **Stage 1 — 탭 시 기존값 자동선택**: `focusin` 위임. `setAutoSelectSelector(sel)`. readonly/inputmode=none(날짜 마커)·일반 텍스트는 자동 제외.
+- **Stage 2 — 숫자/금액 콤마 포맷**(v0.636 신설): `formatNumber(el,{mode:'int'|'dec',dec,locale})` / `readNumber` / `stripCommas` / `setNumberDefaults({locale})`. 마커 `data-iux-num`(+`data-iux-dec`,`data-iux-num-locale`) 이벤트 위임(input/focusin/focusout). 빈값/0/NaN→''.
+- **Stage 3 — 커스텀 날짜 피커(달력/휠)**: 마커 `data-iux-date`(전체날짜), `data-iux-ym-month`/`data-iux-ym-year`(연·월). iOS 네이티브 차단(type=text+readonly+inputmode=none) + mousedown preventDefault 로 포커스 깜빡임 제거.
+
+### 적용 경과
+- **v0.635**(#335): 날짜 피커 열 때 입력란 포커스로 인한 깜빡임 제거(mousedown preventDefault). PROGRESS 최신화 동반.
+- **v0.636 Step A**(#336): Stage 2 신설. 세 앱 중복 6개 함수(liveKRWInput/nkLiveInt/kdLiveKRW/obFmtAmt/fmt*AccInput)를 단일 구현으로 위임(이름·동작 보존, 인라인 HTML 무수정). 동작 동일성 0 mismatch.
+- **v0.637 Step B**: 자동선택을 온보딩 한정 → 세 앱 전체 숫자/금액(`input[inputmode=numeric|decimal],[data-iux-num]`)으로 확대.
+- **v0.638 Step C**: index 잔여 + NonK/KDeal 날짜 입력 전부(총 18개)에 `data-iux-date` 적용 → 모든 날짜가 커스텀 피커. (valueAsDate/showPicker 사용처 없음 확인 → 안전.)
+- **v0.639 Step D**: 인라인 콤마제거 원시 정규식 21곳(index 1·NonK 15·KDeal 5)을 `InputUX.stripCommas(this)`로 통합. onblur/oninput 유지.
+
+### 앱별 기본 locale (Stage 2 마커용)
+- index/KDeal = `ko-KR`, NonK = `en-US` (`InputUX.setNumberDefaults` 로 지정). 기존 래퍼는 locale 명시 전달로 보존.
+
+### 후속 후보 (보류)
+- 저장 경로의 산재한 `Number(...replace(/,/g,''))` 파싱을 `InputUX.readNumber`로 통합(회귀 위험 대비 가치 낮아 보류).
+- NonK/KDeal 거래 입력(nqt*/kqt*)의 onfocus+onblur 쌍을 `data-iux-num data-iux-dec` 마커로 완전 전환(현재는 stripCommas+래퍼 조합 유지).
 
 ---
 
