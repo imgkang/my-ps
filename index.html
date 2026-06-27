@@ -2912,7 +2912,7 @@ registerMobileTooltipDismiss();
     <!-- 은퇴연도 / 수익률 입력 바 -->
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px;font-size:12px;color:var(--muted)">
       <label style="display:flex;align-items:center;gap:3px"><span style="color:#1d4ed8;font-weight:600">📅 적립예상</span>
-        <input type="text" inputmode="numeric" id="ayr_simEndYear" min="2025" max="2100" step="1"
+        <input type="text" inputmode="numeric" id="ayr_simEndYear" data-iux-year min="2025" max="2100" step="1"
                style="width:62px;padding:2px 5px;border:1px solid #bfdbfe;border-radius:4px;font-size:12px;background:#eff6ff;margin:0 2px"
                oninput="saveAnnualSimEndYear()">년까지
       </label>
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.650';
+const APP_VERSION = 'MyGP v0.651';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -8012,7 +8012,7 @@ function openAnnualPlanModal() {
   if (mplanBtn) { mplanBtn.classList.remove('open'); const ch = mplanBtn.querySelector('.apt-chevron'); if (ch) ch.style.transform = ''; }
   // 적립예상 시뮬레이션 종료연도 동기화
   const simEndEl = document.getElementById('ayr_simEndYear');
-  if (simEndEl) simEndEl.value = annualPlan?.simEndYear || (new Date().getFullYear() + 10);
+  if (simEndEl) { simEndEl.value = annualPlan?.simEndYear || (new Date().getFullYear() + 10); simEndEl.setAttribute('data-iux-year-base', Number(appSettings.myBirthYear) || 0); }
   renderMonthlyPlanList();
   updateMplanCountBadge();
   renderPrincipalTable();
@@ -13954,7 +13954,7 @@ function renderWdPeriodCard(idx, period, hasWife, endYr) {
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <strong style="font-size:13px">구간 ${idx+1}</strong>
-      <input id="wdP${idx}_start" type="text" inputmode="numeric" min="${_wdMinYr}" max="2080" value="${period.startYear || ''}"
+      <input id="wdP${idx}_start" type="text" inputmode="numeric" data-iux-year data-iux-year-base="${Number(appSettings.myBirthYear)||0}" min="${_wdMinYr}" max="2080" value="${period.startYear || ''}"
              style="width:70px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:12px">년
       <span style="font-size:11px;color:var(--muted)">(~${endYr || '?'}년 자동)</span>
       ${_wdHint ? `<span style="font-size:11px;color:var(--muted)">· ${_wdHint}</span>` : ''}
@@ -14592,7 +14592,7 @@ function renderQuickPeriodCard(idx, period, hasWife, endYr) {
     <!-- 행1: 구간정보 + 타입 + 공적연금 + 총인출/인출율 + 삭제 -->
     <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
       <span style="font-weight:600;color:#334155;min-width:34px">구간${idx+1}</span>
-      <input id="qwdP${idx}_start" type="text" inputmode="numeric" min="${_qwdMinYr}" max="2100" step="1" value="${p.startYear||''}"
+      <input id="qwdP${idx}_start" type="text" inputmode="numeric" data-iux-year data-iux-year-base="${Number(appSettings.myBirthYear)||0}" min="${_qwdMinYr}" max="2100" step="1" value="${p.startYear||''}"
              style="width:60px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
              oninput="onQwdStartYearChange(${idx})"
              onblur="onQwdStartYearBlur(${idx})">년
