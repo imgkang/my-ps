@@ -45,7 +45,7 @@
         <polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
     </a>
-    <a href="NonK.html" class="hdr-btn active" onclick="nkRefreshAll(false, false); return false;" title="가격 갱신">
+    <a href="NonK.html" class="hdr-btn active" onclick="RefreshAll(false, false); return false;" title="가격 갱신">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><line x1="2" y1="12" x2="22" y2="12"/>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -73,7 +73,7 @@
 
   <div class="status-bar">
     <span id="StatusText">보유종목 0개</span>
-    <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="nktOpenTradeModal()">+ 거래 추가</button>
+    <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="tOpenTradeModal()">+ 거래 추가</button>
   </div>
   <div id="HoldingsContainer">
     <div class="empty-state"><div class="icon">🇺🇸</div><div>'+ 종목 추가' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>
@@ -82,7 +82,7 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <h2 style="margin:0">👁 관심종목</h2>
-      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenWatchModal()">+ 추가</button>
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="OpenWatchModal()">+ 추가</button>
     </div>
     <div id="WatchContainer"><div class="mw-empty">관심종목이 없습니다.</div></div>
   </div>
@@ -90,7 +90,7 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <h2 style="margin:0">계좌별 상태 보기</h2>
-      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="nkOpenAccountSettings()">⚙️ 계좌 관리</button>
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="OpenAccountSettings()">⚙️ 계좌 관리</button>
     </div>
     <div class="account-buttons-grid" id="AccountButtonsGrid"></div>
   </div>
@@ -107,7 +107,7 @@
   <!-- 거래 내역 (확장형) -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <button class="mt-toggle-btn" onclick="nktToggleHistory()">
+      <button class="mt-toggle-btn" onclick="tToggleHistory()">
         <span>📋 거래 내역</span>
         <span class="mt-chevron" id="tChevron">▶</span>
       </button>
@@ -115,9 +115,9 @@
     <div id="tHistoryWrap" style="display:none;margin-top:14px">
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
         <div class="mt-tabs">
-          <button class="mt-tab active" id="tTabAll" onclick="nktSetTab('all')">전체</button>
-          <button class="mt-tab" id="tTabOpen" onclick="nktSetTab('open')">보유중</button>
-          <button class="mt-tab" id="tTabClosed" onclick="nktSetTab('closed')">완료</button>
+          <button class="mt-tab active" id="tTabAll" onclick="tSetTab('all')">전체</button>
+          <button class="mt-tab" id="tTabOpen" onclick="tSetTab('open')">보유중</button>
+          <button class="mt-tab" id="tTabClosed" onclick="tSetTab('closed')">완료</button>
         </div>
       </div>
       <div id="tTradeHistoryContainer"><div class="mt-empty">거래 내역이 없습니다.</div></div>
@@ -130,14 +130,14 @@
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
       <h2 id="tTradeModalTitle">거래 추가</h2>
-      <button class="close-btn" onclick="nktCloseTradeModal()">×</button>
+      <button class="close-btn" onclick="tCloseTradeModal()">×</button>
     </div>
     <div class="mt-form" id="tFullForm">
       <div class="mt-field">
         <label>구분</label>
         <div class="mt-type-toggle">
-          <button id="tTypeBuyBtn" class="mt-type-btn active-buy" onclick="nktSetTradeType('buy')">📈 매수</button>
-          <button id="tTypeSellBtn" class="mt-type-btn" onclick="nktSetTradeType('sell')">📉 매도</button>
+          <button id="tTypeBuyBtn" class="mt-type-btn active-buy" onclick="tSetTradeType('buy')">📈 매수</button>
+          <button id="tTypeSellBtn" class="mt-type-btn" onclick="tSetTradeType('sell')">📉 매도</button>
         </div>
         <input type="hidden" id="tTradeType" value="buy">
       </div>
@@ -147,12 +147,12 @@
       </div>
       <div class="mt-field">
         <label>계좌</label>
-        <select id="tTradeAcc" onchange="nktOnSellAccChange(this.value)">
+        <select id="tTradeAcc" onchange="tOnSellAccChange(this.value)">
         </select>
       </div>
       <div class="mt-field" id="tSellStockRow" style="display:none">
         <label>보유 종목 선택</label>
-        <select id="tSellStockSelect" onchange="nktOnSellStockSelect(this.value)">
+        <select id="tSellStockSelect" onchange="tOnSellStockSelect(this.value)">
           <option value="">-- 보유 종목 선택 --</option>
         </select>
         <div class="mt-sell-hint" id="tSellQtyHint"></div>
@@ -161,13 +161,13 @@
         <div class="mt-field">
           <label>티커 (Ticker)</label>
           <input type="text" id="tTradeTicker" maxlength="12" placeholder="예: AAPL, TSLA"
-            oninput="nktOnTickerInput(this.value)" autocomplete="off">
+            oninput="tOnTickerInput(this.value)" autocomplete="off">
         </div>
         <div class="mt-field">
           <label>종목명 (검색 자동완성)</label>
           <div class="mt-ac-wrap">
             <input type="text" id="tTradeName" placeholder="예: Apple Inc."
-              oninput="nktOnNameInput(this.value)" autocomplete="off">
+              oninput="tOnNameInput(this.value)" autocomplete="off">
             <div class="mt-ac-list" id="tNameAcList"></div>
           </div>
         </div>
@@ -176,20 +176,20 @@
         <div class="mt-field">
           <label>단가 (USD)</label>
           <input type="text" inputmode="decimal" id="tTradePrice" placeholder="예: 185.50"
-            onblur="nkFmtAccInput(this,2)"
-            oninput="InputUX.liveFormat(this,2,'en-US'); nktUpdateTradePreview()">
+            onblur="FmtAccInput(this,2)"
+            oninput="InputUX.liveFormat(this,2,'en-US'); tUpdateTradePreview()">
         </div>
         <div class="mt-field">
           <label>수량 (주)</label>
           <input type="text" inputmode="decimal" id="tTradeQty" placeholder="예: 10"
-            onblur="nkFmtAccInput(this,3)"
-            oninput="InputUX.liveFormat(this,3,'en-US'); nktUpdateTradePreview()">
+            onblur="FmtAccInput(this,3)"
+            oninput="InputUX.liveFormat(this,3,'en-US'); tUpdateTradePreview()">
         </div>
       </div>
       <div class="mt-field">
         <label>수수료 (USD)</label>
         <input type="text" inputmode="decimal" id="tTradeFee" placeholder="0"
-          onblur="nkFmtAccInput(this,2)"
+          onblur="FmtAccInput(this,2)"
           oninput="InputUX.liveFormat(this,2,'en-US')">
       </div>
       <div class="mt-field">
@@ -201,8 +201,8 @@
       </div>
     </div>
     <div class="modal-actions" id="tFullFormActions">
-      <button class="btn-secondary" onclick="nktCloseTradeModal()">취소</button>
-      <button class="btn-primary" onclick="nktSaveTrade()">저장</button>
+      <button class="btn-secondary" onclick="tCloseTradeModal()">취소</button>
+      <button class="btn-primary" onclick="tSaveTrade()">저장</button>
     </div>
 
     <!-- Quick 거래: 계좌 선택 카드 -->
@@ -211,20 +211,20 @@
     <!-- Quick 거래: MyPM 스타일 폼 -->
     <div id="tQuickForm" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <button id="tBackBtn" onclick="nqtCloseForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
+        <button id="tBackBtn" onclick="tCloseForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
         <div id="tAccName" style="font-size:13px;font-weight:600;color:var(--muted)"></div>
       </div>
       <div id="tHoldingsInfo" style="background:#f3f4f6;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px;color:var(--muted)"></div>
       <div class="trade-type-toggle" style="margin-bottom:12px">
-        <button class="trade-type-btn buy active" id="tBuyBtn" onclick="nqtSetType('buy')">매수</button>
-        <button class="trade-type-btn sell"       id="tSellBtn" onclick="nqtSetType('sell')">매도</button>
+        <button class="trade-type-btn buy active" id="tBuyBtn" onclick="tSetType('buy')">매수</button>
+        <button class="trade-type-btn sell"       id="tSellBtn" onclick="tSetType('sell')">매도</button>
       </div>
       <input type="hidden" id="tType" value="buy">
       <div class="txn-form" style="margin-bottom:10px">
         <label><span>날짜</span><input type="date" data-iux-date id="tDate"></label>
-        <label><span>수량</span><input type="text" inputmode="decimal" id="tQty" placeholder="수량" onblur="nkFmtAccInput(this,4)" oninput="InputUX.liveFormat(this,4,'en-US'); nqtUpdatePreview()"></label>
-        <label><span>단가 (USD)</span><input type="text" inputmode="decimal" id="tPrice" placeholder="단가" onblur="nkFmtAccInput(this,4)" oninput="InputUX.liveFormat(this,4,'en-US'); nqtUpdatePreview()"></label>
-        <label><span>수수료 (USD)</span><input type="text" inputmode="decimal" id="tFee" placeholder="0" onblur="nkFmtAccInput(this,2)" oninput="InputUX.liveFormat(this,2,'en-US'); nqtUpdatePreview()"></label>
+        <label><span>수량</span><input type="text" inputmode="decimal" id="tQty" placeholder="수량" onblur="FmtAccInput(this,4)" oninput="InputUX.liveFormat(this,4,'en-US'); tUpdatePreview()"></label>
+        <label><span>단가 (USD)</span><input type="text" inputmode="decimal" id="tPrice" placeholder="단가" onblur="FmtAccInput(this,4)" oninput="InputUX.liveFormat(this,4,'en-US'); tUpdatePreview()"></label>
+        <label><span>수수료 (USD)</span><input type="text" inputmode="decimal" id="tFee" placeholder="0" onblur="FmtAccInput(this,2)" oninput="InputUX.liveFormat(this,2,'en-US'); tUpdatePreview()"></label>
       </div>
       <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -241,25 +241,25 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn-secondary" onclick="nqtCloseForm()">취소</button>
-        <button class="btn-primary" onclick="nqtSave()">저장</button>
+        <button class="btn-secondary" onclick="tCloseForm()">취소</button>
+        <button class="btn-primary" onclick="tSave()">저장</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- 관심종목 추가 모달 -->
-<div class="modal-backdrop" id="WatchModal" onclick="if(event.target.id==='WatchModal')nkCloseWatchModal()">
+<div class="modal-backdrop" id="WatchModal" onclick="if(event.target.id==='WatchModal')CloseWatchModal()">
   <div class="modal" style="max-width:400px">
     <div class="modal-header">
       <h2>👁 관심종목 추가</h2>
-      <button class="close-btn" onclick="nkCloseWatchModal()">×</button>
+      <button class="close-btn" onclick="CloseWatchModal()">×</button>
     </div>
     <div style="padding:4px 0 12px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">종목 검색 (이름 또는 티커)</label>
       <div class="mw-ac-wrap">
         <input type="text" id="WatchSearch" class="form-input" placeholder="예: Apple 또는 AAPL"
-          oninput="nkOnWatchSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+          oninput="OnWatchSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
         <div class="mw-ac-list" id="WatchAcList"></div>
       </div>
       <div id="WatchPreview" style="display:none;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:13px">
@@ -268,23 +268,23 @@
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="nkCloseWatchModal()">취소</button>
-      <button class="btn-primary" onclick="nkSaveWatch()">추가</button>
+      <button class="btn-secondary" onclick="CloseWatchModal()">취소</button>
+      <button class="btn-primary" onclick="SaveWatch()">추가</button>
     </div>
   </div>
 </div>
 
 <!-- 종목 추가 모달 -->
-<div class="modal-backdrop" id="AddStockModal" onclick="if(event.target===this)nkCloseAddModal()">
+<div class="modal-backdrop" id="AddStockModal" onclick="if(event.target===this)CloseAddModal()">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
       <div><h2>🇺🇸 US 종목 추가</h2></div>
-      <button class="close-btn" onclick="nkCloseAddModal()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseAddModal()" aria-label="닫기">×</button>
     </div>
     <div class="add-form" style="grid-template-columns:1fr 1fr;gap:12px">
       <input type="text" id="Ticker" placeholder="Ticker (예: AAPL)" autocomplete="off" style="grid-column:1/-1" oninput="this.value=this.value.toUpperCase()">
       <input type="text" id="Name" placeholder="종목명 (자동입력)" autocomplete="off" style="grid-column:1/-1">
-      <button class="btn-secondary" onclick="nkFetchInfo()" style="grid-column:1/-1">🔍 조회</button>
+      <button class="btn-secondary" onclick="FetchInfo()" style="grid-column:1/-1">🔍 조회</button>
       <div id="FetchResult" style="grid-column:1/-1;font-size:13px;color:var(--muted)"></div>
     </div>
     <div class="account-head" style="margin-top:12px">
@@ -292,18 +292,18 @@
     </div>
     <div class="account-grid" id="AddAccountInputs"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="nkCloseAddModal()">취소</button>
-      <button class="btn-primary" onclick="nkAddStock()">+ 추가</button>
+      <button class="btn-secondary" onclick="CloseAddModal()">취소</button>
+      <button class="btn-primary" onclick="AddStock()">+ 추가</button>
     </div>
   </div>
 </div>
 
 <!-- 계좌별 수량 입력 모달 -->
-<div class="modal-backdrop" id="AccountModal" onclick="if(event.target===this)nkCloseAccountModal()">
+<div class="modal-backdrop" id="AccountModal" onclick="if(event.target===this)CloseAccountModal()">
   <div class="modal">
     <div class="modal-header">
       <div><h2 id="ModalTitle">계좌별 수량 입력</h2><div class="modal-subtitle" id="ModalSubtitle"></div></div>
-      <button class="close-btn" onclick="nkCloseAccountModal()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseAccountModal()" aria-label="닫기">×</button>
     </div>
     <div id="AccountInputs"></div>
     <div class="modal-total">
@@ -314,18 +314,18 @@
       </span>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="nkCloseAccountModal()">취소</button>
-      <button class="btn-primary" onclick="nkSaveAccountQuantities()">저장</button>
+      <button class="btn-secondary" onclick="CloseAccountModal()">취소</button>
+      <button class="btn-primary" onclick="SaveAccountQuantities()">저장</button>
     </div>
   </div>
 </div>
 
 <!-- 계좌 상세 보기 모달 -->
-<div class="modal-backdrop" id="AccountDetailModal" onclick="if(event.target===this)nkCloseAccountDetail()">
+<div class="modal-backdrop" id="AccountDetailModal" onclick="if(event.target===this)CloseAccountDetail()">
   <div class="modal modal-wide">
     <div class="modal-header">
       <div><h2 id="DetailTitle">계좌 상세</h2><div class="modal-subtitle" id="DetailSubtitle"></div></div>
-      <button class="close-btn" onclick="nkCloseAccountDetail()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseAccountDetail()" aria-label="닫기">×</button>
     </div>
     <div class="detail-summary" id="DetailSummary"></div>
     <div class="detail-table-wrap"><table class="detail-table" id="DetailTable"></table></div>
@@ -334,7 +334,7 @@
       <div style="position:relative;height:220px"><canvas id="DetailChart"></canvas></div>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="nkCloseAccountDetail()">닫기</button>
+      <button class="btn-secondary" onclick="CloseAccountDetail()">닫기</button>
     </div>
   </div>
 </div>
@@ -349,7 +349,7 @@
     <div class="account-grid" id="CashInputs"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeCashModal()">취소</button>
-      <button class="btn-primary" onclick="nkSaveCash()">저장</button>
+      <button class="btn-primary" onclick="SaveCash()">저장</button>
     </div>
   </div>
 </div>
@@ -360,7 +360,7 @@
     <div class="modal-header">
       <div><h2>💰 계좌 입출금 관리</h2><div class="modal-subtitle">계좌별 입금·출금 내역 (USD)</div></div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <button class="btn-primary" onclick="nkOpenTxnEditor()" style="padding:8px 16px;font-size:13px;font-weight:600">➕ 입출금 추가</button>
+        <button class="btn-primary" onclick="OpenTxnEditor()" style="padding:8px 16px;font-size:13px;font-weight:600">➕ 입출금 추가</button>
         <button class="close-btn" onclick="closeDepositModal()" aria-label="닫기">×</button>
       </div>
     </div>
@@ -373,23 +373,23 @@
 </div>
 
 <!-- 입출금 편집 서브모달 -->
-<div class="modal-backdrop" id="TxnEditorModal" onclick="if(event.target===this)nkCloseTxnEditor()">
+<div class="modal-backdrop" id="TxnEditorModal" onclick="if(event.target===this)CloseTxnEditor()">
   <div class="modal">
     <div class="modal-header">
       <div><h2 id="TxnEditorTitle">입출금 추가</h2><div class="modal-subtitle">계좌 · 날짜 · 금액을 입력하세요</div></div>
-      <button class="close-btn" onclick="nkCloseTxnEditor()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseTxnEditor()" aria-label="닫기">×</button>
     </div>
     <div class="txn-form">
       <label><span>계좌</span><select id="TxnAccount"></select></label>
       <label><span>구분</span><select id="TxnType"><option value="deposit">입금 (+)</option><option value="withdraw">출금 (−)</option></select></label>
       <label><span>입출금일</span><input type="date" data-iux-date id="TxnDate"></label>
       <label><span>금액 (USD)</span><input type="text" inputmode="decimal" id="TxnAmount" placeholder="0.00"
-        onblur="nkFmtAccInput(this,2)"
+        onblur="FmtAccInput(this,2)"
         oninput="InputUX.liveFormat(this,2,'en-US')"></label>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="nkCloseTxnEditor()">취소</button>
-      <button class="btn-primary" onclick="nkSaveTxn()">저장</button>
+      <button class="btn-secondary" onclick="CloseTxnEditor()">취소</button>
+      <button class="btn-primary" onclick="SaveTxn()">저장</button>
     </div>
   </div>
 </div>
@@ -404,16 +404,16 @@
     <div class="records-input-card">
       <div class="records-input-top">
         <label><span>기록일</span><input type="date" data-iux-date id="RecDate"></label>
-        <button class="btn-secondary" onclick="nkFillCurrentValues()">💾 현재값 저장</button>
-        <button class="btn-secondary" onclick="nkLoadHistoricalValues()">📅 이전 가치 불러오기</button>
+        <button class="btn-secondary" onclick="FillCurrentValues()">💾 현재값 저장</button>
+        <button class="btn-secondary" onclick="LoadHistoricalValues()">📅 이전 가치 불러오기</button>
       </div>
       <div class="records-input-accounts" id="RecAccountInputs"></div>
       <div class="records-input-total">
         <span>전체 총합</span><strong id="RecTotal">$0</strong>
       </div>
       <div class="records-input-actions">
-        <button class="btn-secondary" id="RecCancelBtn" style="display:none" onclick="nkCancelRecordEdit()">취소</button>
-        <button class="btn-primary" id="RecAddBtn" onclick="nkAddMonthlyRecord()">➕ 추가</button>
+        <button class="btn-secondary" id="RecCancelBtn" style="display:none" onclick="CancelRecordEdit()">취소</button>
+        <button class="btn-primary" id="RecAddBtn" onclick="AddMonthlyRecord()">➕ 추가</button>
       </div>
     </div>
     <div class="records-list-wrap">
@@ -447,14 +447,14 @@
       </div>
       <div class="div-grand-total"><span>배당금 총합</span><strong id="DivGrandTotal">$0</strong></div>
       <div class="records-input-actions">
-        <button id="DivCancelBtn" class="btn-secondary" style="display:none" onclick="nkCancelDivEdit()">취소</button>
-        <button id="DivSaveBtn" class="btn-primary" onclick="nkAddDividendRecord()">➕ 추가</button>
+        <button id="DivCancelBtn" class="btn-secondary" style="display:none" onclick="CancelDivEdit()">취소</button>
+        <button id="DivSaveBtn" class="btn-primary" onclick="AddDividendRecord()">➕ 추가</button>
       </div>
     </div>
 
     <!-- 기타항목 입력 (종목 없이 금액만) -->
     <div class="records-input-card" style="margin-top:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="nkToggleDivMiscForm()">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="ToggleDivMiscForm()">
         <div style="font-weight:600">📝 기타항목 (종목 없이 금액만)</div>
         <button type="button" id="DivMiscToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
       </div>
@@ -469,8 +469,8 @@
         <div id="DivMiscAccInputs" style="display:grid;gap:6px"></div>
         <div class="div-grand-total" style="margin-top:8px"><span>기타항목 합계</span><strong id="DivMiscGrandTotal">$0</strong></div>
         <div class="records-input-actions" style="margin-top:8px">
-          <button id="DivMiscCancelBtn" class="btn-secondary" style="display:none" onclick="nkCancelDivMiscEdit()">취소</button>
-          <button id="DivMiscSaveBtn" class="btn-primary" onclick="nkAddMiscDividendRecord()">기타항목 추가</button>
+          <button id="DivMiscCancelBtn" class="btn-secondary" style="display:none" onclick="CancelDivMiscEdit()">취소</button>
+          <button id="DivMiscSaveBtn" class="btn-primary" onclick="AddMiscDividendRecord()">기타항목 추가</button>
         </div>
       </div>
     </div>
@@ -499,13 +499,13 @@
   <div class="div-focused-edit-card">
     <div class="div-focused-edit-hdr">
       <span id="DivStockEditTitle">종목 편집</span>
-      <button onclick="nkCloseDivStockEdit()">✕</button>
+      <button onclick="CloseDivStockEdit()">✕</button>
     </div>
     <div class="div-focused-ps-row">
       <label style="font-size:13px;white-space:nowrap">주당 배당금</label>
       <input type="text" inputmode="decimal" id="DivStockEditPs" placeholder="0.00"
-        onblur="nkFmtAccInput(this,4)"
-        oninput="InputUX.liveFormat(this,4,'en-US'); nkUpdateDivStockEditPreview()">
+        onblur="FmtAccInput(this,4)"
+        oninput="InputUX.liveFormat(this,4,'en-US'); UpdateDivStockEditPreview()">
     </div>
     <div class="div-focused-col3 div-focused-acc-header">
       <span>계좌</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
@@ -515,8 +515,8 @@
       <span>합계</span><span></span><span id="DivStockEditTotal"></span>
     </div>
     <div class="div-focused-edit-footer">
-      <button class="btn-secondary" onclick="nkCloseDivStockEdit()">취소</button>
-      <button class="btn-primary" onclick="nkSaveDivStockEdit()">저장</button>
+      <button class="btn-secondary" onclick="CloseDivStockEdit()">취소</button>
+      <button class="btn-primary" onclick="SaveDivStockEdit()">저장</button>
     </div>
   </div>
 </div>
@@ -526,7 +526,7 @@
   <div class="div-focused-edit-card">
     <div class="div-focused-edit-hdr">
       <span id="DivAccEditTitle">계좌 편집</span>
-      <button onclick="nkCloseDivAccEdit()">✕</button>
+      <button onclick="CloseDivAccEdit()">✕</button>
     </div>
     <div class="div-focused-col4 div-focused-stock-header">
       <span>종목</span><span style="text-align:right">주당배당금</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
@@ -536,8 +536,8 @@
       <span>합계</span><span></span><span></span><span id="DivAccEditTotal"></span>
     </div>
     <div class="div-focused-edit-footer">
-      <button class="btn-secondary" onclick="nkCloseDivAccEdit()">취소</button>
-      <button class="btn-primary" onclick="nkSaveDivAccEdit()">저장</button>
+      <button class="btn-secondary" onclick="CloseDivAccEdit()">취소</button>
+      <button class="btn-primary" onclick="SaveDivAccEdit()">저장</button>
     </div>
   </div>
 </div>
@@ -628,7 +628,7 @@ async function fetchNkPrice(ticker) {
 
 // 여러 미국 종목을 백엔드 배치 엔드포인트로 한 번에 조회 (브라우저 출처당 연결제한 우회).
 // 반환: { ticker: {price, change, changeRate, name} } — 실패/무데이터 심볼은 생략(호출부가 종목별 폴백).
-async function nkBatchFinnhub(tickers) {
+async function BatchFinnhub(tickers) {
   const list = Array.from(new Set((tickers || []).filter(Boolean)));
   if (!list.length) return {};
   try {
@@ -646,7 +646,7 @@ async function nkBatchFinnhub(tickers) {
 }
 
 const NK_ACC_KEY   = 'nonk_accounts_v1';
-ST.accounts  = nkLoadAccounts();
+ST.accounts  = LoadAccounts();
 
 // ===== 종목 리스트 컬럼 정의 (순서 편집 가능) =====
 // 종목(이름)은 항상 첫 열, 액션 열(거래/✏️/🗑️)은 항상 마지막 — 아래 11개 데이터 열만 재배열 대상.
@@ -665,7 +665,7 @@ const NK_PORTFOLIO_COLS = [
     cell:(it)=>it.hasCost?fmtUSDInt(it.cost):'-',
     foot:(c)=>c.totalCost>0?fmtUSDInt(c.totalCost):'-' },
   { id:'qty', header:'보유수',
-    cell:(it)=>`<a href="#" onclick="event.preventDefault();nkOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a>` },
+    cell:(it)=>`<a href="#" onclick="event.preventDefault();OpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a>` },
   { id:'avgPrice', header:'매입단가',
     cell:(it)=>it.avgPrice>0?fmtUSDDec(it.avgPrice):'-' },
   { id:'value', header:'평가금액',
@@ -699,17 +699,17 @@ ST.deposits     = loadDeposits();
 ST.monthly  = loadMonthly();
 ST.dividends = loadDividends();
 ST.watchlist       = loadWatchlist();
-let nkChartInstance       = null;
-let nkDetailChartInstance = null;
-let nkEditingTicker   = null;
-let nkEditingTxnId    = null;
-let _nkDepositCollapsedYears = null;
-let nkEditingRecordId = null;
-let nkEditingDivId    = null;
-let nkDivFormShares   = {}; // { ticker: { accId: qty } }
-let nkLastRefreshTime = null;
+ST.chartInstance       = null;
+ST.detailChartInstance = null;
+ST.editingTicker   = null;
+ST.editingTxnId    = null;
+ST.depositCollapsedYears = null;
+ST.editingRecordId = null;
+ST.editingDivId    = null;
+ST.divFormShares   = {}; // { ticker: { accId: qty } }
+ST.lastRefreshTime = null;
 
-function nkLoadAccounts() {
+function LoadAccounts() {
   try {
     const saved = JSON.parse(localStorage.getItem(NK_ACC_KEY));
     if (Array.isArray(saved) && saved.length > 0) return saved;
@@ -718,9 +718,9 @@ function nkLoadAccounts() {
   if (hasExistingData) return [{ id: 'ds', name: 'D&S', active: true }, { id: 'nk1', name: 'nK1', active: true }];
   return [{ id: 'acc1', name: '기본계좌', active: true }];
 }
-function nkSaveAccounts()  { localStorage.setItem(NK_ACC_KEY, JSON.stringify(ST.accounts)); }
+function SaveAccounts()  { localStorage.setItem(NK_ACC_KEY, JSON.stringify(ST.accounts)); }
 
-function nkDivRecAmount(rec, code) {
+function DivRecAmount(rec, code) {
   const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
   const sh = rec.stocksShares && rec.stocksShares[code];
   if (ps > 0 && sh != null) {
@@ -763,8 +763,8 @@ function switchPage(page) {
     nonk.style.display = '';
     tabM.classList.remove('active');
     tabN.classList.add('active');
-    nkRender();
-    nkRenderChart();
+    Render();
+    RenderChart();
   } else {
     nonk.style.display = 'none';
     mypm.style.display = '';
@@ -778,7 +778,7 @@ function switchPage(page) {
 
 // preferSnapshot=true(기본): 서버 선계산 시세를 먼저 적용하고 못 받은 종목만 Finnhub 조회(빠름).
 // 수동 '가격 갱신' 버튼은 preferSnapshot=false 로 호출해 항상 라이브 조회.
-async function nkRefreshAll(suppressDone = false, preferSnapshot = true) {
+async function RefreshAll(suppressDone = false, preferSnapshot = true) {
   const statusEl = document.getElementById('RefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
@@ -791,7 +791,7 @@ async function nkRefreshAll(suppressDone = false, preferSnapshot = true) {
   const holdTickers = new Set(ST.holdings.map(h => h.ticker));
   const watchTickers = ST.watchlist.filter(w => !holdTickers.has(w.ticker)).map(w => w.ticker);
   const pendingHold = ST.holdings.filter(h => !covered.has(h.ticker)).map(h => h.ticker);
-  const batch = await nkBatchFinnhub([...pendingHold, ...watchTickers]);
+  const batch = await BatchFinnhub([...pendingHold, ...watchTickers]);
 
   await Promise.all(ST.holdings.filter(h => !covered.has(h.ticker)).map(async h => {
     try {
@@ -807,25 +807,25 @@ async function nkRefreshAll(suppressDone = false, preferSnapshot = true) {
     try {
       const info = batch[w.ticker] || await fetchNkPrice(w.ticker);
       if (info) {
-        nkWatchPrices[w.ticker] = info;
+        ST.watchPrices[w.ticker] = info;
         if (info.name && info.name !== w.ticker) { w.name = info.name; saveWatchlist(); }
       }
     } catch(_) {}
   }));
   // 보유 종목이 관심에도 있으면 가격 공유
-  ST.holdings.forEach(h => { if (holdTickers.has(h.ticker) && ST.watchlist.find(w => w.ticker === h.ticker)) nkWatchPrices[h.ticker] = h; });
+  ST.holdings.forEach(h => { if (holdTickers.has(h.ticker) && ST.watchlist.find(w => w.ticker === h.ticker)) ST.watchPrices[h.ticker] = h; });
 
-  nkLastRefreshTime = new Date();
+  ST.lastRefreshTime = new Date();
   saveHoldings();
-  nkRender();
-  nkRenderChart();
-  nkRenderWatchlist();
+  Render();
+  RenderChart();
+  RenderWatchlist();
   if (statusEl) {
-    const _mo = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
-    const _dd = String(nkLastRefreshTime.getDate()).padStart(2,'0');
-    const hh = String(nkLastRefreshTime.getHours()).padStart(2,'0');
-    const mm = String(nkLastRefreshTime.getMinutes()).padStart(2,'0');
-    const ss = String(nkLastRefreshTime.getSeconds()).padStart(2,'0');
+    const _mo = String(ST.lastRefreshTime.getMonth()+1).padStart(2,'0');
+    const _dd = String(ST.lastRefreshTime.getDate()).padStart(2,'0');
+    const hh = String(ST.lastRefreshTime.getHours()).padStart(2,'0');
+    const mm = String(ST.lastRefreshTime.getMinutes()).padStart(2,'0');
+    const ss = String(ST.lastRefreshTime.getSeconds()).padStart(2,'0');
     statusEl.textContent = failCount
       ? `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss} (${failCount}개 실패)`
       : `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss}`;
@@ -836,14 +836,14 @@ async function nkRefreshAll(suppressDone = false, preferSnapshot = true) {
 }
 
 // ===== 자동 새로고침 (MyPM 공유 설정 사용) =====
-let nkAutoRefreshTimer = null;
+ST.autoRefreshTimer = null;
 
-function nkInitAutoRefresh() {
-  if (nkAutoRefreshTimer) { clearInterval(nkAutoRefreshTimer); nkAutoRefreshTimer = null; }
+function InitAutoRefresh() {
+  if (ST.autoRefreshTimer) { clearInterval(ST.autoRefreshTimer); ST.autoRefreshTimer = null; }
   const minutes = parseInt(localStorage.getItem('autoRefreshMinutes'), 10) || 0;
   if (minutes > 0) {
-    nkAutoRefreshTimer = setInterval(() => {
-      if (ST.holdings.length) nkRefreshAll();
+    ST.autoRefreshTimer = setInterval(() => {
+      if (ST.holdings.length) RefreshAll();
     }, minutes * 60 * 1000);
   }
 }
@@ -854,7 +854,7 @@ function nkInitAutoRefresh() {
 // 표시는 부모(MyPM)가 캐시한 서버 스냅샷(mypm_derived_v1 의 .nk)을 사용. KDeal kdDisplayDerived 와 동일.
 // dataVersion 일치만 확인하고 시세 신선도는 보지 않는다(XIRR은 분 단위 시세에 거의 불변).
 // 부재(.nk 없음)/불일치/오프라인이면 XIRR은 '-'로 표시.
-function nkDisplayDerived() {
+function DisplayDerived() {
   try {
     const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
     // 와이어 형식: { dataVersion, pricedAt, data:{ accounts, totals, kd, nk } } → .nk 는 data 안에 있다.
@@ -867,7 +867,7 @@ function nkDisplayDerived() {
 // 서버 스냅샷의 pricedAt(서버 계산 시각) — .nk 유효(동기화 일치)할 때만. 히어로 '오늘' 라벨용.
 // 서버 계산 시각 → "MM/DD HH:MM". 없으면 null.
 
-function nkRender() {
+function Render() {
   const container = document.getElementById('HoldingsContainer');
   const statusEl  = document.getElementById('StatusText');
   if (!container) return;
@@ -882,13 +882,13 @@ function nkRender() {
     </div>`;
     container.innerHTML = `<div class="empty-state"><div class="icon">🇺🇸</div><div>'+ 종목 추가' 버튼을 눌러 미국 주식을 추가해 주세요</div></div>
     <div class="nk-action-btns">
-      <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
-      <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
-      <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
-    nkRenderAccountButtons();
+    RenderAccountButtons();
     return;
   }
 
@@ -916,7 +916,7 @@ function nkRender() {
   const pnl        = totalValue - deposited;
   const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
   // XIRR은 서버 스냅샷에서만 표시(없으면 '-'). 총액·원금·손익은 위 클라 계산 그대로(즉시 반영).
-  const _nkSnap    = nkDisplayDerived();
+  const _nkSnap    = DisplayDerived();
   const xirrRate   = (_nkSnap && _nkSnap.totals && typeof _nkSnap.totals.xirr === 'number') ? _nkSnap.totals.xirr : null;
   const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
   const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
@@ -980,12 +980,12 @@ function nkRender() {
   }).sort((a, b) => b.currentValue - a.currentValue);
 
   let lastUpdate = '-';
-  if (nkLastRefreshTime) {
-    const _mo = String(nkLastRefreshTime.getMonth()+1).padStart(2,'0');
-    const _dd = String(nkLastRefreshTime.getDate()).padStart(2,'0');
-    const hh = String(nkLastRefreshTime.getHours()).padStart(2,'0');
-    const mm = String(nkLastRefreshTime.getMinutes()).padStart(2,'0');
-    const ss = String(nkLastRefreshTime.getSeconds()).padStart(2,'0');
+  if (ST.lastRefreshTime) {
+    const _mo = String(ST.lastRefreshTime.getMonth()+1).padStart(2,'0');
+    const _dd = String(ST.lastRefreshTime.getDate()).padStart(2,'0');
+    const hh = String(ST.lastRefreshTime.getHours()).padStart(2,'0');
+    const mm = String(ST.lastRefreshTime.getMinutes()).padStart(2,'0');
+    const ss = String(ST.lastRefreshTime.getSeconds()).padStart(2,'0');
     lastUpdate = `${_mo}/${_dd} ${hh}:${mm}:${ss}`;
   } else {
     const updatedAts = ST.holdings.filter(h => h.updatedAt).map(h => h.updatedAt);
@@ -1021,15 +1021,15 @@ function nkRender() {
     it._chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
     it._dayAmt = it.change * it.qty;
     tableHtml += `<tr>`
-      + `<td onclick="nktOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" style="cursor:pointer"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
+      + `<td onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" style="cursor:pointer"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
       + nkCols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, nkColCtx) : ''}>${c.cell(it, nkColCtx)}</td>`).join('')
-      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="nktOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="nkOpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="nkDeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
+      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="OpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="DeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
       + `</tr>`;
   }
 
   // 현금 행
   tableHtml += `<tr class="row-cash">`
-    + `<td onclick="nkOpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_nkCashAccCount ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">CASH${_nkCashAccCount ? ' · ' + _nkCashAccCount + '개 계좌' : ''}</div></td>`
+    + `<td onclick="OpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_nkCashAccCount ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">CASH${_nkCashAccCount ? ' · ' + _nkCashAccCount + '개 계좌' : ''}</div></td>`
     + nkCols.map(c => `<td ${c.cashAttr ? c.cashAttr(nkColCtx) : ''}>${c.cash ? c.cash(nkColCtx) : '-'}</td>`).join('')
     + `<td></td>`
     + `</tr>`;
@@ -1042,35 +1042,35 @@ function nkRender() {
 
   container.innerHTML = tableHtml
     + `<div class="nk-action-btns">
-      <button class="btn-secondary" onclick="nkOpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-primary" onclick="nkOpenAddModal()">+ 종목 추가</button>
-      <button class="btn-secondary" onclick="nkOpenRecordsModal()">📒 계좌 기록</button>
-      <button class="btn-secondary" onclick="nkOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
-  nkRenderAccountButtons();
+  RenderAccountButtons();
 }
 
-function nkRenderAccountButtons() {
+function RenderAccountButtons() {
   const grid = document.getElementById('AccountButtonsGrid');
   if (!grid) return;
   const active = ST.accounts.filter(a => a.active !== false);
   grid.innerHTML = active.map(a => {
     const val = computeAccountValue(a.id);
-    return `<button class="btn-account-view" onclick="nkOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtUSD(val)}</span></button>`;
+    return `<button class="btn-account-view" onclick="OpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtUSD(val)}</span></button>`;
   }).join('');
 }
 
 
-function nkDeleteHolding(ticker) {
+function DeleteHolding(ticker) {
   if (!confirm(`${ticker} 종목을 삭제하시겠습니까?`)) return;
   ST.holdings = ST.holdings.filter(h => h.ticker !== ticker);
   saveHoldings();
-  nkRender();
-  nkRenderChart();
+  Render();
+  RenderChart();
 }
 
-function nkRenderChart() {
+function RenderChart() {
   const canvas = document.getElementById('PortfolioChart');
   const empty  = document.getElementById('ChartEmpty');
   if (!canvas) return;
@@ -1097,8 +1097,8 @@ function nkRenderChart() {
     return txns.filter(t => (t.date || '') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
   });
 
-  if (nkChartInstance) nkChartInstance.destroy();
-  nkChartInstance = new Chart(canvas, {
+  if (ST.chartInstance) ST.chartInstance.destroy();
+  ST.chartInstance = new Chart(canvas, {
     type: 'line',
     data: {
       labels,
@@ -1112,8 +1112,8 @@ function nkRenderChart() {
 }
 
 // --- Add stock modal ---
-function nkOpenAddModal() {
-  nkEditingTicker = null;
+function OpenAddModal() {
+  ST.editingTicker = null;
   document.getElementById('Ticker').value = '';
   document.getElementById('Name').value = '';
   document.getElementById('FetchResult').textContent = '';
@@ -1125,25 +1125,25 @@ function nkOpenAddModal() {
       <label>${a.name}</label>
       <div class="field-wrap">
         <span class="field-label">수량 (주)</span>
-        <input type="text" inputmode="numeric" id="AddQty_${a.id}" placeholder="예: 10" oninput="nkLiveInt(this)">
+        <input type="text" inputmode="numeric" id="AddQty_${a.id}" placeholder="예: 10" oninput="LiveInt(this)">
       </div>
       <div class="field-wrap">
         <span class="field-label">매입단가 (USD)</span>
         <input type="text" inputmode="decimal" id="AddAvg_${a.id}" placeholder="예: 150.50"
-          onblur="nkFmtAccInput(this,2)"
+          onblur="FmtAccInput(this,2)"
           oninput="InputUX.liveFormat(this,2,'en-US')">
       </div>
       <span id="AddTotal_${a.id}" class="total-display zero">$0</span>
     </div>`).join('');
   activeAccs.forEach(a => {
-    document.getElementById(`AddQty_${a.id}`).addEventListener('input', nkUpdateAddTotals);
-    document.getElementById(`AddAvg_${a.id}`).addEventListener('input', nkUpdateAddTotals);
+    document.getElementById(`AddQty_${a.id}`).addEventListener('input', UpdateAddTotals);
+    document.getElementById(`AddAvg_${a.id}`).addEventListener('input', UpdateAddTotals);
   });
   document.getElementById('AddStockModal').classList.add('open');
   setTimeout(() => document.getElementById('Ticker').focus(), 50);
 }
 
-function nkUpdateAddTotals() {
+function UpdateAddTotals() {
   ST.accounts.filter(a => a.active !== false).forEach(a => {
     const qty = Number(document.getElementById(`AddQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const avg = Number(document.getElementById(`AddAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
@@ -1152,11 +1152,11 @@ function nkUpdateAddTotals() {
   });
 }
 
-function nkCloseAddModal() {
+function CloseAddModal() {
   document.getElementById('AddStockModal').classList.remove('open');
 }
 
-async function nkFetchInfo() {
+async function FetchInfo() {
   const ticker = document.getElementById('Ticker').value.trim().toUpperCase();
   if (!ticker) { alert('Ticker를 입력하세요'); return; }
   const resultEl = document.getElementById('FetchResult');
@@ -1172,7 +1172,7 @@ async function nkFetchInfo() {
   }
 }
 
-function nkAddStock() {
+function AddStock() {
   const ticker = document.getElementById('Ticker').value.trim().toUpperCase();
   const name   = document.getElementById('Name').value.trim();
   if (!ticker) { alert('Ticker를 입력하세요'); return; }
@@ -1189,20 +1189,20 @@ function nkAddStock() {
 
   ST.holdings.push({ ticker, name, accounts, price: 0, change: 0, changeRate: 0, updatedAt: null });
   saveHoldings();
-  nkCloseAddModal();
-  nkRender();
+  CloseAddModal();
+  Render();
   // Fetch price in background
   fetchNkPrice(ticker).then(info => {
     const h = ST.holdings.find(x => x.ticker === ticker);
-    if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); saveHoldings(); nkRender(); }
+    if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); saveHoldings(); Render(); }
   }).catch(() => {});
 }
 
 // --- Account qty modal ---
-function nkOpenAccountModal(ticker) {
+function OpenAccountModal(ticker) {
   const h = ST.holdings.find(x => x.ticker === ticker);
   if (!h) return;
-  nkEditingTicker = ticker;
+  ST.editingTicker = ticker;
   document.getElementById('ModalTitle').textContent = `${ticker} 계좌별 수량 및 매입가`;
   document.getElementById('ModalSubtitle').textContent = h.name || '';
 
@@ -1220,32 +1220,32 @@ function nkOpenAccountModal(ticker) {
         <label><span>수량</span>
           <input type="text" inputmode="decimal" id="AccQty_${a.id}"
             value="${acc.qty ? (+acc.qty).toLocaleString('en-US',{maximumFractionDigits:4}) : ''}"
-            onblur="nkFmtAccInput(this,4)"
+            onblur="FmtAccInput(this,4)"
             oninput="InputUX.liveFormat(this,4,'en-US')">
         </label>
         <label><span>단가 (USD)</span>
           <input type="text" inputmode="decimal" id="AccAvg_${a.id}"
             value="${acc.avgPrice ? parseFloat((+acc.avgPrice).toFixed(4)).toLocaleString('en-US',{maximumFractionDigits:4}) : ''}"
-            onblur="nkFmtAccInput(this,4)"
+            onblur="FmtAccInput(this,4)"
             oninput="InputUX.liveFormat(this,4,'en-US')">
         </label>
       </div>
     </div>`;
   }).join('');
   activeAccs2.forEach(a => {
-    document.getElementById(`AccQty_${a.id}`).addEventListener('input', nkUpdateAccTotals);
-    document.getElementById(`AccAvg_${a.id}`).addEventListener('input', nkUpdateAccTotals);
+    document.getElementById(`AccQty_${a.id}`).addEventListener('input', UpdateAccTotals);
+    document.getElementById(`AccAvg_${a.id}`).addEventListener('input', UpdateAccTotals);
   });
-  nkUpdateAccTotals();
+  UpdateAccTotals();
   document.getElementById('AccountModal').classList.add('open');
 }
 
 // 공통 모듈(InputUX Stage 2)로 위임 — 동작 동일(en-US), 구현은 js/input-ux.js 단일화
-function nkFmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'en-US' }); }
+function FmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'en-US' }); }
 
-function nkLiveInt(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'en-US' }); }
+function LiveInt(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'en-US' }); }
 
-function nkUpdateAccTotals() {
+function UpdateAccTotals() {
   let totalQty = 0, totalCost = 0;
   ST.accounts.filter(a => a.active !== false).forEach(a => {
     const qty = Number(document.getElementById(`AccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
@@ -1260,13 +1260,13 @@ function nkUpdateAccTotals() {
   if (cEl) cEl.textContent = fmtUSD(totalCost);
 }
 
-function nkCloseAccountModal() {
+function CloseAccountModal() {
   document.getElementById('AccountModal').classList.remove('open');
-  nkEditingTicker = null;
+  ST.editingTicker = null;
 }
 
-function nkSaveAccountQuantities() {
-  const h = ST.holdings.find(x => x.ticker === nkEditingTicker);
+function SaveAccountQuantities() {
+  const h = ST.holdings.find(x => x.ticker === ST.editingTicker);
   if (!h) return;
   if (!h.accounts) h.accounts = {};
   for (const a of ST.accounts.filter(x => x.active !== false)) {
@@ -1276,12 +1276,12 @@ function nkSaveAccountQuantities() {
     };
   }
   saveHoldings();
-  nkCloseAccountModal();
-  nkRender();
+  CloseAccountModal();
+  Render();
 }
 
 // --- Account detail modal ---
-function nkOpenAccountDetail(accId) {
+function OpenAccountDetail(accId) {
   const acc = ST.accounts.find(a => a.id === accId);
   if (!acc) return;
   document.getElementById('DetailTitle').textContent = acc.name + ' 상세';
@@ -1307,7 +1307,7 @@ function nkOpenAccountDetail(accId) {
   const accPnl       = totalVal - accDeposited;
   const accPnlRate   = accDeposited > 0 ? accPnl / accDeposited * 100 : 0;
   // 계좌 XIRR은 서버 스냅샷에서만(없으면 '-'). 평가·원금은 위 클라 계산 유지.
-  const _nkSnapA     = nkDisplayDerived();
+  const _nkSnapA     = DisplayDerived();
   const _nkAcc       = _nkSnapA && _nkSnapA.accounts && _nkSnapA.accounts[accId];
   const accXirr      = (_nkAcc && typeof _nkAcc.xirr === 'number') ? _nkAcc.xirr : null;
   const accXirrSign  = accXirr != null && accXirr >= 0 ? '+' : '';
@@ -1407,9 +1407,9 @@ function nkOpenAccountDetail(accId) {
       const cutoff = `${r.year}-${String(r.month).padStart(2,'0')}-31`;
       return txns.filter(t => (t.date||'') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
     });
-    if (nkDetailChartInstance) nkDetailChartInstance.destroy();
+    if (ST.detailChartInstance) ST.detailChartInstance.destroy();
     const canvas = document.getElementById('DetailChart');
-    nkDetailChartInstance = new Chart(canvas, {
+    ST.detailChartInstance = new Chart(canvas, {
       type: 'line',
       data: {
         labels,
@@ -1430,18 +1430,18 @@ function nkOpenAccountDetail(accId) {
   document.getElementById('AccountDetailModal').classList.add('open');
 }
 
-function nkCloseAccountDetail() {
+function CloseAccountDetail() {
   document.getElementById('AccountDetailModal').classList.remove('open');
-  if (nkDetailChartInstance) { nkDetailChartInstance.destroy(); nkDetailChartInstance = null; }
+  if (ST.detailChartInstance) { ST.detailChartInstance.destroy(); ST.detailChartInstance = null; }
 }
 
 // --- Cash modal ---
-function nkOpenCashModal() {
+function OpenCashModal() {
   const grid = document.getElementById('CashInputs');
   grid.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<div class="account-row">
     <span>${a.name}</span>
     <input type="text" inputmode="decimal" id="CashInput_${a.id}" value="${(Number(ST.cash[a.id])||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}" style="grid-column:span 2"
-      onblur="nkFmtAccInput(this,2)"
+      onblur="FmtAccInput(this,2)"
       oninput="InputUX.liveFormat(this,2,'en-US')">
     <span>${fmtUSD(Number(ST.cash[a.id])||0)}</span>
   </div>`).join('');
@@ -1449,23 +1449,23 @@ function nkOpenCashModal() {
 }
 
 
-function nkSaveCash() {
+function SaveCash() {
   for (const a of ST.accounts.filter(x => x.active !== false)) {
     ST.cash[a.id] = Number(document.getElementById(`CashInput_${a.id}`)?.value.replace(/,/g,'')) || 0;
   }
   saveCashData();
   closeCashModal();
-  nkRender();
+  Render();
 }
 
 // --- Deposit modal ---
-function nkOpenDepositModal() {
-  nkRenderDepositList();
+function OpenDepositModal() {
+  RenderDepositList();
   document.getElementById('DepositModal').classList.add('open');
 }
 
 
-function nkRenderDepositList() {
+function RenderDepositList() {
   const grand = document.getElementById('DepositGrand');
   const totals = document.getElementById('DepositTotals');
   const list = document.getElementById('DepositList');
@@ -1493,8 +1493,8 @@ function nkRenderDepositList() {
     byYear.get(y).push(t);
   });
   const years = [...byYear.keys()].sort((a, b) => b.localeCompare(a));
-  if (_nkDepositCollapsedYears === null) {
-    _nkDepositCollapsedYears = new Set(years.slice(1));
+  if (ST.depositCollapsedYears === null) {
+    ST.depositCollapsedYears = new Set(years.slice(1));
   }
 
   list.innerHTML = years.map(y => {
@@ -1502,10 +1502,10 @@ function nkRenderDepositList() {
     const yearSum = ytx.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
     const sumCls = yearSum >= 0 ? 'pos' : 'neg';
     const sumStr = (yearSum >= 0 ? '+' : '−') + fmtUSD(Math.abs(yearSum));
-    const collapsed = _nkDepositCollapsedYears.has(y);
+    const collapsed = ST.depositCollapsedYears.has(y);
     const chevron = collapsed ? '▶' : '▼';
     const header = `
-      <div class="txn-year-hdr" onclick="nkToggleDepositYear('${y}')">
+      <div class="txn-year-hdr" onclick="ToggleDepositYear('${y}')">
         <span class="yh-chev">${chevron}</span>
         <span class="yh-year">${y}년</span>
         <span class="yh-count">${ytx.length}건</span>
@@ -1520,8 +1520,8 @@ function nkRenderDepositList() {
         <span>${accName}</span>
         <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtUSD(Number(t.amount))}</span>
         <span>
-          <button class="edit-btn" onclick="nkOpenTxnEditor('${t.id}')">편집</button>
-          <button class="del-btn" onclick="nkDeleteTxn('${t.id}')">삭제</button>
+          <button class="edit-btn" onclick="OpenTxnEditor('${t.id}')">편집</button>
+          <button class="del-btn" onclick="DeleteTxn('${t.id}')">삭제</button>
         </span>
       </div>`;
     }).join('');
@@ -1529,22 +1529,22 @@ function nkRenderDepositList() {
   }).join('');
 }
 
-function nkToggleDepositYear(year) {
-  if (!_nkDepositCollapsedYears) _nkDepositCollapsedYears = new Set();
-  if (_nkDepositCollapsedYears.has(year)) _nkDepositCollapsedYears.delete(year);
-  else _nkDepositCollapsedYears.add(year);
-  nkRenderDepositList();
+function ToggleDepositYear(year) {
+  if (!ST.depositCollapsedYears) ST.depositCollapsedYears = new Set();
+  if (ST.depositCollapsedYears.has(year)) ST.depositCollapsedYears.delete(year);
+  else ST.depositCollapsedYears.add(year);
+  RenderDepositList();
 }
 
-function nkDeleteTxn(id) {
+function DeleteTxn(id) {
   if (!confirm('이 입출금 내역을 삭제하시겠습니까?')) return;
   ST.deposits.transactions = ST.deposits.transactions.filter(t => t.id !== id);
   saveDeposits();
-  nkRenderDepositList();
+  RenderDepositList();
 }
 
-function nkOpenTxnEditor(editId) {
-  nkEditingTxnId = editId || null;
+function OpenTxnEditor(editId) {
+  ST.editingTxnId = editId || null;
   const sel = document.getElementById('TxnAccount');
   sel.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
   const titleEl = document.getElementById('TxnEditorTitle');
@@ -1565,65 +1565,65 @@ function nkOpenTxnEditor(editId) {
   document.getElementById('TxnEditorModal').classList.add('open');
 }
 
-function nkCloseTxnEditor() {
-  nkEditingTxnId = null;
+function CloseTxnEditor() {
+  ST.editingTxnId = null;
   document.getElementById('TxnEditorModal').classList.remove('open');
 }
 
-function nkSaveTxn() {
+function SaveTxn() {
   const accId  = document.getElementById('TxnAccount').value;
   const type   = document.getElementById('TxnType').value;
   const date   = document.getElementById('TxnDate').value;
   const amount = Number(document.getElementById('TxnAmount').value.replace(/,/g,''));
   if (!amount || amount <= 0) { alert('금액을 올바르게 입력하세요'); return; }
-  if (nkEditingTxnId) {
-    const t = ST.deposits.transactions.find(x => x.id === nkEditingTxnId);
+  if (ST.editingTxnId) {
+    const t = ST.deposits.transactions.find(x => x.id === ST.editingTxnId);
     if (t) { t.accId = accId; t.type = type; t.date = date; t.amount = amount; }
   } else {
     ST.deposits.transactions.push({ id: String(Date.now()) + Math.floor(Math.random()*1000), accId, type, date, amount });
   }
   saveDeposits();
-  nkCloseTxnEditor();
-  nkRenderDepositList();
+  CloseTxnEditor();
+  RenderDepositList();
 }
 
 // --- Records modal ---
-function nkOpenRecordsModal() {
+function OpenRecordsModal() {
   const d = new Date();
   document.getElementById('RecDate').value = d.toISOString().slice(0, 10);
-  nkRenderRecAccountInputs();
-  nkRenderRecordsList();
+  RenderRecAccountInputs();
+  RenderRecordsList();
   document.getElementById('AccountRecordsModal').classList.add('open');
 }
 
 
-function nkRenderRecAccountInputs() {
+function RenderRecAccountInputs() {
   const div = document.getElementById('RecAccountInputs');
   if (!div) return;
   div.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<label>
     <span>${a.name}</span>
     <input type="text" inputmode="decimal" id="RecVal_${a.id}" placeholder="0.00"
-      onblur="nkFmtAccInput(this,2)"
-      oninput="InputUX.liveFormat(this,2,'en-US'); nkUpdateRecTotal()">
+      onblur="FmtAccInput(this,2)"
+      oninput="InputUX.liveFormat(this,2,'en-US'); UpdateRecTotal()">
   </label>`).join('');
   document.getElementById('RecTotal').textContent = '$0';
 }
 
-function nkUpdateRecTotal() {
+function UpdateRecTotal() {
   const total = ST.accounts.filter(a => a.active !== false).reduce((s, a) => s + (Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0), 0);
   document.getElementById('RecTotal').textContent = fmtUSD(total);
 }
 
-function nkFillCurrentValues() {
+function FillCurrentValues() {
   ST.accounts.filter(a => a.active !== false).forEach(a => {
     const el = document.getElementById(`RecVal_${a.id}`);
     if (el) el.value = computeAccountValue(a.id).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   });
-  nkUpdateRecTotal();
+  UpdateRecTotal();
 }
 
 
-async function nkLoadHistoricalValues() {
+async function LoadHistoricalValues() {
   const dateVal = document.getElementById('RecDate').value;
   if (!dateVal) { alert('기록일을 선택하세요'); return; }
   const [year, month] = dateVal.split('-').map(Number);
@@ -1635,7 +1635,7 @@ async function nkLoadHistoricalValues() {
   );
   if (!targets.length) { alert('계좌별 수량이 입력된 종목이 없습니다.'); return; }
 
-  const btn = document.querySelector('button[onclick="nkLoadHistoricalValues()"]');
+  const btn = document.querySelector('button[onclick="LoadHistoricalValues()"]');
   if (btn) { btn.textContent = '⏳ 조회 중...'; btn.disabled = true; }
 
   try {
@@ -1664,7 +1664,7 @@ async function nkLoadHistoricalValues() {
       const el = document.getElementById(`RecVal_${a.id}`);
       if (el) el.value = (values[a.id] || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     });
-    nkUpdateRecTotal();
+    UpdateRecTotal();
 
     const dates = [...new Set(Object.values(priceMap).map(r => r.date))].sort();
     const refDate = dates.pop() || '';
@@ -1678,17 +1678,17 @@ async function nkLoadHistoricalValues() {
   }
 }
 
-function nkAddMonthlyRecord() {
+function AddMonthlyRecord() {
   const dateVal = document.getElementById('RecDate').value;
   if (!dateVal) { alert('기록일을 선택하세요'); return; }
   const [year, month, day] = dateVal.split('-').map(Number);
   if (!year || !month || !day) { alert('날짜를 올바르게 입력하세요'); return; }
   const accounts = {};
   ST.accounts.forEach(a => { accounts[a.id] = Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0; });
-  if (nkEditingRecordId) {
-    const rec = ST.monthly.find(r => r.id === nkEditingRecordId);
+  if (ST.editingRecordId) {
+    const rec = ST.monthly.find(r => r.id === ST.editingRecordId);
     if (rec) { rec.year = year; rec.month = month; rec.day = day; rec.accounts = accounts; }
-    nkCancelRecordEdit();
+    CancelRecordEdit();
   } else {
     if (ST.monthly.some(r => r.year === year && r.month === month && (r.day || 1) === day)) {
       if (!confirm(`${year}년 ${month}월 ${day}일 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
@@ -1697,22 +1697,22 @@ function nkAddMonthlyRecord() {
     ST.monthly.push({ id: String(Date.now()), year, month, day, accounts });
   }
   saveMonthly();
-  nkRenderRecordsList();
-  nkRenderChart();
+  RenderRecordsList();
+  RenderChart();
 }
 
-function nkEditMonthlyRecord(id) {
+function EditMonthlyRecord(id) {
   const rec = ST.monthly.find(r => r.id === id);
   if (!rec) return;
-  nkEditingRecordId = id;
+  ST.editingRecordId = id;
   const d = rec.day || 1;
   document.getElementById('RecDate').value = `${rec.year}-${String(rec.month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  nkRenderRecAccountInputs();
+  RenderRecAccountInputs();
   ST.accounts.forEach(a => {
     const inp = document.getElementById(`RecVal_${a.id}`);
     if (inp) inp.value = rec.accounts[a.id] ? Number(rec.accounts[a.id]).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
   });
-  nkUpdateRecTotal();
+  UpdateRecTotal();
   const addBtn    = document.getElementById('RecAddBtn');
   const cancelBtn = document.getElementById('RecCancelBtn');
   if (addBtn)    addBtn.textContent = '✏️ 수정';
@@ -1720,24 +1720,24 @@ function nkEditMonthlyRecord(id) {
   document.getElementById('RecDate').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function nkCancelRecordEdit() {
-  nkEditingRecordId = null;
+function CancelRecordEdit() {
+  ST.editingRecordId = null;
   const addBtn    = document.getElementById('RecAddBtn');
   const cancelBtn = document.getElementById('RecCancelBtn');
   if (addBtn)    addBtn.textContent = '➕ 추가';
   if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
-function nkDeleteMonthlyRecord(id) {
+function DeleteMonthlyRecord(id) {
   const rec = ST.monthly.find(r => r.id === id);
   if (!rec || !confirm(`${rec.year}년 ${rec.month}월 기록을 삭제하시겠습니까?`)) return;
   ST.monthly = ST.monthly.filter(r => r.id !== id);
   saveMonthly();
-  nkRenderRecordsList();
-  nkRenderChart();
+  RenderRecordsList();
+  RenderChart();
 }
 
-function nkRenderRecordsList() {
+function RenderRecordsList() {
   const header = document.getElementById('RecordsTableHeader');
   const list   = document.getElementById('RecordsList');
   if (!header || !list) return;
@@ -1765,33 +1765,33 @@ function nkRenderRecordsList() {
       ${cells}
       <span class="total">${fmtUSD(total)}</span>
       <span>
-        <button class="edit-btn" onclick="nkEditMonthlyRecord('${rec.id}')">편집</button>
-        <button class="del-btn" onclick="nkDeleteMonthlyRecord('${rec.id}')">삭제</button>
+        <button class="edit-btn" onclick="EditMonthlyRecord('${rec.id}')">편집</button>
+        <button class="del-btn" onclick="DeleteMonthlyRecord('${rec.id}')">삭제</button>
       </span>
     </div>`;
   }).join('');
 }
 
 // --- Dividend modal ---
-function nkOpenDividendModal() {
+function OpenDividendModal() {
   const d = new Date();
   document.getElementById('DivYear').value  = d.getFullYear();
   document.getElementById('DivMonth').value = d.getMonth() + 1;
   if (window.InputUX) InputUX.scanYMChips();
-  nkEditingDivId = null;
+  ST.editingDivId = null;
   const saveBtn = document.getElementById('DivSaveBtn');
   if (saveBtn) saveBtn.textContent = '➕ 추가';
   const cancelBtn = document.getElementById('DivCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
-  nkRenderDivStockInputs({}, null);
-  nkToggleDivMiscForm(false);
-  nkCancelDivMiscEdit();
-  nkRenderDividendLists();
+  RenderDivStockInputs({}, null);
+  ToggleDivMiscForm(false);
+  CancelDivMiscEdit();
+  RenderDividendLists();
   document.getElementById('DividendModal').classList.add('open');
 }
 
 
-function nkRenderDivStockInputs(perShareMap, sharesOverride) {
+function RenderDivStockInputs(perShareMap, sharesOverride) {
   const tbody = document.getElementById('DivStockInputs');
   if (!tbody) return;
   const activeAccs = ST.accounts.filter(a => a.active !== false);
@@ -1818,31 +1818,31 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
     }
   }
   // 폼 상태 초기화: 현재 보유 자동 채움, 객체 override는 그대로 복원
-  nkDivFormShares = {};
+  ST.divFormShares = {};
   for (const h of active) {
-    nkDivFormShares[h.ticker] = {};
+    ST.divFormShares[h.ticker] = {};
     const orig = ST.holdings.find(x => x.ticker === h.ticker);
     if (orig && orig.accounts) {
       for (const acc of activeAccs) {
         const a = orig.accounts[acc.id];
-        nkDivFormShares[h.ticker][acc.id] = a ? Number(a.qty) || 0 : 0;
+        ST.divFormShares[h.ticker][acc.id] = a ? Number(a.qty) || 0 : 0;
       }
     } else {
-      for (const acc of activeAccs) nkDivFormShares[h.ticker][acc.id] = 0;
+      for (const acc of activeAccs) ST.divFormShares[h.ticker][acc.id] = 0;
     }
     const stored = sharesOverride && sharesOverride[h.ticker];
     if (stored && typeof stored === 'object') {
-      nkDivFormShares[h.ticker] = { ...stored };
+      ST.divFormShares[h.ticker] = { ...stored };
     }
   }
   if (!active.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">보유 종목이 없습니다.</td></tr>';
-    nkUpdateDivTotal();
+    UpdateDivTotal();
     return;
   }
   tbody.innerHTML = active.map(h => {
     const ps = perShareMap && perShareMap[h.ticker] != null ? perShareMap[h.ticker] : '';
-    const byAcc = nkDivFormShares[h.ticker] || {};
+    const byAcc = ST.divFormShares[h.ticker] || {};
     const qtyTotal = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     const totalStr = ps !== '' && Number(ps) > 0 && qtyTotal > 0 ? fmtUSD(Math.round(Number(ps) * qtyTotal * 100) / 100) : '-';
     const accInputs = activeAccs.map(a => `
@@ -1850,7 +1850,7 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
         <span style="color:var(--muted)">${a.name}</span>
         <input type="text" inputmode="numeric" class="div-acc-qty"
           value="${(Number(byAcc[a.id]) || 0).toLocaleString('en-US')}"
-          oninput="nkLiveInt(this); nkUpdateAccQty('${h.ticker}','${a.id}', this.value.replace(/,/g,''))"
+          oninput="LiveInt(this); UpdateAccQty('${h.ticker}','${a.id}', this.value.replace(/,/g,''))"
           style="width:70px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;text-align:right">
       </label>
     `).join('');
@@ -1858,8 +1858,8 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
       <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
       <td><input class="div-ps" type="text" inputmode="decimal"
         value="${ps !== '' ? Number(ps).toLocaleString('en-US', {maximumFractionDigits:4}) : ''}" placeholder="0"
-        onblur="nkFmtAccInput(this,4)"
-        oninput="InputUX.liveFormat(this,4,'en-US'); nkUpdateDivRow('${h.ticker}')"
+        onblur="FmtAccInput(this,4)"
+        oninput="InputUX.liveFormat(this,4,'en-US'); UpdateDivRow('${h.ticker}')"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
       <td class="div-qty-cell" onclick="toggleDivRow('${h.ticker}')"
           style="text-align:right;cursor:pointer;user-select:none">
@@ -1875,18 +1875,18 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
       </td>
     </tr>`;
   }).join('');
-  nkUpdateDivTotal();
+  UpdateDivTotal();
 }
 
 
-function nkUpdateAccQty(code, accId, val) {
-  nkDivFormShares[code] = nkDivFormShares[code] || {};
-  nkDivFormShares[code][accId] = Number(val) || 0;
-  nkUpdateDivRow(code);
+function UpdateAccQty(code, accId, val) {
+  ST.divFormShares[code] = ST.divFormShares[code] || {};
+  ST.divFormShares[code][accId] = Number(val) || 0;
+  UpdateDivRow(code);
 }
 
-function nkUpdateDivRow(code) {
-  const byAcc = nkDivFormShares[code] || {};
+function UpdateDivRow(code) {
+  const byAcc = ST.divFormShares[code] || {};
   const total = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
   const sumEl = document.getElementById('DivQtySum_' + code);
   if (sumEl) sumEl.textContent = total.toLocaleString('en-US');
@@ -1894,15 +1894,15 @@ function nkUpdateDivRow(code) {
   const ps = Number(psInp?.value?.replace(/,/g,'')) || 0;
   const cell = document.getElementById('DivTotal_' + code);
   if (cell) cell.textContent = (ps > 0 && total > 0) ? fmtUSD(Math.round(ps * total * 100) / 100) : '-';
-  nkUpdateDivTotal();
+  UpdateDivTotal();
 }
 
-function nkUpdateDivTotal() {
+function UpdateDivTotal() {
   let grand = 0;
   document.querySelectorAll('#DivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
-    const byAcc = nkDivFormShares[code] || {};
+    const byAcc = ST.divFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) grand += Math.round(ps * totalQty * 100) / 100;
   });
@@ -1910,12 +1910,12 @@ function nkUpdateDivTotal() {
   if (el) el.textContent = fmtUSD(Math.round(grand * 100) / 100);
 }
 
-function nkClearDividendInputs() {
+function ClearDividendInputs() {
   document.querySelectorAll('#DivStockInputs .div-ps').forEach(inp => { inp.value = ''; });
-  nkUpdateDivTotal();
+  UpdateDivTotal();
 }
 
-function nkAddDividendRecord() {
+function AddDividendRecord() {
   const year  = Number(document.getElementById('DivYear').value);
   const month = Number(document.getElementById('DivMonth').value);
   if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
@@ -1926,7 +1926,7 @@ function nkAddDividendRecord() {
   document.querySelectorAll('#DivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
-    const byAcc = nkDivFormShares[code] || {};
+    const byAcc = ST.divFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) {
       stocksPerShare[code] = ps;
@@ -1950,12 +1950,12 @@ function nkAddDividendRecord() {
   }
   for (const accId of Object.keys(accounts)) accounts[accId] = Math.round(accounts[accId] * 100) / 100;
 
-  if (nkEditingDivId) {
-    const idx = ST.dividends.findIndex(r => r.id === nkEditingDivId);
+  if (ST.editingDivId) {
+    const idx = ST.dividends.findIndex(r => r.id === ST.editingDivId);
     if (idx >= 0) {
-      ST.dividends[idx] = { id: nkEditingDivId, year, month, stocksPerShare, stocksShares, accounts };
+      ST.dividends[idx] = { id: ST.editingDivId, year, month, stocksPerShare, stocksShares, accounts };
     }
-    nkEditingDivId = null;
+    ST.editingDivId = null;
     const saveBtn = document.getElementById('DivSaveBtn');
     if (saveBtn) saveBtn.textContent = '➕ 추가';
     const cancelBtn = document.getElementById('DivCancelBtn');
@@ -1968,45 +1968,45 @@ function nkAddDividendRecord() {
   }
 
   saveDividends();
-  nkClearDividendInputs();
-  nkRenderDividendLists();
+  ClearDividendInputs();
+  RenderDividendLists();
 }
 
-function nkDeleteDividendRecord(id) {
+function DeleteDividendRecord(id) {
   const rec = ST.dividends.find(r => r.id === id);
   if (!rec) return;
   const miscLabel = rec.misc ? ` (기타: ${rec.misc.memo || ''})` : '';
   if (!confirm(`${rec.year}년 ${rec.month}월${miscLabel} 배당 기록을 삭제하시겠습니까?`)) return;
   ST.dividends = ST.dividends.filter(r => r.id !== id);
-  if (nkEditingDivId === id) {
-    nkEditingDivId = null;
+  if (ST.editingDivId === id) {
+    ST.editingDivId = null;
     const saveBtn = document.getElementById('DivSaveBtn');
     if (saveBtn) saveBtn.textContent = '➕ 추가';
     const cancelBtn = document.getElementById('DivCancelBtn');
     if (cancelBtn) cancelBtn.style.display = 'none';
-    nkClearDividendInputs();
+    ClearDividendInputs();
   }
-  if (nkDivMiscEditingId === id) nkCancelDivMiscEdit();
+  if (ST.divMiscEditingId === id) CancelDivMiscEdit();
   saveDividends();
-  nkRenderDividendLists();
+  RenderDividendLists();
 }
 
-function nkEditDividendRecord(id) {
+function EditDividendRecord(id) {
   const rec = ST.dividends.find(r => r.id === id);
   if (!rec) return;
   document.getElementById('DivYear').value = rec.year;
   document.getElementById('DivMonth').value = rec.month;
   if (window.InputUX) InputUX.scanYMChips();
   if (divRecIsMisc(rec)) {
-    nkEditingDivId = null;
+    ST.editingDivId = null;
     const stockSaveBtn = document.getElementById('DivSaveBtn');
     if (stockSaveBtn) stockSaveBtn.textContent = '➕ 추가';
     const stockCancelBtn = document.getElementById('DivCancelBtn');
     if (stockCancelBtn) stockCancelBtn.style.display = 'none';
-    nkDivMiscEditingId = id;
+    ST.divMiscEditingId = id;
     document.getElementById('DivMiscMemo').value = rec.misc.memo || '';
-    nkToggleDivMiscForm(true);
-    nkRenderDivMiscInputs(rec.misc.accounts || {});
+    ToggleDivMiscForm(true);
+    RenderDivMiscInputs(rec.misc.accounts || {});
     const saveBtn = document.getElementById('DivMiscSaveBtn');
     if (saveBtn) saveBtn.textContent = '수정 저장';
     const cancelBtn = document.getElementById('DivMiscCancelBtn');
@@ -2014,10 +2014,10 @@ function nkEditDividendRecord(id) {
     document.getElementById('DivMiscBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
-  nkEditingDivId = id;
+  ST.editingDivId = id;
   const perShareMap = (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) ? rec.stocksPerShare : {};
   const sharesOverride = (rec.stocksShares && Object.keys(rec.stocksShares).length > 0) ? rec.stocksShares : null;
-  nkRenderDivStockInputs(perShareMap, sharesOverride);
+  RenderDivStockInputs(perShareMap, sharesOverride);
   const saveBtn = document.getElementById('DivSaveBtn');
   if (saveBtn) saveBtn.textContent = '수정 저장';
   const cancelBtn = document.getElementById('DivCancelBtn');
@@ -2026,20 +2026,20 @@ function nkEditDividendRecord(id) {
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function nkCancelDivEdit() {
-  nkEditingDivId = null;
+function CancelDivEdit() {
+  ST.editingDivId = null;
   const saveBtn = document.getElementById('DivSaveBtn');
   if (saveBtn) saveBtn.textContent = '➕ 추가';
   const cancelBtn = document.getElementById('DivCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
-  nkRenderDivStockInputs({}, null);
+  RenderDivStockInputs({}, null);
 }
 
 // === NonK 기타항목 (종목 없이 금액만) ===
-let nkDivMiscEditingId = null;
+ST.divMiscEditingId = null;
 
 
-function nkToggleDivMiscForm(forceOpen) {
+function ToggleDivMiscForm(forceOpen) {
   const body = document.getElementById('DivMiscBody');
   const btn  = document.getElementById('DivMiscToggleBtn');
   if (!body) return;
@@ -2047,14 +2047,14 @@ function nkToggleDivMiscForm(forceOpen) {
   if (shouldOpen) {
     body.style.display = '';
     if (btn) btn.textContent = '접기 ▴';
-    nkRenderDivMiscInputs();
+    RenderDivMiscInputs();
   } else {
     body.style.display = 'none';
     if (btn) btn.textContent = '펼치기 ▾';
   }
 }
 
-function nkRenderDivMiscInputs(values) {
+function RenderDivMiscInputs(values) {
   const wrap = document.getElementById('DivMiscAccInputs');
   if (!wrap) return;
   const accs = ST.accounts.filter(a => a.active !== false);
@@ -2067,15 +2067,15 @@ function nkRenderDivMiscInputs(values) {
     return `<label style="display:flex;align-items:center;gap:8px">
       <span style="min-width:90px;font-size:13px">${a.name}</span>
       <input type="text" inputmode="decimal" class="nk-div-misc-amt" data-acc="${a.id}" value="${v}"
-             onblur="nkFmtAccInput(this,2)"
-             oninput="InputUX.liveFormat(this,2,'en-US'); nkUpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
+             onblur="FmtAccInput(this,2)"
+             oninput="InputUX.liveFormat(this,2,'en-US'); UpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
       <span style="font-size:12px;color:var(--muted,#888)">USD</span>
     </label>`;
   }).join('');
-  nkUpdateDivMiscTotal();
+  UpdateDivMiscTotal();
 }
 
-function nkUpdateDivMiscTotal() {
+function UpdateDivMiscTotal() {
   let t = 0;
   document.querySelectorAll('#DivMiscAccInputs .nk-div-misc-amt').forEach(inp => {
     t += Number(inp.value?.replace(/,/g,'')) || 0;
@@ -2084,22 +2084,22 @@ function nkUpdateDivMiscTotal() {
   if (el) el.textContent = fmtUSD(t);
 }
 
-function nkClearDivMiscInputs() {
+function ClearDivMiscInputs() {
   document.getElementById('DivMiscMemo').value = '';
   document.querySelectorAll('#DivMiscAccInputs .nk-div-misc-amt').forEach(inp => { inp.value = ''; });
-  nkUpdateDivMiscTotal();
+  UpdateDivMiscTotal();
 }
 
-function nkCancelDivMiscEdit() {
-  nkDivMiscEditingId = null;
+function CancelDivMiscEdit() {
+  ST.divMiscEditingId = null;
   const saveBtn = document.getElementById('DivMiscSaveBtn');
   if (saveBtn) saveBtn.textContent = '기타항목 추가';
   const cancelBtn = document.getElementById('DivMiscCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
-  nkClearDivMiscInputs();
+  ClearDivMiscInputs();
 }
 
-function nkAddMiscDividendRecord() {
+function AddMiscDividendRecord() {
   const year  = Number(document.getElementById('DivYear').value);
   const month = Number(document.getElementById('DivMonth').value);
   if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
@@ -2114,16 +2114,16 @@ function nkAddMiscDividendRecord() {
   });
   if (total === 0 && !confirm('모든 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
 
-  if (nkDivMiscEditingId) {
-    const idx = ST.dividends.findIndex(r => r.id === nkDivMiscEditingId);
+  if (ST.divMiscEditingId) {
+    const idx = ST.dividends.findIndex(r => r.id === ST.divMiscEditingId);
     if (idx >= 0) {
       ST.dividends[idx] = {
-        id: nkDivMiscEditingId, year, month,
+        id: ST.divMiscEditingId, year, month,
         stocksPerShare: {}, stocksShares: {}, accounts,
         misc: { memo, accounts: { ...accounts } }
       };
     }
-    nkCancelDivMiscEdit();
+    CancelDivMiscEdit();
   } else {
     ST.dividends.push({
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
@@ -2131,13 +2131,13 @@ function nkAddMiscDividendRecord() {
       stocksPerShare: {}, stocksShares: {}, accounts,
       misc: { memo, accounts: { ...accounts } }
     });
-    nkClearDivMiscInputs();
+    ClearDivMiscInputs();
   }
   saveDividends();
-  nkRenderDividendLists();
+  RenderDividendLists();
 }
 
-function nkRenderDividendLists() {
+function RenderDividendLists() {
   // Stock table
   const sHeader = document.getElementById('DivStockTableHeader');
   const sList   = document.getElementById('DivStockRecordsList');
@@ -2157,25 +2157,25 @@ function nkRenderDividendLists() {
           const total = divRecMiscTotal(rec);
           const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
           return `<div class="div-record-row" style="grid-template-columns:${cols}">
-            <span class="div-date-link" onclick="nkEditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>
+            <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>
             <span style="grid-column: span ${spanCount};color:var(--muted,#888)">📝 ${memo}</span>
             <span class="total">${fmtUSD(total)}</span>
             <span>
-              <button class="edit-btn" onclick="nkEditDividendRecord('${rec.id}')">수정</button>
-              <button class="del-btn" onclick="nkDeleteDividendRecord('${rec.id}')">삭제</button>
+              <button class="edit-btn" onclick="EditDividendRecord('${rec.id}')">수정</button>
+              <button class="del-btn" onclick="DeleteDividendRecord('${rec.id}')">삭제</button>
             </span>
           </div>`;
         }
-        const total = allTickers.reduce((s,t) => s + nkDivRecAmount(rec, t), 0);
+        const total = allTickers.reduce((s,t) => s + DivRecAmount(rec, t), 0);
         const cells = allTickers.map(t => {
-          const v = nkDivRecAmount(rec, t);
+          const v = DivRecAmount(rec, t);
           if (!v) return `<span class="amount">-</span>`;
-          return `<span class="amount div-cell-editable"><span>${fmtUSD(v)}</span><button class="mini-edit-btn" onclick="nkOpenDivStockEdit('${rec.id}','${t}')">✏️</button></span>`;
+          return `<span class="amount div-cell-editable"><span>${fmtUSD(v)}</span><button class="mini-edit-btn" onclick="OpenDivStockEdit('${rec.id}','${t}')">✏️</button></span>`;
         }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span class="div-date-link" onclick="nkEditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>${cells}
+          <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>${cells}
           <span class="total">${fmtUSD(total)}</span>
-          <span><button class="del-btn" onclick="nkDeleteDividendRecord('${rec.id}')">삭제</button></span>
+          <span><button class="del-btn" onclick="DeleteDividendRecord('${rec.id}')">삭제</button></span>
         </div>`;
       }).join('');
     }
@@ -2198,13 +2198,13 @@ function nkRenderDividendLists() {
           const v = Number(rec.accounts[a.id]) || 0;
           if (!v) return `<span class="amount">-</span>`;
           if (isMisc) return `<span class="amount">${fmtUSD(v)}</span>`;
-          return `<span class="amount div-cell-editable"><span>${fmtUSD(v)}</span><button class="mini-edit-btn" onclick="nkOpenDivAccEdit('${rec.id}','${a.id}')">✏️</button></span>`;
+          return `<span class="amount div-cell-editable"><span>${fmtUSD(v)}</span><button class="mini-edit-btn" onclick="OpenDivAccEdit('${rec.id}','${a.id}')">✏️</button></span>`;
         }).join('');
         const miscPrefix = isMisc
           ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}" style="color:var(--muted,#888)">📝 </small>`
           : '';
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span class="div-date-link" onclick="nkEditDividendRecord('${rec.id}')" title="전체 수정">${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
           <span class="total">${fmtUSD(total)}</span>
         </div>`;
       }).join('');
@@ -2213,26 +2213,26 @@ function nkRenderDividendLists() {
 }
 
 // --- 배당 포커스드 편집 패널 ---
-let _nkDivStockEditRecId = null, _nkDivStockEditTicker = null;
-let _nkDivAccEditRecId = null, _nkDivAccEditAccId = null;
+ST.divStockEditRecId = null, ST.divStockEditTicker = null;
+ST.divAccEditRecId = null, ST.divAccEditAccId = null;
 
-function nkOpenDivStockEdit(recId, ticker) {
+function OpenDivStockEdit(recId, ticker) {
   const rec = ST.dividends.find(r => r.id === recId);
   if (!rec) return;
-  _nkDivStockEditRecId = recId;
-  _nkDivStockEditTicker = ticker;
+  ST.divStockEditRecId = recId;
+  ST.divStockEditTicker = ticker;
   const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
   document.getElementById('DivStockEditTitle').textContent = `${ticker} · ${dateLabel}`;
   const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
   document.getElementById('DivStockEditPs').value = perShare ? Number(perShare).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:4}) : '';
-  nkUpdateDivStockEditPreview();
+  UpdateDivStockEditPreview();
   document.getElementById('DivStockEditPanel').style.display = '';
 }
 
-function nkUpdateDivStockEditPreview() {
-  const rec = ST.dividends.find(r => r.id === _nkDivStockEditRecId);
+function UpdateDivStockEditPreview() {
+  const rec = ST.dividends.find(r => r.id === ST.divStockEditRecId);
   if (!rec) return;
-  const ticker = _nkDivStockEditTicker;
+  const ticker = ST.divStockEditTicker;
   const newPs = parseFloat(document.getElementById('DivStockEditPs').value.replace(/,/g,'')) || 0;
   let total = 0;
   const rows = ST.accounts.map(acc => {
@@ -2247,15 +2247,15 @@ function nkUpdateDivStockEditPreview() {
   document.getElementById('DivStockEditTotal').textContent = fmtUSD(total);
 }
 
-function nkCloseDivStockEdit() {
+function CloseDivStockEdit() {
   document.getElementById('DivStockEditPanel').style.display = 'none';
-  _nkDivStockEditRecId = null; _nkDivStockEditTicker = null;
+  ST.divStockEditRecId = null; ST.divStockEditTicker = null;
 }
 
-function nkSaveDivStockEdit() {
-  const rec = ST.dividends.find(r => r.id === _nkDivStockEditRecId);
+function SaveDivStockEdit() {
+  const rec = ST.dividends.find(r => r.id === ST.divStockEditRecId);
   if (!rec) return;
-  const ticker = _nkDivStockEditTicker;
+  const ticker = ST.divStockEditTicker;
   const newPs = Math.round((parseFloat(document.getElementById('DivStockEditPs').value) || 0) * 10000) / 10000;
   if (!rec.stocksPerShare) rec.stocksPerShare = {};
   rec.stocksPerShare[ticker] = newPs;
@@ -2271,15 +2271,15 @@ function nkSaveDivStockEdit() {
     rec.accounts[acc.id] = Math.round(total * 100) / 100;
   });
   saveDividends();
-  nkRenderDividendLists();
-  nkCloseDivStockEdit();
+  RenderDividendLists();
+  CloseDivStockEdit();
 }
 
-function nkOpenDivAccEdit(recId, accId) {
+function OpenDivAccEdit(recId, accId) {
   const rec = ST.dividends.find(r => r.id === recId);
   if (!rec) return;
-  _nkDivAccEditRecId = recId;
-  _nkDivAccEditAccId = accId;
+  ST.divAccEditRecId = recId;
+  ST.divAccEditAccId = accId;
   const acc = ST.accounts.find(a => a.id === accId);
   const accName = acc ? acc.name : accId;
   const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
@@ -2293,17 +2293,17 @@ function nkOpenDivAccEdit(recId, accId) {
       <span>${ticker}</span>
       <span>${fmtUSD(perShare)}</span>
       <input type="text" inputmode="numeric" class="div-focused-qty-input" value="${qty.toLocaleString('en-US')}"
-        oninput="nkLiveInt(this); nkUpdateDivAccEditPreview()">
+        oninput="LiveInt(this); UpdateDivAccEditPreview()">
       <span class="nk-acc-amt-cell">${fmtUSD(amt)}</span>
     </div>`;
   }).join('');
   document.getElementById('DivAccEditStockRows').innerHTML = rows;
-  nkUpdateDivAccEditPreview();
+  UpdateDivAccEditPreview();
   document.getElementById('DivAccEditPanel').style.display = '';
 }
 
-function nkUpdateDivAccEditPreview() {
-  const rec = ST.dividends.find(r => r.id === _nkDivAccEditRecId);
+function UpdateDivAccEditPreview() {
+  const rec = ST.dividends.find(r => r.id === ST.divAccEditRecId);
   if (!rec) return;
   let total = 0;
   document.querySelectorAll('#DivAccEditStockRows .div-focused-stock-row').forEach(row => {
@@ -2317,15 +2317,15 @@ function nkUpdateDivAccEditPreview() {
   document.getElementById('DivAccEditTotal').textContent = fmtUSD(total);
 }
 
-function nkCloseDivAccEdit() {
+function CloseDivAccEdit() {
   document.getElementById('DivAccEditPanel').style.display = 'none';
-  _nkDivAccEditRecId = null; _nkDivAccEditAccId = null;
+  ST.divAccEditRecId = null; ST.divAccEditAccId = null;
 }
 
-function nkSaveDivAccEdit() {
-  const rec = ST.dividends.find(r => r.id === _nkDivAccEditRecId);
+function SaveDivAccEdit() {
+  const rec = ST.dividends.find(r => r.id === ST.divAccEditRecId);
   if (!rec) return;
-  const accId = _nkDivAccEditAccId;
+  const accId = ST.divAccEditAccId;
   if (!rec.stocksShares) rec.stocksShares = {};
   document.querySelectorAll('#DivAccEditStockRows .div-focused-stock-row').forEach(row => {
     const ticker = row.dataset.ticker;
@@ -2343,19 +2343,19 @@ function nkSaveDivAccEdit() {
   }
   rec.accounts[accId] = Math.round(total * 100) / 100;
   saveDividends();
-  nkRenderDividendLists();
-  nkCloseDivAccEdit();
+  RenderDividendLists();
+  CloseDivAccEdit();
 }
 
 
 
 // ===== 계좌 관리 =====
-function nkOpenAccountSettings() {
-  nkRenderAccountSettingsBody();
+function OpenAccountSettings() {
+  RenderAccountSettingsBody();
   document.getElementById('AccountSettingsModal').classList.add('open');
 }
 
-function nkRenderAccountSettingsBody() {
+function RenderAccountSettingsBody() {
   const body = document.getElementById('AccountSettingsBody');
   if (!body) return;
 
@@ -2364,63 +2364,63 @@ function nkRenderAccountSettingsBody() {
   html += `<div class="nk-acc-settings-list">` + ST.accounts.map(a => {
     const isActive = a.active !== false;
     return `<div class="nk-acc-settings-row">
-        <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="nkToggleAccountActive('${a.id}')">${escapeHtml(a.name)}</button>
-        <button class="edit-btn" onclick="nkRenameAccount('${a.id}')">이름변경</button>
-        <button class="del-btn" onclick="nkDeleteAccount('${a.id}')">삭제</button>
+        <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="ToggleAccountActive('${a.id}')">${escapeHtml(a.name)}</button>
+        <button class="edit-btn" onclick="RenameAccount('${a.id}')">이름변경</button>
+        <button class="del-btn" onclick="DeleteAccount('${a.id}')">삭제</button>
       </div>`;
   }).join('') + `</div>`;
 
   html += `<div class="nk-acc-section-title" style="margin-top:12px">새 계좌 추가</div>`;
   html += `<div class="nk-acc-add-row">
     <input type="text" id="NewAccName" placeholder="계좌 이름" maxlength="20" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px">
-    <button class="btn-primary" onclick="nkAddAccount()">추가</button>
+    <button class="btn-primary" onclick="AddAccount()">추가</button>
   </div>`;
 
   body.innerHTML = html;
   setTimeout(() => {
     const inp = document.getElementById('NewAccName');
-    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') nkAddAccount(); });
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') AddAccount(); });
   }, 0);
 }
 
-function nkAddAccount() {
+function AddAccount() {
   const inp = document.getElementById('NewAccName');
   const name = (inp?.value || '').trim();
   if (!name) { alert('계좌 이름을 입력하세요'); return; }
   const id = 'acc_' + Date.now();
   ST.accounts.push({ id, name, active: true });
-  nkSaveAccounts();
-  nkRenderAccountSettingsBody();
-  nkRenderAccountButtons();
-  nkRender();
-  nkRenderChart();
+  SaveAccounts();
+  RenderAccountSettingsBody();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
-function nkToggleAccountActive(id) {
+function ToggleAccountActive(id) {
   const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   acc.active = (acc.active === false) ? true : false;
-  nkSaveAccounts();
-  nkRenderAccountSettingsBody();
-  nkRenderAccountButtons();
-  nkRender();
-  nkRenderChart();
+  SaveAccounts();
+  RenderAccountSettingsBody();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
-function nkRenameAccount(id) {
+function RenameAccount(id) {
   const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   const newName = prompt('새 계좌 이름을 입력하세요', acc.name);
   if (!newName || !newName.trim()) return;
   acc.name = newName.trim();
-  nkSaveAccounts();
-  nkRenderAccountSettingsBody();
-  nkRenderAccountButtons();
-  nkRender();
-  nkRenderChart();
+  SaveAccounts();
+  RenderAccountSettingsBody();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
-function nkDeleteAccount(id) {
+function DeleteAccount(id) {
   const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   // 보유 데이터 확인
@@ -2432,25 +2432,25 @@ function nkDeleteAccount(id) {
   }
   if (!confirm(`'${acc.name}' 계좌를 삭제하시겠습니까?`)) return;
   ST.accounts = ST.accounts.filter(a => a.id !== id);
-  nkSaveAccounts();
-  nkRenderAccountSettingsBody();
-  nkRenderAccountButtons();
-  nkRender();
-  nkRenderChart();
+  SaveAccounts();
+  RenderAccountSettingsBody();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
 // ESC key closes any open NonK modal
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (document.getElementById('AccountSettingsModal').classList.contains('open')){ closeAccountSettings(); return; }
-  if (document.getElementById('TxnEditorModal').classList.contains('open'))    { nkCloseTxnEditor(); return; }
-  if (document.getElementById('AccountModal').classList.contains('open'))      { nkCloseAccountModal(); return; }
-  if (document.getElementById('AccountDetailModal').classList.contains('open')){ nkCloseAccountDetail(); return; }
+  if (document.getElementById('TxnEditorModal').classList.contains('open'))    { CloseTxnEditor(); return; }
+  if (document.getElementById('AccountModal').classList.contains('open'))      { CloseAccountModal(); return; }
+  if (document.getElementById('AccountDetailModal').classList.contains('open')){ CloseAccountDetail(); return; }
   if (document.getElementById('CashModal').classList.contains('open'))         { closeCashModal(); return; }
   if (document.getElementById('DepositModal').classList.contains('open'))      { closeDepositModal(); return; }
   if (document.getElementById('AccountRecordsModal').classList.contains('open')){ closeRecordsModal(); return; }
   if (document.getElementById('DividendModal').classList.contains('open'))     { closeDividendModal(); return; }
-  if (document.getElementById('AddStockModal').classList.contains('open'))     { nkCloseAddModal(); return; }
+  if (document.getElementById('AddStockModal').classList.contains('open'))     { CloseAddModal(); return; }
 });
 
 // Pull-to-refresh
@@ -2493,7 +2493,7 @@ document.addEventListener('keydown', e => {
       refreshing = true; indicator.style.height = '48px';
       const sp = document.getElementById('ptrSpinner'), tx = document.getElementById('ptrText');
       if (sp) sp.classList.add('spinning'); if (tx) tx.textContent = '새로고침 중...';
-      await nkRefreshAll();
+      await RefreshAll();
       refreshing = false; if (sp) sp.classList.remove('spinning');
     }
     indicator.style.height = '0'; indicator.classList.remove('ptr-ready');
@@ -2503,12 +2503,12 @@ document.addEventListener('keydown', e => {
 
 // ===== 관심종목 =====
 
-const nkWatchPrices = {};
-let _nkWatchPending = null;
-let _nkWatchAcTimer = null;
+ST.watchPrices = {};
+ST.watchPending = null;
+ST.watchAcTimer = null;
 
-function nkOpenWatchModal() {
-  _nkWatchPending = null;
+function OpenWatchModal() {
+  ST.watchPending = null;
   document.getElementById('WatchSearch').value = '';
   document.getElementById('WatchPreview').style.display = 'none';
   const listEl = document.getElementById('WatchAcList');
@@ -2516,19 +2516,19 @@ function nkOpenWatchModal() {
   document.getElementById('WatchModal').classList.add('open');
   setTimeout(() => document.getElementById('WatchSearch').focus(), 50);
 }
-function nkCloseWatchModal() {
+function CloseWatchModal() {
   document.getElementById('WatchModal').classList.remove('open');
-  _nkWatchPending = null;
+  ST.watchPending = null;
 }
 
-function nkOnWatchSearchInput(val) {
-  clearTimeout(_nkWatchAcTimer);
-  _nkWatchPending = null;
+function OnWatchSearchInput(val) {
+  clearTimeout(ST.watchAcTimer);
+  ST.watchPending = null;
   document.getElementById('WatchPreview').style.display = 'none';
   const listEl = document.getElementById('WatchAcList');
   if (!val.trim()) { listEl.classList.remove('open'); return; }
-  _nkWatchAcTimer = setTimeout(async () => {
-    const items = await nkWatchFetchAutocomplete(val.trim());
+  ST.watchAcTimer = setTimeout(async () => {
+    const items = await WatchFetchAutocomplete(val.trim());
     listEl.innerHTML = '';
     if (!items.length) { listEl.classList.remove('open'); return; }
     items.forEach(item => {
@@ -2537,7 +2537,7 @@ function nkOnWatchSearchInput(val) {
       div.innerHTML = `<span class="mw-ac-name">${item.name}</span><span class="mw-ac-ticker">${item.ticker}</span>`;
       div.addEventListener('mousedown', e => {
         e.preventDefault();
-        _nkWatchPending = item;
+        ST.watchPending = item;
         document.getElementById('WatchSearch').value = item.name;
         listEl.classList.remove('open');
         const prev = document.getElementById('WatchPreview');
@@ -2551,7 +2551,7 @@ function nkOnWatchSearchInput(val) {
   }, 300);
 }
 
-async function nkWatchFetchAutocomplete(query) {
+async function WatchFetchAutocomplete(query) {
   // 1순위: 로컬 마스터 DB (IndexedDB, tickers.json 기반)
   if (window.TickerSearch && window.TickerSearch.isReady()) {
     const hits = window.TickerSearch.search(query, { country: 'US', limit: 8 });
@@ -2571,37 +2571,37 @@ async function nkWatchFetchAutocomplete(query) {
   } catch(_) { return []; }
 }
 
-function nkSaveWatch() {
-  if (!_nkWatchPending) {
+function SaveWatch() {
+  if (!ST.watchPending) {
     const val = document.getElementById('WatchSearch').value.trim().toUpperCase();
     if (!val) { alert('종목을 선택해 주세요.'); return; }
-    _nkWatchPending = { ticker: val, name: val };
+    ST.watchPending = { ticker: val, name: val };
   }
-  const { ticker, name } = _nkWatchPending;
+  const { ticker, name } = ST.watchPending;
   if (ST.watchlist.find(w => w.ticker === ticker)) { alert('이미 추가된 종목입니다.'); return; }
   ST.watchlist.push({ ticker, name });
   saveWatchlist();
-  nkCloseWatchModal();
-  nkRenderWatchlist();
+  CloseWatchModal();
+  RenderWatchlist();
   fetchNkPrice(ticker).then(info => {
     if (info) {
-      nkWatchPrices[ticker] = info;
+      ST.watchPrices[ticker] = info;
       if (info.name && info.name !== ticker) {
         const w = ST.watchlist.find(x => x.ticker === ticker);
         if (w) { w.name = info.name; saveWatchlist(); }
       }
-      nkRenderWatchlist();
+      RenderWatchlist();
     }
   }).catch(() => {});
 }
 
-function nkDeleteWatch(ticker) {
+function DeleteWatch(ticker) {
   ST.watchlist = ST.watchlist.filter(w => w.ticker !== ticker);
   saveWatchlist();
-  nkRenderWatchlist();
+  RenderWatchlist();
 }
 
-function nkRenderWatchlist() {
+function RenderWatchlist() {
   const c = document.getElementById('WatchContainer');
   if (!c) return;
   if (!ST.watchlist.length) {
@@ -2609,7 +2609,7 @@ function nkRenderWatchlist() {
     return;
   }
   const rows = ST.watchlist.map(w => {
-    const info = nkWatchPrices[w.ticker];
+    const info = ST.watchPrices[w.ticker];
     const cur  = info ? info.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
     const chg  = info ? (info.change || 0) : null;
     const chgPct = info ? (info.changeRate || 0) : null;
@@ -2621,7 +2621,7 @@ function nkRenderWatchlist() {
       <td class="ta-r" style="font-weight:700;font-variant-numeric:tabular-nums">$${cur}</td>
       <td class="ta-r ${cls}" style="font-variant-numeric:tabular-nums">${chgStr}</td>
       <td class="ta-r ${cls}">${pctStr}</td>
-      <td class="ta-c"><button class="mw-btn-del" onclick="nkDeleteWatch('${w.ticker}')">삭제</button></td>
+      <td class="ta-c"><button class="mw-btn-del" onclick="DeleteWatch('${w.ticker}')">삭제</button></td>
     </tr>`;
   }).join('');
   c.innerHTML = `<div style="overflow-x:auto"><table class="mw-table">
@@ -2633,21 +2633,21 @@ function nkRenderWatchlist() {
 
 // ===== NonK 거래 추가/내역 =====
 const NKT_TRADES_KEY = 'nonk_trades_v1';
-ST.trades = nktLoadTrades();
-let nktEditingTradeId = null;
-let nktCurrentTab = 'all';
-let nktHistoryOpen = false;
+ST.trades = tLoadTrades();
+ST.editingTradeId = null;
+ST.currentTab = 'all';
+ST.historyOpen = false;
 
-function nktLoadTrades() {
+function tLoadTrades() {
   try { return JSON.parse(localStorage.getItem(NKT_TRADES_KEY)) || []; } catch(_) { return []; }
 }
-function nktSaveTrades() { localStorage.setItem(NKT_TRADES_KEY, JSON.stringify(ST.trades)); }
+function tSaveTrades() { localStorage.setItem(NKT_TRADES_KEY, JSON.stringify(ST.trades)); }
 
 // FIFO 분석 (USD)
 
 // 날짜 기준 보유 종목
 
-function nktUpdateSellStockOptions() {
+function tUpdateSellStockOptions() {
   const sel = document.getElementById('tSellStockSelect');
   if (!sel) return;
   const type = document.getElementById('tTradeType')?.value;
@@ -2674,11 +2674,11 @@ function nktUpdateSellStockOptions() {
     ).join('');
   if (prevTicker) {
     sel.value = prevTicker;
-    if (sel.value) nktOnSellStockSelect(prevTicker, true);
+    if (sel.value) tOnSellStockSelect(prevTicker, true);
   }
 }
 
-function nktOnSellStockSelect(val, skipPrice) {
+function tOnSellStockSelect(val, skipPrice) {
   const sel = document.getElementById('tSellStockSelect');
   if (!sel || !val) return;
   const opt = sel.options[sel.selectedIndex];
@@ -2689,17 +2689,17 @@ function nktOnSellStockSelect(val, skipPrice) {
   if (!skipPrice && opt.dataset.price && !priceEl.value) {
     const rawPrice = parseFloat(opt.dataset.price);
     priceEl.value = rawPrice.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
-    nktUpdateTradePreview();
+    tUpdateTradePreview();
   }
 
   // 수량 힌트 업데이트 (계좌 선택은 변경하지 않음)
   const accId = document.getElementById('tTradeAcc')?.value;
-  nktOnSellAccChange(accId);
+  tOnSellAccChange(accId);
 }
 
-function nktOnSellAccChange(accId) {
+function tOnSellAccChange(accId) {
   const type = document.getElementById('tTradeType')?.value;
-  if (type === 'sell') nktUpdateSellStockOptions();
+  if (type === 'sell') tUpdateSellStockOptions();
 
   const hintEl = document.getElementById('tSellQtyHint');
   if (!hintEl) return;
@@ -2715,43 +2715,43 @@ function nktOnSellAccChange(accId) {
 }
 
 // 거래 내역 토글
-function nktToggleHistory() {
-  nktHistoryOpen = !nktHistoryOpen;
+function tToggleHistory() {
+  ST.historyOpen = !ST.historyOpen;
   const wrap = document.getElementById('tHistoryWrap');
   const chevron = document.getElementById('tChevron');
-  if (wrap) wrap.style.display = nktHistoryOpen ? '' : 'none';
-  if (chevron) chevron.style.transform = nktHistoryOpen ? 'rotate(90deg)' : '';
-  if (nktHistoryOpen) nktRenderTradeHistory();
+  if (wrap) wrap.style.display = ST.historyOpen ? '' : 'none';
+  if (chevron) chevron.style.transform = ST.historyOpen ? 'rotate(90deg)' : '';
+  if (ST.historyOpen) tRenderTradeHistory();
 }
 
 // 탭 전환
-function nktSetTab(tab) {
-  nktCurrentTab = tab;
+function tSetTab(tab) {
+  ST.currentTab = tab;
   ['all','open','closed'].forEach(t => {
     const el = document.getElementById('nktTab' + t.charAt(0).toUpperCase() + t.slice(1));
     if (el) el.classList.toggle('active', t === tab);
   });
-  nktRenderTradeHistory();
+  tRenderTradeHistory();
 }
 
 // 거래 내역 렌더링
-function nktRenderTradeHistory() {
+function tRenderTradeHistory() {
   const { closedMap, positions } = tFifoAnalysis();
   const openTickers = new Set(positions.map(p => p.ticker));
   const container = document.getElementById('tTradeHistoryContainer');
   if (!container) return;
 
   let trades = [...ST.trades].sort((a, b) => b.date.localeCompare(a.date));
-  if (nktCurrentTab === 'open') {
+  if (ST.currentTab === 'open') {
     trades = trades.filter(t => t.type === 'buy' && openTickers.has(t.ticker));
-  } else if (nktCurrentTab === 'closed') {
+  } else if (ST.currentTab === 'closed') {
     trades = trades.filter(t => t.type === 'sell' && closedMap[t.id]);
   }
 
   if (!trades.length) {
-    const emptyMsg = nktCurrentTab === 'closed'
+    const emptyMsg = ST.currentTab === 'closed'
       ? '완료된 포지션이 없습니다.<br><small style="opacity:0.7">매수 후 매도까지 완료된 거래만 표시됩니다.</small>'
-      : nktCurrentTab === 'open'
+      : ST.currentTab === 'open'
       ? '보유 중인 종목의 매수 내역이 없습니다.'
       : '거래 내역이 없습니다.';
     container.innerHTML = `<div class="mt-empty">${emptyMsg}</div>`;
@@ -2788,8 +2788,8 @@ function nktRenderTradeHistory() {
       <td class="ta-r" style="color:var(--muted)">${t.fee ? fmtUSD(t.fee) : '-'}</td>
       ${pnlCols}
       <td style="white-space:nowrap">
-        <button class="mt-btn-sm" onclick="nktOpenTradeModal('${t.id}')">편집</button>
-        <button class="mt-btn-sm del" onclick="nktDeleteTrade('${t.id}')">삭제</button>
+        <button class="mt-btn-sm" onclick="tOpenTradeModal('${t.id}')">편집</button>
+        <button class="mt-btn-sm del" onclick="tDeleteTrade('${t.id}')">삭제</button>
       </td>
     </tr>`;
   }).join('');
@@ -2807,7 +2807,7 @@ function nktRenderTradeHistory() {
 }
 
 // 모달 제어
-function nktSetTradeType(type) {
+function tSetTradeType(type) {
   document.getElementById('tTradeType').value = type;
   document.getElementById('tTypeBuyBtn').className = 'mt-type-btn' + (type==='buy' ? ' active-buy' : '');
   document.getElementById('tTypeSellBtn').className = 'mt-type-btn' + (type==='sell' ? ' active-sell' : '');
@@ -2815,11 +2815,11 @@ function nktSetTradeType(type) {
   if (sellRow) sellRow.style.display = type === 'sell' ? '' : 'none';
   const hintEl = document.getElementById('tSellQtyHint');
   if (hintEl) hintEl.textContent = '';
-  if (type === 'sell') nktUpdateSellStockOptions();
+  if (type === 'sell') tUpdateSellStockOptions();
 }
 
-function nktOpenTradeModal(editId = null) {
-  nktEditingTradeId = editId;
+function tOpenTradeModal(editId = null) {
+  ST.editingTradeId = editId;
   const titleEl = document.getElementById('tTradeModalTitle');
 
   // 계좌 셀렉터 기본 초기화 (활성 계좌만)
@@ -2833,7 +2833,7 @@ function nktOpenTradeModal(editId = null) {
     if (!t) return;
     if (titleEl) titleEl.textContent = '거래 수정';
     document.getElementById('tTradeDate').value  = t.date;
-    nktSetTradeType(t.type);
+    tSetTradeType(t.type);
     document.getElementById('tTradeTicker').value = t.ticker;
     document.getElementById('tTradeName').value  = t.name || '';
     document.getElementById('tTradePrice').value = t.price ? Number(t.price).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
@@ -2844,7 +2844,7 @@ function nktOpenTradeModal(editId = null) {
     if (t.type === 'sell') {
       setTimeout(() => {
         const sel = document.getElementById('tSellStockSelect');
-        if (sel) { sel.value = t.ticker; nktOnSellStockSelect(t.ticker, true); }
+        if (sel) { sel.value = t.ticker; tOnSellStockSelect(t.ticker, true); }
         if (accSel && t.accId) accSel.value = t.accId;
       }, 0);
     }
@@ -2853,7 +2853,7 @@ function nktOpenTradeModal(editId = null) {
     const now = new Date();
     document.getElementById('tTradeDate').value =
       `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    nktSetTradeType('buy');
+    tSetTradeType('buy');
     document.getElementById('tTradeTicker').value = '';
     document.getElementById('tTradeName').value  = '';
     document.getElementById('tTradePrice').value = '';
@@ -2866,13 +2866,13 @@ function nktOpenTradeModal(editId = null) {
   document.getElementById('tFullFormActions').style.display = '';
   document.getElementById('tQuickAccList').style.display = 'none';
   document.getElementById('tQuickForm').style.display = 'none';
-  nktUpdateTradePreview();
+  tUpdateTradePreview();
   document.getElementById('tTradeModal').classList.add('open');
 }
 
 let _nqtTicker = '', _nqtName = '', _nqtAccId = '';
 
-function nktOpenTradeModalForTicker(ticker, name) {
+function tOpenTradeModalForTicker(ticker, name) {
   _nqtTicker = ticker;
   _nqtName = name || ticker;
   document.getElementById('tTradeModalTitle').textContent = _nqtName;
@@ -2883,15 +2883,15 @@ function nktOpenTradeModalForTicker(ticker, name) {
   const activeAccs = ST.accounts.filter(a => a.active !== false);
   if (activeAccs.length === 1) {
     document.getElementById('tQuickAccList').style.display = 'none';
-    nqtOpenForm(activeAccs[0].id);
+    tOpenForm(activeAccs[0].id);
   } else {
     document.getElementById('tQuickAccList').style.display = '';
-    nqtRenderAccList();
+    tRenderAccList();
   }
   document.getElementById('tTradeModal').classList.add('open');
 }
 
-function nqtRenderAccList() {
+function tRenderAccList() {
   const wrap = document.getElementById('tQuickAccList');
   if (!wrap) return;
   const h = ST.holdings.find(x => x.ticker === _nqtTicker);
@@ -2908,7 +2908,7 @@ function nqtRenderAccList() {
     const profitColor = profit >= 0 ? 'var(--plus)' : 'var(--minus)';
 
     return `<div class="trade-acc-card">
-      <div class="trade-acc-row" onclick="nqtOpenForm('${acc.id}')">
+      <div class="trade-acc-row" onclick="tOpenForm('${acc.id}')">
         <div class="trade-acc-badge">${escapeHtml((acc.name||'').slice(0,2))}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px">${escapeHtml(acc.name)}</div>
@@ -2927,7 +2927,7 @@ function nqtRenderAccList() {
   }).join('');
 }
 
-function nqtOpenForm(accId) {
+function tOpenForm(accId) {
   _nqtAccId = accId;
   const acc = ST.accounts.find(a => a.id === accId);
   const h = ST.holdings.find(x => x.ticker === _nqtTicker);
@@ -2964,20 +2964,20 @@ function nqtOpenForm(accId) {
 
   document.getElementById('tQuickAccList').style.display = 'none';
   document.getElementById('tQuickForm').style.display = '';
-  nqtUpdatePreview();
+  tUpdatePreview();
   setTimeout(() => document.getElementById('tQty').focus(), 50);
 }
 
-function nqtSetType(type) {
+function tSetType(type) {
   document.getElementById('tBuyBtn').className  = 'trade-type-btn buy'  + (type === 'buy'  ? ' active' : '');
   document.getElementById('tSellBtn').className = 'trade-type-btn sell' + (type === 'sell' ? ' active' : '');
   document.getElementById('tType').value = type;
   document.getElementById('tCashLabel').textContent =
     type === 'buy' ? '거래 후 현금 (감소)' : '거래 후 현금 (증가)';
-  nqtUpdatePreview();
+  tUpdatePreview();
 }
 
-function nqtUpdatePreview() {
+function tUpdatePreview() {
   const type  = document.getElementById('tType').value;
   const qty   = parseFloat(document.getElementById('tQty').value.replace(/,/g,'')) || 0;
   const price = parseFloat(document.getElementById('tPrice').value.replace(/,/g,'')) || 0;
@@ -2998,7 +2998,7 @@ function nqtUpdatePreview() {
     qty > 0 ? qtyAfter.toLocaleString('en-US',{maximumFractionDigits:4})+'주' : '-';
 }
 
-function nqtSave() {
+function tSave() {
   const type  = document.getElementById('tType').value;
   const date  = document.getElementById('tDate').value;
   const qty   = parseFloat(document.getElementById('tQty').value.replace(/,/g,'')) || 0;
@@ -3013,35 +3013,35 @@ function nqtSave() {
     id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
     type, ticker: _nqtTicker, name: _nqtName, date, price, qty, fee, memo: '', accId: _nqtAccId
   };
-  nktApplyTradeToPortfolio(type, _nqtTicker, _nqtName, _nqtAccId, price, qty, fee, false);
+  tApplyTradeToPortfolio(type, _nqtTicker, _nqtName, _nqtAccId, price, qty, fee, false);
   ST.trades.push(entry);
-  nktSaveTrades();
-  nktCloseTradeModal();
-  if (nktHistoryOpen) nktRenderTradeHistory();
-  nkRender();
+  tSaveTrades();
+  tCloseTradeModal();
+  if (ST.historyOpen) tRenderTradeHistory();
+  Render();
 }
 
-function nqtCloseForm() {
+function tCloseForm() {
   const multiAcc = ST.accounts.filter(a => a.active !== false).length > 1;
   if (multiAcc) {
     document.getElementById('tQuickForm').style.display = 'none';
     document.getElementById('tQuickAccList').style.display = '';
   } else {
-    nktCloseTradeModal();
+    tCloseTradeModal();
   }
 }
 
-function nktCloseTradeModal() {
+function tCloseTradeModal() {
   document.getElementById('tTradeModal').classList.remove('open');
-  nktEditingTradeId = null;
+  ST.editingTradeId = null;
 }
 
 
-function nktOnTickerInput(val) {
+function tOnTickerInput(val) {
   document.getElementById('tTradeTicker').value = val.replace(/[^0-9A-Za-z.\-]/g, '').toUpperCase();
 }
 
-function nktUpdateTradePreview() {
+function tUpdateTradePreview() {
   const price = parseFloat(document.getElementById('tTradePrice').value.replace(/,/g,'')) || 0;
   const qty   = parseFloat(document.getElementById('tTradeQty').value.replace(/,/g,'')) || 0;
   const prev  = document.getElementById('tTradePreview');
@@ -3054,7 +3054,7 @@ function nktUpdateTradePreview() {
   }
 }
 
-function nktApplyTradeToPortfolio(type, ticker, tradeName, accId, price, qty, fee, reverse) {
+function tApplyTradeToPortfolio(type, ticker, tradeName, accId, price, qty, fee, reverse) {
   // reverse=true: 기존 거래 효과 역산 (편집·삭제 시)
   const isBuy = reverse ? type === 'sell' : type === 'buy';
   const h = ST.holdings.find(x => x.ticker === ticker);
@@ -3090,7 +3090,7 @@ function nktApplyTradeToPortfolio(type, ticker, tradeName, accId, price, qty, fe
   }
 }
 
-function nktSaveTrade() {
+function tSaveTrade() {
   const type   = document.getElementById('tTradeType').value;
   const ticker = document.getElementById('tTradeTicker').value.trim().toUpperCase();
   const name   = document.getElementById('tTradeName').value.trim();
@@ -3107,43 +3107,43 @@ function nktSaveTrade() {
 
   const accId = document.getElementById('tTradeAcc')?.value || '';
   const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
-  if (nktEditingTradeId) {
-    const idx = ST.trades.findIndex(x => x.id === nktEditingTradeId);
+  if (ST.editingTradeId) {
+    const idx = ST.trades.findIndex(x => x.id === ST.editingTradeId);
     if (idx >= 0) {
       const old = ST.trades[idx];
-      nktApplyTradeToPortfolio(old.type, old.ticker, old.name, old.accId, old.price, old.qty, old.fee||0, true);
+      tApplyTradeToPortfolio(old.type, old.ticker, old.name, old.accId, old.price, old.qty, old.fee||0, true);
       ST.trades[idx] = { ...old, ...entry };
     }
   } else {
     ST.trades.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), ...entry });
   }
-  nktApplyTradeToPortfolio(type, ticker, name || ticker, accId, price, qty, fee, false);
-  nktSaveTrades();
-  nktCloseTradeModal();
-  if (nktHistoryOpen) nktRenderTradeHistory();
-  nkRender();
+  tApplyTradeToPortfolio(type, ticker, name || ticker, accId, price, qty, fee, false);
+  tSaveTrades();
+  tCloseTradeModal();
+  if (ST.historyOpen) tRenderTradeHistory();
+  Render();
 }
 
-function nktDeleteTrade(id) {
+function tDeleteTrade(id) {
   const t = ST.trades.find(x => x.id === id);
   if (!t) return;
   const qtyStr = parseFloat(t.qty).toLocaleString('en-US', { maximumFractionDigits:4 });
   if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
-  nktApplyTradeToPortfolio(t.type, t.ticker, t.name, t.accId, t.price, t.qty, t.fee||0, true);
+  tApplyTradeToPortfolio(t.type, t.ticker, t.name, t.accId, t.price, t.qty, t.fee||0, true);
   ST.trades = ST.trades.filter(x => x.id !== id);
-  nktSaveTrades();
-  nktRenderTradeHistory();
-  nkRender();
+  tSaveTrades();
+  tRenderTradeHistory();
+  Render();
 }
 
 // 자동완성 (US 주식)
-let _nktNameAcTimer = null;
-function nktOnNameInput(val) {
-  clearTimeout(_nktNameAcTimer);
+ST.nameAcTimer = null;
+function tOnNameInput(val) {
+  clearTimeout(ST.nameAcTimer);
   const listEl = document.getElementById('tNameAcList');
   if (!val) { if (listEl) listEl.classList.remove('open'); return; }
-  _nktNameAcTimer = setTimeout(async () => {
-    const items = await nktFetchAutocomplete(val);
+  ST.nameAcTimer = setTimeout(async () => {
+    const items = await tFetchAutocomplete(val);
     if (listEl) tShowAcList(listEl, items, item => {
       document.getElementById('tTradeName').value  = item.name;
       document.getElementById('tTradeTicker').value = item.ticker;
@@ -3152,7 +3152,7 @@ function nktOnNameInput(val) {
   }, 300);
 }
 
-async function nktFetchAutocomplete(query) {
+async function tFetchAutocomplete(query) {
   if (!query || !query.trim()) return [];
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query.trim())}&lang=en-US&region=US&quotesCount=8&newsCount=0`;
@@ -3173,12 +3173,12 @@ document.addEventListener('click', e => {
 });
 
 // Init
-nkRender();
-nkRenderChart();
-nkRenderAccountButtons();
-nkRenderWatchlist();
-nkInitAutoRefresh();
-if (ST.holdings.length || ST.watchlist.length) setTimeout(() => nkRefreshAll(), 800);
+Render();
+RenderChart();
+RenderAccountButtons();
+RenderWatchlist();
+InitAutoRefresh();
+if (ST.holdings.length || ST.watchlist.length) setTimeout(() => RefreshAll(), 800);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
@@ -3186,7 +3186,7 @@ if ('serviceWorker' in navigator) {
 
 window.addEventListener('message', e => {
   if (e.data?.type === 'REFRESH_REQUEST') {
-    if (ST.holdings.length || ST.watchlist.length) nkRefreshAll(true);
+    if (ST.holdings.length || ST.watchlist.length) RefreshAll(true);
   }
 });
 

@@ -51,7 +51,7 @@
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn active" onclick="kdRefreshAll(false, false); return false;" title="가격 갱신">
+    <a href="KDeal.html" class="hdr-btn active" onclick="RefreshAll(false, false); return false;" title="가격 갱신">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
         <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
@@ -73,7 +73,7 @@
 
   <div class="status-bar">
     <span id="StatusText">보유종목 0개</span>
-    <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="kdtOpenTradeModal()">+ 거래 추가</button>
+    <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="tOpenTradeModal()">+ 거래 추가</button>
   </div>
   <div id="HoldingsContainer">
     <div class="empty-state"><div class="icon">🇰🇷</div><div>'+ 종목 추가' 버튼을 눌러 한국 주식을 추가해 주세요</div></div>
@@ -82,7 +82,7 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <h2 style="margin:0">👁 관심종목</h2>
-      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="kdOpenWatchModal()">+ 추가</button>
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="OpenWatchModal()">+ 추가</button>
     </div>
     <div id="WatchContainer"><div class="mw-empty">관심종목이 없습니다.</div></div>
   </div>
@@ -90,7 +90,7 @@
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <h2 style="margin:0">계좌별 상태 보기</h2>
-      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="kdOpenAccountSettings()">⚙️ 계좌 관리</button>
+      <button class="btn-secondary" style="font-size:12px;padding:6px 12px" onclick="OpenAccountSettings()">⚙️ 계좌 관리</button>
     </div>
     <div class="account-buttons-grid" id="AccountButtonsGrid"></div>
   </div>
@@ -107,7 +107,7 @@
   <!-- 거래 내역 (확장형) -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <button class="mt-toggle-btn" onclick="kdtToggleHistory()">
+      <button class="mt-toggle-btn" onclick="tToggleHistory()">
         <span>📋 거래 내역</span>
         <span class="mt-chevron" id="tChevron">▶</span>
       </button>
@@ -115,9 +115,9 @@
     <div id="tHistoryWrap" style="display:none;margin-top:14px">
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
         <div class="mt-tabs">
-          <button class="mt-tab active" id="tTabAll" onclick="kdtSetTab('all')">전체</button>
-          <button class="mt-tab" id="tTabOpen" onclick="kdtSetTab('open')">보유중</button>
-          <button class="mt-tab" id="tTabClosed" onclick="kdtSetTab('closed')">완료</button>
+          <button class="mt-tab active" id="tTabAll" onclick="tSetTab('all')">전체</button>
+          <button class="mt-tab" id="tTabOpen" onclick="tSetTab('open')">보유중</button>
+          <button class="mt-tab" id="tTabClosed" onclick="tSetTab('closed')">완료</button>
         </div>
       </div>
       <div id="tTradeHistoryContainer"><div class="mt-empty">거래 내역이 없습니다.</div></div>
@@ -130,14 +130,14 @@
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
       <h2 id="tTradeModalTitle">거래 추가</h2>
-      <button class="close-btn" onclick="kdtCloseTradeModal()">×</button>
+      <button class="close-btn" onclick="tCloseTradeModal()">×</button>
     </div>
     <div class="mt-form" id="tFullForm">
       <div class="mt-field">
         <label>구분</label>
         <div class="mt-type-toggle">
-          <button id="tTypeBuyBtn" class="mt-type-btn active-buy" onclick="kdtSetTradeType('buy')">📈 매수</button>
-          <button id="tTypeSellBtn" class="mt-type-btn" onclick="kdtSetTradeType('sell')">📉 매도</button>
+          <button id="tTypeBuyBtn" class="mt-type-btn active-buy" onclick="tSetTradeType('buy')">📈 매수</button>
+          <button id="tTypeSellBtn" class="mt-type-btn" onclick="tSetTradeType('sell')">📉 매도</button>
         </div>
         <input type="hidden" id="tTradeType" value="buy">
       </div>
@@ -147,12 +147,12 @@
       </div>
       <div class="mt-field">
         <label>계좌</label>
-        <select id="tTradeAcc" onchange="kdtOnSellAccChange(this.value)">
+        <select id="tTradeAcc" onchange="tOnSellAccChange(this.value)">
         </select>
       </div>
       <div class="mt-field" id="tSellStockRow" style="display:none">
         <label>보유 종목 선택</label>
-        <select id="tSellStockSelect" onchange="kdtOnSellStockSelect(this.value)">
+        <select id="tSellStockSelect" onchange="tOnSellStockSelect(this.value)">
           <option value="">-- 보유 종목 선택 --</option>
         </select>
         <div class="mt-sell-hint" id="tSellQtyHint"></div>
@@ -161,13 +161,13 @@
         <div class="mt-field">
           <label>종목코드</label>
           <input type="text" id="tTradeTicker" maxlength="6" placeholder="예: 005930"
-            oninput="kdtOnTickerInput(this.value)" autocomplete="off">
+            oninput="tOnTickerInput(this.value)" autocomplete="off">
         </div>
         <div class="mt-field">
           <label>종목명 (검색 자동완성)</label>
           <div class="mt-ac-wrap">
             <input type="text" id="tTradeName" placeholder="예: 삼성전자"
-              oninput="kdtOnNameInput(this.value)" autocomplete="off">
+              oninput="tOnNameInput(this.value)" autocomplete="off">
             <div class="mt-ac-list" id="tNameAcList"></div>
           </div>
         </div>
@@ -176,18 +176,18 @@
         <div class="mt-field">
           <label>단가 (원)</label>
           <input type="text" inputmode="numeric" id="tTradePrice" placeholder="예: 55,000"
-            oninput="kdLiveKRW(this); kdtUpdateTradePreview()">
+            oninput="LiveKRW(this); tUpdateTradePreview()">
         </div>
         <div class="mt-field">
           <label>수량 (주)</label>
           <input type="text" inputmode="numeric" id="tTradeQty" placeholder="예: 10"
-            oninput="kdLiveKRW(this); kdtUpdateTradePreview()">
+            oninput="LiveKRW(this); tUpdateTradePreview()">
         </div>
       </div>
       <div class="mt-field">
         <label>수수료 (원)</label>
         <input type="text" inputmode="numeric" id="tTradeFee" placeholder="0"
-          oninput="kdLiveKRW(this)">
+          oninput="LiveKRW(this)">
       </div>
       <div class="mt-field">
         <label>메모 (선택)</label>
@@ -198,8 +198,8 @@
       </div>
     </div>
     <div class="modal-actions" id="tFullFormActions">
-      <button class="btn-secondary" onclick="kdtCloseTradeModal()">취소</button>
-      <button class="btn-primary" onclick="kdtSaveTrade()">저장</button>
+      <button class="btn-secondary" onclick="tCloseTradeModal()">취소</button>
+      <button class="btn-primary" onclick="tSaveTrade()">저장</button>
     </div>
 
     <!-- Quick 거래: 계좌 선택 카드 -->
@@ -208,20 +208,20 @@
     <!-- Quick 거래: MyPM 스타일 폼 -->
     <div id="tQuickForm" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <button id="tBackBtn" onclick="kqtCloseForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
+        <button id="tBackBtn" onclick="tCloseForm()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 6px;color:var(--text)">‹</button>
         <div id="tAccName" style="font-size:13px;font-weight:600;color:var(--muted)"></div>
       </div>
       <div id="tHoldingsInfo" style="background:#f3f4f6;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:12px;color:var(--muted)"></div>
       <div class="trade-type-toggle" style="margin-bottom:12px">
-        <button class="trade-type-btn buy active" id="tBuyBtn" onclick="kqtSetType('buy')">매수</button>
-        <button class="trade-type-btn sell"       id="tSellBtn" onclick="kqtSetType('sell')">매도</button>
+        <button class="trade-type-btn buy active" id="tBuyBtn" onclick="tSetType('buy')">매수</button>
+        <button class="trade-type-btn sell"       id="tSellBtn" onclick="tSetType('sell')">매도</button>
       </div>
       <input type="hidden" id="tType" value="buy">
       <div class="txn-form" style="margin-bottom:10px">
         <label><span>날짜</span><input type="date" data-iux-date id="tDate"></label>
-        <label><span>수량</span><input type="text" inputmode="numeric" id="tQty" placeholder="수량" oninput="kdLiveKRW(this); kqtUpdatePreview()"></label>
-        <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="tPrice" placeholder="단가" oninput="kdLiveKRW(this); kqtUpdatePreview()"></label>
-        <label><span>수수료 (원)</span><input type="text" inputmode="numeric" id="tFee" placeholder="0" oninput="kdLiveKRW(this); kqtUpdatePreview()"></label>
+        <label><span>수량</span><input type="text" inputmode="numeric" id="tQty" placeholder="수량" oninput="LiveKRW(this); tUpdatePreview()"></label>
+        <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="tPrice" placeholder="단가" oninput="LiveKRW(this); tUpdatePreview()"></label>
+        <label><span>수수료 (원)</span><input type="text" inputmode="numeric" id="tFee" placeholder="0" oninput="LiveKRW(this); tUpdatePreview()"></label>
       </div>
       <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -238,25 +238,25 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn-secondary" onclick="kqtCloseForm()">취소</button>
-        <button class="btn-primary" onclick="kqtSave()">저장</button>
+        <button class="btn-secondary" onclick="tCloseForm()">취소</button>
+        <button class="btn-primary" onclick="tSave()">저장</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- 관심종목 추가 모달 -->
-<div class="modal-backdrop" id="WatchModal" onclick="if(event.target.id==='WatchModal')kdCloseWatchModal()">
+<div class="modal-backdrop" id="WatchModal" onclick="if(event.target.id==='WatchModal')CloseWatchModal()">
   <div class="modal" style="max-width:400px">
     <div class="modal-header">
       <h2>👁 관심종목 추가</h2>
-      <button class="close-btn" onclick="kdCloseWatchModal()">×</button>
+      <button class="close-btn" onclick="CloseWatchModal()">×</button>
     </div>
     <div style="padding:4px 0 12px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">종목 검색 (이름 또는 티커)</label>
       <div class="mw-ac-wrap">
         <input type="text" id="WatchSearch" class="form-input" placeholder="예: 삼성전자 또는 005930"
-          oninput="kdOnWatchSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+          oninput="OnWatchSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
         <div class="mw-ac-list" id="WatchAcList"></div>
       </div>
       <div id="WatchPreview" style="display:none;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:13px">
@@ -265,24 +265,24 @@
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="kdCloseWatchModal()">취소</button>
-      <button class="btn-primary" onclick="kdSaveWatch()">추가</button>
+      <button class="btn-secondary" onclick="CloseWatchModal()">취소</button>
+      <button class="btn-primary" onclick="SaveWatch()">추가</button>
     </div>
   </div>
 </div>
 
 <!-- 종목 추가 모달 -->
-<div class="modal-backdrop" id="AddStockModal" onclick="if(event.target===this)kdCloseAddModal()">
+<div class="modal-backdrop" id="AddStockModal" onclick="if(event.target===this)CloseAddModal()">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
       <div><h2>🇰🇷 한국 종목 추가</h2></div>
-      <button class="close-btn" onclick="kdCloseAddModal()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseAddModal()" aria-label="닫기">×</button>
     </div>
     <div style="padding:4px 0 12px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">종목 검색 (이름 또는 종목코드)</label>
       <div class="mw-ac-wrap">
         <input type="text" id="AddSearch" class="form-input" placeholder="예: 삼성전자 또는 005930"
-          oninput="kdOnAddSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+          oninput="OnAddSearchInput(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
         <div class="mw-ac-list" id="AddAcList"></div>
       </div>
       <div id="AddPreview" style="display:none;margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:8px;font-size:13px">
@@ -295,18 +295,18 @@
     </div>
     <div class="account-grid" id="AddAccountInputs"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="kdCloseAddModal()">취소</button>
-      <button class="btn-primary" onclick="kdAddStock()">+ 추가</button>
+      <button class="btn-secondary" onclick="CloseAddModal()">취소</button>
+      <button class="btn-primary" onclick="AddStock()">+ 추가</button>
     </div>
   </div>
 </div>
 
 <!-- 계좌별 수량 입력 모달 -->
-<div class="modal-backdrop" id="AccountModal" onclick="if(event.target===this)kdCloseAccountModal()">
+<div class="modal-backdrop" id="AccountModal" onclick="if(event.target===this)CloseAccountModal()">
   <div class="modal">
     <div class="modal-header">
       <div><h2 id="ModalTitle">계좌별 수량 입력</h2><div class="modal-subtitle" id="ModalSubtitle"></div></div>
-      <button class="close-btn" onclick="kdCloseAccountModal()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseAccountModal()" aria-label="닫기">×</button>
     </div>
     <div id="AccountInputs"></div>
     <div class="modal-total">
@@ -317,18 +317,18 @@
       </span>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="kdCloseAccountModal()">취소</button>
-      <button class="btn-primary" onclick="kdSaveAccountQuantities()">저장</button>
+      <button class="btn-secondary" onclick="CloseAccountModal()">취소</button>
+      <button class="btn-primary" onclick="SaveAccountQuantities()">저장</button>
     </div>
   </div>
 </div>
 
 <!-- 계좌 상세 보기 모달 -->
-<div class="modal-backdrop" id="AccountDetailModal" onclick="if(event.target===this)kdCloseAccountDetail()">
+<div class="modal-backdrop" id="AccountDetailModal" onclick="if(event.target===this)CloseAccountDetail()">
   <div class="modal modal-wide">
     <div class="modal-header">
       <div><h2 id="DetailTitle">계좌 상세</h2><div class="modal-subtitle" id="DetailSubtitle"></div></div>
-      <button class="close-btn" onclick="kdCloseAccountDetail()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseAccountDetail()" aria-label="닫기">×</button>
     </div>
     <div class="detail-summary" id="DetailSummary"></div>
     <div class="detail-table-wrap"><table class="detail-table" id="DetailTable"></table></div>
@@ -337,7 +337,7 @@
       <div style="position:relative;height:220px"><canvas id="DetailChart"></canvas></div>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="kdCloseAccountDetail()">닫기</button>
+      <button class="btn-secondary" onclick="CloseAccountDetail()">닫기</button>
     </div>
   </div>
 </div>
@@ -352,7 +352,7 @@
     <div class="account-grid" id="CashInputs"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeCashModal()">취소</button>
-      <button class="btn-primary" onclick="kdSaveCash()">저장</button>
+      <button class="btn-primary" onclick="SaveCash()">저장</button>
     </div>
   </div>
 </div>
@@ -363,7 +363,7 @@
     <div class="modal-header">
       <div><h2>💰 계좌 입출금 관리</h2><div class="modal-subtitle">계좌별 입금·출금 내역 (원)</div></div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <button class="btn-primary" onclick="kdOpenTxnEditor()" style="padding:8px 16px;font-size:13px;font-weight:600">➕ 입출금 추가</button>
+        <button class="btn-primary" onclick="OpenTxnEditor()" style="padding:8px 16px;font-size:13px;font-weight:600">➕ 입출금 추가</button>
         <button class="close-btn" onclick="closeDepositModal()" aria-label="닫기">×</button>
       </div>
     </div>
@@ -376,22 +376,22 @@
 </div>
 
 <!-- 입출금 편집 서브모달 -->
-<div class="modal-backdrop" id="TxnEditorModal" onclick="if(event.target===this)kdCloseTxnEditor()">
+<div class="modal-backdrop" id="TxnEditorModal" onclick="if(event.target===this)CloseTxnEditor()">
   <div class="modal">
     <div class="modal-header">
       <div><h2 id="TxnEditorTitle">입출금 추가</h2><div class="modal-subtitle">계좌 · 날짜 · 금액을 입력하세요</div></div>
-      <button class="close-btn" onclick="kdCloseTxnEditor()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="CloseTxnEditor()" aria-label="닫기">×</button>
     </div>
     <div class="txn-form">
       <label><span>계좌</span><select id="TxnAccount"></select></label>
       <label><span>구분</span><select id="TxnType"><option value="deposit">입금 (+)</option><option value="withdraw">출금 (−)</option></select></label>
       <label><span>입출금일</span><input type="date" data-iux-date id="TxnDate"></label>
       <label><span>금액 (원)</span><input type="text" inputmode="numeric" id="TxnAmount" placeholder="0"
-        oninput="kdLiveKRW(this)"></label>
+        oninput="LiveKRW(this)"></label>
     </div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="kdCloseTxnEditor()">취소</button>
-      <button class="btn-primary" onclick="kdSaveTxn()">저장</button>
+      <button class="btn-secondary" onclick="CloseTxnEditor()">취소</button>
+      <button class="btn-primary" onclick="SaveTxn()">저장</button>
     </div>
   </div>
 </div>
@@ -406,16 +406,16 @@
     <div class="records-input-card">
       <div class="records-input-top">
         <label><span>기록일</span><input type="date" data-iux-date id="RecDate"></label>
-        <button class="btn-secondary" onclick="kdFillCurrentValues()">💾 현재값 저장</button>
-        <button class="btn-secondary" onclick="kdLoadHistoricalValues()">📅 이전 가치 불러오기</button>
+        <button class="btn-secondary" onclick="FillCurrentValues()">💾 현재값 저장</button>
+        <button class="btn-secondary" onclick="LoadHistoricalValues()">📅 이전 가치 불러오기</button>
       </div>
       <div class="records-input-accounts" id="RecAccountInputs"></div>
       <div class="records-input-total">
         <span>전체 총합</span><strong id="RecTotal">0원</strong>
       </div>
       <div class="records-input-actions">
-        <button class="btn-secondary" id="RecCancelBtn" style="display:none" onclick="kdCancelRecordEdit()">취소</button>
-        <button class="btn-primary" id="RecAddBtn" onclick="kdAddMonthlyRecord()">➕ 추가</button>
+        <button class="btn-secondary" id="RecCancelBtn" style="display:none" onclick="CancelRecordEdit()">취소</button>
+        <button class="btn-primary" id="RecAddBtn" onclick="AddMonthlyRecord()">➕ 추가</button>
       </div>
     </div>
     <div class="records-list-wrap">
@@ -449,14 +449,14 @@
       </div>
       <div class="div-grand-total"><span>배당금 총합</span><strong id="DivGrandTotal">0원</strong></div>
       <div class="records-input-actions">
-        <button id="DivCancelBtn" class="btn-secondary" style="display:none" onclick="kdCancelDivEdit()">취소</button>
-        <button id="DivSaveBtn" class="btn-primary" onclick="kdAddDividendRecord()">➕ 추가</button>
+        <button id="DivCancelBtn" class="btn-secondary" style="display:none" onclick="CancelDivEdit()">취소</button>
+        <button id="DivSaveBtn" class="btn-primary" onclick="AddDividendRecord()">➕ 추가</button>
       </div>
     </div>
 
     <!-- 기타항목 입력 (종목 없이 금액만) -->
     <div class="records-input-card" style="margin-top:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="kdToggleDivMiscForm()">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="ToggleDivMiscForm()">
         <div style="font-weight:600">📝 기타항목 (종목 없이 금액만)</div>
         <button type="button" id="DivMiscToggleBtn" class="btn-secondary" style="padding:4px 10px">펼치기 ▾</button>
       </div>
@@ -471,8 +471,8 @@
         <div id="DivMiscAccInputs" style="display:grid;gap:6px"></div>
         <div class="div-grand-total" style="margin-top:8px"><span>기타항목 합계</span><strong id="DivMiscGrandTotal">0원</strong></div>
         <div class="records-input-actions" style="margin-top:8px">
-          <button id="DivMiscCancelBtn" class="btn-secondary" style="display:none" onclick="kdCancelDivMiscEdit()">취소</button>
-          <button id="DivMiscSaveBtn" class="btn-primary" onclick="kdAddMiscDividendRecord()">기타항목 추가</button>
+          <button id="DivMiscCancelBtn" class="btn-secondary" style="display:none" onclick="CancelDivMiscEdit()">취소</button>
+          <button id="DivMiscSaveBtn" class="btn-primary" onclick="AddMiscDividendRecord()">기타항목 추가</button>
         </div>
       </div>
     </div>
@@ -501,12 +501,12 @@
   <div class="div-focused-edit-card">
     <div class="div-focused-edit-hdr">
       <span id="DivStockEditTitle">종목 편집</span>
-      <button onclick="kdCloseDivStockEdit()">✕</button>
+      <button onclick="CloseDivStockEdit()">✕</button>
     </div>
     <div class="div-focused-ps-row">
       <label style="font-size:13px;white-space:nowrap">주당 배당금</label>
       <input type="text" inputmode="numeric" id="DivStockEditPs" placeholder="0"
-        oninput="kdLiveKRW(this); kdUpdateDivStockEditPreview()">
+        oninput="LiveKRW(this); UpdateDivStockEditPreview()">
     </div>
     <div class="div-focused-col3 div-focused-acc-header">
       <span>계좌</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
@@ -516,8 +516,8 @@
       <span>합계</span><span></span><span id="DivStockEditTotal"></span>
     </div>
     <div class="div-focused-edit-footer">
-      <button class="btn-secondary" onclick="kdCloseDivStockEdit()">취소</button>
-      <button class="btn-primary" onclick="kdSaveDivStockEdit()">저장</button>
+      <button class="btn-secondary" onclick="CloseDivStockEdit()">취소</button>
+      <button class="btn-primary" onclick="SaveDivStockEdit()">저장</button>
     </div>
   </div>
 </div>
@@ -527,7 +527,7 @@
   <div class="div-focused-edit-card">
     <div class="div-focused-edit-hdr">
       <span id="DivAccEditTitle">계좌 편집</span>
-      <button onclick="kdCloseDivAccEdit()">✕</button>
+      <button onclick="CloseDivAccEdit()">✕</button>
     </div>
     <div class="div-focused-col4 div-focused-stock-header">
       <span>종목</span><span style="text-align:right">주당배당금</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
@@ -537,8 +537,8 @@
       <span>합계</span><span></span><span></span><span id="DivAccEditTotal"></span>
     </div>
     <div class="div-focused-edit-footer">
-      <button class="btn-secondary" onclick="kdCloseDivAccEdit()">취소</button>
-      <button class="btn-primary" onclick="kdSaveDivAccEdit()">저장</button>
+      <button class="btn-secondary" onclick="CloseDivAccEdit()">취소</button>
+      <button class="btn-primary" onclick="SaveDivAccEdit()">저장</button>
     </div>
   </div>
 </div>
@@ -615,7 +615,7 @@ async function fetchKdPrice(code) {
   throw new Error('가격 조회 실패: ' + code);
 }
 
-async function kdFetchAutocompleteKR(query) {
+async function FetchAutocompleteKR(query) {
   if (!query || !query.trim()) return [];
   const q = query.trim();
   const ql = q.toLowerCase();
@@ -663,7 +663,7 @@ async function kdFetchAutocompleteKR(query) {
 }
 
 const KD_ACC_KEY   = 'kd_accounts_v1';
-ST.accounts  = kdLoadAccounts();
+ST.accounts  = LoadAccounts();
 
 // ===== 종목 리스트 컬럼 정의 (순서 편집 가능) =====
 // 종목(이름)은 항상 첫 열, 액션 열(거래/✏️/🗑️)은 항상 마지막 — 아래 11개 데이터 열만 재배열 대상.
@@ -682,7 +682,7 @@ const KD_PORTFOLIO_COLS = [
     cell:(it)=>it.hasCost?formatMil(it.cost):'-',
     foot:(c)=>c.totalCost>0?formatMil(c.totalCost):'-' },
   { id:'qty', header:'보유수',
-    cell:(it)=>`<a href="#" onclick="event.preventDefault();kdOpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a>` },
+    cell:(it)=>`<a href="#" onclick="event.preventDefault();OpenAccountModal('${it.ticker}')" style="color:inherit;text-decoration:none;border-bottom:1px dashed #ccc">${it.qty.toLocaleString()}</a>` },
   { id:'avgPrice', header:'매입단가',
     cell:(it)=>it.avgPrice>0?fmtWon(it.avgPrice):'-' },
   { id:'value', header:'평가(백만)',
@@ -716,17 +716,17 @@ ST.deposits     = loadDeposits();
 ST.monthly  = loadMonthly();
 ST.dividends = loadDividends();
 ST.watchlist       = loadWatchlist();
-let kdChartInstance       = null;
-let kdDetailChartInstance = null;
-let kdEditingTicker   = null;
-let kdEditingTxnId    = null;
-let _kdDepositCollapsedYears = null;
-let kdEditingRecordId = null;
-let kdEditingDivId    = null;
-let kdDivFormShares   = {}; // { ticker: { accId: qty } }
-let kdLastRefreshTime = null;
+ST.chartInstance       = null;
+ST.detailChartInstance = null;
+ST.editingTicker   = null;
+ST.editingTxnId    = null;
+ST.depositCollapsedYears = null;
+ST.editingRecordId = null;
+ST.editingDivId    = null;
+ST.divFormShares   = {}; // { ticker: { accId: qty } }
+ST.lastRefreshTime = null;
 
-function kdLoadAccounts() {
+function LoadAccounts() {
   try {
     const saved = JSON.parse(localStorage.getItem(KD_ACC_KEY));
     if (Array.isArray(saved) && saved.length > 0) return saved;
@@ -738,9 +738,9 @@ function kdLoadAccounts() {
   try { localStorage.setItem(KD_ACC_KEY, JSON.stringify(defaultAccs)); } catch(_) {}
   return defaultAccs;
 }
-function kdSaveAccounts()  { localStorage.setItem(KD_ACC_KEY, JSON.stringify(ST.accounts)); }
+function SaveAccounts()  { localStorage.setItem(KD_ACC_KEY, JSON.stringify(ST.accounts)); }
 
-function kdDivRecAmount(rec, code) {
+function DivRecAmount(rec, code) {
   const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
   const sh = rec.stocksShares && rec.stocksShares[code];
   if (ps > 0 && sh != null) {
@@ -790,8 +790,8 @@ function switchPage(page) {
     nonk.style.display = '';
     tabM.classList.remove('active');
     tabN.classList.add('active');
-    kdRender();
-    kdRenderChart();
+    Render();
+    RenderChart();
   } else {
     nonk.style.display = 'none';
     mypm.style.display = '';
@@ -805,7 +805,7 @@ function switchPage(page) {
 
 // preferSnapshot=true(기본): 서버 선계산 시세를 먼저 적용하고 못 받은 종목만 Naver 조회(빠름).
 // 수동 '가격 갱신' 버튼은 preferSnapshot=false 로 호출해 항상 라이브 조회.
-async function kdRefreshAll(suppressDone = false, preferSnapshot = true) {
+async function RefreshAll(suppressDone = false, preferSnapshot = true) {
   const statusEl = document.getElementById('RefreshStatus');
   if (statusEl) statusEl.textContent = '⏳ 조회 중...';
   let failCount = 0;
@@ -827,25 +827,25 @@ async function kdRefreshAll(suppressDone = false, preferSnapshot = true) {
     try {
       const info = await fetchKdPrice(w.ticker);
       if (info) {
-        kdWatchPrices[w.ticker] = info;
+        ST.watchPrices[w.ticker] = info;
         if (info.name && info.name !== w.ticker) { w.name = info.name; saveWatchlist(); }
       }
     } catch(_) {}
   }));
   // 보유 종목이 관심에도 있으면 가격 공유
-  ST.holdings.forEach(h => { if (holdTickers.has(h.ticker) && ST.watchlist.find(w => w.ticker === h.ticker)) kdWatchPrices[h.ticker] = h; });
+  ST.holdings.forEach(h => { if (holdTickers.has(h.ticker) && ST.watchlist.find(w => w.ticker === h.ticker)) ST.watchPrices[h.ticker] = h; });
 
-  kdLastRefreshTime = new Date();
+  ST.lastRefreshTime = new Date();
   saveHoldings();
-  kdRender();
-  kdRenderChart();
-  kdRenderWatchlist();
+  Render();
+  RenderChart();
+  RenderWatchlist();
   if (statusEl) {
-    const _mo = String(kdLastRefreshTime.getMonth()+1).padStart(2,'0');
-    const _dd = String(kdLastRefreshTime.getDate()).padStart(2,'0');
-    const hh = String(kdLastRefreshTime.getHours()).padStart(2,'0');
-    const mm = String(kdLastRefreshTime.getMinutes()).padStart(2,'0');
-    const ss = String(kdLastRefreshTime.getSeconds()).padStart(2,'0');
+    const _mo = String(ST.lastRefreshTime.getMonth()+1).padStart(2,'0');
+    const _dd = String(ST.lastRefreshTime.getDate()).padStart(2,'0');
+    const hh = String(ST.lastRefreshTime.getHours()).padStart(2,'0');
+    const mm = String(ST.lastRefreshTime.getMinutes()).padStart(2,'0');
+    const ss = String(ST.lastRefreshTime.getSeconds()).padStart(2,'0');
     statusEl.textContent = failCount
       ? `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss} (${failCount}개 실패)`
       : `최근 갱신 ${_mo}/${_dd} ${hh}:${mm}:${ss}`;
@@ -856,14 +856,14 @@ async function kdRefreshAll(suppressDone = false, preferSnapshot = true) {
 }
 
 // ===== 자동 새로고침 (MyPM 공유 설정 사용) =====
-let kdAutoRefreshTimer = null;
+ST.autoRefreshTimer = null;
 
-function kdInitAutoRefresh() {
-  if (kdAutoRefreshTimer) { clearInterval(kdAutoRefreshTimer); kdAutoRefreshTimer = null; }
+function InitAutoRefresh() {
+  if (ST.autoRefreshTimer) { clearInterval(ST.autoRefreshTimer); ST.autoRefreshTimer = null; }
   const minutes = parseInt(localStorage.getItem('autoRefreshMinutes'), 10) || 0;
   if (minutes > 0) {
-    kdAutoRefreshTimer = setInterval(() => {
-      if (ST.holdings.length) kdRefreshAll();
+    ST.autoRefreshTimer = setInterval(() => {
+      if (ST.holdings.length) RefreshAll();
     }, minutes * 60 * 1000);
   }
 }
@@ -875,7 +875,7 @@ function kdInitAutoRefresh() {
 // 이 함수는 XIRR 에만 쓰이므로 dataVersion 일치만 확인하고 시세 신선도(freshness)는 보지 않는다.
 // (XIRR은 분 단위 시세에 거의 불변. freshness 로 막으면 시세 새로고침만 해도 XIRR 이 사라짐.)
 // 부재(.kd 없음)/불일치/오프라인이면 XIRR은 '-'로 표시(클라 재계산 없음).
-function kdDisplayDerived() {
+function DisplayDerived() {
   try {
     const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
     // 와이어 형식: { dataVersion, pricedAt, data:{ accounts, totals, kd } } → .kd 는 data 안에 있다.
@@ -888,7 +888,7 @@ function kdDisplayDerived() {
 // 서버 스냅샷의 pricedAt(서버 계산 시각) — .kd 유효(동기화 일치)할 때만. 히어로 '오늘' 라벨용.
 // 서버 계산 시각 → "MM/DD HH:MM". 없으면 null.
 
-function kdRender() {
+function Render() {
   const container = document.getElementById('HoldingsContainer');
   const statusEl  = document.getElementById('StatusText');
   if (!container) return;
@@ -903,13 +903,13 @@ function kdRender() {
     </div>`;
     container.innerHTML = `<div class="empty-state"><div class="icon">🇰🇷</div><div>'+ 종목 추가' 버튼을 눌러 한국 주식을 추가해 주세요</div></div>
     <div class="nk-action-btns">
-      <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-primary" onclick="kdOpenAddModal()">+ 종목 추가</button>
-      <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
-      <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
     </div>`;
     if (statusEl) statusEl.textContent = '보유종목 0개';
-    kdRenderAccountButtons();
+    RenderAccountButtons();
     return;
   }
 
@@ -936,7 +936,7 @@ function kdRender() {
   const deposited  = totalDeposited(null, _activeAccIds);
   const pnl        = totalValue - deposited;
   const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
-  const _kdSnap    = kdDisplayDerived(); // C-4b: 서버 선계산 KDeal 스냅샷
+  const _kdSnap    = DisplayDerived(); // C-4b: 서버 선계산 KDeal 스냅샷
   const xirrRate   = (_kdSnap && _kdSnap.totals && typeof _kdSnap.totals.xirr === 'number') ? _kdSnap.totals.xirr : null;
   const xirrSign   = xirrRate != null && xirrRate >= 0 ? '+' : '';
   const xirrCls    = xirrRate != null && xirrRate >= 0 ? 'pos' : 'neg';
@@ -1000,12 +1000,12 @@ function kdRender() {
   }).sort((a, b) => b.currentValue - a.currentValue);
 
   let lastUpdate = '-';
-  if (kdLastRefreshTime) {
-    const _mo = String(kdLastRefreshTime.getMonth()+1).padStart(2,'0');
-    const _dd = String(kdLastRefreshTime.getDate()).padStart(2,'0');
-    const hh = String(kdLastRefreshTime.getHours()).padStart(2,'0');
-    const mm = String(kdLastRefreshTime.getMinutes()).padStart(2,'0');
-    const ss = String(kdLastRefreshTime.getSeconds()).padStart(2,'0');
+  if (ST.lastRefreshTime) {
+    const _mo = String(ST.lastRefreshTime.getMonth()+1).padStart(2,'0');
+    const _dd = String(ST.lastRefreshTime.getDate()).padStart(2,'0');
+    const hh = String(ST.lastRefreshTime.getHours()).padStart(2,'0');
+    const mm = String(ST.lastRefreshTime.getMinutes()).padStart(2,'0');
+    const ss = String(ST.lastRefreshTime.getSeconds()).padStart(2,'0');
     lastUpdate = `${_mo}/${_dd} ${hh}:${mm}:${ss}`;
   } else {
     const updatedAts = ST.holdings.filter(h => h.updatedAt).map(h => h.updatedAt);
@@ -1041,15 +1041,15 @@ function kdRender() {
     it._chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
     it._dayAmt = it.change * it.qty;
     tableHtml += `<tr>`
-      + `<td onclick="kdtOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" style="cursor:pointer"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
+      + `<td onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" style="cursor:pointer"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
       + kdCols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, kdColCtx) : ''}>${c.cell(it, kdColCtx)}</td>`).join('')
-      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="kdtOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="kdOpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="kdDeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
+      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="tOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="OpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="DeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
       + `</tr>`;
   }
 
   // 현금 행
   tableHtml += `<tr class="row-cash">`
-    + `<td onclick="kdOpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💰 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_kdCashAccCount ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">CASH${_kdCashAccCount ? ' · ' + _kdCashAccCount + '개 계좌' : ''}</div></td>`
+    + `<td onclick="OpenCashModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💰 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_kdCashAccCount ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">CASH${_kdCashAccCount ? ' · ' + _kdCashAccCount + '개 계좌' : ''}</div></td>`
     + kdCols.map(c => `<td ${c.cashAttr ? c.cashAttr(kdColCtx) : ''}>${c.cash ? c.cash(kdColCtx) : '-'}</td>`).join('')
     + `<td></td>`
     + `</tr>`;
@@ -1062,35 +1062,35 @@ function kdRender() {
 
   container.innerHTML = tableHtml
     + `<div class="nk-action-btns">
-      <button class="btn-secondary" onclick="kdOpenDepositModal()">💰 계좌 입출금</button>
-      <button class="btn-primary" onclick="kdOpenAddModal()">+ 종목 추가</button>
-      <button class="btn-secondary" onclick="kdOpenRecordsModal()">📒 계좌 기록</button>
-      <button class="btn-secondary" onclick="kdOpenDividendModal()">💸 배당 기록</button>
+      <button class="btn-secondary" onclick="OpenDepositModal()">💰 계좌 입출금</button>
+      <button class="btn-primary" onclick="OpenAddModal()">+ 종목 추가</button>
+      <button class="btn-secondary" onclick="OpenRecordsModal()">📒 계좌 기록</button>
+      <button class="btn-secondary" onclick="OpenDividendModal()">💸 배당 기록</button>
     </div>`;
   if (statusEl) statusEl.textContent = '';
-  kdRenderAccountButtons();
+  RenderAccountButtons();
 }
 
-function kdRenderAccountButtons() {
+function RenderAccountButtons() {
   const grid = document.getElementById('AccountButtonsGrid');
   if (!grid) return;
   const active = ST.accounts.filter(a => a.active !== false);
   grid.innerHTML = active.map(a => {
     const val = computeAccountValue(a.id);
-    return `<button class="btn-account-view" onclick="kdOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${formatMil(val)}</span></button>`;
+    return `<button class="btn-account-view" onclick="OpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${formatMil(val)}</span></button>`;
   }).join('');
 }
 
 
-function kdDeleteHolding(ticker) {
+function DeleteHolding(ticker) {
   if (!confirm(`${ticker} 종목을 삭제하시겠습니까?`)) return;
   ST.holdings = ST.holdings.filter(h => h.ticker !== ticker);
   saveHoldings();
-  kdRender();
-  kdRenderChart();
+  Render();
+  RenderChart();
 }
 
-function kdRenderChart() {
+function RenderChart() {
   const canvas = document.getElementById('PortfolioChart');
   const empty  = document.getElementById('ChartEmpty');
   if (!canvas) return;
@@ -1117,8 +1117,8 @@ function kdRenderChart() {
     return txns.filter(t => (t.date || '') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
   });
 
-  if (kdChartInstance) kdChartInstance.destroy();
-  kdChartInstance = new Chart(canvas, {
+  if (ST.chartInstance) ST.chartInstance.destroy();
+  ST.chartInstance = new Chart(canvas, {
     type: 'line',
     data: {
       labels,
@@ -1135,8 +1135,8 @@ function kdRenderChart() {
 let _kdAddPending = null;
 let _kdAddAcTimer = null;
 
-function kdOpenAddModal() {
-  kdEditingTicker = null;
+function OpenAddModal() {
+  ST.editingTicker = null;
   _kdAddPending = null;
   document.getElementById('AddSearch').value = '';
   document.getElementById('AddPreview').style.display = 'none';
@@ -1150,30 +1150,30 @@ function kdOpenAddModal() {
       <label>${a.name}</label>
       <div class="field-wrap">
         <span class="field-label">수량 (주)</span>
-        <input type="text" inputmode="numeric" id="AddQty_${a.id}" placeholder="예: 10" oninput="kdLiveKRW(this)">
+        <input type="text" inputmode="numeric" id="AddQty_${a.id}" placeholder="예: 10" oninput="LiveKRW(this)">
       </div>
       <div class="field-wrap">
         <span class="field-label">매입단가 (원)</span>
-        <input type="text" inputmode="numeric" id="AddAvg_${a.id}" placeholder="예: 55,000" oninput="kdLiveKRW(this)">
+        <input type="text" inputmode="numeric" id="AddAvg_${a.id}" placeholder="예: 55,000" oninput="LiveKRW(this)">
       </div>
       <span id="AddTotal_${a.id}" class="total-display zero">0원</span>
     </div>`).join('');
   activeAccs.forEach(a => {
-    document.getElementById(`AddQty_${a.id}`).addEventListener('input', kdUpdateAddTotals);
-    document.getElementById(`AddAvg_${a.id}`).addEventListener('input', kdUpdateAddTotals);
+    document.getElementById(`AddQty_${a.id}`).addEventListener('input', UpdateAddTotals);
+    document.getElementById(`AddAvg_${a.id}`).addEventListener('input', UpdateAddTotals);
   });
   document.getElementById('AddStockModal').classList.add('open');
   setTimeout(() => document.getElementById('AddSearch').focus(), 50);
 }
 
-function kdOnAddSearchInput(val) {
+function OnAddSearchInput(val) {
   clearTimeout(_kdAddAcTimer);
   _kdAddPending = null;
   document.getElementById('AddPreview').style.display = 'none';
   const listEl = document.getElementById('AddAcList');
   if (!val.trim()) { listEl.classList.remove('open'); return; }
   _kdAddAcTimer = setTimeout(async () => {
-    const items = await kdFetchAutocompleteKR(val.trim());
+    const items = await FetchAutocompleteKR(val.trim());
     listEl.innerHTML = '';
     if (!items.length) { listEl.classList.remove('open'); return; }
     items.forEach(item => {
@@ -1196,7 +1196,7 @@ function kdOnAddSearchInput(val) {
   }, 300);
 }
 
-function kdUpdateAddTotals() {
+function UpdateAddTotals() {
   ST.accounts.filter(a => a.active !== false).forEach(a => {
     const qty = Number(document.getElementById(`AddQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
     const avg = Number(document.getElementById(`AddAvg_${a.id}`)?.value?.replace(/,/g,'')) || 0;
@@ -1205,12 +1205,12 @@ function kdUpdateAddTotals() {
   });
 }
 
-function kdCloseAddModal() {
+function CloseAddModal() {
   document.getElementById('AddStockModal').classList.remove('open');
   _kdAddPending = null;
 }
 
-function kdAddStock() {
+function AddStock() {
   if (!_kdAddPending) {
     const val = document.getElementById('AddSearch').value.trim().toUpperCase();
     if (!val) { alert('종목을 선택해 주세요.'); return; }
@@ -1230,20 +1230,20 @@ function kdAddStock() {
 
   ST.holdings.push({ ticker, name, accounts, price: 0, change: 0, changeRate: 0, updatedAt: null });
   saveHoldings();
-  kdCloseAddModal();
-  kdRender();
+  CloseAddModal();
+  Render();
   // Fetch price in background
   fetchKdPrice(ticker).then(info => {
     const h = ST.holdings.find(x => x.ticker === ticker);
-    if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); saveHoldings(); kdRender(); }
+    if (h) { h.price = info.price; h.change = info.change; h.changeRate = info.changeRate; h.updatedAt = new Date().toISOString(); saveHoldings(); Render(); }
   }).catch(() => {});
 }
 
 // --- Account qty modal ---
-function kdOpenAccountModal(ticker) {
+function OpenAccountModal(ticker) {
   const h = ST.holdings.find(x => x.ticker === ticker);
   if (!h) return;
-  kdEditingTicker = ticker;
+  ST.editingTicker = ticker;
   document.getElementById('ModalTitle').textContent = `${ticker} 계좌별 수량 및 매입가`;
   document.getElementById('ModalSubtitle').textContent = h.name || '';
 
@@ -1261,30 +1261,30 @@ function kdOpenAccountModal(ticker) {
         <label><span>수량</span>
           <input type="text" inputmode="numeric" id="AccQty_${a.id}"
             value="${acc.qty ? Math.round(+acc.qty).toLocaleString('ko-KR') : ''}"
-            oninput="kdLiveKRW(this)">
+            oninput="LiveKRW(this)">
         </label>
         <label><span>단가 (원)</span>
           <input type="text" inputmode="numeric" id="AccAvg_${a.id}"
             value="${acc.avgPrice ? Math.round(+acc.avgPrice).toLocaleString('ko-KR') : ''}"
-            oninput="kdLiveKRW(this)">
+            oninput="LiveKRW(this)">
         </label>
       </div>
     </div>`;
   }).join('');
   activeAccs2.forEach(a => {
-    document.getElementById(`AccQty_${a.id}`).addEventListener('input', kdUpdateAccTotals);
-    document.getElementById(`AccAvg_${a.id}`).addEventListener('input', kdUpdateAccTotals);
+    document.getElementById(`AccQty_${a.id}`).addEventListener('input', UpdateAccTotals);
+    document.getElementById(`AccAvg_${a.id}`).addEventListener('input', UpdateAccTotals);
   });
-  kdUpdateAccTotals();
+  UpdateAccTotals();
   document.getElementById('AccountModal').classList.add('open');
 }
 
 // 공통 모듈(InputUX Stage 2)로 위임 — 동작 동일, 구현은 js/input-ux.js 단일화
-function kdFmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'ko-KR' }); }
+function FmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'ko-KR' }); }
 
-function kdLiveKRW(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
+function LiveKRW(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
 
-function kdUpdateAccTotals() {
+function UpdateAccTotals() {
   let totalQty = 0, totalCost = 0;
   ST.accounts.filter(a => a.active !== false).forEach(a => {
     const qty = Number(document.getElementById(`AccQty_${a.id}`)?.value?.replace(/,/g,'')) || 0;
@@ -1299,13 +1299,13 @@ function kdUpdateAccTotals() {
   if (cEl) cEl.textContent = fmtKRW(totalCost);
 }
 
-function kdCloseAccountModal() {
+function CloseAccountModal() {
   document.getElementById('AccountModal').classList.remove('open');
-  kdEditingTicker = null;
+  ST.editingTicker = null;
 }
 
-function kdSaveAccountQuantities() {
-  const h = ST.holdings.find(x => x.ticker === kdEditingTicker);
+function SaveAccountQuantities() {
+  const h = ST.holdings.find(x => x.ticker === ST.editingTicker);
   if (!h) return;
   if (!h.accounts) h.accounts = {};
   for (const a of ST.accounts.filter(x => x.active !== false)) {
@@ -1315,12 +1315,12 @@ function kdSaveAccountQuantities() {
     };
   }
   saveHoldings();
-  kdCloseAccountModal();
-  kdRender();
+  CloseAccountModal();
+  Render();
 }
 
 // --- Account detail modal ---
-function kdOpenAccountDetail(accId) {
+function OpenAccountDetail(accId) {
   const acc = ST.accounts.find(a => a.id === accId);
   if (!acc) return;
   document.getElementById('DetailTitle').textContent = acc.name + ' 상세';
@@ -1345,7 +1345,7 @@ function kdOpenAccountDetail(accId) {
   const accDeposited = totalDeposited(accId);
   const accPnl       = totalVal - accDeposited;
   const accPnlRate   = accDeposited > 0 ? accPnl / accDeposited * 100 : 0;
-  const _kdSnapA     = kdDisplayDerived(); // C-4b: 서버 선계산 KDeal 스냅샷(계좌별)
+  const _kdSnapA     = DisplayDerived(); // C-4b: 서버 선계산 KDeal 스냅샷(계좌별)
   const accXirr      = (_kdSnapA && _kdSnapA.accounts && _kdSnapA.accounts[accId] && typeof _kdSnapA.accounts[accId].xirr === 'number') ? _kdSnapA.accounts[accId].xirr : null;
   const accXirrSign  = accXirr != null && accXirr >= 0 ? '+' : '';
   const accXirrCls   = accXirr != null && accXirr >= 0 ? 'pos' : 'neg';
@@ -1444,9 +1444,9 @@ function kdOpenAccountDetail(accId) {
       const cutoff = `${r.year}-${String(r.month).padStart(2,'0')}-31`;
       return txns.filter(t => (t.date||'') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
     });
-    if (kdDetailChartInstance) kdDetailChartInstance.destroy();
+    if (ST.detailChartInstance) ST.detailChartInstance.destroy();
     const canvas = document.getElementById('DetailChart');
-    kdDetailChartInstance = new Chart(canvas, {
+    ST.detailChartInstance = new Chart(canvas, {
       type: 'line',
       data: {
         labels,
@@ -1467,18 +1467,18 @@ function kdOpenAccountDetail(accId) {
   document.getElementById('AccountDetailModal').classList.add('open');
 }
 
-function kdCloseAccountDetail() {
+function CloseAccountDetail() {
   document.getElementById('AccountDetailModal').classList.remove('open');
-  if (kdDetailChartInstance) { kdDetailChartInstance.destroy(); kdDetailChartInstance = null; }
+  if (ST.detailChartInstance) { ST.detailChartInstance.destroy(); ST.detailChartInstance = null; }
 }
 
 // --- Cash modal ---
-function kdOpenCashModal() {
+function OpenCashModal() {
   const grid = document.getElementById('CashInputs');
   grid.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<div class="account-row">
     <span>${a.name}</span>
     <input type="text" inputmode="numeric" id="CashInput_${a.id}" value="${(Number(ST.cash[a.id])||0).toLocaleString('ko-KR')}" style="grid-column:span 2"
-      oninput="kdLiveKRW(this)">
+      oninput="LiveKRW(this)">
     <span>${fmtKRW(Number(ST.cash[a.id])||0)}</span>
   </div>`).join('');
   document.getElementById('CashModal').classList.add('open');
@@ -1486,23 +1486,23 @@ function kdOpenCashModal() {
 
 
 
-function kdSaveCash() {
+function SaveCash() {
   for (const a of ST.accounts.filter(x => x.active !== false)) {
     ST.cash[a.id] = Number(document.getElementById(`CashInput_${a.id}`)?.value.replace(/,/g,'')) || 0;
   }
   saveCashData();
   closeCashModal();
-  kdRender();
+  Render();
 }
 
 // --- Deposit modal ---
-function kdOpenDepositModal() {
-  kdRenderDepositList();
+function OpenDepositModal() {
+  RenderDepositList();
   document.getElementById('DepositModal').classList.add('open');
 }
 
 
-function kdRenderDepositList() {
+function RenderDepositList() {
   const grand = document.getElementById('DepositGrand');
   const totals = document.getElementById('DepositTotals');
   const list = document.getElementById('DepositList');
@@ -1530,8 +1530,8 @@ function kdRenderDepositList() {
     byYear.get(y).push(t);
   });
   const years = [...byYear.keys()].sort((a, b) => b.localeCompare(a));
-  if (_kdDepositCollapsedYears === null) {
-    _kdDepositCollapsedYears = new Set(years.slice(1));
+  if (ST.depositCollapsedYears === null) {
+    ST.depositCollapsedYears = new Set(years.slice(1));
   }
 
   list.innerHTML = years.map(y => {
@@ -1539,10 +1539,10 @@ function kdRenderDepositList() {
     const yearSum = ytx.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
     const sumCls = yearSum >= 0 ? 'pos' : 'neg';
     const sumStr = (yearSum >= 0 ? '+' : '−') + fmtKRW(Math.abs(yearSum));
-    const collapsed = _kdDepositCollapsedYears.has(y);
+    const collapsed = ST.depositCollapsedYears.has(y);
     const chevron = collapsed ? '▶' : '▼';
     const header = `
-      <div class="txn-year-hdr" onclick="kdToggleDepositYear('${y}')">
+      <div class="txn-year-hdr" onclick="ToggleDepositYear('${y}')">
         <span class="yh-chev">${chevron}</span>
         <span class="yh-year">${y}년</span>
         <span class="yh-count">${ytx.length}건</span>
@@ -1557,8 +1557,8 @@ function kdRenderDepositList() {
         <span>${accName}</span>
         <span class="${t.type === 'withdraw' ? 'neg' : 'pos'}">${sign}${fmtKRW(Number(t.amount))}</span>
         <span>
-          <button class="edit-btn" onclick="kdOpenTxnEditor('${t.id}')">편집</button>
-          <button class="del-btn" onclick="kdDeleteTxn('${t.id}')">삭제</button>
+          <button class="edit-btn" onclick="OpenTxnEditor('${t.id}')">편집</button>
+          <button class="del-btn" onclick="DeleteTxn('${t.id}')">삭제</button>
         </span>
       </div>`;
     }).join('');
@@ -1566,14 +1566,14 @@ function kdRenderDepositList() {
   }).join('');
 }
 
-function kdToggleDepositYear(year) {
-  if (!_kdDepositCollapsedYears) _kdDepositCollapsedYears = new Set();
-  if (_kdDepositCollapsedYears.has(year)) _kdDepositCollapsedYears.delete(year);
-  else _kdDepositCollapsedYears.add(year);
-  kdRenderDepositList();
+function ToggleDepositYear(year) {
+  if (!ST.depositCollapsedYears) ST.depositCollapsedYears = new Set();
+  if (ST.depositCollapsedYears.has(year)) ST.depositCollapsedYears.delete(year);
+  else ST.depositCollapsedYears.add(year);
+  RenderDepositList();
 }
 
-function kdDeleteTxn(id) {
+function DeleteTxn(id) {
   const t = ST.deposits.transactions.find(x => x.id === id);
   if (!t) return;
   if (!confirm('이 입출금 내역을 삭제하시겠습니까?')) return;
@@ -1581,15 +1581,15 @@ function kdDeleteTxn(id) {
   adjustCash(t.accId, t.type === 'deposit' ? -t.amount : +t.amount);
   ST.deposits.transactions = ST.deposits.transactions.filter(x => x.id !== id);
   saveDeposits();
-  kdRenderDepositList();
-  kdRender();
+  RenderDepositList();
+  Render();
 }
 
-function kdOpenTxnEditor(editId) {
-  kdEditingTxnId = editId || null;
+function OpenTxnEditor(editId) {
+  ST.editingTxnId = editId || null;
   if (!ST.accounts.filter(a => a.active !== false).length) {
     ST.accounts.push({ id: 'acc1', name: '기본계좌', active: true });
-    kdSaveAccounts();
+    SaveAccounts();
   }
   const sel = document.getElementById('TxnAccount');
   sel.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
@@ -1611,12 +1611,12 @@ function kdOpenTxnEditor(editId) {
   document.getElementById('TxnEditorModal').classList.add('open');
 }
 
-function kdCloseTxnEditor() {
-  kdEditingTxnId = null;
+function CloseTxnEditor() {
+  ST.editingTxnId = null;
   document.getElementById('TxnEditorModal').classList.remove('open');
 }
 
-function kdSaveTxn() {
+function SaveTxn() {
   const accId  = document.getElementById('TxnAccount').value;
   if (!accId) { alert('계좌를 선택해주세요.'); return; }
   const type   = document.getElementById('TxnType').value;
@@ -1624,8 +1624,8 @@ function kdSaveTxn() {
   const amount = Number(document.getElementById('TxnAmount').value.replace(/,/g,''));
   if (!amount || amount === 0) { alert('금액을 입력하세요'); return; }
   const absAmt = Math.abs(amount);
-  if (kdEditingTxnId) {
-    const t = ST.deposits.transactions.find(x => x.id === kdEditingTxnId);
+  if (ST.editingTxnId) {
+    const t = ST.deposits.transactions.find(x => x.id === ST.editingTxnId);
     if (t) {
       // 기존 효과 역산
       const oldDelta = t.type === 'deposit' ? -t.amount : +t.amount;
@@ -1638,48 +1638,48 @@ function kdSaveTxn() {
   // 현금 자동 조정
   adjustCash(accId, type === 'deposit' ? absAmt : -absAmt);
   saveDeposits();
-  kdCloseTxnEditor();
-  kdRenderDepositList();
-  kdRender();
+  CloseTxnEditor();
+  RenderDepositList();
+  Render();
 }
 
 // --- Records modal ---
-function kdOpenRecordsModal() {
+function OpenRecordsModal() {
   const d = new Date();
   document.getElementById('RecDate').value = d.toISOString().slice(0, 10);
-  kdRenderRecAccountInputs();
-  kdFillCurrentValues();
-  kdRenderRecordsList();
+  RenderRecAccountInputs();
+  FillCurrentValues();
+  RenderRecordsList();
   document.getElementById('AccountRecordsModal').classList.add('open');
 }
 
 
-function kdRenderRecAccountInputs() {
+function RenderRecAccountInputs() {
   const div = document.getElementById('RecAccountInputs');
   if (!div) return;
   div.innerHTML = ST.accounts.filter(a => a.active !== false).map(a => `<label>
     <span>${a.name}</span>
     <input type="text" inputmode="numeric" id="RecVal_${a.id}" placeholder="0"
-      oninput="kdLiveKRW(this); kdUpdateRecTotal()">
+      oninput="LiveKRW(this); UpdateRecTotal()">
   </label>`).join('');
   document.getElementById('RecTotal').textContent = fmtKRW(0);
 }
 
-function kdUpdateRecTotal() {
+function UpdateRecTotal() {
   const total = ST.accounts.filter(a => a.active !== false).reduce((s, a) => s + (Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0), 0);
   document.getElementById('RecTotal').textContent = fmtKRW(total);
 }
 
-function kdFillCurrentValues() {
+function FillCurrentValues() {
   ST.accounts.filter(a => a.active !== false).forEach(a => {
     const el = document.getElementById(`RecVal_${a.id}`);
     if (el) el.value = Math.round(computeAccountValue(a.id)).toLocaleString('ko-KR');
   });
-  kdUpdateRecTotal();
+  UpdateRecTotal();
 }
 
 
-async function kdLoadHistoricalValues() {
+async function LoadHistoricalValues() {
   const dateVal = document.getElementById('RecDate').value;
   if (!dateVal) { alert('기록일을 선택하세요'); return; }
   const [year, month] = dateVal.split('-').map(Number);
@@ -1691,7 +1691,7 @@ async function kdLoadHistoricalValues() {
   );
   if (!targets.length) { alert('계좌별 수량이 입력된 종목이 없습니다.'); return; }
 
-  const btn = document.querySelector('button[onclick="kdLoadHistoricalValues()"]');
+  const btn = document.querySelector('button[onclick="LoadHistoricalValues()"]');
   if (btn) { btn.textContent = '⏳ 조회 중...'; btn.disabled = true; }
 
   try {
@@ -1720,7 +1720,7 @@ async function kdLoadHistoricalValues() {
       const el = document.getElementById(`RecVal_${a.id}`);
       if (el) el.value = Math.round(values[a.id] || 0).toLocaleString('ko-KR');
     });
-    kdUpdateRecTotal();
+    UpdateRecTotal();
 
     const dates = [...new Set(Object.values(priceMap).map(r => r.date))].sort();
     const refDate = dates.pop() || '';
@@ -1734,17 +1734,17 @@ async function kdLoadHistoricalValues() {
   }
 }
 
-function kdAddMonthlyRecord() {
+function AddMonthlyRecord() {
   const dateVal = document.getElementById('RecDate').value;
   if (!dateVal) { alert('기록일을 선택하세요'); return; }
   const [year, month, day] = dateVal.split('-').map(Number);
   if (!year || !month || !day) { alert('날짜를 올바르게 입력하세요'); return; }
   const accounts = {};
   ST.accounts.forEach(a => { accounts[a.id] = Number(document.getElementById(`RecVal_${a.id}`)?.value.replace(/,/g,'')) || 0; });
-  if (kdEditingRecordId) {
-    const rec = ST.monthly.find(r => r.id === kdEditingRecordId);
+  if (ST.editingRecordId) {
+    const rec = ST.monthly.find(r => r.id === ST.editingRecordId);
     if (rec) { rec.year = year; rec.month = month; rec.day = day; rec.accounts = accounts; }
-    kdCancelRecordEdit();
+    CancelRecordEdit();
   } else {
     if (ST.monthly.some(r => r.year === year && r.month === month && (r.day || 1) === day)) {
       if (!confirm(`${year}년 ${month}월 ${day}일 기록이 이미 있습니다. 덮어쓰겠습니까?`)) return;
@@ -1753,22 +1753,22 @@ function kdAddMonthlyRecord() {
     ST.monthly.push({ id: String(Date.now()), year, month, day, accounts });
   }
   saveMonthly();
-  kdRenderRecordsList();
-  kdRenderChart();
+  RenderRecordsList();
+  RenderChart();
 }
 
-function kdEditMonthlyRecord(id) {
+function EditMonthlyRecord(id) {
   const rec = ST.monthly.find(r => r.id === id);
   if (!rec) return;
-  kdEditingRecordId = id;
+  ST.editingRecordId = id;
   const d = rec.day || 1;
   document.getElementById('RecDate').value = `${rec.year}-${String(rec.month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  kdRenderRecAccountInputs();
+  RenderRecAccountInputs();
   ST.accounts.forEach(a => {
     const inp = document.getElementById(`RecVal_${a.id}`);
     if (inp) inp.value = rec.accounts[a.id] ? Number(rec.accounts[a.id]).toLocaleString('ko-KR') : '';
   });
-  kdUpdateRecTotal();
+  UpdateRecTotal();
   const addBtn    = document.getElementById('RecAddBtn');
   const cancelBtn = document.getElementById('RecCancelBtn');
   if (addBtn)    addBtn.textContent = '✏️ 수정';
@@ -1776,24 +1776,24 @@ function kdEditMonthlyRecord(id) {
   document.getElementById('RecDate').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function kdCancelRecordEdit() {
-  kdEditingRecordId = null;
+function CancelRecordEdit() {
+  ST.editingRecordId = null;
   const addBtn    = document.getElementById('RecAddBtn');
   const cancelBtn = document.getElementById('RecCancelBtn');
   if (addBtn)    addBtn.textContent = '➕ 추가';
   if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
-function kdDeleteMonthlyRecord(id) {
+function DeleteMonthlyRecord(id) {
   const rec = ST.monthly.find(r => r.id === id);
   if (!rec || !confirm(`${rec.year}년 ${rec.month}월 기록을 삭제하시겠습니까?`)) return;
   ST.monthly = ST.monthly.filter(r => r.id !== id);
   saveMonthly();
-  kdRenderRecordsList();
-  kdRenderChart();
+  RenderRecordsList();
+  RenderChart();
 }
 
-function kdRenderRecordsList() {
+function RenderRecordsList() {
   const header = document.getElementById('RecordsTableHeader');
   const list   = document.getElementById('RecordsList');
   if (!header || !list) return;
@@ -1821,33 +1821,33 @@ function kdRenderRecordsList() {
       ${cells}
       <span class="total">${fmtKRW(total)}</span>
       <span>
-        <button class="edit-btn" onclick="kdEditMonthlyRecord('${rec.id}')">편집</button>
-        <button class="del-btn" onclick="kdDeleteMonthlyRecord('${rec.id}')">삭제</button>
+        <button class="edit-btn" onclick="EditMonthlyRecord('${rec.id}')">편집</button>
+        <button class="del-btn" onclick="DeleteMonthlyRecord('${rec.id}')">삭제</button>
       </span>
     </div>`;
   }).join('');
 }
 
 // --- Dividend modal ---
-function kdOpenDividendModal() {
+function OpenDividendModal() {
   const d = new Date();
   document.getElementById('DivYear').value  = d.getFullYear();
   document.getElementById('DivMonth').value = d.getMonth() + 1;
   if (window.InputUX) InputUX.scanYMChips();
-  kdEditingDivId = null;
+  ST.editingDivId = null;
   const saveBtn = document.getElementById('DivSaveBtn');
   if (saveBtn) saveBtn.textContent = '➕ 추가';
   const cancelBtn = document.getElementById('DivCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
-  kdRenderDivStockInputs({}, null);
-  kdToggleDivMiscForm(false);
-  kdCancelDivMiscEdit();
-  kdRenderDividendLists();
+  RenderDivStockInputs({}, null);
+  ToggleDivMiscForm(false);
+  CancelDivMiscEdit();
+  RenderDividendLists();
   document.getElementById('DividendModal').classList.add('open');
 }
 
 
-function kdRenderDivStockInputs(perShareMap, sharesOverride) {
+function RenderDivStockInputs(perShareMap, sharesOverride) {
   const tbody = document.getElementById('DivStockInputs');
   if (!tbody) return;
   const activeAccs = ST.accounts.filter(a => a.active !== false);
@@ -1874,31 +1874,31 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
     }
   }
   // 폼 상태 초기화
-  kdDivFormShares = {};
+  ST.divFormShares = {};
   for (const h of active) {
-    kdDivFormShares[h.ticker] = {};
+    ST.divFormShares[h.ticker] = {};
     const orig = ST.holdings.find(x => x.ticker === h.ticker);
     if (orig && orig.accounts) {
       for (const acc of activeAccs) {
         const a = orig.accounts[acc.id];
-        kdDivFormShares[h.ticker][acc.id] = a ? Number(a.qty) || 0 : 0;
+        ST.divFormShares[h.ticker][acc.id] = a ? Number(a.qty) || 0 : 0;
       }
     } else {
-      for (const acc of activeAccs) kdDivFormShares[h.ticker][acc.id] = 0;
+      for (const acc of activeAccs) ST.divFormShares[h.ticker][acc.id] = 0;
     }
     const stored = sharesOverride && sharesOverride[h.ticker];
     if (stored && typeof stored === 'object') {
-      kdDivFormShares[h.ticker] = { ...stored };
+      ST.divFormShares[h.ticker] = { ...stored };
     }
   }
   if (!active.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">보유 종목이 없습니다.</td></tr>';
-    kdUpdateDivTotal();
+    UpdateDivTotal();
     return;
   }
   tbody.innerHTML = active.map(h => {
     const ps = perShareMap && perShareMap[h.ticker] != null ? perShareMap[h.ticker] : '';
-    const byAcc = kdDivFormShares[h.ticker] || {};
+    const byAcc = ST.divFormShares[h.ticker] || {};
     const qtyTotal = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     const totalStr = ps !== '' && Number(ps) > 0 && qtyTotal > 0 ? fmtKRW(Math.round(Number(ps) * qtyTotal)) : '-';
     const accInputs = activeAccs.map(a => `
@@ -1906,7 +1906,7 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
         <span style="color:var(--muted)">${a.name}</span>
         <input type="text" inputmode="numeric" class="div-acc-qty"
           value="${(Number(byAcc[a.id]) || 0).toLocaleString('ko-KR')}"
-          oninput="kdLiveKRW(this); kdUpdateAccQty('${h.ticker}','${a.id}', this.value.replace(/,/g,''))"
+          oninput="LiveKRW(this); UpdateAccQty('${h.ticker}','${a.id}', this.value.replace(/,/g,''))"
           style="width:70px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;text-align:right">
       </label>
     `).join('');
@@ -1914,7 +1914,7 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
       <td>${h.ticker} ${h.name ? '<small>'+h.name+'</small>' : ''}</td>
       <td><input class="div-ps" type="text" inputmode="numeric"
         value="${ps !== '' ? Number(ps).toLocaleString('ko-KR') : ''}" placeholder="0"
-        oninput="kdLiveKRW(this); kdUpdateDivRow('${h.ticker}')"
+        oninput="LiveKRW(this); UpdateDivRow('${h.ticker}')"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
       <td class="div-qty-cell" onclick="toggleDivRow('${h.ticker}')"
           style="text-align:right;cursor:pointer;user-select:none">
@@ -1930,18 +1930,18 @@ function kdRenderDivStockInputs(perShareMap, sharesOverride) {
       </td>
     </tr>`;
   }).join('');
-  kdUpdateDivTotal();
+  UpdateDivTotal();
 }
 
 
-function kdUpdateAccQty(code, accId, val) {
-  kdDivFormShares[code] = kdDivFormShares[code] || {};
-  kdDivFormShares[code][accId] = Number(val) || 0;
-  kdUpdateDivRow(code);
+function UpdateAccQty(code, accId, val) {
+  ST.divFormShares[code] = ST.divFormShares[code] || {};
+  ST.divFormShares[code][accId] = Number(val) || 0;
+  UpdateDivRow(code);
 }
 
-function kdUpdateDivRow(code) {
-  const byAcc = kdDivFormShares[code] || {};
+function UpdateDivRow(code) {
+  const byAcc = ST.divFormShares[code] || {};
   const total = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
   const sumEl = document.getElementById('DivQtySum_' + code);
   if (sumEl) sumEl.textContent = total.toLocaleString('ko-KR');
@@ -1949,15 +1949,15 @@ function kdUpdateDivRow(code) {
   const ps = Number(psInp?.value?.replace(/,/g,'')) || 0;
   const cell = document.getElementById('DivTotal_' + code);
   if (cell) cell.textContent = (ps > 0 && total > 0) ? fmtKRW(Math.round(ps * total)) : '-';
-  kdUpdateDivTotal();
+  UpdateDivTotal();
 }
 
-function kdUpdateDivTotal() {
+function UpdateDivTotal() {
   let grand = 0;
   document.querySelectorAll('#DivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
-    const byAcc = kdDivFormShares[code] || {};
+    const byAcc = ST.divFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) grand += Math.round(ps * totalQty);
   });
@@ -1965,12 +1965,12 @@ function kdUpdateDivTotal() {
   if (el) el.textContent = fmtKRW(grand);
 }
 
-function kdClearDividendInputs() {
+function ClearDividendInputs() {
   document.querySelectorAll('#DivStockInputs .div-ps').forEach(inp => { inp.value = ''; });
-  kdUpdateDivTotal();
+  UpdateDivTotal();
 }
 
-function kdAddDividendRecord() {
+function AddDividendRecord() {
   const year  = Number(document.getElementById('DivYear').value);
   const month = Number(document.getElementById('DivMonth').value);
   if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
@@ -1981,7 +1981,7 @@ function kdAddDividendRecord() {
   document.querySelectorAll('#DivStockInputs tr[data-code]').forEach(tr => {
     const code = tr.dataset.code;
     const ps = Number(tr.querySelector('.div-ps')?.value?.replace(/,/g,'')) || 0;
-    const byAcc = kdDivFormShares[code] || {};
+    const byAcc = ST.divFormShares[code] || {};
     const totalQty = Object.values(byAcc).reduce((s, v) => s + (Number(v) || 0), 0);
     if (ps > 0 && totalQty > 0) {
       stocksPerShare[code] = ps;
@@ -2004,12 +2004,12 @@ function kdAddDividendRecord() {
     }
   }
 
-  if (kdEditingDivId) {
-    const idx = ST.dividends.findIndex(r => r.id === kdEditingDivId);
+  if (ST.editingDivId) {
+    const idx = ST.dividends.findIndex(r => r.id === ST.editingDivId);
     if (idx >= 0) {
-      ST.dividends[idx] = { id: kdEditingDivId, year, month, stocksPerShare, stocksShares, accounts };
+      ST.dividends[idx] = { id: ST.editingDivId, year, month, stocksPerShare, stocksShares, accounts };
     }
-    kdEditingDivId = null;
+    ST.editingDivId = null;
     const saveBtn = document.getElementById('DivSaveBtn');
     if (saveBtn) saveBtn.textContent = '➕ 추가';
     const cancelBtn = document.getElementById('DivCancelBtn');
@@ -2022,45 +2022,45 @@ function kdAddDividendRecord() {
   }
 
   saveDividends();
-  kdClearDividendInputs();
-  kdRenderDividendLists();
+  ClearDividendInputs();
+  RenderDividendLists();
 }
 
-function kdDeleteDividendRecord(id) {
+function DeleteDividendRecord(id) {
   const rec = ST.dividends.find(r => r.id === id);
   if (!rec) return;
   const miscLabel = rec.misc ? ` (기타: ${rec.misc.memo || ''})` : '';
   if (!confirm(`${rec.year}년 ${rec.month}월${miscLabel} 배당 기록을 삭제하시겠습니까?`)) return;
   ST.dividends = ST.dividends.filter(r => r.id !== id);
-  if (kdEditingDivId === id) {
-    kdEditingDivId = null;
+  if (ST.editingDivId === id) {
+    ST.editingDivId = null;
     const saveBtn = document.getElementById('DivSaveBtn');
     if (saveBtn) saveBtn.textContent = '➕ 추가';
     const cancelBtn = document.getElementById('DivCancelBtn');
     if (cancelBtn) cancelBtn.style.display = 'none';
-    kdClearDividendInputs();
+    ClearDividendInputs();
   }
-  if (kdDivMiscEditingId === id) kdCancelDivMiscEdit();
+  if (ST.divMiscEditingId === id) CancelDivMiscEdit();
   saveDividends();
-  kdRenderDividendLists();
+  RenderDividendLists();
 }
 
-function kdEditDividendRecord(id) {
+function EditDividendRecord(id) {
   const rec = ST.dividends.find(r => r.id === id);
   if (!rec) return;
   document.getElementById('DivYear').value = rec.year;
   document.getElementById('DivMonth').value = rec.month;
   if (window.InputUX) InputUX.scanYMChips();
   if (divRecIsMisc(rec)) {
-    kdEditingDivId = null;
+    ST.editingDivId = null;
     const stockSaveBtn = document.getElementById('DivSaveBtn');
     if (stockSaveBtn) stockSaveBtn.textContent = '➕ 추가';
     const stockCancelBtn = document.getElementById('DivCancelBtn');
     if (stockCancelBtn) stockCancelBtn.style.display = 'none';
-    kdDivMiscEditingId = id;
+    ST.divMiscEditingId = id;
     document.getElementById('DivMiscMemo').value = rec.misc.memo || '';
-    kdToggleDivMiscForm(true);
-    kdRenderDivMiscInputs(rec.misc.accounts || {});
+    ToggleDivMiscForm(true);
+    RenderDivMiscInputs(rec.misc.accounts || {});
     const saveBtn = document.getElementById('DivMiscSaveBtn');
     if (saveBtn) saveBtn.textContent = '수정 저장';
     const cancelBtn = document.getElementById('DivMiscCancelBtn');
@@ -2068,10 +2068,10 @@ function kdEditDividendRecord(id) {
     document.getElementById('DivMiscBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
-  kdEditingDivId = id;
+  ST.editingDivId = id;
   const perShareMap = (rec.stocksPerShare && Object.keys(rec.stocksPerShare).length > 0) ? rec.stocksPerShare : {};
   const sharesOverride = (rec.stocksShares && Object.keys(rec.stocksShares).length > 0) ? rec.stocksShares : null;
-  kdRenderDivStockInputs(perShareMap, sharesOverride);
+  RenderDivStockInputs(perShareMap, sharesOverride);
   const saveBtn = document.getElementById('DivSaveBtn');
   if (saveBtn) saveBtn.textContent = '수정 저장';
   const cancelBtn = document.getElementById('DivCancelBtn');
@@ -2080,20 +2080,20 @@ function kdEditDividendRecord(id) {
   if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function kdCancelDivEdit() {
-  kdEditingDivId = null;
+function CancelDivEdit() {
+  ST.editingDivId = null;
   const saveBtn = document.getElementById('DivSaveBtn');
   if (saveBtn) saveBtn.textContent = '➕ 추가';
   const cancelBtn = document.getElementById('DivCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
-  kdRenderDivStockInputs({}, null);
+  RenderDivStockInputs({}, null);
 }
 
 // === KDeal 기타항목 (종목 없이 금액만) ===
-let kdDivMiscEditingId = null;
+ST.divMiscEditingId = null;
 
 
-function kdToggleDivMiscForm(forceOpen) {
+function ToggleDivMiscForm(forceOpen) {
   const body = document.getElementById('DivMiscBody');
   const btn  = document.getElementById('DivMiscToggleBtn');
   if (!body) return;
@@ -2101,14 +2101,14 @@ function kdToggleDivMiscForm(forceOpen) {
   if (shouldOpen) {
     body.style.display = '';
     if (btn) btn.textContent = '접기 ▴';
-    kdRenderDivMiscInputs();
+    RenderDivMiscInputs();
   } else {
     body.style.display = 'none';
     if (btn) btn.textContent = '펼치기 ▾';
   }
 }
 
-function kdRenderDivMiscInputs(values) {
+function RenderDivMiscInputs(values) {
   const wrap = document.getElementById('DivMiscAccInputs');
   if (!wrap) return;
   const accs = ST.accounts.filter(a => a.active !== false);
@@ -2121,14 +2121,14 @@ function kdRenderDivMiscInputs(values) {
     return `<label style="display:flex;align-items:center;gap:8px">
       <span style="min-width:90px;font-size:13px">${a.name}</span>
       <input type="text" inputmode="numeric" class="kd-div-misc-amt" data-acc="${a.id}" value="${v !== '' ? Number(v).toLocaleString('ko-KR') : ''}"
-             oninput="kdLiveKRW(this); kdUpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
+             oninput="LiveKRW(this); UpdateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
       <span style="font-size:12px;color:var(--muted,#888)">원</span>
     </label>`;
   }).join('');
-  kdUpdateDivMiscTotal();
+  UpdateDivMiscTotal();
 }
 
-function kdUpdateDivMiscTotal() {
+function UpdateDivMiscTotal() {
   let t = 0;
   document.querySelectorAll('#DivMiscAccInputs .kd-div-misc-amt').forEach(inp => {
     t += Math.round(Number(inp.value?.replace(/,/g,'')) || 0);
@@ -2137,22 +2137,22 @@ function kdUpdateDivMiscTotal() {
   if (el) el.textContent = fmtKRW(t);
 }
 
-function kdClearDivMiscInputs() {
+function ClearDivMiscInputs() {
   document.getElementById('DivMiscMemo').value = '';
   document.querySelectorAll('#DivMiscAccInputs .kd-div-misc-amt').forEach(inp => { inp.value = ''; });
-  kdUpdateDivMiscTotal();
+  UpdateDivMiscTotal();
 }
 
-function kdCancelDivMiscEdit() {
-  kdDivMiscEditingId = null;
+function CancelDivMiscEdit() {
+  ST.divMiscEditingId = null;
   const saveBtn = document.getElementById('DivMiscSaveBtn');
   if (saveBtn) saveBtn.textContent = '기타항목 추가';
   const cancelBtn = document.getElementById('DivMiscCancelBtn');
   if (cancelBtn) cancelBtn.style.display = 'none';
-  kdClearDivMiscInputs();
+  ClearDivMiscInputs();
 }
 
-function kdAddMiscDividendRecord() {
+function AddMiscDividendRecord() {
   const year  = Number(document.getElementById('DivYear').value);
   const month = Number(document.getElementById('DivMonth').value);
   if (!year || !month) { alert('연도와 월을 입력하세요'); return; }
@@ -2167,16 +2167,16 @@ function kdAddMiscDividendRecord() {
   });
   if (total === 0 && !confirm('모든 금액이 0입니다. 그래도 추가하시겠습니까?')) return;
 
-  if (kdDivMiscEditingId) {
-    const idx = ST.dividends.findIndex(r => r.id === kdDivMiscEditingId);
+  if (ST.divMiscEditingId) {
+    const idx = ST.dividends.findIndex(r => r.id === ST.divMiscEditingId);
     if (idx >= 0) {
       ST.dividends[idx] = {
-        id: kdDivMiscEditingId, year, month,
+        id: ST.divMiscEditingId, year, month,
         stocksPerShare: {}, stocksShares: {}, accounts,
         misc: { memo, accounts: { ...accounts } }
       };
     }
-    kdCancelDivMiscEdit();
+    CancelDivMiscEdit();
   } else {
     ST.dividends.push({
       id: String(Date.now()) + Math.floor(Math.random() * 1000),
@@ -2184,13 +2184,13 @@ function kdAddMiscDividendRecord() {
       stocksPerShare: {}, stocksShares: {}, accounts,
       misc: { memo, accounts: { ...accounts } }
     });
-    kdClearDivMiscInputs();
+    ClearDivMiscInputs();
   }
   saveDividends();
-  kdRenderDividendLists();
+  RenderDividendLists();
 }
 
-function kdRenderDividendLists() {
+function RenderDividendLists() {
   // Stock table
   const sHeader = document.getElementById('DivStockTableHeader');
   const sList   = document.getElementById('DivStockRecordsList');
@@ -2210,25 +2210,25 @@ function kdRenderDividendLists() {
           const total = divRecMiscTotal(rec);
           const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
           return `<div class="div-record-row" style="grid-template-columns:${cols}">
-            <span class="div-date-link" onclick="kdEditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>
+            <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>
             <span style="grid-column: span ${spanCount};color:var(--muted,#888)">📝 ${memo}</span>
             <span class="total">${fmtKRW(total)}</span>
             <span>
-              <button class="edit-btn" onclick="kdEditDividendRecord('${rec.id}')">수정</button>
-              <button class="del-btn" onclick="kdDeleteDividendRecord('${rec.id}')">삭제</button>
+              <button class="edit-btn" onclick="EditDividendRecord('${rec.id}')">수정</button>
+              <button class="del-btn" onclick="DeleteDividendRecord('${rec.id}')">삭제</button>
             </span>
           </div>`;
         }
-        const total = allTickers.reduce((s,t) => s + kdDivRecAmount(rec, t), 0);
+        const total = allTickers.reduce((s,t) => s + DivRecAmount(rec, t), 0);
         const cells = allTickers.map(t => {
-          const v = kdDivRecAmount(rec, t);
+          const v = DivRecAmount(rec, t);
           if (!v) return `<span class="amount">-</span>`;
-          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="kdOpenDivStockEdit('${rec.id}','${t}')">✏️</button></span>`;
+          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="OpenDivStockEdit('${rec.id}','${t}')">✏️</button></span>`;
         }).join('');
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span class="div-date-link" onclick="kdEditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>${cells}
+          <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
-          <span><button class="del-btn" onclick="kdDeleteDividendRecord('${rec.id}')">삭제</button></span>
+          <span><button class="del-btn" onclick="DeleteDividendRecord('${rec.id}')">삭제</button></span>
         </div>`;
       }).join('');
     }
@@ -2251,13 +2251,13 @@ function kdRenderDividendLists() {
           const v = Number(rec.accounts[a.id]) || 0;
           if (!v) return `<span class="amount">-</span>`;
           if (isMisc) return `<span class="amount">${fmtKRW(v)}</span>`;
-          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="kdOpenDivAccEdit('${rec.id}','${a.id}')">✏️</button></span>`;
+          return `<span class="amount div-cell-editable"><span>${fmtKRW(v)}</span><button class="mini-edit-btn" onclick="OpenDivAccEdit('${rec.id}','${a.id}')">✏️</button></span>`;
         }).join('');
         const miscPrefix = isMisc
           ? `<small title="${(rec.misc.memo||'').replace(/"/g,'&quot;')}" style="color:var(--muted,#888)">📝 </small>`
           : '';
         return `<div class="div-record-row" style="grid-template-columns:${cols}">
-          <span class="div-date-link" onclick="kdEditDividendRecord('${rec.id}')" title="전체 수정">${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
+          <span class="div-date-link" onclick="EditDividendRecord('${rec.id}')" title="전체 수정">${miscPrefix}${rec.year}.${String(rec.month).padStart(2,'0')}</span>${cells}
           <span class="total">${fmtKRW(total)}</span>
         </div>`;
       }).join('');
@@ -2266,26 +2266,26 @@ function kdRenderDividendLists() {
 }
 
 // --- 배당 포커스드 편집 패널 ---
-let _kdDivStockEditRecId = null, _kdDivStockEditTicker = null;
-let _kdDivAccEditRecId = null, _kdDivAccEditAccId = null;
+ST.divStockEditRecId = null, ST.divStockEditTicker = null;
+ST.divAccEditRecId = null, ST.divAccEditAccId = null;
 
-function kdOpenDivStockEdit(recId, ticker) {
+function OpenDivStockEdit(recId, ticker) {
   const rec = ST.dividends.find(r => r.id === recId);
   if (!rec) return;
-  _kdDivStockEditRecId = recId;
-  _kdDivStockEditTicker = ticker;
+  ST.divStockEditRecId = recId;
+  ST.divStockEditTicker = ticker;
   const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
   document.getElementById('DivStockEditTitle').textContent = `${ticker} · ${dateLabel}`;
   const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
   document.getElementById('DivStockEditPs').value = perShare ? Number(perShare).toLocaleString('ko-KR') : '';
-  kdUpdateDivStockEditPreview();
+  UpdateDivStockEditPreview();
   document.getElementById('DivStockEditPanel').style.display = '';
 }
 
-function kdUpdateDivStockEditPreview() {
-  const rec = ST.dividends.find(r => r.id === _kdDivStockEditRecId);
+function UpdateDivStockEditPreview() {
+  const rec = ST.dividends.find(r => r.id === ST.divStockEditRecId);
   if (!rec) return;
-  const ticker = _kdDivStockEditTicker;
+  const ticker = ST.divStockEditTicker;
   const newPs = parseFloat(document.getElementById('DivStockEditPs').value.replace(/,/g,'')) || 0;
   let total = 0;
   const rows = ST.accounts.map(acc => {
@@ -2300,15 +2300,15 @@ function kdUpdateDivStockEditPreview() {
   document.getElementById('DivStockEditTotal').textContent = fmtKRW(total);
 }
 
-function kdCloseDivStockEdit() {
+function CloseDivStockEdit() {
   document.getElementById('DivStockEditPanel').style.display = 'none';
-  _kdDivStockEditRecId = null; _kdDivStockEditTicker = null;
+  ST.divStockEditRecId = null; ST.divStockEditTicker = null;
 }
 
-function kdSaveDivStockEdit() {
-  const rec = ST.dividends.find(r => r.id === _kdDivStockEditRecId);
+function SaveDivStockEdit() {
+  const rec = ST.dividends.find(r => r.id === ST.divStockEditRecId);
   if (!rec) return;
-  const ticker = _kdDivStockEditTicker;
+  const ticker = ST.divStockEditTicker;
   const newPs = Math.round(parseFloat(document.getElementById('DivStockEditPs').value.replace(/,/g,'')) || 0);
   if (!rec.stocksPerShare) rec.stocksPerShare = {};
   rec.stocksPerShare[ticker] = newPs;
@@ -2323,15 +2323,15 @@ function kdSaveDivStockEdit() {
     rec.accounts[acc.id] = Math.round(total);
   });
   saveDividends();
-  kdRenderDividendLists();
-  kdCloseDivStockEdit();
+  RenderDividendLists();
+  CloseDivStockEdit();
 }
 
-function kdOpenDivAccEdit(recId, accId) {
+function OpenDivAccEdit(recId, accId) {
   const rec = ST.dividends.find(r => r.id === recId);
   if (!rec) return;
-  _kdDivAccEditRecId = recId;
-  _kdDivAccEditAccId = accId;
+  ST.divAccEditRecId = recId;
+  ST.divAccEditAccId = accId;
   const acc = ST.accounts.find(a => a.id === accId);
   const accName = acc ? acc.name : accId;
   const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
@@ -2345,17 +2345,17 @@ function kdOpenDivAccEdit(recId, accId) {
       <span>${ticker}</span>
       <span>${fmtKRW(perShare)}</span>
       <input type="text" inputmode="numeric" class="div-focused-qty-input" value="${qty.toLocaleString('ko-KR')}"
-        oninput="kdLiveKRW(this); kdUpdateDivAccEditPreview()">
+        oninput="LiveKRW(this); UpdateDivAccEditPreview()">
       <span class="kd-acc-amt-cell">${fmtKRW(amt)}</span>
     </div>`;
   }).join('');
   document.getElementById('DivAccEditStockRows').innerHTML = rows;
-  kdUpdateDivAccEditPreview();
+  UpdateDivAccEditPreview();
   document.getElementById('DivAccEditPanel').style.display = '';
 }
 
-function kdUpdateDivAccEditPreview() {
-  const rec = ST.dividends.find(r => r.id === _kdDivAccEditRecId);
+function UpdateDivAccEditPreview() {
+  const rec = ST.dividends.find(r => r.id === ST.divAccEditRecId);
   if (!rec) return;
   let total = 0;
   document.querySelectorAll('#DivAccEditStockRows .div-focused-stock-row').forEach(row => {
@@ -2369,15 +2369,15 @@ function kdUpdateDivAccEditPreview() {
   document.getElementById('DivAccEditTotal').textContent = fmtKRW(total);
 }
 
-function kdCloseDivAccEdit() {
+function CloseDivAccEdit() {
   document.getElementById('DivAccEditPanel').style.display = 'none';
-  _kdDivAccEditRecId = null; _kdDivAccEditAccId = null;
+  ST.divAccEditRecId = null; ST.divAccEditAccId = null;
 }
 
-function kdSaveDivAccEdit() {
-  const rec = ST.dividends.find(r => r.id === _kdDivAccEditRecId);
+function SaveDivAccEdit() {
+  const rec = ST.dividends.find(r => r.id === ST.divAccEditRecId);
   if (!rec) return;
-  const accId = _kdDivAccEditAccId;
+  const accId = ST.divAccEditAccId;
   if (!rec.stocksShares) rec.stocksShares = {};
   document.querySelectorAll('#DivAccEditStockRows .div-focused-stock-row').forEach(row => {
     const ticker = row.dataset.ticker;
@@ -2394,19 +2394,19 @@ function kdSaveDivAccEdit() {
   }
   rec.accounts[accId] = Math.round(total);
   saveDividends();
-  kdRenderDividendLists();
-  kdCloseDivAccEdit();
+  RenderDividendLists();
+  CloseDivAccEdit();
 }
 
 
 
 // ===== 계좌 관리 =====
-function kdOpenAccountSettings() {
-  kdRenderAccountSettingsBody();
+function OpenAccountSettings() {
+  RenderAccountSettingsBody();
   document.getElementById('AccountSettingsModal').classList.add('open');
 }
 
-function kdRenderAccountSettingsBody() {
+function RenderAccountSettingsBody() {
   const body = document.getElementById('AccountSettingsBody');
   if (!body) return;
 
@@ -2415,57 +2415,57 @@ function kdRenderAccountSettingsBody() {
   html += `<div class="nk-acc-settings-list">` + ST.accounts.map(a => {
     const isActive = a.active !== false;
     return `<div class="nk-acc-settings-row">
-        <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="kdToggleAccountActive('${a.id}')">${escapeHtml(a.name)}</button>
-        <button class="edit-btn" onclick="kdRenameAccount('${a.id}')">이름변경</button>
-        <button class="del-btn" onclick="kdDeleteAccount('${a.id}')">삭제</button>
+        <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="ToggleAccountActive('${a.id}')">${escapeHtml(a.name)}</button>
+        <button class="edit-btn" onclick="RenameAccount('${a.id}')">이름변경</button>
+        <button class="del-btn" onclick="DeleteAccount('${a.id}')">삭제</button>
       </div>`;
   }).join('') + `</div>`;
 
   html += `<div class="nk-acc-section-title" style="margin-top:12px">새 계좌 추가</div>`;
   html += `<div class="nk-acc-add-row">
     <input type="text" id="NewAccName" placeholder="계좌 이름" maxlength="20" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px">
-    <button class="btn-primary" onclick="kdAddAccount()">추가</button>
+    <button class="btn-primary" onclick="AddAccount()">추가</button>
   </div>`;
 
   body.innerHTML = html;
   setTimeout(() => {
     const inp = document.getElementById('NewAccName');
-    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') kdAddAccount(); });
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') AddAccount(); });
   }, 0);
 }
 
-function kdAddAccount() {
+function AddAccount() {
   const inp = document.getElementById('NewAccName');
   const name = (inp?.value || '').trim();
   if (!name) { alert('계좌 이름을 입력하세요'); return; }
   const id = 'acc_' + Date.now();
   ST.accounts.push({ id, name, active: true });
-  kdSaveAccounts();
-  kdRenderAccountSettingsBody();
-  kdRenderAccountButtons();
-  kdRender();
-  kdRenderChart();
+  SaveAccounts();
+  RenderAccountSettingsBody();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
-function kdToggleAccountActive(id) {
+function ToggleAccountActive(id) {
   const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   acc.active = (acc.active === false) ? true : false;
-  kdSaveAccounts();
-  kdRenderAccountSettingsBody();
-  kdRenderAccountButtons();
-  kdRender();
-  kdRenderChart();
+  SaveAccounts();
+  RenderAccountSettingsBody();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
-function kdRenameAccount(id) {
+function RenameAccount(id) {
   const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   const newName = prompt('새 계좌 이름을 입력하세요', acc.name);
   if (!newName || !newName.trim()) return;
   acc.name = newName.trim();
-  kdSaveAccounts();
-  kdRenderAccountSettingsBody();
+  SaveAccounts();
+  RenderAccountSettingsBody();
   // 열려있는 모달의 계좌 드롭다운도 즉시 갱신
   ['TxnAccount', 'tTradeAcc'].forEach(selId => {
     const sel = document.getElementById(selId);
@@ -2475,12 +2475,12 @@ function kdRenameAccount(id) {
       sel.value = cur;
     }
   });
-  kdRenderAccountButtons();
-  kdRender();
-  kdRenderChart();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
-function kdDeleteAccount(id) {
+function DeleteAccount(id) {
   const acc = ST.accounts.find(a => a.id === id);
   if (!acc) return;
   // 보유 데이터 확인
@@ -2492,25 +2492,25 @@ function kdDeleteAccount(id) {
   }
   if (!confirm(`'${acc.name}' 계좌를 삭제하시겠습니까?`)) return;
   ST.accounts = ST.accounts.filter(a => a.id !== id);
-  kdSaveAccounts();
-  kdRenderAccountSettingsBody();
-  kdRenderAccountButtons();
-  kdRender();
-  kdRenderChart();
+  SaveAccounts();
+  RenderAccountSettingsBody();
+  RenderAccountButtons();
+  Render();
+  RenderChart();
 }
 
 // ESC key closes any open KDeal modal
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (document.getElementById('AccountSettingsModal').classList.contains('open')){ closeAccountSettings(); return; }
-  if (document.getElementById('TxnEditorModal').classList.contains('open'))    { kdCloseTxnEditor(); return; }
-  if (document.getElementById('AccountModal').classList.contains('open'))      { kdCloseAccountModal(); return; }
-  if (document.getElementById('AccountDetailModal').classList.contains('open')){ kdCloseAccountDetail(); return; }
+  if (document.getElementById('TxnEditorModal').classList.contains('open'))    { CloseTxnEditor(); return; }
+  if (document.getElementById('AccountModal').classList.contains('open'))      { CloseAccountModal(); return; }
+  if (document.getElementById('AccountDetailModal').classList.contains('open')){ CloseAccountDetail(); return; }
   if (document.getElementById('CashModal').classList.contains('open'))         { closeCashModal(); return; }
   if (document.getElementById('DepositModal').classList.contains('open'))      { closeDepositModal(); return; }
   if (document.getElementById('AccountRecordsModal').classList.contains('open')){ closeRecordsModal(); return; }
   if (document.getElementById('DividendModal').classList.contains('open'))     { closeDividendModal(); return; }
-  if (document.getElementById('AddStockModal').classList.contains('open'))     { kdCloseAddModal(); return; }
+  if (document.getElementById('AddStockModal').classList.contains('open'))     { CloseAddModal(); return; }
 });
 
 // Pull-to-refresh
@@ -2553,7 +2553,7 @@ document.addEventListener('keydown', e => {
       refreshing = true; indicator.style.height = '48px';
       const sp = document.getElementById('ptrSpinner'), tx = document.getElementById('ptrText');
       if (sp) sp.classList.add('spinning'); if (tx) tx.textContent = '새로고침 중...';
-      await kdRefreshAll();
+      await RefreshAll();
       refreshing = false; if (sp) sp.classList.remove('spinning');
     }
     indicator.style.height = '0'; indicator.classList.remove('ptr-ready');
@@ -2563,12 +2563,12 @@ document.addEventListener('keydown', e => {
 
 // ===== 관심종목 =====
 
-const kdWatchPrices = {};
-let _kdWatchPending = null;
-let _kdWatchAcTimer = null;
+ST.watchPrices = {};
+ST.watchPending = null;
+ST.watchAcTimer = null;
 
-function kdOpenWatchModal() {
-  _kdWatchPending = null;
+function OpenWatchModal() {
+  ST.watchPending = null;
   document.getElementById('WatchSearch').value = '';
   document.getElementById('WatchPreview').style.display = 'none';
   const listEl = document.getElementById('WatchAcList');
@@ -2576,19 +2576,19 @@ function kdOpenWatchModal() {
   document.getElementById('WatchModal').classList.add('open');
   setTimeout(() => document.getElementById('WatchSearch').focus(), 50);
 }
-function kdCloseWatchModal() {
+function CloseWatchModal() {
   document.getElementById('WatchModal').classList.remove('open');
-  _kdWatchPending = null;
+  ST.watchPending = null;
 }
 
-function kdOnWatchSearchInput(val) {
-  clearTimeout(_kdWatchAcTimer);
-  _kdWatchPending = null;
+function OnWatchSearchInput(val) {
+  clearTimeout(ST.watchAcTimer);
+  ST.watchPending = null;
   document.getElementById('WatchPreview').style.display = 'none';
   const listEl = document.getElementById('WatchAcList');
   if (!val.trim()) { listEl.classList.remove('open'); return; }
-  _kdWatchAcTimer = setTimeout(async () => {
-    const items = await kdWatchFetchAutocomplete(val.trim());
+  ST.watchAcTimer = setTimeout(async () => {
+    const items = await WatchFetchAutocomplete(val.trim());
     listEl.innerHTML = '';
     if (!items.length) { listEl.classList.remove('open'); return; }
     items.forEach(item => {
@@ -2597,7 +2597,7 @@ function kdOnWatchSearchInput(val) {
       div.innerHTML = `<span class="mw-ac-name">${item.name}</span><span class="mw-ac-ticker">${item.ticker}</span>`;
       div.addEventListener('mousedown', e => {
         e.preventDefault();
-        _kdWatchPending = item;
+        ST.watchPending = item;
         document.getElementById('WatchSearch').value = item.name;
         listEl.classList.remove('open');
         const prev = document.getElementById('WatchPreview');
@@ -2611,41 +2611,41 @@ function kdOnWatchSearchInput(val) {
   }, 300);
 }
 
-async function kdWatchFetchAutocomplete(query) {
-  return kdFetchAutocompleteKR(query);
+async function WatchFetchAutocomplete(query) {
+  return FetchAutocompleteKR(query);
 }
 
-function kdSaveWatch() {
-  if (!_kdWatchPending) {
+function SaveWatch() {
+  if (!ST.watchPending) {
     const val = document.getElementById('WatchSearch').value.trim().toUpperCase();
     if (!val) { alert('종목을 선택해 주세요.'); return; }
-    _kdWatchPending = { ticker: val, name: val };
+    ST.watchPending = { ticker: val, name: val };
   }
-  const { ticker, name } = _kdWatchPending;
+  const { ticker, name } = ST.watchPending;
   if (ST.watchlist.find(w => w.ticker === ticker)) { alert('이미 추가된 종목입니다.'); return; }
   ST.watchlist.push({ ticker, name });
   saveWatchlist();
-  kdCloseWatchModal();
-  kdRenderWatchlist();
+  CloseWatchModal();
+  RenderWatchlist();
   fetchKdPrice(ticker).then(info => {
     if (info) {
-      kdWatchPrices[ticker] = info;
+      ST.watchPrices[ticker] = info;
       if (info.name && info.name !== ticker) {
         const w = ST.watchlist.find(x => x.ticker === ticker);
         if (w) { w.name = info.name; saveWatchlist(); }
       }
-      kdRenderWatchlist();
+      RenderWatchlist();
     }
   }).catch(() => {});
 }
 
-function kdDeleteWatch(ticker) {
+function DeleteWatch(ticker) {
   ST.watchlist = ST.watchlist.filter(w => w.ticker !== ticker);
   saveWatchlist();
-  kdRenderWatchlist();
+  RenderWatchlist();
 }
 
-function kdRenderWatchlist() {
+function RenderWatchlist() {
   const c = document.getElementById('WatchContainer');
   if (!c) return;
   if (!ST.watchlist.length) {
@@ -2653,7 +2653,7 @@ function kdRenderWatchlist() {
     return;
   }
   const rows = ST.watchlist.map(w => {
-    const info = kdWatchPrices[w.ticker];
+    const info = ST.watchPrices[w.ticker];
     const cur    = info ? fmtWon(info.price) : '-';
     const chg    = info ? (info.change || 0) : null;
     const chgPct = info ? (info.changeRate || 0) : null;
@@ -2665,7 +2665,7 @@ function kdRenderWatchlist() {
       <td class="ta-r" style="font-weight:700;font-variant-numeric:tabular-nums">${cur}</td>
       <td class="ta-r ${cls}" style="font-variant-numeric:tabular-nums">${chgStr}</td>
       <td class="ta-r ${cls}">${pctStr}</td>
-      <td class="ta-c"><button class="mw-btn-del" onclick="kdDeleteWatch('${w.ticker}')">삭제</button></td>
+      <td class="ta-c"><button class="mw-btn-del" onclick="DeleteWatch('${w.ticker}')">삭제</button></td>
     </tr>`;
   }).join('');
   c.innerHTML = `<div style="overflow-x:auto"><table class="mw-table">
@@ -2677,21 +2677,21 @@ function kdRenderWatchlist() {
 
 // ===== KDeal 거래 추가/내역 =====
 const KDT_TRADES_KEY = 'kd_trades_v1';
-ST.trades = kdtLoadTrades();
-let kdtEditingTradeId = null;
-let kdtCurrentTab = 'all';
-let kdtHistoryOpen = false;
+ST.trades = tLoadTrades();
+ST.editingTradeId = null;
+ST.currentTab = 'all';
+ST.historyOpen = false;
 
-function kdtLoadTrades() {
+function tLoadTrades() {
   try { return JSON.parse(localStorage.getItem(KDT_TRADES_KEY)) || []; } catch(_) { return []; }
 }
-function kdtSaveTrades() { localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(ST.trades)); }
+function tSaveTrades() { localStorage.setItem(KDT_TRADES_KEY, JSON.stringify(ST.trades)); }
 
 // FIFO 분석
 
 // 날짜 기준 보유 종목
 
-function kdtUpdateSellStockOptions() {
+function tUpdateSellStockOptions() {
   const sel = document.getElementById('tSellStockSelect');
   if (!sel) return;
   const type = document.getElementById('tTradeType')?.value;
@@ -2728,7 +2728,7 @@ function kdtUpdateSellStockOptions() {
   }
 }
 
-function kdtOnSellStockSelect(val, skipPrice) {
+function tOnSellStockSelect(val, skipPrice) {
   const sel = document.getElementById('tSellStockSelect');
   if (!sel || !val) return;
   const opt = sel.options[sel.selectedIndex];
@@ -2739,17 +2739,17 @@ function kdtOnSellStockSelect(val, skipPrice) {
   const priceEl = document.getElementById('tTradePrice');
   if (!skipPrice && opt.dataset.price && !priceEl.value) {
     priceEl.value = Math.round(parseFloat(opt.dataset.price)).toLocaleString('ko-KR');
-    kdtUpdateTradePreview();
+    tUpdateTradePreview();
   }
 
   // 수량 힌트 업데이트 (계좌 선택은 변경하지 않음)
   const accId = document.getElementById('tTradeAcc')?.value;
-  kdtOnSellAccChange(accId);
+  tOnSellAccChange(accId);
 }
 
-function kdtOnSellAccChange(accId) {
+function tOnSellAccChange(accId) {
   const type = document.getElementById('tTradeType')?.value;
-  if (type === 'sell') kdtUpdateSellStockOptions();
+  if (type === 'sell') tUpdateSellStockOptions();
 
   const hintEl = document.getElementById('tSellQtyHint');
   if (!hintEl) return;
@@ -2765,36 +2765,36 @@ function kdtOnSellAccChange(accId) {
 }
 
 // 거래 내역 토글
-function kdtToggleHistory() {
-  kdtHistoryOpen = !kdtHistoryOpen;
+function tToggleHistory() {
+  ST.historyOpen = !ST.historyOpen;
   const wrap = document.getElementById('tHistoryWrap');
   const chevron = document.getElementById('tChevron');
-  if (wrap) wrap.style.display = kdtHistoryOpen ? '' : 'none';
-  if (chevron) chevron.style.transform = kdtHistoryOpen ? 'rotate(90deg)' : '';
-  if (kdtHistoryOpen) kdtRenderTradeHistory();
+  if (wrap) wrap.style.display = ST.historyOpen ? '' : 'none';
+  if (chevron) chevron.style.transform = ST.historyOpen ? 'rotate(90deg)' : '';
+  if (ST.historyOpen) tRenderTradeHistory();
 }
 
 // 탭 전환
-function kdtSetTab(tab) {
-  kdtCurrentTab = tab;
+function tSetTab(tab) {
+  ST.currentTab = tab;
   ['all','open','closed'].forEach(t => {
     const el = document.getElementById('kdtTab' + t.charAt(0).toUpperCase() + t.slice(1));
     if (el) el.classList.toggle('active', t === tab);
   });
-  kdtRenderTradeHistory();
+  tRenderTradeHistory();
 }
 
 // 거래 내역 렌더링
-function kdtRenderTradeHistory() {
+function tRenderTradeHistory() {
   const { closedMap, positions } = tFifoAnalysis();
   const openTickers = new Set(positions.map(p => p.ticker));
   const container = document.getElementById('tTradeHistoryContainer');
   if (!container) return;
 
   let trades = [...ST.trades].sort((a, b) => b.date.localeCompare(a.date));
-  if (kdtCurrentTab === 'open') {
+  if (ST.currentTab === 'open') {
     trades = trades.filter(t => t.type === 'buy' && openTickers.has(t.ticker));
-  } else if (kdtCurrentTab === 'closed') {
+  } else if (ST.currentTab === 'closed') {
     trades = trades.filter(t => t.type === 'sell' && closedMap[t.id]);
   }
 
@@ -2832,8 +2832,8 @@ function kdtRenderTradeHistory() {
       <td class="ta-r" style="color:var(--muted)">${t.fee ? fmtKRW(t.fee) : '-'}</td>
       ${pnlCols}
       <td style="white-space:nowrap">
-        <button class="mt-btn-sm" onclick="kdtOpenTradeModal('${t.id}')">편집</button>
-        <button class="mt-btn-sm del" onclick="kdtDeleteTrade('${t.id}')">삭제</button>
+        <button class="mt-btn-sm" onclick="tOpenTradeModal('${t.id}')">편집</button>
+        <button class="mt-btn-sm del" onclick="tDeleteTrade('${t.id}')">삭제</button>
       </td>
     </tr>`;
   }).join('');
@@ -2851,7 +2851,7 @@ function kdtRenderTradeHistory() {
 }
 
 // 모달 제어
-function kdtSetTradeType(type) {
+function tSetTradeType(type) {
   document.getElementById('tTradeType').value = type;
   document.getElementById('tTypeBuyBtn').className = 'mt-type-btn' + (type==='buy' ? ' active-buy' : '');
   document.getElementById('tTypeSellBtn').className = 'mt-type-btn' + (type==='sell' ? ' active-sell' : '');
@@ -2859,11 +2859,11 @@ function kdtSetTradeType(type) {
   if (sellRow) sellRow.style.display = type === 'sell' ? '' : 'none';
   const hintEl = document.getElementById('tSellQtyHint');
   if (hintEl) hintEl.textContent = '';
-  if (type === 'sell') kdtUpdateSellStockOptions();
+  if (type === 'sell') tUpdateSellStockOptions();
 }
 
-function kdtOpenTradeModal(editId = null) {
-  kdtEditingTradeId = editId;
+function tOpenTradeModal(editId = null) {
+  ST.editingTradeId = editId;
   const titleEl = document.getElementById('tTradeModalTitle');
 
   // 계좌 셀렉터 기본 초기화 (활성 계좌만)
@@ -2877,7 +2877,7 @@ function kdtOpenTradeModal(editId = null) {
     if (!t) return;
     if (titleEl) titleEl.textContent = '거래 수정';
     document.getElementById('tTradeDate').value  = t.date;
-    kdtSetTradeType(t.type);
+    tSetTradeType(t.type);
     document.getElementById('tTradeTicker').value = t.ticker;
     document.getElementById('tTradeName').value  = t.name || '';
     document.getElementById('tTradePrice').value = t.price ? Number(t.price).toLocaleString('ko-KR') : '';
@@ -2888,7 +2888,7 @@ function kdtOpenTradeModal(editId = null) {
     if (t.type === 'sell') {
       setTimeout(() => {
         const sel = document.getElementById('tSellStockSelect');
-        if (sel) { sel.value = t.ticker; kdtOnSellStockSelect(t.ticker, true); }
+        if (sel) { sel.value = t.ticker; tOnSellStockSelect(t.ticker, true); }
         if (accSel && t.accId) accSel.value = t.accId;
       }, 0);
     }
@@ -2897,7 +2897,7 @@ function kdtOpenTradeModal(editId = null) {
     const now = new Date();
     document.getElementById('tTradeDate').value =
       `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    kdtSetTradeType('buy');
+    tSetTradeType('buy');
     document.getElementById('tTradeTicker').value = '';
     document.getElementById('tTradeName').value  = '';
     document.getElementById('tTradePrice').value = '';
@@ -2910,13 +2910,13 @@ function kdtOpenTradeModal(editId = null) {
   document.getElementById('tFullFormActions').style.display = '';
   document.getElementById('tQuickAccList').style.display = 'none';
   document.getElementById('tQuickForm').style.display = 'none';
-  kdtUpdateTradePreview();
+  tUpdateTradePreview();
   document.getElementById('tTradeModal').classList.add('open');
 }
 
 let _kqtTicker = '', _kqtName = '', _kqtAccId = '';
 
-function kdtOpenTradeModalForTicker(ticker, name) {
+function tOpenTradeModalForTicker(ticker, name) {
   _kqtTicker = ticker;
   _kqtName = name || ticker;
   document.getElementById('tTradeModalTitle').textContent = _kqtName;
@@ -2927,15 +2927,15 @@ function kdtOpenTradeModalForTicker(ticker, name) {
   const activeAccs = ST.accounts.filter(a => a.active !== false);
   if (activeAccs.length === 1) {
     document.getElementById('tQuickAccList').style.display = 'none';
-    kqtOpenForm(activeAccs[0].id);
+    tOpenForm(activeAccs[0].id);
   } else {
     document.getElementById('tQuickAccList').style.display = '';
-    kqtRenderAccList();
+    tRenderAccList();
   }
   document.getElementById('tTradeModal').classList.add('open');
 }
 
-function kqtRenderAccList() {
+function tRenderAccList() {
   const wrap = document.getElementById('tQuickAccList');
   if (!wrap) return;
   const h = ST.holdings.find(x => x.ticker === _kqtTicker);
@@ -2952,7 +2952,7 @@ function kqtRenderAccList() {
     const profitColor = profit >= 0 ? 'var(--plus)' : 'var(--minus)';
 
     return `<div class="trade-acc-card">
-      <div class="trade-acc-row" onclick="kqtOpenForm('${acc.id}')">
+      <div class="trade-acc-row" onclick="tOpenForm('${acc.id}')">
         <div class="trade-acc-badge">${escapeHtml((acc.name||'').slice(0,2))}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px">${escapeHtml(acc.name)}</div>
@@ -2971,7 +2971,7 @@ function kqtRenderAccList() {
   }).join('');
 }
 
-function kqtOpenForm(accId) {
+function tOpenForm(accId) {
   _kqtAccId = accId;
   const acc = ST.accounts.find(a => a.id === accId);
   const h = ST.holdings.find(x => x.ticker === _kqtTicker);
@@ -3008,20 +3008,20 @@ function kqtOpenForm(accId) {
 
   document.getElementById('tQuickAccList').style.display = 'none';
   document.getElementById('tQuickForm').style.display = '';
-  kqtUpdatePreview();
+  tUpdatePreview();
   setTimeout(() => document.getElementById('tQty').focus(), 50);
 }
 
-function kqtSetType(type) {
+function tSetType(type) {
   document.getElementById('tBuyBtn').className  = 'trade-type-btn buy'  + (type === 'buy'  ? ' active' : '');
   document.getElementById('tSellBtn').className = 'trade-type-btn sell' + (type === 'sell' ? ' active' : '');
   document.getElementById('tType').value = type;
   document.getElementById('tCashLabel').textContent =
     type === 'buy' ? '거래 후 현금 (감소)' : '거래 후 현금 (증가)';
-  kqtUpdatePreview();
+  tUpdatePreview();
 }
 
-function kqtUpdatePreview() {
+function tUpdatePreview() {
   const type  = document.getElementById('tType').value;
   const qty   = parseFloat(document.getElementById('tQty').value.replace(/,/g,'')) || 0;
   const price = parseFloat(document.getElementById('tPrice').value.replace(/,/g,'')) || 0;
@@ -3042,7 +3042,7 @@ function kqtUpdatePreview() {
     qty > 0 ? fmtWon(qtyAfter) + '주' : '-';
 }
 
-function kqtSave() {
+function tSave() {
   const type  = document.getElementById('tType').value;
   const date  = document.getElementById('tDate').value;
   const qty   = parseFloat(document.getElementById('tQty').value.replace(/,/g,'')) || 0;
@@ -3059,35 +3059,35 @@ function kqtSave() {
   };
   const delta = type === 'buy' ? -(price * qty + fee) : +(price * qty - fee);
   adjustCash(_kqtAccId, delta);
-  kdtApplyHoldingsQty(type, _kqtTicker, _kqtName, _kqtAccId, price, qty, false);
+  tApplyHoldingsQty(type, _kqtTicker, _kqtName, _kqtAccId, price, qty, false);
   ST.trades.push(entry);
-  kdtSaveTrades();
-  kdtCloseTradeModal();
-  if (kdtHistoryOpen) kdtRenderTradeHistory();
-  kdRender();
+  tSaveTrades();
+  tCloseTradeModal();
+  if (ST.historyOpen) tRenderTradeHistory();
+  Render();
 }
 
-function kqtCloseForm() {
+function tCloseForm() {
   const multiAcc = ST.accounts.filter(a => a.active !== false).length > 1;
   if (multiAcc) {
     document.getElementById('tQuickForm').style.display = 'none';
     document.getElementById('tQuickAccList').style.display = '';
   } else {
-    kdtCloseTradeModal();
+    tCloseTradeModal();
   }
 }
 
-function kdtCloseTradeModal() {
+function tCloseTradeModal() {
   document.getElementById('tTradeModal').classList.remove('open');
-  kdtEditingTradeId = null;
+  ST.editingTradeId = null;
 }
 
 
-function kdtOnTickerInput(val) {
+function tOnTickerInput(val) {
   document.getElementById('tTradeTicker').value = val.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
 }
 
-function kdtUpdateTradePreview() {
+function tUpdateTradePreview() {
   const price = parseFloat(document.getElementById('tTradePrice').value.replace(/,/g,'')) || 0;
   const qty   = parseFloat(document.getElementById('tTradeQty').value.replace(/,/g,'')) || 0;
   const prev  = document.getElementById('tTradePreview');
@@ -3100,7 +3100,7 @@ function kdtUpdateTradePreview() {
   }
 }
 
-function kdtApplyHoldingsQty(type, ticker, tradeName, accId, price, qty, reverse) {
+function tApplyHoldingsQty(type, ticker, tradeName, accId, price, qty, reverse) {
   // reverse=true: 기존 거래 수량 효과 역산 (편집·삭제 시)
   const isBuy = reverse ? type === 'sell' : type === 'buy';
   const h = ST.holdings.find(x => x.ticker === ticker);
@@ -3133,7 +3133,7 @@ function kdtApplyHoldingsQty(type, ticker, tradeName, accId, price, qty, reverse
   saveHoldings();
 }
 
-function kdtSaveTrade() {
+function tSaveTrade() {
   const type   = document.getElementById('tTradeType').value;
   const ticker = document.getElementById('tTradeTicker').value.trim().toUpperCase();
   const name   = document.getElementById('tTradeName').value.trim();
@@ -3151,14 +3151,14 @@ function kdtSaveTrade() {
   const accId = document.getElementById('tTradeAcc')?.value || '';
   if (!accId) { alert('계좌를 선택해주세요.'); return; }
   const entry = { type, ticker, name: name || ticker, date, price, qty, fee, memo, accId };
-  if (kdtEditingTradeId) {
-    const idx = ST.trades.findIndex(x => x.id === kdtEditingTradeId);
+  if (ST.editingTradeId) {
+    const idx = ST.trades.findIndex(x => x.id === ST.editingTradeId);
     if (idx >= 0) {
       const old = ST.trades[idx];
       // 기존 거래 현금·수량 효과 역산
       const oldCash = old.type === 'buy' ? +(old.price * old.qty + (old.fee||0)) : -(old.price * old.qty - (old.fee||0));
       adjustCash(old.accId, oldCash);
-      kdtApplyHoldingsQty(old.type, old.ticker, old.name, old.accId, old.price, old.qty, true);
+      tApplyHoldingsQty(old.type, old.ticker, old.name, old.accId, old.price, old.qty, true);
       ST.trades[idx] = { ...old, ...entry };
     }
   } else {
@@ -3167,35 +3167,35 @@ function kdtSaveTrade() {
   // 새 거래 현금·수량 효과 적용
   const delta = type === 'buy' ? -(price * qty + fee) : +(price * qty - fee);
   adjustCash(accId, delta);
-  kdtApplyHoldingsQty(type, ticker, name || ticker, accId, price, qty, false);
-  kdtSaveTrades();
-  kdtCloseTradeModal();
-  if (kdtHistoryOpen) kdtRenderTradeHistory();
-  kdRender();
+  tApplyHoldingsQty(type, ticker, name || ticker, accId, price, qty, false);
+  tSaveTrades();
+  tCloseTradeModal();
+  if (ST.historyOpen) tRenderTradeHistory();
+  Render();
 }
 
-function kdtDeleteTrade(id) {
+function tDeleteTrade(id) {
   const t = ST.trades.find(x => x.id === id);
   if (!t) return;
   const qtyStr = parseFloat(t.qty).toLocaleString('en-US', { maximumFractionDigits:4 });
   if (!confirm(`${t.date} ${t.type==='buy'?'매수':'매도'} ${t.ticker} (${qtyStr}주)를 삭제할까요?`)) return;
   const reverseDelta = t.type === 'buy' ? +(t.price * t.qty + (t.fee||0)) : -(t.price * t.qty - (t.fee||0));
   adjustCash(t.accId, reverseDelta);
-  kdtApplyHoldingsQty(t.type, t.ticker, t.name, t.accId, t.price, t.qty, true);
+  tApplyHoldingsQty(t.type, t.ticker, t.name, t.accId, t.price, t.qty, true);
   ST.trades = ST.trades.filter(x => x.id !== id);
-  kdtSaveTrades();
-  kdtRenderTradeHistory();
-  kdRender();
+  tSaveTrades();
+  tRenderTradeHistory();
+  Render();
 }
 
 // 자동완성 (한국 주식)
-let _kdtNameAcTimer = null;
-function kdtOnNameInput(val) {
-  clearTimeout(_kdtNameAcTimer);
+ST.nameAcTimer = null;
+function tOnNameInput(val) {
+  clearTimeout(ST.nameAcTimer);
   const listEl = document.getElementById('tNameAcList');
   if (!val) { if (listEl) listEl.classList.remove('open'); return; }
-  _kdtNameAcTimer = setTimeout(async () => {
-    const items = await kdtFetchAutocomplete(val);
+  ST.nameAcTimer = setTimeout(async () => {
+    const items = await tFetchAutocomplete(val);
     if (listEl) tShowAcList(listEl, items, item => {
       document.getElementById('tTradeName').value  = item.name;
       document.getElementById('tTradeTicker').value = item.ticker;
@@ -3204,8 +3204,8 @@ function kdtOnNameInput(val) {
   }, 300);
 }
 
-async function kdtFetchAutocomplete(query) {
-  return kdFetchAutocompleteKR(query);
+async function tFetchAutocomplete(query) {
+  return FetchAutocompleteKR(query);
 }
 
 
@@ -3216,7 +3216,7 @@ document.addEventListener('click', e => {
 });
 
 // ===== 구 kdeal_* 데이터 자동 마이그레이션 =====
-function kdFifoToHoldings(trades) {
+function FifoToHoldings(trades) {
   const sorted = [...trades].sort((a, b) => a.date.localeCompare(b.date));
   const lots = {}, nameMap = {}, accMap = {};
   for (const t of sorted) {
@@ -3247,7 +3247,7 @@ function kdFifoToHoldings(trades) {
     }).filter(h => Object.values(h.accounts||{}).some(a => a.qty > 0));
 }
 
-function kdRunMigration() {
+function RunMigration() {
   const OLD_TRADES    = 'kdeal_trades_v1';
   const OLD_DEPOSITS  = 'kdeal_deposits_v1';
   const OLD_WATCHLIST = 'kdeal_watchlist_v1';
@@ -3270,7 +3270,7 @@ function kdRunMigration() {
 
   if (!localStorage.getItem(KD_ACC_KEY)) {
     ST.accounts = [{ id: DEF_ACC, name: '기본계좌', active: true }];
-    kdSaveAccounts();
+    SaveAccounts();
   }
 
   let trades = [];
@@ -3279,7 +3279,7 @@ function kdRunMigration() {
     if (Array.isArray(raw)) {
       trades = raw.map(({ code, ticker, ...rest }) => ({ ticker: code || ticker || '', accId: DEF_ACC, ...rest }));
       ST.trades = trades;
-      kdtSaveTrades();
+      tSaveTrades();
     }
   } catch(e) { console.warn('[KDeal] 거래 마이그레이션 오류:', e); }
 
@@ -3300,7 +3300,7 @@ function kdRunMigration() {
   } catch(e) { console.warn('[KDeal] 관심종목 마이그레이션 오류:', e); }
 
   if (trades.length > 0) {
-    ST.holdings = kdFifoToHoldings(trades);
+    ST.holdings = FifoToHoldings(trades);
     saveHoldings();
   }
 
@@ -3331,7 +3331,7 @@ function kdRunMigration() {
   }
 }
 
-function kdInitCashIfEmpty() {
+function InitCashIfEmpty() {
   if (localStorage.getItem(MARKET_CONFIG.storageKeys.cash)) return;
   if (!ST.trades.length && !ST.deposits.transactions.length) return;
   const cashMap = {};
@@ -3350,14 +3350,14 @@ function kdInitCashIfEmpty() {
 }
 
 // Init
-kdRunMigration();
-kdInitCashIfEmpty();
-kdRender();
-kdRenderChart();
-kdRenderAccountButtons();
-kdRenderWatchlist();
-kdInitAutoRefresh();
-if (ST.holdings.length || ST.watchlist.length) setTimeout(() => kdRefreshAll(), 800);
+RunMigration();
+InitCashIfEmpty();
+Render();
+RenderChart();
+RenderAccountButtons();
+RenderWatchlist();
+InitAutoRefresh();
+if (ST.holdings.length || ST.watchlist.length) setTimeout(() => RefreshAll(), 800);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
     .catch(err => console.warn('SW 등록 실패:', err));
@@ -3365,7 +3365,7 @@ if ('serviceWorker' in navigator) {
 
 window.addEventListener('message', e => {
   if (e.data?.type === 'REFRESH_REQUEST') {
-    if (ST.holdings.length || ST.watchlist.length) kdRefreshAll(true);
+    if (ST.holdings.length || ST.watchlist.length) RefreshAll(true);
   }
 });
 

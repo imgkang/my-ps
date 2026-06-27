@@ -70,8 +70,8 @@ export const SEEDS = {
     containerIds: ['nkHoldingsContainer', 'HoldingsContainer'],
     heroIds: ['nkHeroContainer', 'HeroContainer'],
     // 인자 없이 호출 가능한 모달 오픈 함수 — 열어서 에러/내용 검증(모달 ID 회귀 탐지)
-    smoke: ['nkOpenAddModal', 'nkOpenDepositModal', 'nkOpenRecordsModal', 'nkOpenDividendModal',
-            'nkOpenAccountSettings', 'nkOpenWatchModal', 'nktOpenTradeModal'],
+    smoke: ['OpenAddModal', 'OpenDepositModal', 'OpenRecordsModal', 'OpenDividendModal',
+            'OpenAccountSettings', 'OpenWatchModal', 'tOpenTradeModal'],
   },
   kdeal: {
     url: 'KDeal.html',
@@ -88,7 +88,7 @@ export const SEEDS = {
     },
     containerIds: ['kdHoldingsContainer', 'HoldingsContainer'],
     heroIds: ['kdHeroContainer', 'HeroContainer'],
-    smoke: ['kdOpenAddModal', 'kdOpenDepositModal', 'kdOpenRecordsModal', 'kdOpenDividendModal',
-            'kdOpenAccountSettings', 'kdOpenWatchModal', 'kdtOpenTradeModal'],
+    smoke: ['OpenAddModal', 'OpenDepositModal', 'OpenRecordsModal', 'OpenDividendModal',
+            'OpenAccountSettings', 'OpenWatchModal', 'tOpenTradeModal'],
   },
 };
