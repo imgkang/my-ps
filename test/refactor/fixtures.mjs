@@ -55,6 +55,9 @@ export const SEEDS = {
     // 캡처 대상 DOM 컨테이너 (Phase 3에서 id 비접두사화하면 후보 중 존재하는 것을 사용)
     containerIds: ['nkHoldingsContainer', 'HoldingsContainer'],
     heroIds: ['nkHeroContainer', 'HeroContainer'],
+    // 인자 없이 호출 가능한 모달 오픈 함수 — 열어서 에러/내용 검증(모달 ID 회귀 탐지)
+    smoke: ['nkOpenAddModal', 'nkOpenDepositModal', 'nkOpenRecordsModal', 'nkOpenDividendModal',
+            'nkOpenAccountSettings', 'nkOpenWatchModal', 'nktOpenTradeModal'],
   },
   kdeal: {
     url: 'KDeal.html',
@@ -69,5 +72,7 @@ export const SEEDS = {
     },
     containerIds: ['kdHoldingsContainer', 'HoldingsContainer'],
     heroIds: ['kdHeroContainer', 'HeroContainer'],
+    smoke: ['kdOpenAddModal', 'kdOpenDepositModal', 'kdOpenRecordsModal', 'kdOpenDividendModal',
+            'kdOpenAccountSettings', 'kdOpenWatchModal', 'kdtOpenTradeModal'],
   },
 };

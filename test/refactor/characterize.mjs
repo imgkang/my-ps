@@ -62,7 +62,8 @@ async function capture(browser, base, seed) {
   const ctx = await browser.newContext();
   await ctx.route('**/*', (route) => shouldBlock(route.request().url()) ? route.abort() : route.continue());
   const pg = await ctx.newPage();
-  pg.on('pageerror', e => console.error(`  [pageerror ${seed.url}] ${e.message}`));
+  const pageErrors = [];
+  pg.on('pageerror', e => { pageErrors.push(e.message); console.error(`  [pageerror ${seed.url}] ${e.message}`); });
   // 로드 전 localStorage 시드
   await pg.addInitScript((store) => {
     try { localStorage.clear(); } catch {}
@@ -120,7 +121,38 @@ async function capture(browser, base, seed) {
   }, { containerId, heroId });
 
   await ctx.close();
-  return { containerId, heroId, ...data };
+  return { containerId, heroId, pageErrors, ...data };
+}
+
+// 모달 오픈 함수들을 호출해 에러/내용 검증 (모달 내부 ID 회귀 탐지)
+async function captureSmoke(browser, base, seed) {
+  const out = {};
+  for (const fn of (seed.smoke || [])) {
+    const ctx = await browser.newContext();
+    await ctx.route('**/*', (route) => shouldBlock(route.request().url()) ? route.abort() : route.continue());
+    const pg = await ctx.newPage();
+    const errs = [];
+    pg.on('pageerror', e => errs.push(e.message));
+    await pg.addInitScript((store) => { try { localStorage.clear(); } catch {} for (const [k, v] of Object.entries(store)) localStorage.setItem(k, JSON.stringify(v)); }, seed.store);
+    await pg.goto(`${base}/${seed.url}`, { waitUntil: 'domcontentloaded' });
+    await pg.waitForTimeout(300);
+    const res = await pg.evaluate((fn) => {
+      const norm = (s) => (s || '').replace(/\s+/g, ' ').trim();
+      let called = false, err = null;
+      try { if (typeof window[fn] === 'function') { window[fn](); called = true; } else err = 'not a function'; }
+      catch (e) { err = String(e && e.message || e); }
+      // 보이는 모달 찾기: class에 modal 포함 + 화면에 표시됨
+      let text = '';
+      const cands = [...document.querySelectorAll('[class*="modal"],[class*="Modal"]')]
+        .filter(el => { const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && el.clientHeight > 0; });
+      if (cands.length) text = norm(cands.map(el => el.innerText).sort((a, b) => b.length - a.length)[0]);
+      return { called, err, text };
+    }, fn);
+    if (errs.length) res.err = (res.err ? res.err + '; ' : '') + errs.join('; ');
+    out[fn] = res;
+    await ctx.close();
+  }
+  return out;
 }
 
 function deepDiff(a, b, path = '', out = []) {
@@ -142,10 +174,17 @@ function deepDiff(a, b, path = '', out = []) {
   for (const [name, seed] of Object.entries(SEEDS)) {
     process.stdout.write(`캡처: ${name} (${seed.url}) ... `);
     result[name] = await capture(browser, base, seed);
+    result[name].smoke = await captureSmoke(browser, base, seed);
     console.log('done');
   }
   await browser.close();
   srv.close();
+
+  // 로드 중 런타임 에러 + 모달 스모크 에러는 무조건 실패 (누락 ID/함수 탐지)
+  const errs = Object.entries(result).flatMap(([n, r]) =>
+    [...(r.pageErrors || []).map(e => `${n}: ${e}`),
+     ...Object.entries(r.smoke || {}).filter(([, s]) => s.err).map(([fn, s]) => `${n}.${fn}: ${s.err}`)]);
+  if (errs.length) { console.error(`\n❌ 페이지 런타임 에러 ${errs.length}건:\n` + errs.map(e => '  • ' + e).join('\n')); process.exit(1); }
 
   if (UPDATE) {
     await mkdir(dirname(GOLDEN), { recursive: true });
@@ -160,7 +199,7 @@ function deepDiff(a, b, path = '', out = []) {
   }
   const golden = JSON.parse(await readFile(GOLDEN, 'utf8'));
   // containerId/heroId 는 Phase 3에서 의도적으로 바뀌므로 비교에서 제외
-  const strip = (o) => { const c = JSON.parse(JSON.stringify(o)); for (const m of Object.values(c)) { delete m.containerId; delete m.heroId; } return c; };
+  const strip = (o) => { const c = JSON.parse(JSON.stringify(o)); for (const m of Object.values(c)) { delete m.containerId; delete m.heroId; delete m.pageErrors; } return c; };
   const diffs = deepDiff(strip(golden), strip(result));
   if (diffs.length) {
     console.error(`\n❌ 동작 불일치 (${diffs.length}건):\n`);
