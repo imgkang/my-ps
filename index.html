@@ -3429,7 +3429,7 @@ registerMobileTooltipDismiss();
     <div style="margin-bottom:12px">
       <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">세금 (만원) <span style="font-weight:400">— 자동계산, 직접 입력 가능</span></label>
       <input type="text" inputmode="decimal" id="wdrecTax" oninput="onWdrecTaxManualEdit()"
-        onfocus="this.value=this.value.replace(/,/g,'')"
+        onfocus="InputUX.stripCommas(this)"
         onblur="fmtAccModalInput(this,1)"
         style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
     </div>
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.638';
+const APP_VERSION = 'MyGP v0.639';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
