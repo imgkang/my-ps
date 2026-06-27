@@ -4,16 +4,54 @@
 > 새 세션은 이 파일 + `server/README.md` + `CLAUDE.md` + `docs/DEPLOY.md` 를 먼저 읽으면 맥락을 파악할 수 있다.
 
 저장소: `imgkang/my-ps`. **브랜치·커밋·버전 규칙은 `CLAUDE.md` 가 최신 기준**(이 문서의 옛 규칙보다 우선).
-최종 클라이언트 버전: **v0.639** (index/NonK/KDeal/sw 공통). 마지막 갱신: 2026-06-27.
+최종 클라이언트 버전: **v0.644** (index/NonK/KDeal/sw 공통). 마지막 갱신: 2026-06-27.
 
 ---
 
 ## 🧭 최신 상태 요약 (2026-06-27 기준)
 
-- **현재 버전 v0.639.** 배포 파이프라인(GitHub Webhook → 집 PC git pull + CF purge, server/src 변경 시 자동 빌드·재시작)은 v0.543~0.545 에서 완성된 상태 그대로 운영 중.
+- **현재 버전 v0.644.** 배포 파이프라인(GitHub Webhook → 집 PC git pull + CF purge, server/src 변경 시 자동 빌드·재시작)은 v0.543~0.545 에서 완성된 상태 그대로 운영 중.
 - **구글 로그인 + 다중 사용자**가 기본 인증(PIN 제거, v0.517). 이후 온보딩/iOS PWA 로그인 안정화까지 마무리됨(v0.590~0.602).
-- 최근 작업 흐름은 **입력 UX 공통 모듈(`js/input-ux.js`) 확대 완료** — 자동선택·콤마 포맷·날짜 피커 3종을 세 앱(MyPM/NonK/KDeal)에 일관 적용(v0.633~0.639). 아래 "입력 UX 공통 모듈 확대" 섹션 참고.
-- ⚠️ 이 문서 본문의 v0.543 이후 섹션들은 과거 기록. **아래 두 섹션("입력 UX 공통 모듈 확대", "v0.583~0.634 보강")이 그 이후 변경의 요약**이다. 그 이전(v0.546~0.582)은 shallow clone 으로 히스토리가 잘려 상세 미기재.
+- 최근 작업 흐름은 **입력 UX 공통 모듈(`js/input-ux.js`) 전면 적용** — 자동선택·콤마 포맷·날짜/연월 피커를 세 앱에 일관 적용(v0.633~0.644). 아래 "입력 UX — 연/월 피커·자동선택 확대", "입력 UX 공통 모듈 확대" 두 섹션 참고.
+- ⚠️ 이 문서 본문의 v0.543 이후 섹션들은 과거 기록. **상단 세 섹션(연/월 피커·자동선택 확대 → 공통 모듈 확대 → v0.583~0.634 보강)이 그 이후 변경의 요약**이다. 그 이전(v0.546~0.582)은 shallow clone 으로 히스토리가 잘려 상세 미기재.
+
+---
+
+## ✅ 입력 UX — 연/월 피커·숫자 자동선택 확대 (2026-06-27, v0.640~0.644)
+
+> 감사 결과 연/월 입력 대부분이 `type=number`(inputmode 없음)이라 자동선택도 피커도
+> 미적용이었음. **혼합 방식**(연+월 쌍=연/월 휠 피커, 단독 연도/기타 숫자=자동선택)으로
+> 세 앱에 일관 적용. PR #338 머지 완료. 모든 단계 Playwright 검증, 콘솔 오류 0.
+
+### 적용 분류
+- **(A) 연/월 휠 피커** — 연도 input 에 `data-iux-ym-month="<월id>"`, 월 input 에
+  `data-iux-ym-year="<년id>"` 교차 마커만 추가(type 유지 → scanDateInputs 가 런타임
+  text+readonly 전환). 적용처:
+  - 설정 연금 시작월 6쌍(cfg_{my,wife}{NP,GP,SP}StartYear/Month) — v0.640
+  - 배당 연/월(nkDivYear/Month, kdDivYear/Month) — v0.641
+  - 설정 생년월 2쌍 + 온보딩 연금행 동적 6쌍(ob_${key}_yr/mon, mkPensionRow) — v0.642
+  - (기존: 온보딩 생년월 ob_my/wifeBY·BM)
+- **(B) 자동선택** — index 의 type=number(inputmode 없음) 62개를 `type="text"`+inputmode
+  로 전환(소수 18=decimal, 정수 44=numeric) → 기존 selector 에 편입되어 탭 시 전체선택. v0.643.
+  - iOS 에서 `select()` 가 type=number 에 불안정 → 검증된 text+inputmode 패턴으로 통일.
+  - 단독 연도(wdP*/qwdP*_start)도 자동선택. min/max/step/oninput/style 보존(read 는 Number/parseInt).
+  - NonK/KDeal 은 배당 연/월(피커) 외 type=number 입력이 없어 변환 대상 없음.
+
+### 동반 수정
+- **fix(input-ux 휠 레이스, v0.641)**: 휠 컬럼 스냅 디바운스 타이머(110ms)가 피커
+  close(_st=null) 이후 실행되며 onChange 에서 `_st.y/_st.m` 접근 → "Cannot set properties
+  of null" 에러. setTimeout/click 핸들러에 `_st` null 가드 추가. (열릴 때 rAF 로 scrollTop
+  설정 → scroll 이벤트 → 타이머 예약 → 빠른 열기→확정 시 발화.)
+- **fix(CSS 회귀, v0.644)**: scanDateInputs 의 런타임 type 전환으로 `input[type="number"]/
+  [type="date"]` 지정 CSS 가 미매칭되어 스타일이 빠지던 회귀(배당 `.records-input-top`,
+  index `.rec-date-row`)를 `input[type="text"]` 도 포함하도록 확장. (`.txn-form` 류는 이미 포함.)
+
+### 주의/한계
+- **자동선택은 iOS Safari 고유 동작** — 데스크톱 Chromium 에선 type=number 도 select 되어
+  차이가 안 보임. 검증은 "변환된 필드가 text+inputmode 인지 + 보이는 필드 전체선택"으로 수행.
+  실기기(아이폰) 최종 확인 권장.
+- type=number→text 전환 후 네이티브 min/max 입력 제한은 사라짐(값은 JS 가 Number 파싱).
+  월 범위(1~12)는 휠 피커가 노출 제한으로 더 강하게 보장.
 
 ---
 
