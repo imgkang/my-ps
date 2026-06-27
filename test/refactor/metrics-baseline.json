@@ -1,0 +1,17 @@
+{
+  "trackedTotal": 9069,
+  "loc": {
+    "NonK.html": 4447,
+    "KDeal.html": 4622,
+    "market.css": 0,
+    "js/market-core.js": 0
+  },
+  "dupLines": 3254,
+  "fns": {
+    "nonk": 155,
+    "kdeal": 161,
+    "shared": 0,
+    "dupPairs": 145
+  },
+  "reusePct": 0
+}
