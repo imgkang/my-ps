@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.645';
+const APP_VERSION = 'MyGP v0.646';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -13298,6 +13298,13 @@ function cfgOpenEdit(rowBtn) {
   const edit = item.querySelector('.cfg-row-edit');
   const host = document.getElementById('cfgEditHost');
   if (!edit || !host) return;
+  // 연/월·날짜 피커 행(첫 입력이 피커)은 텍스트 모달 대신 휠/달력 피커를 바로 연다.
+  const _firstInp = edit.querySelector('input:not([disabled])');
+  if (_firstInp && (_firstInp.hasAttribute('data-iux-ym-year') || _firstInp.hasAttribute('data-iux-ym-month') || _firstInp.hasAttribute('data-iux-date'))) {
+    _firstInp.addEventListener('change', function _r() { try { _refreshCfgSummaries(); } catch (_) {} }, { once: true });
+    _firstInp.click();   // input-ux 위임이 휠(연/월) 또는 달력 피커를 오픈
+    return;
+  }
   const titleEl = document.getElementById('cfgEditTitle');
   if (titleEl) titleEl.textContent = item.querySelector('.cfg-row-label')?.textContent || '편집';
   _cfgEditReturn = { item, node: edit };
