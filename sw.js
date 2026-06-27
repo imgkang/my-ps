@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.630';
+const CACHE_NAME = 'mypm-v0.631';
 
 const BASE = '/my-ps/';
 
@@ -60,6 +60,23 @@ self.addEventListener('fetch', event => {
   try { if (new URL(event.request.url).pathname.startsWith('/api/')) return; } catch (_) {}
   // GET 외(POST/PUT/DELETE)는 캐시 대상이 아니므로 그대로 네트워크.
   if (event.request.method !== 'GET') return;
+
+  // tickers.json 은 네트워크 우선 — 종목 마스터 데이터가 갱신되면 즉시 반영.
+  // (캐시 우선이면 새 ETF 등이 다음 로드까지 안 보임). 오프라인은 캐시로 폴백.
+  try {
+    if (new URL(event.request.url).pathname.endsWith('/tickers.json')) {
+      event.respondWith(
+        fetch(event.request).then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
+          return response;
+        }).catch(() => caches.match(event.request))
+      );
+      return;
+    }
+  } catch (_) {}
 
   event.respondWith(
     caches.match(event.request).then(cached => {
