@@ -1147,6 +1147,19 @@ function RenderDividendLists() {
   }
 }
 
+// ── 공유 (Phase 7f): 계좌버튼/입력포맷 ──
+function RenderAccountButtons() {
+  const CFG = MarketCore.cfg;
+  const grid = document.getElementById('AccountButtonsGrid');
+  if (!grid) return;
+  const active = ST.accounts.filter(a => a.active !== false);
+  grid.innerHTML = active.map(a => {
+    const val = computeAccountValue(a.id);
+    return `<button class="btn-account-view" onclick="OpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${CFG.fmt.acctValue(val)}</span></button>`;
+  }).join('');
+}
+function FmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: MarketCore.cfg.locale }); }
+
 // ── 부트스트랩 ──
 // 각 HTML 은 MARKET_CONFIG 를 정의한 뒤 MarketCore.init(MARKET_CONFIG) 호출.
 // cfg: { market, version, locale, storageKeys, labels, ... }

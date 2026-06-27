@@ -708,7 +708,7 @@ const KD_PORTFOLIO_COLS = [
     cell:(it)=>it.hasCost?it._dSign+it._diff.toFixed(1)+'%':'-' },
 ];
 const KD_PORTFOLIO_COL_IDS = KD_PORTFOLIO_COLS.map(c => c.id);
-MARKET_CONFIG.cols = KD_PORTFOLIO_COLS; MARKET_CONFIG.colIds = KD_PORTFOLIO_COL_IDS; MARKET_CONFIG.fmt = { hero: fmtThou, money: fmtKRW };
+MARKET_CONFIG.cols = KD_PORTFOLIO_COLS; MARKET_CONFIG.colIds = KD_PORTFOLIO_COL_IDS; MARKET_CONFIG.fmt = { hero: fmtThou, money: fmtKRW, acctValue: formatMil };
 // 컬럼 순서는 세 앱 공유 — MyPM 설정에서 편집, NonK/KDeal은 읽기 전용으로 동일 적용.
 
 ST.holdings        = loadHoldings();
@@ -852,15 +852,6 @@ ST.autoRefreshTimer = null;
 // 서버 계산 시각 → "MM/DD HH:MM". 없으면 null.
 
 
-function RenderAccountButtons() {
-  const grid = document.getElementById('AccountButtonsGrid');
-  if (!grid) return;
-  const active = ST.accounts.filter(a => a.active !== false);
-  grid.innerHTML = active.map(a => {
-    const val = computeAccountValue(a.id);
-    return `<button class="btn-account-view" onclick="OpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${formatMil(val)}</span></button>`;
-  }).join('');
-}
 
 
 
@@ -1006,7 +997,6 @@ function OpenAccountModal(ticker) {
 }
 
 // 공통 모듈(InputUX Stage 2)로 위임 — 동작 동일, 구현은 js/input-ux.js 단일화
-function FmtAccInput(el, dec) { InputUX.formatNumber(el, { mode: 'dec', dec: dec, locale: 'ko-KR' }); }
 
 function LiveKRW(el) { InputUX.formatNumber(el, { mode: 'int', locale: 'ko-KR' }); }
 
