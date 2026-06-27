@@ -3899,7 +3899,7 @@ registerMobileTooltipDismiss();
   }
 })();
 
-const APP_VERSION = 'MyGP v0.628';
+const APP_VERSION = 'MyGP v0.629';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5989,8 +5989,29 @@ document.addEventListener('click', e => {
   }
 });
 
-// Yahoo Finance 검색 API로 한국어 종목명 조회
+// 코드로 한국어 종목명 조회.
+// 1순위: 로컬 마스터 DB(tickers.json). 2순위: 네이버 자동완성(ETF/ETN 등
+// 영숫자 코드까지 커버, 한글명 제공). 3순위: Yahoo. Yahoo는 신규 ETF의
+// 한글명을 모르는 경우가 많아 마지막 폴백으로만 사용.
 async function fetchKoreanName(code) {
+  // 1순위: 로컬 DB
+  if (window.TickerSearch && window.TickerSearch.isReady()) {
+    const local = window.TickerSearch.getKoreanName(code);
+    if (local && /[가-힣]/.test(local)) return local;
+  }
+
+  // 2순위: 네이버 자동완성 (코드로 직접 조회, ETF 포함)
+  try {
+    const url = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(code)}&target=stock,index,etf`;
+    const d = JSON.parse(await fetchViaProxy(url));
+    if (d.items && d.items.length) {
+      const hit = d.items.find(([, c]) => c === code) || d.items[0];
+      const name = hit && hit[0];
+      if (name && /[가-힣]/.test(name)) return name;
+    }
+  } catch(_) {}
+
+  // 3순위: Yahoo Finance
   for (const host of YAHOO_HOSTS) {
     const url = `https://${host}/v1/finance/search?q=${code}&lang=ko-KR&region=KR&newsCount=0&quotesCount=6&enableFuzzyQuery=false`;
     try {
