@@ -410,7 +410,7 @@
   //   먼저 떴다가 커스텀으로 바뀌는 깜빡임 발생). 그래서 type 자체를 text 로 바꿔 네이티브 UI 를
   //   원천 제거한다. 값은 문자열(YYYY-MM-DD / 숫자) 그대로 보존되어 기존 read/save 로직과 무관.
   function scanDateInputs(root) {
-    (root || document).querySelectorAll('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year],input[data-iux-year]').forEach((el) => {
+    (root || document).querySelectorAll('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year],input[data-iux-year],input[data-iux-age]').forEach((el) => {
       if (el._iuxRO) return;
       el._iuxRO = true;
       try { if (el.type !== 'text') el.type = 'text'; } catch (_) {}
@@ -423,7 +423,7 @@
   UX.scanDateInputs = scanDateInputs;
 
   function isDateMarker(el) {
-    return !!el && (el.hasAttribute('data-iux-date') || el.hasAttribute('data-iux-ym-month') || el.hasAttribute('data-iux-ym-year') || el.hasAttribute('data-iux-year'));
+    return !!el && (el.hasAttribute('data-iux-date') || el.hasAttribute('data-iux-ym-month') || el.hasAttribute('data-iux-ym-year') || el.hasAttribute('data-iux-year') || el.hasAttribute('data-iux-age'));
   }
 
   // 포커스로 인한 깜빡임 차단 ----------------------------------------------------
@@ -444,6 +444,7 @@
     else if (el.hasAttribute('data-iux-ym-month')) { e.preventDefault(); el.blur(); const mEl = document.getElementById(el.getAttribute('data-iux-ym-month')); if (mEl) UX.openYMFor(el, mEl); }
     else if (el.hasAttribute('data-iux-ym-year')) { e.preventDefault(); el.blur(); const yEl = document.getElementById(el.getAttribute('data-iux-ym-year')); if (yEl) UX.openYMFor(yEl, el); }
     else if (el.hasAttribute('data-iux-year')) { e.preventDefault(); el.blur(); UX.openYearFor(el, { baseYear: parseInt(el.getAttribute('data-iux-year-base'), 10) || 0, minYear: parseInt(el.getAttribute('min'), 10) || 2020, maxYear: parseInt(el.getAttribute('max'), 10) || 2100, def: parseInt(el.value, 10) || new Date().getFullYear() }); }
+    else if (el.hasAttribute('data-iux-age')) { e.preventDefault(); el.blur(); UX.openAgeFor(el, { baseYear: parseInt(el.getAttribute('data-iux-age-base'), 10) || 0, minAge: parseInt(el.getAttribute('min'), 10) || 40, maxAge: parseInt(el.getAttribute('max'), 10) || 90, def: parseInt(el.value, 10) || 60 }); }
   }, true);
 
   /* ----- 연/월 요약 칩 (data-iux-ym-chip="<년input id>") ------------------------
@@ -498,7 +499,7 @@
       new MutationObserver((muts) => {
         for (const mu of muts) for (const n of mu.addedNodes) {
           if (n.nodeType !== 1) continue;
-          if (n.matches && n.matches('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year],input[data-iux-year]')) scanDateInputs(n.parentNode || document);
+          if (n.matches && n.matches('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year],input[data-iux-year],input[data-iux-age]')) scanDateInputs(n.parentNode || document);
           else if (n.querySelector) scanDateInputs(n);
           if (n.matches && n.matches('[data-iux-ym-chip]')) scanYMChips(n.parentNode || document);
           else if (n.querySelector && n.querySelector('[data-iux-ym-chip]')) scanYMChips(n);

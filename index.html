@@ -3588,7 +3588,7 @@ registerMobileTooltipDismiss();
         <label>인출기간 수익률 (%/년)</label>
         <input id="wd_returnRate" type="text" inputmode="decimal" min="0" max="20" step="0.1">
         <label>그래프 시작 나이 (세)</label>
-        <input id="wd_retireAge" type="text" inputmode="numeric" min="40" max="90" step="1">
+        <input id="wd_retireAge" type="text" inputmode="numeric" data-iux-age min="40" max="90" step="1">
       </div>
       <div class="cfg-grid">
         <label>연금계좌통합설정 사용여부</label>
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.651';
+const APP_VERSION = 'MyGP v0.652';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -13793,6 +13793,7 @@ function loadWdFormValues() {
   const wp = wdPlan;
   const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
   s('wd_retireAge',          wp.retireAge ?? 60);
+  { const _ra = document.getElementById('wd_retireAge'); if (_ra) _ra.setAttribute('data-iux-age-base', Number(wp.myBirthYear || appSettings.myBirthYear) || 0); }
   s('wd_inflation',          wp.inflation);
   s('wd_returnRate',         wp.returnRate);
   s('wd_basicWithdraw',      wp.basicWithdraw);
