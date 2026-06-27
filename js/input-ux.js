@@ -292,6 +292,20 @@
   }
   UX.scanDateInputs = scanDateInputs;
 
+  function isDateMarker(el) {
+    return !!el && (el.hasAttribute('data-iux-date') || el.hasAttribute('data-iux-ym-month') || el.hasAttribute('data-iux-ym-year'));
+  }
+
+  // 포커스로 인한 깜빡임 차단 ----------------------------------------------------
+  // ※ readonly 입력이라도 탭하면 포커스를 받는다. iOS Safari 는 포커스된 입력을 화면 중앙으로
+  //   스크롤해 올렸다가, 곧이은 blur 로 다시 원위치로 스크롤한다(스크롤 인→아웃). 반투명 배경
+  //   뒤로 이 왕복이 비쳐 "약간의 깜빡임"으로 보였다. mousedown 단계에서 preventDefault 하면
+  //   포커스 자체가 발생하지 않아 스크롤 왕복이 사라진다(클릭 이벤트는 그대로 발생 → 피커 정상 오픈).
+  document.addEventListener('mousedown', function (e) {
+    const el = e.target.closest && e.target.closest('input');
+    if (isDateMarker(el)) e.preventDefault();
+  }, true);
+
   // 탭하면 커스텀 피커 열기 (이벤트 위임)
   document.addEventListener('click', function (e) {
     const el = e.target.closest && e.target.closest('input');
