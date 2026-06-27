@@ -491,7 +491,7 @@ registerMobileTooltipDismiss();
     margin-bottom: 12px;
   }
   .rec-date-row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
-  .rec-date-row input[type="date"] {
+  .rec-date-row input[type="date"], .rec-date-row input[type="text"] {
     flex: 1; min-width: 130px; padding: 8px 10px; font-size: 14px;
     border: 1px solid var(--border); border-radius: 6px;
   }
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.643';
+const APP_VERSION = 'MyGP v0.644';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
