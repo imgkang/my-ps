@@ -1099,7 +1099,7 @@
       </div>
       <div class="kdt-field">
         <label>거래일</label>
-        <input type="date" id="kdtTradeDate">
+        <input type="date" data-iux-date id="kdtTradeDate">
       </div>
       <div class="kdt-field">
         <label>계좌</label>
@@ -1174,7 +1174,7 @@
       </div>
       <input type="hidden" id="kqtType" value="buy">
       <div class="txn-form" style="margin-bottom:10px">
-        <label><span>날짜</span><input type="date" id="kqtDate"></label>
+        <label><span>날짜</span><input type="date" data-iux-date id="kqtDate"></label>
         <label><span>수량</span><input type="text" inputmode="numeric" id="kqtQty" placeholder="수량" onfocus="this.value=this.value.replace(/,/g,'')" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
         <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="kqtPrice" placeholder="단가" onfocus="this.value=this.value.replace(/,/g,'')" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
         <label><span>수수료 (원)</span><input type="text" inputmode="numeric" id="kqtFee" placeholder="0" onfocus="this.value=this.value.replace(/,/g,'')" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
@@ -1341,7 +1341,7 @@
     <div class="txn-form">
       <label><span>계좌</span><select id="kdTxnAccount"></select></label>
       <label><span>구분</span><select id="kdTxnType"><option value="deposit">입금 (+)</option><option value="withdraw">출금 (−)</option></select></label>
-      <label><span>입출금일</span><input type="date" id="kdTxnDate"></label>
+      <label><span>입출금일</span><input type="date" data-iux-date id="kdTxnDate"></label>
       <label><span>금액 (원)</span><input type="text" inputmode="numeric" id="kdTxnAmount" placeholder="0"
         oninput="kdLiveKRW(this)"></label>
     </div>
@@ -1361,7 +1361,7 @@
     </div>
     <div class="records-input-card">
       <div class="records-input-top">
-        <label><span>기록일</span><input type="date" id="kdRecDate"></label>
+        <label><span>기록일</span><input type="date" data-iux-date id="kdRecDate"></label>
         <button class="btn-secondary" onclick="kdFillCurrentValues()">💾 현재값 저장</button>
         <button class="btn-secondary" onclick="kdLoadHistoricalValues()">📅 이전 가치 불러오기</button>
       </div>
@@ -1510,7 +1510,7 @@
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.637';
+const APP_VERSION = 'KDeal v0.638';
 InputUX.setNumberDefaults({ locale: 'ko-KR' });  // Stage 2: KDeal 기본 숫자 locale
 // Stage 1: 숫자/금액 입력 탭 시 기존값 자동선택
 InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');

@@ -2632,7 +2632,7 @@ registerMobileTooltipDismiss();
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
           날짜
-          <input type="date" id="cashAdjDate" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
+          <input type="date" data-iux-date id="cashAdjDate" style="font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
           금액 (원)
@@ -2802,7 +2802,7 @@ registerMobileTooltipDismiss();
     <div class="txn-form">
       <label><span>이전할 계좌</span><select id="transferFrom"></select></label>
       <label><span>이전받을 계좌</span><select id="transferTo"></select></label>
-      <label><span>이전일</span><input type="date" id="transferDate" oninput="updateTransferRemaining()"></label>
+      <label><span>이전일</span><input type="date" data-iux-date id="transferDate" oninput="updateTransferRemaining()"></label>
     </div>
     <div id="trDateInfoSection" style="display:none;margin:4px 0 10px">
       <div class="transfer-section-title">이전일 기준 현황 (이전 계좌)</div>
@@ -2863,7 +2863,7 @@ registerMobileTooltipDismiss();
       <div class="records-input-card">
         <div class="rec-date-row">
           <label>기록일</label>
-          <input type="date" id="recDate">
+          <input type="date" data-iux-date id="recDate">
           <div class="rec-action-btns" style="margin:0">
             <button class="btn-secondary" onclick="fillCurrentValues()">💾 현재값</button>
             <button class="btn-secondary" onclick="loadHistoricalValues()">📅 이전 가치</button>
@@ -3347,7 +3347,7 @@ registerMobileTooltipDismiss();
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div>
         <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">날짜</label>
-        <input type="date" id="wdrecDate" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+        <input type="date" data-iux-date id="wdrecDate" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px">
       </div>
       <div>
         <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600">인물</label>
@@ -3481,7 +3481,7 @@ registerMobileTooltipDismiss();
         <button class="trade-type-btn sell"       id="taf_sell_btn" onclick="setAccFormType('sell')">매도</button>
       </div>
       <div class="txn-form" style="margin-bottom:10px">
-        <label><span>날짜</span><input type="date" id="taf_date"></label>
+        <label><span>날짜</span><input type="date" data-iux-date id="taf_date"></label>
         <label><span>수량</span><input type="text" inputmode="numeric" id="taf_qty" placeholder="수량" oninput="updateAccFormTotal()"></label>
         <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="taf_price" placeholder="체결 단가" oninput="updateAccFormTotal()"></label>
       </div>
@@ -3518,7 +3518,7 @@ registerMobileTooltipDismiss();
           </div>
         </label>
         <label><span>계좌</span><select id="tradeAccount" onchange="onTradeAccountChange()"></select></label>
-        <label><span>날짜</span><input type="date" id="tradeDate"></label>
+        <label><span>날짜</span><input type="date" data-iux-date id="tradeDate"></label>
         <label><span>종목</span><select id="tradeCode" onchange="onTradeCodeChange()"></select></label>
         <label><span>수량</span><input type="text" id="tradeQty" inputmode="numeric" placeholder="매수/매도 수량" oninput="updateTradeTotal()"></label>
         <label><span>단가 (원)</span><input type="text" id="tradePrice" inputmode="numeric" placeholder="체결 단가" oninput="updateTradeTotal()"></label>
@@ -3754,7 +3754,7 @@ registerMobileTooltipDismiss();
 
     <div class="rec-date-row" style="margin-bottom:12px">
       <label>기록일</label>
-      <input type="date" id="divDate">
+      <input type="date" data-iux-date id="divDate">
     </div>
 
     <!-- 종목별 배당 입력 -->
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.637';
+const APP_VERSION = 'MyGP v0.638';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -18387,11 +18387,11 @@ window.addEventListener('message', e => {
     </div>
     <div class="mplan-form-row">
       <label>시작일</label>
-      <input type="date" id="mplanFormStart">
+      <input type="date" data-iux-date id="mplanFormStart">
     </div>
     <div class="mplan-form-row">
       <label>종료일</label>
-      <input type="date" id="mplanFormEnd">
+      <input type="date" data-iux-date id="mplanFormEnd">
     </div>
     <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
       <button class="btn-secondary" onclick="closeMplanForm()">취소</button>
