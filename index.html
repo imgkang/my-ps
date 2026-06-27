@@ -2000,9 +2000,9 @@ registerMobileTooltipDismiss();
           </button>
           <div class="cfg-row-edit">
             <div class="cfg-edit-inline">
-              <input id="cfg_myBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1985"
+              <input id="cfg_myBirthYear" type="number" data-iux-ym-month="cfg_myBirthMonth" min="1940" max="2010" step="1" placeholder="1985"
                      style="width:80px" oninput="onCfgBirthYearChange('my')"><span>년</span>
-              <input id="cfg_myBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
+              <input id="cfg_myBirthMonth" type="number" data-iux-ym-year="cfg_myBirthYear" min="1" max="12" step="1" placeholder="월"
                      style="width:64px"><span>월</span>
             </div>
           </div>
@@ -2036,9 +2036,9 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeBirthYear" type="number" min="1940" max="2010" step="1" placeholder="1987"
+                <input id="cfg_wifeBirthYear" type="number" data-iux-ym-month="cfg_wifeBirthMonth" min="1940" max="2010" step="1" placeholder="1987"
                        style="width:80px" oninput="onCfgBirthYearChange('wife')"><span>년</span>
-                <input id="cfg_wifeBirthMonth" type="number" min="1" max="12" step="1" placeholder="월"
+                <input id="cfg_wifeBirthMonth" type="number" data-iux-ym-year="cfg_wifeBirthYear" min="1" max="12" step="1" placeholder="월"
                        style="width:64px"><span>월</span>
               </div>
             </div>
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.641';
+const APP_VERSION = 'MyGP v0.642';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -12103,8 +12103,8 @@ function renderOnboardingStep() {
         </label>
         <div id="ob_${key}_det" style="${p.use?'':'display:none'};display:${p.use?'flex':'none'};align-items:center;gap:5px;flex-wrap:wrap;flex:1">
           <input type="text" inputmode="numeric" id="ob_${key}_mo" value="${p.monthly ? p.monthly.toLocaleString('ko-KR') : ''}" min="0" step="1" class="ob-p4-input" style="flex:6;min-width:60px" placeholder="0" oninput="obFmtAmt(this)">만원/월
-          <input type="number" id="ob_${key}_yr" value="${p.startYear}" min="2020" max="2070" class="ob-p4-input" style="flex:7;min-width:55px;font-size:12px;padding:4px 7px">년
-          <input type="number" id="ob_${key}_mon" value="${p.startMonth}" min="1" max="12" class="ob-p4-input" style="flex:4;min-width:35px;font-size:12px;padding:4px 7px">월~
+          <input type="number" id="ob_${key}_yr" data-iux-ym-month="ob_${key}_mon" value="${p.startYear}" min="2020" max="2070" class="ob-p4-input" style="flex:7;min-width:55px;font-size:12px;padding:4px 7px">년
+          <input type="number" id="ob_${key}_mon" data-iux-ym-year="ob_${key}_yr" value="${p.startMonth}" min="1" max="12" class="ob-p4-input" style="flex:4;min-width:35px;font-size:12px;padding:4px 7px">월~
         </div>
       </div>`;
     };
