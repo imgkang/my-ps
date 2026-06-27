@@ -19,6 +19,15 @@
     --border: #e5e7eb;
     --plus: #e53935;
     --minus: #1e88e5;
+    --summary-bg: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
+    --summary-text: #78350f;
+    --hero-bg: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
+    --hero-text: #78350f;
+    --hero-label: rgba(120,53,15,0.75);
+    --hero-diff-pos: #e53935;
+    --hero-diff-neg: #1e88e5;
+    --focus-ring: rgba(202,138,4,0.15);
+    --focus-ring-field: rgba(202,138,4,0.12);
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   }
   * { box-sizing: border-box; }
@@ -89,7 +98,7 @@
     background: #fff;
     min-width: 0;
   }
-  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(202,138,4,0.15); }
+  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
 
   button {
     padding: 10px 16px;
@@ -784,11 +793,11 @@
   .cfg-grid { display: grid; grid-template-columns: auto 1fr; gap: 9px 18px; align-items: center; margin-bottom: 8px; }
   .cfg-grid label { font-size: 14px; color: var(--text); white-space: nowrap; }
   /* ===== KDeal-specific ===== */
-  .summary-card { background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%); color: #78350f; }
+  .summary-card { background: var(--summary-bg); color: var(--summary-text); }
   .ptr-indicator { background: var(--primary); }
   .ptr-indicator.ptr-ready { background: var(--primary-dark); }
-  .pos { color: #e53935; }
-  .neg { color: #1e88e5; }
+  .pos { color: var(--plus); }
+  .neg { color: var(--minus); }
   .nav-btn {
     padding: 8px 20px; border: 2px solid var(--border); border-radius: 20px;
     font-size: 15px; font-weight: 700; cursor: pointer;
@@ -847,17 +856,17 @@
 
   /* KDeal hero card */
   .nk-hero { padding: 22px 24px 18px; margin-bottom: 10px;
-    background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%);
-    color: #78350f; border-radius: 12px; box-shadow: var(--shadow); }
+    background: var(--hero-bg);
+    color: var(--hero-text); border-radius: 12px; box-shadow: var(--shadow); }
   .nk-hero-value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
-  .nk-hero-value { font-size: 38px; font-weight: 800; color: #78350f;
+  .nk-hero-value { font-size: 38px; font-weight: 800; color: var(--hero-text);
     font-variant-numeric: tabular-nums; letter-spacing: -1px; line-height: 1.1; }
   .nk-hero-unit { font-size: 14px; font-weight: 500; color: rgba(120,53,15,0.65); }
   .nk-hero-row { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums;
     line-height: 1.6; display: flex; align-items: baseline; gap: 6px; color: rgba(120,53,15,0.9); }
-  .nk-hero-label { font-size: 12px; font-weight: 500; color: rgba(120,53,15,0.75); }
-  .nk-hero .diff-positive { color: #e53935; }
-  .nk-hero .diff-negative { color: #1e88e5; }
+  .nk-hero-label { font-size: 12px; font-weight: 500; color: var(--hero-label); }
+  .nk-hero .diff-positive { color: var(--hero-diff-pos); }
+  .nk-hero .diff-negative { color: var(--hero-diff-neg); }
   .nk-action-btns { display: flex; gap: 6px; flex-wrap: nowrap; margin-top: 14px; margin-bottom: 14px; }
   .nk-action-btns button { flex: 1 1 0; min-width: 0; font-size: 11px; padding: 6px 4px; white-space: nowrap; }
   /* 관심종목 */
@@ -868,8 +877,8 @@
   .kdw-table tr:last-child td { border-bottom:none; }
   .kdw-name { font-weight:600; font-size:14px; }
   .kdw-ticker { font-size:11px; color:var(--muted); margin-top:1px; }
-  .kdw-pos { color:#e53935; }
-  .kdw-neg { color:#1e88e5; }
+  .kdw-pos { color:var(--plus); }
+  .kdw-neg { color:var(--minus); }
   .kdw-ac-wrap { position:relative; }
   .kdw-ac-list { display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:300; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.12); max-height:240px; overflow-y:auto; }
   .kdw-ac-list.open { display:block; }
@@ -905,7 +914,7 @@
   .kdt-field { display:flex; flex-direction:column; gap:4px; }
   .kdt-field label { font-size:12px; color:var(--muted); font-weight:500; }
   .kdt-field input, .kdt-field select { padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; background:#fff; }
-  .kdt-field input:focus, .kdt-field select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(202,138,4,0.12); }
+  .kdt-field input:focus, .kdt-field select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--focus-ring-field); }
   .kdt-type-toggle { display:flex; gap:8px; }
   .kdt-type-btn { flex:1; padding:9px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; background:#fff; color:var(--muted); }
   .kdt-type-btn.active-buy { background:#dcfce7; border-color:#16a34a; color:#166534; }
