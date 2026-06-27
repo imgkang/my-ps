@@ -46,6 +46,7 @@ TIMEOUT = 60
 # the data is almost certainly partial (IP block, format change, etc.).
 THRESHOLD_KOSPI = 700
 THRESHOLD_KOSDAQ = 1200
+THRESHOLD_ETF = 500
 THRESHOLD_US = 5000
 
 
@@ -88,15 +89,18 @@ def fetch_krx_all():
     items = []
     counts = {"KOSPI": 0, "KOSDAQ": 0}
     for _, row in df.iterrows():
-        code = str(row[code_col]).strip()
+        code = str(row[code_col]).strip().upper()
         name = str(row[name_col]).strip()
         market = str(row[market_col]).strip().upper()
         if not code or not name or not market:
             continue
-        # Normalize 6-digit KR codes (pad if needed, reject non-numeric)
-        if not code.isdigit() or len(code) > 6:
+        # Normalize KR codes. Pure-numeric codes get zero-padded to 6 digits;
+        # newer ETF/ETN issues use alphanumeric 6-char codes (e.g. "0105E0")
+        # now that the numeric space is exhausting, so accept those too.
+        if code.isdigit():
+            code = code.zfill(6)
+        if not re.fullmatch(r"[0-9A-Z]{6}", code):
             continue
-        code = code.zfill(6)
         if market not in ("KOSPI", "KOSDAQ"):
             continue
         items.append(
@@ -104,6 +108,47 @@ def fetch_krx_all():
         )
         counts[market] += 1
     return items, counts
+
+
+def fetch_krx_etf():
+    """Korean ETFs from FinanceDataReader.
+
+    StockListing("KRX") returns listed *companies* only — ETFs live in a
+    separate listing, so without this they are entirely absent from the DB
+    (e.g. "SOL 코리아고배당", code 0105E0). Returns (items, count).
+    """
+    import FinanceDataReader as fdr  # heavy dep, import lazily
+
+    df = fdr.StockListing("ETF/KR")
+
+    code_col = "Symbol" if "Symbol" in df.columns else (
+        "Code" if "Code" in df.columns else None
+    )
+    name_col = "Name" if "Name" in df.columns else None
+    if not (code_col and name_col):
+        raise RuntimeError(
+            f"FinanceDataReader ETF columns unexpected: {list(df.columns)}"
+        )
+
+    items = []
+    seen = set()
+    for _, row in df.iterrows():
+        code = str(row[code_col]).strip().upper()
+        name = str(row[name_col]).strip()
+        if not code or not name:
+            continue
+        if code.isdigit():
+            code = code.zfill(6)
+        if not re.fullmatch(r"[0-9A-Z]{6}", code):
+            continue
+        if code in seen:
+            continue
+        seen.add(code)
+        # KR ETFs all trade on the KOSPI market segment.
+        items.append(
+            {"t": code, "k": name, "e": "KOSPI", "c": "KR", "y": "ETF"}
+        )
+    return items, len(items)
 
 
 def _clean_us_name(raw):
@@ -199,6 +244,10 @@ def main():
         file=sys.stderr,
     )
 
+    print("Fetching KRX ETFs (FinanceDataReader) ...", file=sys.stderr)
+    etf_items, etf_count = fetch_krx_etf()
+    print(f"  → ETF: {etf_count}", file=sys.stderr)
+
     print("Fetching NASDAQ Trader US listings (single source) ...", file=sys.stderr)
     us = fetch_us_listed()
     print(f"  → {len(us)} items", file=sys.stderr)
@@ -217,6 +266,10 @@ def main():
         errors.append(
             f"KOSDAQ count {kr_counts['KOSDAQ']} < {THRESHOLD_KOSDAQ} (expected ~1700)"
         )
+    if etf_count < THRESHOLD_ETF:
+        errors.append(
+            f"ETF count {etf_count} < {THRESHOLD_ETF} (expected ~900)"
+        )
     if len(us) < THRESHOLD_US:
         errors.append(
             f"US count {len(us)} < {THRESHOLD_US} (expected ~10,000)"
@@ -231,7 +284,7 @@ def main():
         )
         sys.exit(2)
 
-    all_items = kr_items + us + curated
+    all_items = kr_items + etf_items + us + curated
     seen = set()
     deduped = []
     for it in all_items:
