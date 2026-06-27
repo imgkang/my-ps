@@ -210,6 +210,7 @@
   }
 
   function updateTitle() {
+    if (_st.mode === 'age') { _dp.querySelector('.iux-dp-tt').textContent = `${_st.age}세 → ${_st.baseYear + _st.age}년`; return; }
     const y = _st.view === 'cal' ? _st.calY : _st.y;
     const m = _st.view === 'cal' ? _st.calM : _st.m;
     _dp.querySelector('.iux-dp-tt').textContent = `${y}년 ${m}월`;
@@ -219,7 +220,7 @@
   function buildCol(values, selIndex, onChange) {
     const col = document.createElement('div');
     col.className = 'iux-dp-col';
-    values.forEach((v, i) => { const d = document.createElement('div'); d.textContent = v.label; d.dataset.i = i; col.appendChild(d); });
+    values.forEach((v, i) => { const d = document.createElement('div'); if (v.html != null) d.innerHTML = v.html; else d.textContent = v.label; d.dataset.i = i; col.appendChild(d); });
     const mark = (idx) => col.querySelectorAll('div[data-i]').forEach((d) => d.classList.toggle('on', +d.dataset.i === idx));
     requestAnimationFrame(() => { col.scrollTop = selIndex * ITEM_H; mark(selIndex); });
     let t = null;
@@ -246,6 +247,15 @@
     const wheel = _dp.querySelector('.iux-dp-wheel');
     wheel.innerHTML = '';
     const band = document.createElement('div'); band.className = 'iux-dp-band'; wheel.appendChild(band);
+
+    if (_st.mode === 'age') {   // 나이 + 연도가 한 행에서 함께 도는 단일 휠
+      const ages = [];
+      for (let a = _st.minAge; a <= _st.maxAge; a++)
+        ages.push({ html: '<span>' + a + '세</span><span style="margin-left:16px;color:#94a3b8;font-weight:400">' + (_st.baseYear + a) + '년</span>', val: a });
+      const col = buildCol(ages, _st.age - _st.minAge, (i) => { _st.age = ages[i].val; updateTitle(); });
+      wheel.appendChild(col);
+      return;
+    }
 
     const years = []; for (let y = _st.minY; y <= _st.maxY; y++) years.push({ label: y + '년', val: y });
     const months = []; for (let mo = 1; mo <= 12; mo++) months.push({ label: mo + '월', val: mo });
@@ -318,7 +328,10 @@
     if (act === 'toggle') { if (_st.mode === 'date') setView(_st.view === 'cal' ? 'wheel' : 'cal'); }
     else if (act === 'prev') { _st.calM--; if (_st.calM < 1) { _st.calM = 12; _st.calY--; } renderCal(); updateTitle(); }
     else if (act === 'next') { _st.calM++; if (_st.calM > 12) { _st.calM = 1; _st.calY++; } renderCal(); updateTitle(); }
-    else if (act === 'reset') { const t = todayYMD(); _st.y = t.y; _st.m = t.m; _st.d = t.d; _st.calY = t.y; _st.calM = t.m; setView(_st.view); }
+    else if (act === 'reset') {
+      if (_st.mode === 'age') { _st.age = _st.defAge; setView('wheel'); }
+      else { const t = todayYMD(); _st.y = t.y; _st.m = t.m; _st.d = t.d; _st.calY = t.y; _st.calM = t.m; setView(_st.view); }
+    }
     else if (act === 'confirm') { commit(); }
   }
 
@@ -326,6 +339,7 @@
   function commit() {
     const tg = _st.target;
     if (tg.type === 'date') { tg.input.value = `${_st.y}-${pad2(_st.m)}-${pad2(_st.d)}`; fire(tg.input); }
+    else if (tg.type === 'age') { tg.ageEl.value = _st.age; fire(tg.ageEl); }
     else { tg.yearEl.value = _st.y; tg.monthEl.value = _st.m; fire(tg.yearEl); fire(tg.monthEl); }
     close();
   }
@@ -333,8 +347,9 @@
 
   function openCommon(mode) {
     ensureDom();
-    _dp.querySelector('.iux-dp').classList.toggle('ym', mode === 'ym');
-    setView(mode === 'ym' ? 'wheel' : 'cal');
+    // 'age' 도 휠 전용 레이아웃(달력/네비 숨김)을 'ym' 클래스로 재사용
+    _dp.querySelector('.iux-dp').classList.toggle('ym', mode === 'ym' || mode === 'age');
+    setView(mode === 'date' ? 'cal' : 'wheel');
     _dp.classList.add('open');
   }
 
@@ -352,6 +367,17 @@
     _st = { mode: 'ym', y, m, d: 1, calY: y, calM: m, view: 'wheel',
             minY: 1940, maxY: 2100, target: { type: 'ym', yearEl, monthEl } };
     openCommon('ym');
+  };
+  // 나이 휠 — 각 행에 "{나이}세  {기준연도+나이}년" 을 함께 표시하여 동시에 회전.
+  // opts: { baseYear, minAge=40, maxAge=90, def=60 }
+  UX.openAgeFor = function (ageEl, opts) {
+    opts = opts || {};
+    const minAge = opts.minAge || 40, maxAge = opts.maxAge || 90;
+    let cur = parseInt(ageEl.value, 10); if (!cur) cur = opts.def || 60;
+    cur = Math.max(minAge, Math.min(maxAge, cur));
+    _st = { mode: 'age', age: cur, minAge: minAge, maxAge: maxAge, baseYear: opts.baseYear || 0,
+            defAge: opts.def || 60, target: { type: 'age', ageEl } };
+    openCommon('age');
   };
 
   // 마커가 붙은 입력을 커스텀 전용으로 전환(네이티브 피커/키보드 차단) ----------------

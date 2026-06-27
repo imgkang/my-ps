@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.649';
+const APP_VERSION = 'MyGP v0.650';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -12094,8 +12094,8 @@ function renderOnboardingStep() {
     const wifeRetireRow = _obData.hasWife ? `
       <div class="ob-field-row">
         <label>${_obData.wifeTitle||'배우자'} 은퇴 나이</label>
-        <input type="text" inputmode="numeric" id="ob_wifeRetireAge" value="${wAge}" min="40" max="80" style="width:60px" oninput="obUpdateWifeRetireYear()">세
-        <span style="color:var(--muted);font-size:12px" id="ob_wifeRetireYrLabel">→ ${wRetireYr}년</span>
+        <button type="button" class="iux-ym-chip" id="ob_wifeRetireAgeChip" onclick="obOpenRetireAge('wife')"><span class="iux-ym-text">${wAge}세 → ${wRetireYr}년</span><span class="iux-ym-chev">›</span></button>
+        <input type="hidden" id="ob_wifeRetireAge" value="${wAge}">
       </div>` : '';
     const mkPensionRow = (key, label) => {
       const p = _obData[key] || { use:false, monthly:0, startYear:cy+7, startMonth:1 };
@@ -12122,8 +12122,8 @@ function renderOnboardingStep() {
       <div class="ob-sub">목표를 입력하면 나중에 인출계획에 자동 반영됩니다.</div>
       <div class="ob-field-row">
         <label>본인 은퇴 나이</label>
-        <input type="text" inputmode="numeric" id="ob_retireAge" value="${age}" min="40" max="80" style="width:60px" oninput="obUpdateRetireYear()">세
-        <span style="color:var(--muted);font-size:12px" id="ob_retireYrLabel">→ ${retireYr}년</span>
+        <button type="button" class="iux-ym-chip" id="ob_retireAgeChip" onclick="obOpenRetireAge('my')"><span class="iux-ym-text">${age}세 → ${retireYr}년</span><span class="iux-ym-chev">›</span></button>
+        <input type="hidden" id="ob_retireAge" value="${age}">
       </div>
       ${wifeRetireRow}
       <div class="ob-field-row">
@@ -12660,15 +12660,23 @@ function obRenderFinalChart() {
 function obUpdateRetireYear() {
   const age = parseInt(document.getElementById('ob_retireAge')?.value) || 60;
   const birthY = _obData.myBirthYear || (new Date().getFullYear() - 40);
-  const lbl = document.getElementById('ob_retireYrLabel');
-  if (lbl) lbl.textContent = `→ ${birthY + age}년`;
+  const chip = document.querySelector('#ob_retireAgeChip .iux-ym-text');
+  if (chip) chip.textContent = `${age}세 → ${birthY + age}년`;
 }
 
 function obUpdateWifeRetireYear() {
   const age = parseInt(document.getElementById('ob_wifeRetireAge')?.value) || 60;
   const birthY = _obData.wifeBirthYear || (new Date().getFullYear() - 40);
-  const lbl = document.getElementById('ob_wifeRetireYrLabel');
-  if (lbl) lbl.textContent = `→ ${birthY + age}년`;
+  const chip = document.querySelector('#ob_wifeRetireAgeChip .iux-ym-text');
+  if (chip) chip.textContent = `${age}세 → ${birthY + age}년`;
+}
+
+// 은퇴 나이 휠 피커 열기 (나이↔연도 동시 회전)
+function obOpenRetireAge(who) {
+  const isWife = who === 'wife';
+  const ageEl = document.getElementById(isWife ? 'ob_wifeRetireAge' : 'ob_retireAge');
+  const birthY = (isWife ? _obData.wifeBirthYear : _obData.myBirthYear) || (new Date().getFullYear() - 40);
+  if (window.InputUX) InputUX.openAgeFor(ageEl, { baseYear: birthY, minAge: 40, maxAge: 90, def: 60 });
 }
 
 function obUpdateMonthly() {
