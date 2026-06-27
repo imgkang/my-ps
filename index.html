@@ -4008,7 +4008,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.656';
+const APP_VERSION = 'MyGP v0.657';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -12000,9 +12000,16 @@ let _obOpenedFromSetup = false;
 
 const OB_TOTAL_STEPS = 5;
 const OB_STEP_TITLES = ['기본 정보', '연금 계좌', '은퇴 목표 · 연금', '적립 계획', '완료'];
+// 사용 수준별 마법사 단계 시퀀스 (절대 단계번호 기준).
+// Lv1 입문: 기본정보 → 연금계좌 → 완료(요약만, 시뮬레이션 숨김)
+// Lv2 적응: 전체 단계 (단, 3단계의 공무원/사학연금은 숨김)
+// Lv3 숙련: 전체 단계 + 공무원/사학연금
+function obStepsForLevel(lv) { return lv <= 1 ? [1, 2, 5] : [1, 2, 3, 4, 5]; }
+let _obSeq = [1, 2, 3, 4, 5];
 
 function openOnboardingModal() {
-  _obStep = 1;
+  _obSeq = obStepsForLevel(getUserLevel());
+  _obStep = _obSeq[0];
   const cy = new Date().getFullYear();
   const cm = new Date().getMonth() + 1;
   const myNpDef  = appSettings.my?.np  || {};
@@ -12071,35 +12078,39 @@ function onboardingSkip() {
 
 function onboardingNext() {
   if (!collectObStep(_obStep)) return;
-  if (_obStep >= OB_TOTAL_STEPS) { finishOnboarding(); return; }
-  _obStep++;
+  const idx = _obSeq.indexOf(_obStep);
+  if (idx >= _obSeq.length - 1) { finishOnboarding(); return; }
+  _obStep = _obSeq[idx + 1];
   renderOnboardingStep();
 }
 
 function onboardingPrev() {
-  if (_obStep > 1) { _obStep--; renderOnboardingStep(); }
+  const idx = _obSeq.indexOf(_obStep);
+  if (idx > 0) { _obStep = _obSeq[idx - 1]; renderOnboardingStep(); }
   else if (_obOpenedFromSetup) { _obOpenedFromSetup = false; closeOnboardingModal(); openSetupScreen(); }
 }
 
 function renderOnboardingStep() {
+  const seqIdx = _obSeq.indexOf(_obStep);   // 현재 단계의 시퀀스 내 위치
+  const seqLen = _obSeq.length;
   const dots = document.getElementById('obProgressDots');
   if (dots) {
-    dots.innerHTML = Array.from({length: OB_TOTAL_STEPS}, (_, i) => {
-      const cls = i + 1 < _obStep ? 'done' : i + 1 === _obStep ? 'active' : '';
+    dots.innerHTML = Array.from({length: seqLen}, (_, i) => {
+      const cls = i < seqIdx ? 'done' : i === seqIdx ? 'active' : '';
       return `<span class="ob-dot ${cls}"></span>`;
     }).join('');
   }
-  document.getElementById('obStepLabel').textContent = `${_obStep} / ${OB_TOTAL_STEPS}`;
+  document.getElementById('obStepLabel').textContent = `${seqIdx + 1} / ${seqLen}`;
 
   const titleEl = document.getElementById('obStepTitle');
   if (titleEl) titleEl.textContent = OB_STEP_TITLES[_obStep - 1] || '시작하기';
   const backBtn = document.getElementById('obBackBtn');
-  if (backBtn) backBtn.disabled = _obStep <= 1 && !_obOpenedFromSetup;
+  if (backBtn) backBtn.disabled = seqIdx <= 0 && !_obOpenedFromSetup;
 
   const prevBtn = document.getElementById('obPrevBtn');
   const nextBtn = document.getElementById('obNextBtn');
-  if (prevBtn) prevBtn.style.display = _obStep > 1 ? '' : 'none';
-  if (nextBtn) nextBtn.textContent = _obStep === OB_TOTAL_STEPS ? '앱 시작하기 🎉' : '다음 →';
+  if (prevBtn) prevBtn.style.display = seqIdx > 0 ? '' : 'none';
+  if (nextBtn) nextBtn.textContent = seqIdx >= seqLen - 1 ? '앱 시작하기 🎉' : '다음 →';
 
   const body = document.getElementById('obBody');
   if (!body) return;
@@ -12220,11 +12231,12 @@ function renderOnboardingStep() {
       </div>`;
     };
     const npTip = '국민연금공단 사이트에서 예상 수령액 조회 가능. 1969년 이후 출생자는 만 65세부터 수급.';
+    const showSpecialPensions = getUserLevel() >= 3;  // 공무원/사학연금은 숙련 단계에서만 노출
     const wifeSection = _obData.hasWife ? `
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 6px">${_obData.wifeTitle||'배우자'}</div>
       ${mkPensionRow('wifeNP','국민연금')}
-      ${mkPensionRow('wifeGP','공무원연금')}
-      ${mkPensionRow('wifeSP','사학연금')}` : '';
+      ${showSpecialPensions ? mkPensionRow('wifeGP','공무원연금') : ''}
+      ${showSpecialPensions ? mkPensionRow('wifeSP','사학연금') : ''}` : '';
     body.innerHTML = `
       <div class="ob-title">은퇴 목표 🎯</div>
       <div class="ob-sub">목표를 입력하면 나중에 인출계획에 자동 반영됩니다.</div>
@@ -12243,8 +12255,8 @@ function renderOnboardingStep() {
       <div class="ob-sub" style="margin-bottom:12px">예상 연금 수급액을 입력해 주세요. 시뮬레이션에서 포트폴리오 필요액 계산에 반영됩니다.</div>
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">본인 <span onmouseenter="obShowTip('${npTip}')" ontouchstart="obShowTip('${npTip}')" style="cursor:help;color:#3b82f6">ⓘ</span></div>
       ${mkPensionRow('myNP','국민연금')}
-      ${mkPensionRow('myGP','공무원연금')}
-      ${mkPensionRow('mySP','사학연금')}
+      ${showSpecialPensions ? mkPensionRow('myGP','공무원연금') : ''}
+      ${showSpecialPensions ? mkPensionRow('mySP','사학연금') : ''}
       ${wifeSection}`;
 
   } else if (_obStep === 4) {
@@ -12302,6 +12314,21 @@ function renderOnboardingStep() {
     setTimeout(() => updateObSim(), 50);
 
   } else if (_obStep === 5) {
+    // 입문(Lv1): 어려운 시뮬레이션/달성률/차트 없이 핵심 요약만 보여준다
+    if (getUserLevel() <= 1) {
+      const byr = _obData.myBirthYear || (new Date().getFullYear() - 40);
+      const _lbls5 = {dc:'DC',pension1:'개인연금1',pension2:'개인연금2',irp:'IRP',isa:'ISA'};
+      const myAccStr5 = (_obData.myAccIds || []).map(id => _lbls5[id] || id).join(', ') || '없음';
+      body.innerHTML = `
+        <div class="ob-title">준비 완료! 🎉</div>
+        <div class="ob-sub">기본 정보로 앱을 시작합니다. 익숙해지면 설정 → 사용 수준에서 단계를 올려 더 많은 기능을 켤 수 있어요.</div>
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+          <div class="ob-summary-item"><span class="ob-summary-icon">👤</span><div><strong>본인</strong>: ${byr}년생</div></div>
+          <div class="ob-summary-item"><span class="ob-summary-icon">💼</span><div><strong>연금 계좌</strong>: ${myAccStr5}</div></div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7">먼저 <strong>포트폴리오</strong>에 보유 자산을 등록하고, <strong>원금기록</strong>으로 매달 넣은 돈을 기록하는 습관부터 만들어 보세요.</div>`;
+      return;
+    }
     const cy = new Date().getFullYear();
     const birthY = _obData.myBirthYear || cy - 40;
     const retireAge = _obData.retireAge || 60;
@@ -13778,6 +13805,8 @@ function pickOnboardLevel(n) {
   applyUserLevel();
   const modal = document.getElementById('levelOnboardModal');
   if (modal) modal.classList.remove('open');
+  // 수준 선택 직후 5단계 설정 마법사를 이어서 표시 (선택한 수준에 맞춰 단계가 조절됨)
+  setTimeout(() => openOnboardingModal(), 200);
 }
 
 // ---------- 자동 승급 추천 ----------
