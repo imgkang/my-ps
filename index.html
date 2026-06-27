@@ -3879,8 +3879,9 @@ registerMobileTooltipDismiss();
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-// Stage 1 시범: 온보딩 화면의 숫자/금액 입력만 탭 시 자동선택 적용
-InputUX.setAutoSelectSelector('#onboardingModal input[type=number], #onboardingModal input[inputmode=numeric]');
+// Stage 1: 앱 전체의 숫자/금액 입력을 탭하면 기존값 자동선택(바로 덮어쓰기)
+// (날짜 마커는 readonly/inputmode=none 이라 Stage 1 에서 자동 제외됨)
+InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');
 // Stage 2: 이 앱의 기본 숫자 locale (마커 data-iux-num 사용 시 적용)
 InputUX.setNumberDefaults({ locale: 'ko-KR' });
 </script>
@@ -3906,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.636';
+const APP_VERSION = 'MyGP v0.637';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
