@@ -1175,9 +1175,9 @@
       <input type="hidden" id="kqtType" value="buy">
       <div class="txn-form" style="margin-bottom:10px">
         <label><span>날짜</span><input type="date" data-iux-date id="kqtDate"></label>
-        <label><span>수량</span><input type="text" inputmode="numeric" id="kqtQty" placeholder="수량" onfocus="InputUX.stripCommas(this)" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
-        <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="kqtPrice" placeholder="단가" onfocus="InputUX.stripCommas(this)" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
-        <label><span>수수료 (원)</span><input type="text" inputmode="numeric" id="kqtFee" placeholder="0" onfocus="InputUX.stripCommas(this)" onblur="kdFmtAccInput(this,0)" oninput="kqtUpdatePreview()"></label>
+        <label><span>수량</span><input type="text" inputmode="numeric" id="kqtQty" placeholder="수량" oninput="kdLiveKRW(this); kqtUpdatePreview()"></label>
+        <label><span>단가 (원)</span><input type="text" inputmode="numeric" id="kqtPrice" placeholder="단가" oninput="kdLiveKRW(this); kqtUpdatePreview()"></label>
+        <label><span>수수료 (원)</span><input type="text" inputmode="numeric" id="kqtFee" placeholder="0" oninput="kdLiveKRW(this); kqtUpdatePreview()"></label>
       </div>
       <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -1510,7 +1510,7 @@
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.644';
+const APP_VERSION = 'KDeal v0.646';
 InputUX.setNumberDefaults({ locale: 'ko-KR' });  // Stage 2: KDeal 기본 숫자 locale
 // Stage 1: 숫자/금액 입력 탭 시 기존값 자동선택
 InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');
@@ -2342,14 +2342,12 @@ function kdOpenAccountModal(ticker) {
         <label><span>수량</span>
           <input type="text" inputmode="numeric" id="kdAccQty_${a.id}"
             value="${acc.qty ? Math.round(+acc.qty).toLocaleString('ko-KR') : ''}"
-            onfocus="InputUX.stripCommas(this)"
-            onblur="kdFmtAccInput(this,0)">
+            oninput="kdLiveKRW(this)">
         </label>
         <label><span>단가 (원)</span>
           <input type="text" inputmode="numeric" id="kdAccAvg_${a.id}"
             value="${acc.avgPrice ? Math.round(+acc.avgPrice).toLocaleString('ko-KR') : ''}"
-            onfocus="InputUX.stripCommas(this)"
-            onblur="kdFmtAccInput(this,0)">
+            oninput="kdLiveKRW(this)">
         </label>
       </div>
     </div>`;
