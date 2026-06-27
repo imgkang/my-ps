@@ -40,6 +40,18 @@ const kdDeposits = { transactions: [
   { id: 't3', accId: 'a1', type: 'withdraw', date: '2024-06-01', amount: 500000 },
 ] };
 
+// 서버 파생 스냅샷 — snapPricedAt/displayDerived(시장-키 nk/kd)가 실제로 동작하는 경로를 검증.
+//  data.nk.totals.xirr ≠ data.kd.totals.xirr 로 두어 잘못된 시장 키 참조를 탐지.
+//  data.prices 는 비워 둠(applyServerPrices 가 시드 가격을 덮어쓰지 않도록).
+const derivedSnap = {
+  dataVersion: '1',
+  pricedAt: '2026-06-27T09:30:00.000Z',
+  data: {
+    nk: { totals: { xirr: 0.1234 }, accounts: {} },
+    kd: { totals: { xirr: 0.0567 }, accounts: {} },
+  },
+};
+
 export const SEEDS = {
   nonk: {
     url: 'NonK.html',
@@ -51,6 +63,8 @@ export const SEEDS = {
       nonk_monthly_v1: [],
       nonk_dividends_v1: [],
       nonk_watchlist_v1: [],
+      mypm_derived_v1: derivedSnap,
+      mypm_synced_version: 1,
     },
     // 캡처 대상 DOM 컨테이너 (Phase 3에서 id 비접두사화하면 후보 중 존재하는 것을 사용)
     containerIds: ['nkHoldingsContainer', 'HoldingsContainer'],
@@ -69,6 +83,8 @@ export const SEEDS = {
       kd_monthly_v1: [],
       kd_dividends_v1: [],
       kd_watchlist_v1: [],
+      mypm_derived_v1: derivedSnap,
+      mypm_synced_version: 1,
     },
     containerIds: ['kdHoldingsContainer', 'HoldingsContainer'],
     heroIds: ['kdHeroContainer', 'HeroContainer'],

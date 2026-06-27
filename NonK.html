@@ -126,7 +126,7 @@
 </div>
 
 <!-- NonK 거래 추가/편집 모달 -->
-<div class="modal-backdrop" id="tTradeModal" onclick="nktHandleTradeBackdrop(event)">
+<div class="modal-backdrop" id="tTradeModal" onclick="tHandleTradeBackdrop(event)">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
       <h2 id="tTradeModalTitle">거래 추가</h2>
@@ -340,35 +340,35 @@
 </div>
 
 <!-- 현금 모달 -->
-<div class="modal-backdrop" id="CashModal" onclick="if(event.target===this)nkCloseCashModal()">
+<div class="modal-backdrop" id="CashModal" onclick="if(event.target===this)closeCashModal()">
   <div class="modal">
     <div class="modal-header">
       <div><h2>💵 현금 (예수금)</h2><div class="modal-subtitle">계좌별 보유 현금 (USD)</div></div>
-      <button class="close-btn" onclick="nkCloseCashModal()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="closeCashModal()" aria-label="닫기">×</button>
     </div>
     <div class="account-grid" id="CashInputs"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="nkCloseCashModal()">취소</button>
+      <button class="btn-secondary" onclick="closeCashModal()">취소</button>
       <button class="btn-primary" onclick="nkSaveCash()">저장</button>
     </div>
   </div>
 </div>
 
 <!-- 입출금 모달 -->
-<div class="modal-backdrop" id="DepositModal" onclick="if(event.target===this)nkCloseDepositModal()">
+<div class="modal-backdrop" id="DepositModal" onclick="if(event.target===this)closeDepositModal()">
   <div class="modal modal-wide modal-deposit">
     <div class="modal-header">
       <div><h2>💰 계좌 입출금 관리</h2><div class="modal-subtitle">계좌별 입금·출금 내역 (USD)</div></div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <button class="btn-primary" onclick="nkOpenTxnEditor()" style="padding:8px 16px;font-size:13px;font-weight:600">➕ 입출금 추가</button>
-        <button class="close-btn" onclick="nkCloseDepositModal()" aria-label="닫기">×</button>
+        <button class="close-btn" onclick="closeDepositModal()" aria-label="닫기">×</button>
       </div>
     </div>
     <div class="deposit-grand" id="DepositGrand"></div>
     <div class="deposit-totals" id="DepositTotals"></div>
     <div class="deposit-list-header"><span>입출금일</span><span>계좌</span><span>금액</span><span></span></div>
     <div class="deposit-list-wrap"><div id="DepositList"></div></div>
-    <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseDepositModal()">닫기</button></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeDepositModal()">닫기</button></div>
   </div>
 </div>
 
@@ -395,11 +395,11 @@
 </div>
 
 <!-- 계좌 기록 모달 -->
-<div class="modal-backdrop" id="AccountRecordsModal" onclick="if(event.target===this)nkCloseRecordsModal()">
+<div class="modal-backdrop" id="AccountRecordsModal" onclick="if(event.target===this)closeRecordsModal()">
   <div class="modal modal-wide modal-records">
     <div class="modal-header">
       <div><h2>📒 계좌 기록 관리</h2><div class="modal-subtitle">월별 계좌 평가금액 기록 (USD)</div></div>
-      <button class="close-btn" onclick="nkCloseRecordsModal()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="closeRecordsModal()" aria-label="닫기">×</button>
     </div>
     <div class="records-input-card">
       <div class="records-input-top">
@@ -422,16 +422,16 @@
         <div class="records-body-wrap"><div id="RecordsList"></div></div>
       </div>
     </div>
-    <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseRecordsModal()">닫기</button></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeRecordsModal()">닫기</button></div>
   </div>
 </div>
 
 <!-- 배당 기록 모달 -->
-<div class="modal-backdrop" id="DividendModal" onclick="if(event.target===this)nkCloseDividendModal()">
+<div class="modal-backdrop" id="DividendModal" onclick="if(event.target===this)closeDividendModal()">
   <div class="modal modal-wide modal-records">
     <div class="modal-header">
       <div><h2>💸 배당 기록 관리</h2><div class="modal-subtitle">월별 배당금 수령 내역 (USD)</div></div>
-      <button class="close-btn" onclick="nkCloseDividendModal()" aria-label="닫기">×</button>
+      <button class="close-btn" onclick="closeDividendModal()" aria-label="닫기">×</button>
     </div>
     <div class="records-input-card">
       <div class="records-input-top">
@@ -490,7 +490,7 @@
         </div>
       </div>
     </div>
-    <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseDividendModal()">닫기</button></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeDividendModal()">닫기</button></div>
   </div>
 </div>
 
@@ -542,11 +542,11 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="AccountSettingsModal" onclick="if(event.target===this)nkCloseAccountSettings()">
+<div class="modal-backdrop" id="AccountSettingsModal" onclick="if(event.target===this)closeAccountSettings()">
   <div class="modal" style="max-width:440px">
     <div><h2>계좌 관리</h2><div class="modal-subtitle">계좌를 추가·편집·비활성화할 수 있습니다</div></div>
     <div id="AccountSettingsBody" style="margin:16px 0"></div>
-    <div class="modal-actions"><button class="btn-secondary" onclick="nkCloseAccountSettings()">닫기</button></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="closeAccountSettings()">닫기</button></div>
   </div>
 </div>
 <script src="js/ticker-search.js"></script>
@@ -556,7 +556,7 @@
 <script>
 const APP_VERSION = 'NonK v0.652';
 const MARKET_CONFIG = {
-  market: 'nonk', version: APP_VERSION, locale: 'en-US',
+  market: 'nonk', version: APP_VERSION, locale: 'en-US', snapKey: 'nk',
   storageKeys: {
     accounts: 'nonk_accounts_v1', holdings: 'nonk_holdings_v1', cash: 'nonk_cash_v1',
     deposits: 'nonk_deposits_v1', monthly: 'nonk_monthly_v1', dividends: 'nonk_dividends_v1',
@@ -719,11 +719,6 @@ function nkLoadAccounts() {
   return [{ id: 'acc1', name: '기본계좌', active: true }];
 }
 function nkSaveAccounts()  { localStorage.setItem(NK_ACC_KEY, JSON.stringify(ST.accounts)); }
-function nkAdjustCash(accId, delta) {
-  if (!accId) return;
-  ST.cash[accId] = (Number(ST.cash[accId]) || 0) + delta;
-  saveCashData();
-}
 
 function nkDivRecAmount(rec, code) {
   const ps = Number(rec.stocksPerShare && rec.stocksPerShare[code]) || 0;
@@ -738,12 +733,6 @@ function nkDivRecAmount(rec, code) {
     if (total > 0) return Math.round(ps * total * 100) / 100;
   }
   return Number(rec.stocks && rec.stocks[code]) || 0;
-}
-function nkDivRecCodes(rec) {
-  const set = new Set();
-  if (rec.stocks)         for (const k of Object.keys(rec.stocks))         set.add(k);
-  if (rec.stocksPerShare) for (const k of Object.keys(rec.stocksPerShare)) set.add(k);
-  return [...set];
 }
 
 function fmtUSD(n) {
@@ -786,26 +775,6 @@ function switchPage(page) {
 
 // 부모(MyPM)가 캐시한 서버 스냅샷의 시세맵(data.prices, ticker→{price,change})을 보유종목에 적용.
 // 반환: 적용된 ticker Set (개별 Finnhub 조회 폴백에서 제외용).
-function nkApplyServerPrices() {
-  const covered = new Set();
-  try {
-    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
-    const pm = snap && snap.data && snap.data.prices;
-    if (!pm) return covered;
-    ST.holdings.forEach(h => {
-      const p = pm[h.ticker];
-      if (p && typeof p.price === 'number' && p.price > 0) {
-        h.price = p.price;
-        h.change = Number(p.change) || 0;
-        const prev = p.price - h.change;
-        h.changeRate = prev > 0 ? (h.change / prev * 100) : 0;
-        h.updatedAt = new Date().toISOString();
-        covered.add(h.ticker);
-      }
-    });
-  } catch (_) {}
-  return covered;
-}
 
 // preferSnapshot=true(기본): 서버 선계산 시세를 먼저 적용하고 못 받은 종목만 Finnhub 조회(빠름).
 // 수동 '가격 갱신' 버튼은 preferSnapshot=false 로 호출해 항상 라이브 조회.
@@ -815,7 +784,7 @@ async function nkRefreshAll(suppressDone = false, preferSnapshot = true) {
   let failCount = 0;
 
   // 서버 스냅샷 우선 적용 → 커버된 보유종목은 Finnhub 조회에서 제외.
-  const covered = preferSnapshot ? nkApplyServerPrices() : new Set();
+  const covered = preferSnapshot ? applyServerPrices() : new Set();
 
   // 배치 우선조회 — (미커버)보유+관심 티커를 한 요청으로 받아 브라우저 연결제한 우회.
   // 배치에 없는(=Finnhub 미커버) 종목만 개별 fetchNkPrice(Finnhub단건→Yahoo→Stooq) 폴백.
@@ -879,22 +848,7 @@ function nkInitAutoRefresh() {
   }
 }
 
-function nkComputeAccountValue(accId) {
-  let total = 0;
-  for (const h of ST.holdings) {
-    const a = h.accounts && h.accounts[accId];
-    if (a && a.qty > 0) total += a.qty * (h.price || 0);
-  }
-  total += Number(ST.cash[accId]) || 0;
-  return total;
-}
 
-function nkTotalDeposited(accId = null, accIds = null) {
-  let txns = ST.deposits.transactions;
-  if (accId) txns = txns.filter(t => t.accId === accId);
-  else if (accIds) txns = txns.filter(t => accIds.includes(t.accId));
-  return txns.reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
-}
 
 // XIRR은 서버 선계산 스냅샷에서만 표시(알고리즘 숨김). 클라 재계산 없음.
 // 표시는 부모(MyPM)가 캐시한 서버 스냅샷(mypm_derived_v1 의 .nk)을 사용. KDeal kdDisplayDerived 와 동일.
@@ -911,15 +865,6 @@ function nkDisplayDerived() {
   } catch (_) { return null; }
 }
 // 서버 스냅샷의 pricedAt(서버 계산 시각) — .nk 유효(동기화 일치)할 때만. 히어로 '오늘' 라벨용.
-function nkSnapPricedAt() {
-  try {
-    const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
-    if (!snap || !snap.data || !snap.data.nk) return null;
-    const localVer = localStorage.getItem('mypm_synced_version');
-    if (localVer == null || String(snap.dataVersion) !== String(localVer)) return null;
-    return snap.pricedAt || null;
-  } catch (_) { return null; }
-}
 // 서버 계산 시각 → "MM/DD HH:MM". 없으면 null.
 
 function nkRender() {
@@ -967,7 +912,7 @@ function nkRender() {
   const totalCash = _activeAccs.reduce((s, a) => s + (Number(ST.cash[a.id]) || 0), 0);
   totalValue += totalCash;
   const _activeAccIds = _activeAccs.map(a => a.id);
-  const deposited  = nkTotalDeposited(null, _activeAccIds);
+  const deposited  = totalDeposited(null, _activeAccIds);
   const pnl        = totalValue - deposited;
   const pnlRate    = deposited > 0 ? pnl / deposited * 100 : 0;
   // XIRR은 서버 스냅샷에서만 표시(없으면 '-'). 총액·원금·손익은 위 클라 계산 그대로(즉시 반영).
@@ -1010,7 +955,7 @@ function nkRender() {
   const heroEl = document.getElementById('HeroContainer');
   if (heroEl) heroEl.innerHTML = `<div class="card nk-hero">
     <div class="nk-hero-value-row"><div class="nk-hero-value">${fmtUSD(totalValue)}</div></div>
-    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">${fmtHeroAsOf(nkSnapPricedAt()) || '오늘'}</span></div>
+    <div class="nk-hero-row ${heroDayCls}"><span>${heroDaySign}${fmtUSD(todayPnl)} (${heroDayRSign}${todayRate.toFixed(2)}%)</span><span class="nk-hero-label">${fmtHeroAsOf(snapPricedAt()) || '오늘'}</span></div>
     <div class="nk-hero-row ${heroMoCls}"><span>${monthPnl != null ? heroMoSign + fmtUSD(monthPnl) + ` (${heroMoRSign}${(monthPnlRate||0).toFixed(2)}%)` : '-'}</span><span class="nk-hero-label">${_yr}년 ${_thisM}월</span></div>
     <div class="nk-hero-row ${heroPnlCls}"><span>${deposited > 0 ? heroPnlSign + fmtUSD(pnl) + ` (${heroPnlRSign}${pnlRate.toFixed(2)}%)` : '-'}<span style="font-size:13px;font-weight:500;opacity:0.8"> · XIRR <span class="${heroXirrCls}">${xirrText}</span></span></span><span class="nk-hero-label">누적</span></div>
   </div>`;
@@ -1076,9 +1021,9 @@ function nkRender() {
     it._chCls = it.change > 0 ? 'diff-positive' : (it.change < 0 ? 'diff-negative' : '');
     it._dayAmt = it.change * it.qty;
     tableHtml += `<tr>`
-      + `<td onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" style="cursor:pointer"><div class="stock-name">${nkEscape(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
+      + `<td onclick="nktOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" style="cursor:pointer"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? '<span class="account-dot"></span>' : ''}</div><div class="stock-code">${it.ticker}</div></td>`
       + nkCols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, nkColCtx) : ''}>${c.cell(it, nkColCtx)}</td>`).join('')
-      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="nktOpenTradeModalForTicker('${it.ticker}','${nkEscape(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="nkOpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="nkDeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
+      + `<td style="white-space:nowrap"><button class="tbl-trade-btn" onclick="nktOpenTradeModalForTicker('${it.ticker}','${escapeHtml(it.name)}')" title="거래">거래</button><button class="tbl-icon-btn" onclick="nkOpenAccountModal('${it.ticker}')" title="편집">✏️</button><button class="tbl-icon-btn" onclick="nkDeleteHolding('${it.ticker}')" title="삭제">🗑️</button></td>`
       + `</tr>`;
   }
 
@@ -1111,14 +1056,11 @@ function nkRenderAccountButtons() {
   if (!grid) return;
   const active = ST.accounts.filter(a => a.active !== false);
   grid.innerHTML = active.map(a => {
-    const val = nkComputeAccountValue(a.id);
+    const val = computeAccountValue(a.id);
     return `<button class="btn-account-view" onclick="nkOpenAccountDetail('${a.id}')">💼 ${a.name}<span class="acc-value">${fmtUSD(val)}</span></button>`;
   }).join('');
 }
 
-function nkEscape(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
 
 function nkDeleteHolding(ticker) {
   if (!confirm(`${ticker} 종목을 삭제하시겠습니까?`)) return;
@@ -1271,7 +1213,7 @@ function nkOpenAccountModal(ticker) {
     const total = (acc.qty || 0) * (acc.avgPrice || 0);
     return `<div class="account-card">
       <div class="acc-card-header">
-        <span class="acc-card-name">${nkEscape(a.name)}</span>
+        <span class="acc-card-name">${escapeHtml(a.name)}</span>
         <span class="acc-card-total${total ? '' : ' zero'}" id="AccTotal_${a.id}">${fmtUSD(total)}</span>
       </div>
       <div class="acc-card-inputs">
@@ -1361,7 +1303,7 @@ function nkOpenAccountDetail(accId) {
   const cash         = Number(ST.cash[accId]) || 0;
   const totalVal     = items.reduce((s, i) => s + i.val, 0) + cash;
   const todayPnl     = items.reduce((s, i) => s + i.dayChange, 0);
-  const accDeposited = nkTotalDeposited(accId);
+  const accDeposited = totalDeposited(accId);
   const accPnl       = totalVal - accDeposited;
   const accPnlRate   = accDeposited > 0 ? accPnl / accDeposited * 100 : 0;
   // 계좌 XIRR은 서버 스냅샷에서만(없으면 '-'). 평가·원금은 위 클라 계산 유지.
@@ -1399,7 +1341,7 @@ function nkOpenAccountDetail(accId) {
     tbody += `
       <tr>
         <td>
-          <div class="stock-name">${nkEscape(i.name)}</div>
+          <div class="stock-name">${escapeHtml(i.name)}</div>
           <div class="stock-code">${i.ticker}</div>
         </td>
         <td>${i.cost > 0 ? buyWeight.toFixed(1) + '%' : '-'}</td>
@@ -1506,16 +1448,13 @@ function nkOpenCashModal() {
   document.getElementById('CashModal').classList.add('open');
 }
 
-function nkCloseCashModal() {
-  document.getElementById('CashModal').classList.remove('open');
-}
 
 function nkSaveCash() {
   for (const a of ST.accounts.filter(x => x.active !== false)) {
     ST.cash[a.id] = Number(document.getElementById(`CashInput_${a.id}`)?.value.replace(/,/g,'')) || 0;
   }
   saveCashData();
-  nkCloseCashModal();
+  closeCashModal();
   nkRender();
 }
 
@@ -1525,9 +1464,6 @@ function nkOpenDepositModal() {
   document.getElementById('DepositModal').classList.add('open');
 }
 
-function nkCloseDepositModal() {
-  document.getElementById('DepositModal').classList.remove('open');
-}
 
 function nkRenderDepositList() {
   const grand = document.getElementById('DepositGrand');
@@ -1660,9 +1596,6 @@ function nkOpenRecordsModal() {
   document.getElementById('AccountRecordsModal').classList.add('open');
 }
 
-function nkCloseRecordsModal() {
-  document.getElementById('AccountRecordsModal').classList.remove('open');
-}
 
 function nkRenderRecAccountInputs() {
   const div = document.getElementById('RecAccountInputs');
@@ -1684,31 +1617,11 @@ function nkUpdateRecTotal() {
 function nkFillCurrentValues() {
   ST.accounts.filter(a => a.active !== false).forEach(a => {
     const el = document.getElementById(`RecVal_${a.id}`);
-    if (el) el.value = nkComputeAccountValue(a.id).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    if (el) el.value = computeAccountValue(a.id).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   });
   nkUpdateRecTotal();
 }
 
-async function nkFetchHistoricalClose(ticker, year, month) {
-  const lastDay = new Date(year, month, 0);
-  const period1 = Math.floor(new Date(year, month - 1, 1).getTime() / 1000);
-  const period2 = Math.floor(lastDay.getTime() / 1000) + 86400;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&period1=${period1}&period2=${period2}`;
-  const chart = JSON.parse(await fetchViaProxy(url))?.chart?.result?.[0];
-  if (!chart) throw new Error('No data');
-  const timestamps = chart.timestamp || [];
-  const closes = chart.indicators?.quote?.[0]?.close || [];
-  let bestTs = 0, bestClose = 0;
-  for (let i = 0; i < timestamps.length; i++) {
-    if (closes[i] > 0 && timestamps[i] > bestTs) { bestTs = timestamps[i]; bestClose = closes[i]; }
-  }
-  if (!bestClose) throw new Error('종가 없음');
-  const d = new Date(bestTs * 1000);
-  return {
-    price: bestClose,
-    date: `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
-  };
-}
 
 async function nkLoadHistoricalValues() {
   const dateVal = document.getElementById('RecDate').value;
@@ -1729,7 +1642,7 @@ async function nkLoadHistoricalValues() {
     const priceMap = {}, errors = [];
     await Promise.all(targets.map(async h => {
       try {
-        const { price, date } = await nkFetchHistoricalClose(h.ticker, year, month);
+        const { price, date } = await fetchHistoricalClose(h.ticker, year, month);
         priceMap[h.ticker] = { price, date };
       } catch (e) {
         errors.push(`${h.ticker}: ${e.message}`);
@@ -1877,9 +1790,6 @@ function nkOpenDividendModal() {
   document.getElementById('DividendModal').classList.add('open');
 }
 
-function nkCloseDividendModal() {
-  document.getElementById('DividendModal').classList.remove('open');
-}
 
 function nkRenderDivStockInputs(perShareMap, sharesOverride) {
   const tbody = document.getElementById('DivStockInputs');
@@ -1951,7 +1861,7 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
         onblur="nkFmtAccInput(this,4)"
         oninput="InputUX.liveFormat(this,4,'en-US'); nkUpdateDivRow('${h.ticker}')"
         style="width:100px;padding:4px 6px;font-size:13px;border:1px solid var(--border);border-radius:4px;text-align:right"></td>
-      <td class="div-qty-cell" onclick="nkToggleDivRow('${h.ticker}')"
+      <td class="div-qty-cell" onclick="toggleDivRow('${h.ticker}')"
           style="text-align:right;cursor:pointer;user-select:none">
         <span class="div-qty-sum" id="DivQtySum_${h.ticker}">${qtyTotal.toLocaleString('en-US')}</span>
         <span class="div-toggle" id="DivToggle_${h.ticker}"
@@ -1968,14 +1878,6 @@ function nkRenderDivStockInputs(perShareMap, sharesOverride) {
   nkUpdateDivTotal();
 }
 
-function nkToggleDivRow(code) {
-  const row = document.querySelector(`#DivStockInputs tr.div-account-row[data-code-for="${code}"]`);
-  if (!row) return;
-  const ind = document.getElementById('DivToggle_' + code);
-  const open = row.style.display === 'none';
-  row.style.display = open ? 'table-row' : 'none';
-  if (ind) ind.textContent = open ? '▼' : '▶';
-}
 
 function nkUpdateAccQty(code, accId, val) {
   nkDivFormShares[code] = nkDivFormShares[code] || {};
@@ -2095,7 +1997,7 @@ function nkEditDividendRecord(id) {
   document.getElementById('DivYear').value = rec.year;
   document.getElementById('DivMonth').value = rec.month;
   if (window.InputUX) InputUX.scanYMChips();
-  if (nkDivRecIsMisc(rec)) {
+  if (divRecIsMisc(rec)) {
     nkEditingDivId = null;
     const stockSaveBtn = document.getElementById('DivSaveBtn');
     if (stockSaveBtn) stockSaveBtn.textContent = '➕ 추가';
@@ -2136,13 +2038,6 @@ function nkCancelDivEdit() {
 // === NonK 기타항목 (종목 없이 금액만) ===
 let nkDivMiscEditingId = null;
 
-function nkDivRecIsMisc(rec) { return !!(rec && rec.misc); }
-function nkDivRecMiscTotal(rec) {
-  if (!rec || !rec.misc) return 0;
-  let t = 0;
-  for (const v of Object.values(rec.misc.accounts || {})) t += Number(v) || 0;
-  return t;
-}
 
 function nkToggleDivMiscForm(forceOpen) {
   const body = document.getElementById('DivMiscBody');
@@ -2250,7 +2145,7 @@ function nkRenderDividendLists() {
     if (!ST.dividends.length) {
       sHeader.innerHTML = ''; sList.innerHTML = '<div class="div-empty">아직 배당 기록이 없습니다.</div>';
     } else {
-      const allTickers = [...new Set(ST.dividends.flatMap(r => nkDivRecCodes(r)))];
+      const allTickers = [...new Set(ST.dividends.flatMap(r => divRecCodes(r)))];
       const cols = `80px ${allTickers.map(() => 'minmax(80px,1fr)').join(' ')} minmax(90px,1fr) 60px`;
       const spanCount = Math.max(allTickers.length, 1);
       sHeader.style.gridTemplateColumns = cols;
@@ -2258,8 +2153,8 @@ function nkRenderDividendLists() {
       const sorted = [...ST.dividends].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       sList.innerHTML = sorted.map(rec => {
         const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
-        if (nkDivRecIsMisc(rec)) {
-          const total = nkDivRecMiscTotal(rec);
+        if (divRecIsMisc(rec)) {
+          const total = divRecMiscTotal(rec);
           const memo = (rec.misc && rec.misc.memo) ? rec.misc.memo : '';
           return `<div class="div-record-row" style="grid-template-columns:${cols}">
             <span class="div-date-link" onclick="nkEditDividendRecord('${rec.id}')" title="전체 수정">${dateLabel}</span>
@@ -2298,7 +2193,7 @@ function nkRenderDividendLists() {
       const sorted = [...ST.dividends].sort((a,b) => b.year!==a.year?b.year-a.year:b.month-a.month);
       aList.innerHTML = sorted.map(rec => {
         const total = ST.accounts.reduce((s,a)=>s+(Number(rec.accounts[a.id])||0),0);
-        const isMisc = nkDivRecIsMisc(rec);
+        const isMisc = divRecIsMisc(rec);
         const cells = ST.accounts.map(a => {
           const v = Number(rec.accounts[a.id]) || 0;
           if (!v) return `<span class="amount">-</span>`;
@@ -2389,7 +2284,7 @@ function nkOpenDivAccEdit(recId, accId) {
   const accName = acc ? acc.name : accId;
   const dateLabel = `${rec.year}.${String(rec.month).padStart(2,'0')}`;
   document.getElementById('DivAccEditTitle').textContent = `${accName} · ${dateLabel}`;
-  const tickers = nkDivRecCodes(rec);
+  const tickers = divRecCodes(rec);
   const rows = tickers.map(ticker => {
     const perShare = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
     const qty = Number((rec.stocksShares && rec.stocksShares[ticker] && rec.stocksShares[ticker][accId]) || 0);
@@ -2441,7 +2336,7 @@ function nkSaveDivAccEdit() {
   // 해당 계좌 amount 재계산
   if (!rec.accounts) rec.accounts = {};
   let total = 0;
-  for (const ticker of nkDivRecCodes(rec)) {
+  for (const ticker of divRecCodes(rec)) {
     const ps = Number(rec.stocksPerShare && rec.stocksPerShare[ticker]) || 0;
     const qty = Number((rec.stocksShares[ticker] && rec.stocksShares[ticker][accId]) || 0);
     total += ps * qty;
@@ -2459,9 +2354,6 @@ function nkOpenAccountSettings() {
   nkRenderAccountSettingsBody();
   document.getElementById('AccountSettingsModal').classList.add('open');
 }
-function nkCloseAccountSettings() {
-  document.getElementById('AccountSettingsModal').classList.remove('open');
-}
 
 function nkRenderAccountSettingsBody() {
   const body = document.getElementById('AccountSettingsBody');
@@ -2472,7 +2364,7 @@ function nkRenderAccountSettingsBody() {
   html += `<div class="nk-acc-settings-list">` + ST.accounts.map(a => {
     const isActive = a.active !== false;
     return `<div class="nk-acc-settings-row">
-        <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="nkToggleAccountActive('${a.id}')">${nkEscape(a.name)}</button>
+        <button class="nk-acc-toggle-btn${isActive ? ' active' : ''}" onclick="nkToggleAccountActive('${a.id}')">${escapeHtml(a.name)}</button>
         <button class="edit-btn" onclick="nkRenameAccount('${a.id}')">이름변경</button>
         <button class="del-btn" onclick="nkDeleteAccount('${a.id}')">삭제</button>
       </div>`;
@@ -2550,14 +2442,14 @@ function nkDeleteAccount(id) {
 // ESC key closes any open NonK modal
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if (document.getElementById('AccountSettingsModal').classList.contains('open')){ nkCloseAccountSettings(); return; }
+  if (document.getElementById('AccountSettingsModal').classList.contains('open')){ closeAccountSettings(); return; }
   if (document.getElementById('TxnEditorModal').classList.contains('open'))    { nkCloseTxnEditor(); return; }
   if (document.getElementById('AccountModal').classList.contains('open'))      { nkCloseAccountModal(); return; }
   if (document.getElementById('AccountDetailModal').classList.contains('open')){ nkCloseAccountDetail(); return; }
-  if (document.getElementById('CashModal').classList.contains('open'))         { nkCloseCashModal(); return; }
-  if (document.getElementById('DepositModal').classList.contains('open'))      { nkCloseDepositModal(); return; }
-  if (document.getElementById('AccountRecordsModal').classList.contains('open')){ nkCloseRecordsModal(); return; }
-  if (document.getElementById('DividendModal').classList.contains('open'))     { nkCloseDividendModal(); return; }
+  if (document.getElementById('CashModal').classList.contains('open'))         { closeCashModal(); return; }
+  if (document.getElementById('DepositModal').classList.contains('open'))      { closeDepositModal(); return; }
+  if (document.getElementById('AccountRecordsModal').classList.contains('open')){ closeRecordsModal(); return; }
+  if (document.getElementById('DividendModal').classList.contains('open'))     { closeDividendModal(); return; }
   if (document.getElementById('AddStockModal').classList.contains('open'))     { nkCloseAddModal(); return; }
 });
 
@@ -2752,90 +2644,8 @@ function nktLoadTrades() {
 function nktSaveTrades() { localStorage.setItem(NKT_TRADES_KEY, JSON.stringify(ST.trades)); }
 
 // FIFO 분석 (USD)
-function nktFifoAnalysis() {
-  const sorted = [...ST.trades].sort((a, b) =>
-    a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
-  const openLots = {};
-  const closedMap = {};
-
-  for (const t of sorted) {
-    const fee = Number(t.fee) || 0;
-    if (t.type === 'buy') {
-      if (!openLots[t.ticker]) openLots[t.ticker] = [];
-      openLots[t.ticker].push({ id: t.id, date: t.date, price: t.price,
-        qty: t.qty, remaining: t.qty, fee, name: t.name });
-    } else {
-      const lots = openLots[t.ticker] || [];
-      let sellRemain = t.qty;
-      let matchedCost = 0, matchedQty = 0, weightedDays = 0;
-      while (sellRemain > 0 && lots.length > 0) {
-        const lot = lots[0];
-        const take = Math.min(lot.remaining, sellRemain);
-        const feeAlloc = lot.qty > 0 ? (lot.fee / lot.qty) * take : 0;
-        matchedCost += lot.price * take + feeAlloc;
-        weightedDays += Math.max(1, Math.round((new Date(t.date) - new Date(lot.date)) / 86400000)) * take;
-        matchedQty += take;
-        lot.remaining -= take; sellRemain -= take;
-        if (lot.remaining === 0) lots.shift();
-      }
-      if (matchedQty > 0) {
-        const feeAlloc = t.qty > 0 ? fee * (matchedQty / t.qty) : 0;
-        const sellNet = t.price * matchedQty - feeAlloc;
-        const pnl = sellNet - matchedCost;
-        const simpleReturn = matchedCost > 0 ? pnl / matchedCost : 0;
-        const avgDays = Math.round(weightedDays / matchedQty);
-        const annReturn = avgDays > 0
-          ? Math.pow(Math.max(0, sellNet / matchedCost), 365 / avgDays) - 1
-          : simpleReturn;
-        closedMap[t.id] = { pnl, simpleReturn, annReturn, holdingDays: avgDays, qty: matchedQty };
-      }
-    }
-  }
-
-  const positions = [];
-  for (const [ticker, lots] of Object.entries(openLots)) {
-    const qty = lots.reduce((s, l) => s + l.remaining, 0);
-    if (qty <= 0) continue;
-    const cost = lots.reduce((s, l) => {
-      const feePerShare = l.qty > 0 ? l.fee / l.qty : 0;
-      return s + (l.price + feePerShare) * l.remaining;
-    }, 0);
-    positions.push({ ticker, name: lots[lots.length-1].name || ticker,
-      qty, avgPrice: cost / qty, cost });
-  }
-  positions.sort((a, b) => a.ticker.localeCompare(b.ticker));
-  return { positions, closedMap };
-}
 
 // 날짜 기준 보유 종목
-function nktGetHeldStocksAsOf(date) {
-  const sorted = [...ST.trades]
-    .filter(t => t.date <= date)
-    .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.id.localeCompare(b.id));
-  const openLots = {};
-  for (const t of sorted) {
-    if (t.type === 'buy') {
-      if (!openLots[t.ticker]) openLots[t.ticker] = [];
-      openLots[t.ticker].push({ qty: t.qty, remaining: t.qty, name: t.name });
-    } else {
-      const lots = openLots[t.ticker] || [];
-      let sellRemain = t.qty;
-      while (sellRemain > 0 && lots.length > 0) {
-        const lot = lots[0];
-        const take = Math.min(lot.remaining, sellRemain);
-        lot.remaining -= take; sellRemain -= take;
-        if (lot.remaining === 0) lots.shift();
-      }
-    }
-  }
-  return Object.entries(openLots)
-    .map(([ticker, lots]) => {
-      const qty = lots.reduce((s, l) => s + l.remaining, 0);
-      return qty > 0 ? { ticker, name: lots[lots.length-1].name || ticker, qty } : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.ticker.localeCompare(b.ticker));
-}
 
 function nktUpdateSellStockOptions() {
   const sel = document.getElementById('tSellStockSelect');
@@ -2926,7 +2736,7 @@ function nktSetTab(tab) {
 
 // 거래 내역 렌더링
 function nktRenderTradeHistory() {
-  const { closedMap, positions } = nktFifoAnalysis();
+  const { closedMap, positions } = tFifoAnalysis();
   const openTickers = new Set(positions.map(p => p.ticker));
   const container = document.getElementById('tTradeHistoryContainer');
   if (!container) return;
@@ -3099,9 +2909,9 @@ function nqtRenderAccList() {
 
     return `<div class="trade-acc-card">
       <div class="trade-acc-row" onclick="nqtOpenForm('${acc.id}')">
-        <div class="trade-acc-badge">${nkEscape((acc.name||'').slice(0,2))}</div>
+        <div class="trade-acc-badge">${escapeHtml((acc.name||'').slice(0,2))}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px">${nkEscape(acc.name)}</div>
+          <div style="font-weight:600;font-size:14px">${escapeHtml(acc.name)}</div>
           <div style="font-size:12px;color:var(--muted)">
             ${qty > 0 ? qty.toLocaleString('en-US',{maximumFractionDigits:4})+'주 · '+fmtUSDDec(avg) : '보유 없음'}
           </div>
@@ -3226,9 +3036,6 @@ function nktCloseTradeModal() {
   nktEditingTradeId = null;
 }
 
-function nktHandleTradeBackdrop(e) {
-  if (e.target.id === 'tTradeModal') nktCloseTradeModal();
-}
 
 function nktOnTickerInput(val) {
   document.getElementById('tTradeTicker').value = val.replace(/[^0-9A-Za-z.\-]/g, '').toUpperCase();
@@ -3263,7 +3070,7 @@ function nktApplyTradeToPortfolio(type, ticker, tradeName, accId, price, qty, fe
       ST.holdings.push({ ticker, name: tradeName || ticker, accounts: { [accId]: { qty, avgPrice: price } }, price, change: 0, changeRate: 0 });
     }
     saveHoldings();
-    nkAdjustCash(accId, -(price * qty + (reverse ? -fee : fee)));
+    adjustCash(accId, -(price * qty + (reverse ? -fee : fee)));
   } else {
     if (h && h.accounts) {
       const curQty = Number(h.accounts[accId]?.qty) || 0;
@@ -3279,7 +3086,7 @@ function nktApplyTradeToPortfolio(type, ticker, tradeName, accId, price, qty, fe
       };
       saveHoldings();
     }
-    nkAdjustCash(accId, +(price * qty + (reverse ? fee : -fee)));
+    adjustCash(accId, +(price * qty + (reverse ? fee : -fee)));
   }
 }
 
@@ -3337,7 +3144,7 @@ function nktOnNameInput(val) {
   if (!val) { if (listEl) listEl.classList.remove('open'); return; }
   _nktNameAcTimer = setTimeout(async () => {
     const items = await nktFetchAutocomplete(val);
-    if (listEl) nktShowAcList(listEl, items, item => {
+    if (listEl) tShowAcList(listEl, items, item => {
       document.getElementById('tTradeName').value  = item.name;
       document.getElementById('tTradeTicker').value = item.ticker;
       listEl.classList.remove('open');
@@ -3358,18 +3165,6 @@ async function nktFetchAutocomplete(query) {
   } catch(_) { return []; }
 }
 
-function nktShowAcList(listEl, items, onSelect) {
-  listEl.innerHTML = '';
-  if (!items.length) { listEl.classList.remove('open'); return; }
-  items.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'mt-ac-item';
-    div.innerHTML = `<span class="mt-ac-name">${item.name}</span><span class="mt-ac-code">${item.ticker}</span>`;
-    div.addEventListener('mousedown', e => { e.preventDefault(); onSelect(item); });
-    listEl.appendChild(div);
-  });
-  listEl.classList.add('open');
-}
 
 document.addEventListener('click', e => {
   if (!e.target.closest('.mt-ac-wrap')) {
