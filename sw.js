@@ -13,6 +13,7 @@ const ASSETS = [
   BASE + 'js/ticker-search.js',
   BASE + 'js/api.js',
   BASE + 'js/input-ux.js',
+  BASE + 'market.css',
   BASE + 'tickers.json',
   BASE + 'manifest.json',
   BASE + 'icon.svg',
