@@ -1170,6 +1170,45 @@ registerMobileTooltipDismiss();
   .cons-table .cons-auto { color: #6366f1; font-weight: 600; }
   .cons-table input[type=number] { width: 62px; text-align: right; padding: 1px 4px;
     border: 1px solid #93c5fd; border-radius: 3px; font-size: 10px; }
+  /* === 사용 수준(Progressive Disclosure) 게이팅 === */
+  /* 더 제한적인 쪽이 이긴다: 인라인 style.display 토글도 !important로 덮어써 AND 결합 성립 */
+  body.lvl-1 [data-min-level="2"], body.lvl-1 [data-min-level="3"],
+  body.lvl-2 [data-min-level="3"] { display: none !important; }
+  body.lvl-2 [data-max-level="1"], body.lvl-3 [data-max-level="1"],
+  body.lvl-3 [data-max-level="2"] { display: none !important; }
+
+  /* 사용 수준 선택 카드 (설정 홈) */
+  .cfg-level-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 12px 10px; margin: 12px 0; }
+  .cfg-level-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+  .cfg-level-seg { display: flex; gap: 6px; }
+  .cfg-level-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 9px 4px; border: 1.5px solid var(--border); border-radius: 9px; background: #f3f4f6;
+    color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .cfg-level-btn b { font-size: 14px; font-weight: 700; }
+  .cfg-level-btn small { font-size: 10px; opacity: 0.85; }
+  .cfg-level-btn.active { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+  .cfg-level-desc { margin-top: 9px; font-size: 12px; color: var(--muted); line-height: 1.5; min-height: 16px; }
+
+  /* 자동 승급 추천 배너 */
+  .lvl-suggest-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: linear-gradient(135deg,#eef2ff,#ecfdf5); border: 1px solid #c7d2fe; border-radius: 12px;
+    padding: 11px 13px; margin: 0 0 14px; }
+  .lvl-suggest-banner .lsb-text { flex: 1; min-width: 160px; font-size: 13px; color: var(--text); line-height: 1.5; }
+  .lvl-suggest-banner .lsb-actions { display: flex; gap: 6px; }
+  .lvl-suggest-banner button { padding: 7px 12px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid transparent; white-space: nowrap; }
+  .lvl-suggest-banner .lsb-yes { background: var(--primary); color: #fff; }
+  .lvl-suggest-banner .lsb-later { background: #fff; border-color: var(--border); color: var(--muted); }
+
+  /* 온보딩 모달 카드 */
+  .onb-card { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;
+    padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--card);
+    cursor: pointer; transition: all 0.15s; }
+  .onb-card:active { transform: scale(0.99); }
+  .onb-card b { font-size: 15px; color: var(--text); }
+  .onb-card small { font-size: 12px; color: var(--muted); line-height: 1.45; }
+
   /* 설정 모달 */
   .cfg-section { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
     letter-spacing: 0.06em; padding: 7px 0 4px; border-top: 1px solid var(--border); margin-top: 4px; }
@@ -1645,13 +1684,13 @@ registerMobileTooltipDismiss();
       </svg>
       <span class="hdr-title">연금 준비</span>
     </a>
-    <a href="NonK.html" class="hdr-btn" title="NonK" onclick="return showSubFrame('nonk')">
+    <a href="NonK.html" class="hdr-btn" data-min-level="3" title="NonK" onclick="return showSubFrame('nonk')">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><line x1="2" y1="12" x2="22" y2="12"/>
         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
       </svg>
     </a>
-    <a href="KDeal.html" class="hdr-btn" title="KDeal" onclick="return showSubFrame('kdeal')">
+    <a href="KDeal.html" class="hdr-btn" data-min-level="3" title="KDeal" onclick="return showSubFrame('kdeal')">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="6" y="8" width="4" height="8" rx="1"/><rect x="14" y="5" width="4" height="9" rx="1"/>
         <line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="16" x2="8" y2="19"/>
@@ -1670,6 +1709,9 @@ registerMobileTooltipDismiss();
 
   <div id="panel-portfolio" class="tab-panel active">
 
+  <!-- 자동 승급 추천 배너 (조건 충족 시 JS가 표시) -->
+  <div class="lvl-suggest-banner" id="levelSuggestBanner" style="display:none"></div>
+
   <span id="statusText" style="display:none"></span>
   <div id="holdingsContainer">
     <div class="empty-state">
@@ -1678,9 +1720,25 @@ registerMobileTooltipDismiss();
     </div>
   </div>
 
+  <!-- Lv1 입문자 전용 첫걸음 안내 카드 -->
+  <div class="card" data-max-level="1" id="beginnerGuideCard" style="background:linear-gradient(135deg,#f0f7ff,#eef9f1);border:1px solid #d6e8ff">
+    <h2 style="margin-top:0">🌱 연금 첫걸음</h2>
+    <div style="font-size:13px;color:var(--text);line-height:1.7">
+      처음이시군요! 딱 두 가지만 먼저 익혀보세요.
+      <ol style="margin:10px 0 0;padding-left:20px">
+        <li><b>포트폴리오</b> — '+ 종목 추가'로 지금 가진 연금 자산을 등록해요.</li>
+        <li><b>원금기록</b> — 매달 넣은 돈(원금)을 기록해 습관을 만들어요.</li>
+      </ol>
+      <div style="margin-top:10px;color:var(--muted)">
+        익숙해지면 배당·계좌기록·연간계획 같은 기능이 단계적으로 열립니다.
+        지금 바로 바꾸고 싶다면 우측 상단 ⚙️ 설정 → <b>사용 수준</b>에서 조정할 수 있어요.
+      </div>
+    </div>
+  </div>
+
   <div style="height:20px"></div>
 
-  <div class="card">
+  <div class="card" data-min-level="2">
     <div class="trades-expand-header" onclick="toggleTradeSection()">
       <h2 style="margin:0">📊 거래내역</h2>
       <span class="trades-expand-arrow" id="tradeExpandArrow">▼</span>
@@ -1708,13 +1766,13 @@ registerMobileTooltipDismiss();
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" data-min-level="2">
     <h2>계좌별 상태 보기</h2>
     <div class="account-buttons-grid" id="accountButtonsGrid"></div>
     <div id="accSummaryWrap"></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-min-level="2">
     <h2>📈 월별 추세</h2>
     <div class="chart-wrap">
       <canvas id="portfolioChart"></canvas>
@@ -1752,7 +1810,7 @@ registerMobileTooltipDismiss();
     </svg>
     포트폴리오
   </button>
-  <button class="tab-nav-btn" id="tab-dividend" onclick="openDividendModal()">
+  <button class="tab-nav-btn" id="tab-dividend" data-min-level="2" onclick="openDividendModal()">
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 5.5 A1.5 1.5 0 0 1 4.5 4 H19.5 A1.5 1.5 0 0 1 21 5.5 V16.5 L15.5 22 H4.5 A1.5 1.5 0 0 1 3 20.5 Z"/>
       <path d="M15.5 22 L15.5 17.5 A0.5 0.5 0 0 1 16 17 L21 17"/>
@@ -1763,28 +1821,28 @@ registerMobileTooltipDismiss();
     </svg>
     배당기록
   </button>
-  <button class="tab-nav-btn" id="tab-records" onclick="openRecordsModal()">
+  <button class="tab-nav-btn" id="tab-records" data-min-level="2" onclick="openRecordsModal()">
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
       <line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/>
     </svg>
     계좌기록
   </button>
-  <button class="tab-nav-btn" id="tab-annual" onclick="openAnnualPlanModal()">
+  <button class="tab-nav-btn" id="tab-annual" data-min-level="2" onclick="openAnnualPlanModal()">
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
       <line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14"/><line x1="12" y1="14" x2="12.01" y2="14"/><line x1="16" y1="14" x2="16.01" y2="14"/>
     </svg>
     연간계획
   </button>
-  <button class="tab-nav-btn" id="tab-withdrawal" onclick="openWithdrawalModal()">
+  <button class="tab-nav-btn" id="tab-withdrawal" data-min-level="3" onclick="openWithdrawalModal()">
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
       <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
     </svg>
     인출계획
   </button>
-  <button class="tab-nav-btn" id="tab-wdrec" onclick="openWdrec()" style="display:none">
+  <button class="tab-nav-btn" id="tab-wdrec" data-min-level="3" onclick="openWdrec()" style="display:none">
     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="6" width="20" height="14" rx="2"/>
       <circle cx="12" cy="13" r="3"/>
@@ -1825,9 +1883,26 @@ registerMobileTooltipDismiss();
         <button class="cfg-manage-btn" onclick="openCfgDetail('app')">앱관리</button>
       </div>
 
+      <!-- 🧭 사용 수준 선택 -->
+      <div class="cfg-level-card">
+        <div class="cfg-level-title">🧭 사용 수준</div>
+        <div class="cfg-level-seg">
+          <button type="button" class="cfg-level-btn" data-level="1" onclick="setCfgUserLevel(1)">
+            <b>입문</b><small>최소 화면</small>
+          </button>
+          <button type="button" class="cfg-level-btn" data-level="2" onclick="setCfgUserLevel(2)">
+            <b>적응</b><small>기록 습관</small>
+          </button>
+          <button type="button" class="cfg-level-btn" data-level="3" onclick="setCfgUserLevel(3)">
+            <b>숙련</b><small>전체 기능</small>
+          </button>
+        </div>
+        <div class="cfg-level-desc" id="cfgLevelDesc"></div>
+      </div>
+
       <!-- 메뉴 리스트 (구글동기화 카드 위) -->
       <div class="cfg-menu">
-        <button class="cfg-menu-item" onclick="_persistSettingsFromForm();closeSettingsModal();openSetupScreen(true)">
+        <button class="cfg-menu-item" data-min-level="3" onclick="_persistSettingsFromForm();closeSettingsModal();openSetupScreen(true)">
           <span class="cfg-menu-ic">📊</span>
           <span class="cfg-menu-label">연금 키우기 시작하기<small id="setupScenarioCount">시나리오를 저장하고 다양한 계획을 비교해보세요</small></span>
           <span class="cfg-menu-arrow">›</span>
@@ -1837,12 +1912,12 @@ registerMobileTooltipDismiss();
           <span class="cfg-menu-label">기본 · 세율 설정<small>생년월 · 배우자 · 연금/소득세율</small></span>
           <span class="cfg-menu-arrow">›</span>
         </button>
-        <button class="cfg-menu-item" onclick="openCfgDetail('my')">
+        <button class="cfg-menu-item" data-min-level="2" onclick="openCfgDetail('my')">
           <span class="cfg-menu-ic">👤</span>
           <span class="cfg-menu-label">본인 정보<small>계좌 · 국민/공무원/사학연금 · 퇴직세</small></span>
           <span class="cfg-menu-arrow">›</span>
         </button>
-        <button class="cfg-menu-item" id="cfgMenuWife" onclick="openCfgDetail('wife')">
+        <button class="cfg-menu-item" id="cfgMenuWife" data-min-level="2" onclick="openCfgDetail('wife')">
           <span class="cfg-menu-ic">👩</span>
           <span class="cfg-menu-label">배우자 정보<small>계좌 · 연금 · 퇴직세</small></span>
           <span class="cfg-menu-arrow">›</span>
@@ -1933,8 +2008,8 @@ registerMobileTooltipDismiss();
           </div>
         </div>
       </div>
-      <div class="cfg-section">📱 앱 표시</div>
-      <div class="cfg-list">
+      <div class="cfg-section" data-min-level="3">📱 앱 표시</div>
+      <div class="cfg-list" data-min-level="3">
         <div class="cfg-row-static">
           <span class="cfg-row-label">미국주식</span>
           <button type="button" class="cfg-switch" id="cfgSwNonK" role="switch" aria-checked="true" onclick="cfgSwitchToggle(this)"></button>
@@ -1960,8 +2035,8 @@ registerMobileTooltipDismiss();
           <button type="button" class="cfg-switch" id="cfgSwZoom" role="switch" aria-checked="true" onclick="cfgSwitchToggle(this)"></button>
         </div>
       </div>
-      <div class="cfg-section">💬 셀 정보 패널</div>
-      <div class="cfg-list">
+      <div class="cfg-section" data-min-level="3">💬 셀 정보 패널</div>
+      <div class="cfg-list" data-min-level="3">
         <div class="cfg-item">
           <button type="button" class="cfg-row" onclick="cfgOpenEdit(this)">
             <span class="cfg-row-label">표시 유지 시간</span>
@@ -1976,8 +2051,8 @@ registerMobileTooltipDismiss();
           </div>
         </div>
       </div>
-      <div class="cfg-section">📊 종목 리스트</div>
-      <div class="cfg-list">
+      <div class="cfg-section" data-min-level="3">📊 종목 리스트</div>
+      <div class="cfg-list" data-min-level="3">
         <div class="cfg-item">
           <button type="button" class="cfg-row" onclick="openColEditModal()">
             <span class="cfg-row-label">열 순서 편집</span>
@@ -2520,6 +2595,32 @@ registerMobileTooltipDismiss();
 </div>
 
 <!-- 설정 값 편집 모달 -->
+<!-- 첫 실행: 사용 수준 선택 온보딩 -->
+<div class="modal-backdrop" id="levelOnboardModal" style="z-index:1300">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div><h2>🌱 연금 경험이 어느 정도세요?</h2></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin:2px 0 14px;line-height:1.55">
+      선택한 수준에 맞춰 화면을 보여드려요. 나중에 ⚙️ 설정 → 사용 수준에서 언제든 바꿀 수 있어요.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button type="button" class="onb-card" onclick="pickOnboardLevel(1)">
+        <b>🐣 이제 막 준비해요</b>
+        <small>꼭 필요한 화면만 — 포트폴리오와 원금기록부터 천천히.</small>
+      </button>
+      <button type="button" class="onb-card" onclick="pickOnboardLevel(2)">
+        <b>🌿 어느 정도 익숙해요</b>
+        <small>배당·계좌기록·연간계획까지 함께 봅니다.</small>
+      </button>
+      <button type="button" class="onb-card" onclick="pickOnboardLevel(3)">
+        <b>🌳 연금에 능숙해요</b>
+        <small>인출계획·미국주식·국장 등 전체 기능을 모두 사용합니다.</small>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="cfgEditModal" style="z-index:1100" onclick="if(event.target.id==='cfgEditModal') closeCfgEdit()">
   <div class="modal" style="max-width:340px">
     <div class="modal-header">
@@ -3907,7 +4008,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.655';
+const APP_VERSION = 'MyGP v0.656';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -4036,14 +4137,18 @@ window.showSyncDebugPanel = function() {
 
 if (window.TickerSearch) window.TickerSearch.init();
 document.addEventListener('DOMContentLoaded', () => {
+  const freshInstall = !localStorage.getItem(APP_SETTINGS_KEY);
   applyNavVisibility();
+  recordVisitDay();
+  applyUserLevel();          // body.lvl-N 적용 + 자동추천 배너 평가
+  maybeShowOnboarding();     // 신규 설치 시 수준 선택 1회
   if (typeof applyWithdrawalTabVisibility === 'function') applyWithdrawalTabVisibility();
   // 시작하기 마법사 자동 실행
   if (sessionStorage.getItem('open_onboarding')) {
     sessionStorage.removeItem('open_onboarding');
     setTimeout(() => openOnboardingModal(), 300);
-  } else if (!(window.MyPMApi && MyPMApi.isAuthenticated())) {
-    // 비로그인 시 항상 온보딩 마법사 표시 → 완료 후 로그인 권유
+  } else if (!freshInstall && !(window.MyPMApi && MyPMApi.isAuthenticated())) {
+    // 비로그인 시 온보딩 마법사 표시 (신규 설치는 수준 선택이 먼저 → 마법사 중복 방지)
     setTimeout(() => openOnboardingModal(), 300);
   }
   document.addEventListener('touchstart', e => {
@@ -4221,6 +4326,7 @@ function getDefaultAppSettings() {
     wifeBirthYear: 0, wifeBirthMonth: 1,
     showNonK: false, showKDeal: false, showWdDebugBtn: false, showSyncDebugBtn: false,
     wdrecPreview: false,
+    userLevel: 1,  // 사용 수준: 1 입문 / 2 적응 / 3 숙련 (신규설치 기본값, 온보딩이 덮어씀)
     allowZoom: true,
     expectedReturnRate: 7,  // 차트 "예상" 벤치마크선 연수익률(%) — 입금액을 이 율로 복리 성장
     wdChartPV: { 1: false, 2: false, 3: false, 4: false, 5: false },
@@ -4239,6 +4345,8 @@ function loadAppSettings() {
     result.my   = _deepMergePersonCfg(def.my,   saved.my);
     result.wife = _deepMergePersonCfg(def.wife,  saved.wife);
     result.wdChartPV = { ...def.wdChartPV, ...(saved.wdChartPV || {}) };
+    // 마이그레이션: userLevel이 없는 기존 사용자는 숙련(3)으로 두어 화면 변화가 없게 한다.
+    if (saved.userLevel === undefined) result.userLevel = 3;
     return result;
   } catch(_) { return getDefaultAppSettings(); }
 }
@@ -13501,6 +13609,7 @@ function openSettingsModal() {
   sv('cfg_wifeBirthYear',  s.wifeBirthYear  || '');
   sv('cfg_wifeBirthMonth', s.wifeBirthMonth || '');
   _updateCfgWifeUI(s.hasWife);
+  setCfgUserLevel(s.userLevel || 3, { initOnly: true });
   setCfgShowApp('NonK',  s.showNonK  !== false);
   setCfgShowApp('KDeal', s.showKDeal !== false);
   setCfgShowApp('WdrecPreview', !!s.wdrecPreview);
@@ -13611,6 +13720,141 @@ function applyNavVisibility() {
   const titleEl = document.querySelector('.hdr-title');
   if (titleEl) titleEl.style.display = (!showNonK && !showKDeal) ? 'block' : 'none';
 }
+
+// ============================================================
+// 사용 수준 (Progressive Disclosure)
+// ============================================================
+const LEVEL_DESCS = {
+  1: '입문 — 포트폴리오·원금기록만 보여줍니다. 연금을 처음 준비하는 분께 권장.',
+  2: '적응 — 배당·계좌기록·연간계획이 추가됩니다.',
+  3: '숙련 — 인출계획·미국주식·국장 등 모든 기능을 사용합니다.',
+};
+let _cfgUserLevel = 3;  // 설정 폼에서 선택 중인 수준 (저장 시 _persistSettingsFromForm가 참조)
+
+function getUserLevel() {
+  return Math.max(1, Math.min(3, Number(appSettings.userLevel) || 1));
+}
+
+// body 클래스(lvl-N) 교체 → CSS가 data-min/max-level 요소를 보이거나 숨김
+function applyUserLevel() {
+  const n = getUserLevel();
+  document.body.classList.remove('lvl-1', 'lvl-2', 'lvl-3');
+  document.body.classList.add('lvl-' + n);
+  // 현재 활성 탭이 이 수준에서 숨겨졌으면 포트폴리오로 폴백 (예: 3→1 강등 시 인출계획 탭)
+  const activeBtn = document.querySelector('.tab-nav-btn.active');
+  if (activeBtn) {
+    const min = Number(activeBtn.getAttribute('data-min-level') || 1);
+    if (min > n) switchTab('portfolio');
+  }
+  refreshLevelSuggestBanner();
+}
+
+// 설정 홈의 수준 선택 세그먼트
+function setCfgUserLevel(n, opts) {
+  n = Math.max(1, Math.min(3, Number(n) || 1));
+  _cfgUserLevel = n;
+  document.querySelectorAll('.cfg-level-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.level) === n);
+  });
+  const d = document.getElementById('cfgLevelDesc');
+  if (d) d.textContent = LEVEL_DESCS[n];
+  if (!opts || !opts.initOnly) {
+    appSettings.userLevel = n;
+    saveAppSettings();
+    applyUserLevel();
+  }
+}
+
+// ---------- 첫 실행 온보딩 ----------
+function maybeShowOnboarding() {
+  // 저장된 설정이 전혀 없는 신규 설치에서만 1회 표시
+  if (localStorage.getItem(APP_SETTINGS_KEY)) return;
+  const modal = document.getElementById('levelOnboardModal');
+  if (modal) modal.classList.add('open');
+}
+function pickOnboardLevel(n) {
+  appSettings.userLevel = Math.max(1, Math.min(3, Number(n) || 1));
+  saveAppSettings();           // 이후로는 신규 설치로 간주되지 않음
+  applyUserLevel();
+  const modal = document.getElementById('levelOnboardModal');
+  if (modal) modal.classList.remove('open');
+}
+
+// ---------- 자동 승급 추천 ----------
+const LEVEL_PROGRESS_KEY = 'mypm_level_progress_v1';
+function _loadLevelProgress() {
+  try { return JSON.parse(localStorage.getItem(LEVEL_PROGRESS_KEY)) || {}; }
+  catch (_) { return {}; }
+}
+function _saveLevelProgress(p) {
+  try { localStorage.setItem(LEVEL_PROGRESS_KEY, JSON.stringify(p)); } catch (_) {}
+}
+function _todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// 오늘 방문 1회 기록 (중복 제거)
+function recordVisitDay() {
+  const p = _loadLevelProgress();
+  p.visitDays = Array.isArray(p.visitDays) ? p.visitDays : [];
+  const t = _todayStr();
+  if (!p.visitDays.includes(t)) { p.visitDays.push(t); _saveLevelProgress(p); }
+  return p;
+}
+// 다음 수준 추천 자격 판정 (보수적). 충족하면 추천 대상 수준(현재+1) 반환, 없으면 0
+function _eligibleSuggestLevel() {
+  const cur = getUserLevel();
+  if (cur >= 3) return 0;
+  const p = _loadLevelProgress();
+  const days = (p.visitDays || []).length;
+  // 기존 데이터 신호 (모듈 로드 시 채워지는 전역 사용)
+  const len = (v) => (Array.isArray(v) ? v.length : 0);
+  const holdingCount = (typeof holdings !== 'undefined')      ? len(holdings)       : 0;
+  const tradeCount   = (typeof tradeRecords !== 'undefined')  ? len(tradeRecords)   : 0;
+  const monthlyCount = (typeof monthlyRecords !== 'undefined')? len(monthlyRecords) : 0;
+  if (cur === 1) {
+    if (days >= 7 && holdingCount >= 1 && tradeCount >= 3) return 2;
+  } else if (cur === 2) {
+    if (monthlyCount >= 3 && days >= 21) return 3;
+  }
+  return 0;
+}
+function refreshLevelSuggestBanner() {
+  const wrap = document.getElementById('levelSuggestBanner');
+  if (!wrap) return;
+  const target = _eligibleSuggestLevel();
+  const p = _loadLevelProgress();
+  const snoozed = p.snoozeUntil && _todayStr() < p.snoozeUntil;
+  // 세션당 1회만, 스누즈 중이면 숨김
+  if (!target || snoozed || window._lvlSuggestShown) { wrap.style.display = 'none'; return; }
+  const feat = target === 2 ? '배당·계좌기록·연간계획' : '인출계획 등 전체 기능';
+  wrap.innerHTML =
+    '<div class="lsb-text">잘 하고 계세요! 이제 <b>' + feat + '</b>을(를) 써볼 준비가 된 것 같아요. ' +
+    '다음 단계로 올려드릴까요?</div>' +
+    '<div class="lsb-actions">' +
+    '<button class="lsb-yes" onclick="acceptLevelSuggestion(' + target + ')">올리기</button>' +
+    '<button class="lsb-later" onclick="snoozeLevelSuggestion()">나중에</button>' +
+    '</div>';
+  wrap.style.display = 'flex';
+  window._lvlSuggestShown = true;
+}
+function acceptLevelSuggestion(n) {
+  appSettings.userLevel = Math.max(1, Math.min(3, Number(n) || getUserLevel()));
+  saveAppSettings();
+  window._lvlSuggestShown = false;
+  const wrap = document.getElementById('levelSuggestBanner');
+  if (wrap) wrap.style.display = 'none';
+  applyUserLevel();
+}
+function snoozeLevelSuggestion() {
+  const p = _loadLevelProgress();
+  const d = new Date(); d.setDate(d.getDate() + 14);
+  p.snoozeUntil = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  _saveLevelProgress(p);
+  const wrap = document.getElementById('levelSuggestBanner');
+  if (wrap) wrap.style.display = 'none';
+}
+
 function applyZoomSetting(allow) {
   const meta = document.querySelector('meta[name="viewport"]');
   if (!meta) return;
@@ -13680,6 +13924,7 @@ function _persistSettingsFromForm() {
     wifeBirthMonth: hasWife ? (n('cfg_wifeBirthMonth') || 1) : 1,
     showNonK:  cfgSwitchOn('cfgSwNonK'),
     showKDeal: cfgSwitchOn('cfgSwKDeal'),
+    userLevel: (typeof _cfgUserLevel === 'number' ? _cfgUserLevel : (appSettings.userLevel || 3)),
     wdrecPreview: cfgSwitchOn('cfgSwWdrecPreview'),
     showWdDebugBtn: cfgSwitchOn('cfgSwWdDbg'),
     showSyncDebugBtn: cfgSwitchOn('cfgSwSyncDbg'),
@@ -13691,6 +13936,7 @@ function _persistSettingsFromForm() {
   if (window._syncLog) window._syncLog('_persistSettingsFromForm: myBirthYear=' + appSettings.myBirthYear + ' hasWife=' + appSettings.hasWife);
   saveAppSettings();
   applyNavVisibility();
+  applyUserLevel();
   applyZoomSetting(appSettings.allowZoom !== false);
   if (typeof applyWithdrawalTabVisibility === 'function') applyWithdrawalTabVisibility();
 
