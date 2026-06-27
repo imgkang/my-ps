@@ -228,7 +228,7 @@ registerMobileTooltipDismiss();
     border-radius: 6px; background: #f9fafb;
     white-space: nowrap;
   }
-  .auto-refresh-label input[type="number"] {
+  .auto-refresh-label input[type="number"], .auto-refresh-label input[type="text"] {
     width: 56px; padding: 2px 4px; font-size: 13px;
     border: 1px solid var(--border); border-radius: 4px;
     text-align: center;
@@ -249,7 +249,7 @@ registerMobileTooltipDismiss();
   .cash-row {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   }
-  .cash-row input[type="number"] { flex: 1; min-width: 160px; }
+  .cash-row input[type="number"], .cash-row input[type="text"] { flex: 1; min-width: 160px; }
   .cash-row .current-cash { font-size: 14px; color: var(--muted); }
   .cash-row .current-cash strong { color: var(--text); font-size: 15px; }
 
@@ -1066,7 +1066,7 @@ registerMobileTooltipDismiss();
     border-radius: 6px; font-size: 13px; margin-bottom: 8px;
     flex-wrap: wrap;
   }
-  .proj-rate-bar input[type="number"] {
+  .proj-rate-bar input[type="number"], .proj-rate-bar input[type="text"] {
     width: 70px; padding: 4px 8px; font-size: 13px;
     border: 1px solid var(--border); border-radius: 4px; text-align: right;
   }
@@ -1730,7 +1730,7 @@ registerMobileTooltipDismiss();
     </div>
     <div style="text-align:right;margin-top:6px;font-size:12px;color:var(--muted)">
       예상 수익률
-      <input type="number" id="expectedRateInput" min="0" max="50" step="0.5"
+      <input type="text" inputmode="decimal" id="expectedRateInput" min="0" max="50" step="0.5"
              style="width:52px;padding:2px 4px;font-size:12px;text-align:right;border:1px solid var(--border);border-radius:6px"
              oninput="setExpectedReturnRate(this.value)">%/년
     </div>
@@ -1925,7 +1925,7 @@ registerMobileTooltipDismiss();
           </button>
           <div class="cfg-row-edit">
             <div class="cfg-edit-inline">
-              <input id="autoRefreshMinutes" type="number" min="0" step="1"
+              <input id="autoRefreshMinutes" type="text" inputmode="numeric" min="0" step="1"
                      onchange="updateAutoRefresh()" onkeyup="if(event.key==='Enter')updateAutoRefresh()"
                      style="width:80px;text-align:right">
               <span>분 (0 = 끄기)</span>
@@ -1970,7 +1970,7 @@ registerMobileTooltipDismiss();
           </button>
           <div class="cfg-row-edit">
             <div class="cfg-edit-inline">
-              <input id="cfg_cellInfoDuration" type="number" min="1" max="30" step="1" style="width:80px;text-align:right">
+              <input id="cfg_cellInfoDuration" type="text" inputmode="numeric" min="1" max="30" step="1" style="width:80px;text-align:right">
               <span>초</span>
             </div>
           </div>
@@ -2055,7 +2055,7 @@ registerMobileTooltipDismiss();
           </button>
           <div class="cfg-row-edit">
             <div class="cfg-edit-inline">
-              <input id="cfg_npTaxRate" type="number" min="0" max="20" step="0.1" style="width:90px;text-align:right"><span>%</span>
+              <input id="cfg_npTaxRate" type="text" inputmode="decimal" min="0" max="20" step="0.1" style="width:90px;text-align:right"><span>%</span>
             </div>
           </div>
         </div>
@@ -2069,15 +2069,15 @@ registerMobileTooltipDismiss();
             <div style="display:flex;gap:8px;width:100%">
               <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
                 <span style="font-size:11px;color:var(--muted)">~70세</span>
-                <input id="cfg_pensionTaxRateU70" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
+                <input id="cfg_pensionTaxRateU70" type="text" inputmode="decimal" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
               </div>
               <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
                 <span style="font-size:11px;color:var(--muted)">70~80</span>
-                <input id="cfg_pensionTaxRate7080" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
+                <input id="cfg_pensionTaxRate7080" type="text" inputmode="decimal" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
               </div>
               <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
                 <span style="font-size:11px;color:var(--muted)">80세~</span>
-                <input id="cfg_pensionTaxRateO80" type="number" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
+                <input id="cfg_pensionTaxRateO80" type="text" inputmode="decimal" min="0" max="20" step="0.1" style="width:100%;text-align:center;font-size:16px;padding:9px 6px;border:1px solid #ddd;border-radius:6px">
               </div>
             </div>
           </div>
@@ -2090,7 +2090,7 @@ registerMobileTooltipDismiss();
           </button>
           <div class="cfg-row-edit">
             <div class="cfg-edit-inline">
-              <input id="cfg_excessPensionTaxRate" type="number" min="0" max="50" step="0.1" style="width:90px;text-align:right"><span>%</span>
+              <input id="cfg_excessPensionTaxRate" type="text" inputmode="decimal" min="0" max="50" step="0.1" style="width:90px;text-align:right"><span>%</span>
             </div>
           </div>
         </div>
@@ -2134,7 +2134,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_myNPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_myNPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2149,7 +2149,7 @@ registerMobileTooltipDismiss();
                 <button id="cfg_myNPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('myNP','none')">없음</button>
                 <button id="cfg_myNPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('myNP','delay')">연기</button>
                 <button id="cfg_myNPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('myNP','early')">조기</button>
-                <input id="cfg_myNPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+                <input id="cfg_myNPAdjYears" type="text" inputmode="numeric" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
               </div>
               <div class="cfg-note" style="margin:6px 0 0">연기 +7.2%/년 · 조기 -6%/년</div>
             </div>
@@ -2185,7 +2185,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_myGPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_myGPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2199,7 +2199,7 @@ registerMobileTooltipDismiss();
               <div class="cfg-edit-inline">
                 <button id="cfg_myGPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('myGP','none')">없음</button>
                 <button id="cfg_myGPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('myGP','early')">조기</button>
-                <input id="cfg_myGPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+                <input id="cfg_myGPAdjYears" type="text" inputmode="numeric" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
               </div>
             </div>
           </div>
@@ -2234,7 +2234,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_mySPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_mySPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2249,7 +2249,7 @@ registerMobileTooltipDismiss();
                 <button id="cfg_mySPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('mySP','none')">없음</button>
                 <button id="cfg_mySPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('mySP','delay')">연기</button>
                 <button id="cfg_mySPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('mySP','early')">조기</button>
-                <input id="cfg_mySPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+                <input id="cfg_mySPAdjYears" type="text" inputmode="numeric" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
               </div>
             </div>
           </div>
@@ -2267,7 +2267,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_myRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12" style="width:90px;text-align:right"><span>%</span>
+                <input id="cfg_myRetireTaxRate" type="text" inputmode="decimal" min="0" max="50" step="0.1" placeholder="12" style="width:90px;text-align:right"><span>%</span>
               </div>
               <div class="cfg-note" style="margin:6px 0 0">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
             </div>
@@ -2312,7 +2312,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeNPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_wifeNPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2327,7 +2327,7 @@ registerMobileTooltipDismiss();
                 <button id="cfg_wifeNPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('wifeNP','none')">없음</button>
                 <button id="cfg_wifeNPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('wifeNP','delay')">연기</button>
                 <button id="cfg_wifeNPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('wifeNP','early')">조기</button>
-                <input id="cfg_wifeNPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+                <input id="cfg_wifeNPAdjYears" type="text" inputmode="numeric" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
               </div>
               <div class="cfg-note" style="margin:6px 0 0">연기 +7.2%/년 · 조기 -6%/년</div>
             </div>
@@ -2363,7 +2363,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeGPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_wifeGPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2377,7 +2377,7 @@ registerMobileTooltipDismiss();
               <div class="cfg-edit-inline">
                 <button id="cfg_wifeGPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('wifeGP','none')">없음</button>
                 <button id="cfg_wifeGPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('wifeGP','early')">조기</button>
-                <input id="cfg_wifeGPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+                <input id="cfg_wifeGPAdjYears" type="text" inputmode="numeric" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
               </div>
             </div>
           </div>
@@ -2412,7 +2412,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeSPMonthly" type="number" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
+                <input id="cfg_wifeSPMonthly" type="text" inputmode="numeric" min="0" step="1" style="width:120px;text-align:right"><span>만원</span>
               </div>
             </div>
           </div>
@@ -2427,7 +2427,7 @@ registerMobileTooltipDismiss();
                 <button id="cfg_wifeSPAdj_none"  class="toggle-btn" onclick="setCfgPensionAdj('wifeSP','none')">없음</button>
                 <button id="cfg_wifeSPAdj_delay" class="toggle-btn" onclick="setCfgPensionAdj('wifeSP','delay')">연기</button>
                 <button id="cfg_wifeSPAdj_early" class="toggle-btn" onclick="setCfgPensionAdj('wifeSP','early')">조기</button>
-                <input id="cfg_wifeSPAdjYears" type="number" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
+                <input id="cfg_wifeSPAdjYears" type="text" inputmode="numeric" min="0" max="5" step="1" style="width:56px" value="0" disabled><span>년</span>
               </div>
             </div>
           </div>
@@ -2445,7 +2445,7 @@ registerMobileTooltipDismiss();
             </button>
             <div class="cfg-row-edit">
               <div class="cfg-edit-inline">
-                <input id="cfg_wifeRetireTaxRate" type="number" min="0" max="50" step="0.1" placeholder="12" style="width:90px;text-align:right"><span>%</span>
+                <input id="cfg_wifeRetireTaxRate" type="text" inputmode="decimal" min="0" max="50" step="0.1" placeholder="12" style="width:90px;text-align:right"><span>%</span>
               </div>
               <div class="cfg-note" style="margin:6px 0 0">잔여세율 = 기본세율 × 비율 (기본: ~10년 70%, ~20년 60%, 21년~ 50%)</div>
             </div>
@@ -2912,12 +2912,12 @@ registerMobileTooltipDismiss();
     <!-- 은퇴연도 / 수익률 입력 바 -->
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px;font-size:12px;color:var(--muted)">
       <label style="display:flex;align-items:center;gap:3px"><span style="color:#1d4ed8;font-weight:600">📅 적립예상</span>
-        <input type="number" id="ayr_simEndYear" min="2025" max="2100" step="1"
+        <input type="text" inputmode="numeric" id="ayr_simEndYear" min="2025" max="2100" step="1"
                style="width:62px;padding:2px 5px;border:1px solid #bfdbfe;border-radius:4px;font-size:12px;background:#eff6ff;margin:0 2px"
                oninput="saveAnnualSimEndYear()">년까지
       </label>
       <label style="display:flex;align-items:center;gap:3px">예상수익률
-        <input type="number" id="projRate" min="0" max="50" step="0.5" value="7"
+        <input type="text" inputmode="decimal" id="projRate" min="0" max="50" step="0.5" value="7"
                style="width:52px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;margin:0 2px"
                oninput="annualPlan.projRate=Number(this.value)||7; saveAnnualPlan(); renderEvalTable(); renderAnnualCharts(); renderAccSummary()">%/년
       </label>
@@ -3030,12 +3030,12 @@ registerMobileTooltipDismiss();
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px">
       <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;color:var(--muted)">
         <label style="display:flex;align-items:center;gap:4px">수익률
-          <input id="qwd_returnRate" type="number" min="0" max="20" step="0.1"
+          <input id="qwd_returnRate" type="text" inputmode="decimal" min="0" max="20" step="0.1"
                  style="width:50px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
                  oninput="saveQuickWdPlan()">%
         </label>
         <label style="display:flex;align-items:center;gap:4px">물가
-          <input id="qwd_inflation" type="number" min="0" max="20" step="0.1"
+          <input id="qwd_inflation" type="text" inputmode="decimal" min="0" max="20" step="0.1"
                  style="width:50px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px"
                  oninput="saveQuickWdPlan()">%
         </label>
@@ -3389,7 +3389,7 @@ registerMobileTooltipDismiss();
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div>
           <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">수량 (주)</label>
-          <input type="number" id="wdrecSellQty" min="0" step="1" oninput="onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
+          <input type="text" inputmode="numeric" id="wdrecSellQty" min="0" step="1" oninput="onWdrecSellChange()" style="width:100%;padding:10px 12px;border:1px solid #fed7aa;border-radius:8px;font-size:14px;background:#fff">
         </div>
         <div>
           <label style="display:block;font-size:12px;color:#9a3412;margin-bottom:6px;font-weight:600">매도가 (원/주)</label>
@@ -3584,11 +3584,11 @@ registerMobileTooltipDismiss();
       <div class="cfg-section">📈 수익률 / 물가</div>
       <div class="cfg-grid">
         <label>물가상승률 (%)</label>
-        <input id="wd_inflation" type="number" min="0" max="20" step="0.1">
+        <input id="wd_inflation" type="text" inputmode="decimal" min="0" max="20" step="0.1">
         <label>인출기간 수익률 (%/년)</label>
-        <input id="wd_returnRate" type="number" min="0" max="20" step="0.1">
+        <input id="wd_returnRate" type="text" inputmode="decimal" min="0" max="20" step="0.1">
         <label>그래프 시작 나이 (세)</label>
-        <input id="wd_retireAge" type="number" min="40" max="90" step="1">
+        <input id="wd_retireAge" type="text" inputmode="numeric" min="40" max="90" step="1">
       </div>
       <div class="cfg-grid">
         <label>연금계좌통합설정 사용여부</label>
@@ -3600,7 +3600,7 @@ registerMobileTooltipDismiss();
       <!-- 사적연금 기본인출액 (공통) -->
       <div class="cfg-grid">
         <label>사적연금 기본인출액 (백만원/계좌/년)</label>
-        <input id="wd_basicWithdraw" type="number" min="0" step="1">
+        <input id="wd_basicWithdraw" type="text" inputmode="numeric" min="0" step="1">
       </div>
       <!-- 인출 구간 설정 -->
       <div class="cfg-section" style="display:flex;justify-content:space-between;align-items:center">
@@ -3907,7 +3907,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.642';
+const APP_VERSION = 'MyGP v0.643';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -9592,7 +9592,7 @@ function renderDivMiscInputs(values) {
     const v = values && values[a.id] != null ? values[a.id] : '';
     return `<label style="display:flex;align-items:center;gap:8px">
       <span style="min-width:90px;font-size:13px">${getAccName(a.id)}</span>
-      <input type="number" step="1" class="div-misc-amt" data-acc="${a.id}" value="${v}"
+      <input type="text" inputmode="numeric" step="1" class="div-misc-amt" data-acc="${a.id}" value="${v}"
              oninput="updateDivMiscTotal()" placeholder="0" style="flex:1;padding:6px;text-align:right">
       <span style="font-size:12px;color:var(--muted)">원</span>
     </label>`;
@@ -10807,7 +10807,7 @@ function openDivAccEdit(recId, accId) {
     return `<div class="div-focused-col4 div-focused-stock-row" data-code="${code}">
       <span style="font-size:12px">${name}</span>
       <span>${perShare.toLocaleString('ko-KR')}</span>
-      <input type="number" class="div-focused-qty-input" value="${qty}" min="0" oninput="updateDivAccEditPreview()">
+      <input type="text" inputmode="numeric" class="div-focused-qty-input" value="${qty}" min="0" oninput="updateDivAccEditPreview()">
       <span class="div-acc-amt-cell">${amt.toLocaleString('ko-KR')} 원</span>
     </div>`;
   }).join('');
@@ -12092,7 +12092,7 @@ function renderOnboardingStep() {
     const wifeRetireRow = _obData.hasWife ? `
       <div class="ob-field-row">
         <label>${_obData.wifeTitle||'배우자'} 은퇴 나이</label>
-        <input type="number" id="ob_wifeRetireAge" value="${wAge}" min="40" max="80" style="width:60px" oninput="obUpdateWifeRetireYear()">세
+        <input type="text" inputmode="numeric" id="ob_wifeRetireAge" value="${wAge}" min="40" max="80" style="width:60px" oninput="obUpdateWifeRetireYear()">세
         <span style="color:var(--muted);font-size:12px" id="ob_wifeRetireYrLabel">→ ${wRetireYr}년</span>
       </div>` : '';
     const mkPensionRow = (key, label) => {
@@ -12119,7 +12119,7 @@ function renderOnboardingStep() {
       <div class="ob-sub">목표를 입력하면 나중에 인출계획에 자동 반영됩니다.</div>
       <div class="ob-field-row">
         <label>본인 은퇴 나이</label>
-        <input type="number" id="ob_retireAge" value="${age}" min="40" max="80" style="width:60px" oninput="obUpdateRetireYear()">세
+        <input type="text" inputmode="numeric" id="ob_retireAge" value="${age}" min="40" max="80" style="width:60px" oninput="obUpdateRetireYear()">세
         <span style="color:var(--muted);font-size:12px" id="ob_retireYrLabel">→ ${retireYr}년</span>
       </div>
       ${wifeRetireRow}
@@ -12153,11 +12153,11 @@ function renderOnboardingStep() {
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
         <div class="ob-field-row" style="margin-bottom:6px">
           <label onmouseenter="obShowTip('${rTip}')" ontouchstart="obShowTip('${rTip}')" style="cursor:help">예상 수익률 ⓘ</label>
-          <input type="number" id="ob_returnRate" value="${_obData.returnRate||7}" min="0" max="20" step="0.1" style="width:68px" oninput="updateObSim()">%/년
+          <input type="text" inputmode="decimal" id="ob_returnRate" value="${_obData.returnRate||7}" min="0" max="20" step="0.1" style="width:68px" oninput="updateObSim()">%/년
         </div>
         <div class="ob-field-row" style="margin-bottom:6px">
           <label onmouseenter="obShowTip('${infTip}')" ontouchstart="obShowTip('${infTip}')" style="cursor:help">물가인상률 ⓘ</label>
-          <input type="number" id="ob_inflationRate" value="${_obData.inflationRate||2.2}" min="0" max="10" step="0.1" style="width:68px" oninput="updateObSim()">%/년
+          <input type="text" inputmode="decimal" id="ob_inflationRate" value="${_obData.inflationRate||2.2}" min="0" max="10" step="0.1" style="width:68px" oninput="updateObSim()">%/년
         </div>
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px;font-size:13px">
@@ -12533,7 +12533,7 @@ function obOpenAllocModal(who) {
     const cur = _obData.accAlloc[id] !== undefined ? _obData.accAlloc[id] : Math.round(totalMonthly / (accIds.length||1));
     return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
       <span style="min-width:80px">${aLabels[id]||id}</span>
-      <input type="number" id="ob_amodal_${id}" value="${cur}" min="0" step="1" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:5px" oninput="obAllocModalChanged()">만원/월
+      <input type="text" inputmode="numeric" id="ob_amodal_${id}" value="${cur}" min="0" step="1" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:5px" oninput="obAllocModalChanged()">만원/월
     </div>`;
   }).join('');
   const modalBody = document.getElementById('obAllocModalBody');
@@ -13919,15 +13919,15 @@ function renderWdPeriodCard(idx, period, hasWife, endYr) {
       </div>
       <div id="wdP${idx}_fixedWifeCfg" class="cfg-grid">
         <label>아내 고정금액 (만원/월, 명목)</label>
-        <input id="wdP${idx}_wifeAmt" type="number" min="0" step="1" value="${period.wifeAmount || 0}">
+        <input id="wdP${idx}_wifeAmt" type="text" inputmode="numeric" min="0" step="1" value="${period.wifeAmount || 0}">
       </div>
       <div id="wdP${idx}_topupMyCfg" class="cfg-grid" style="display:none">
         <label>본인 고정금액 (만원/월, 명목)</label>
-        <input id="wdP${idx}_myAmt" type="number" min="0" step="1" value="${period.myAmount || 0}">
+        <input id="wdP${idx}_myAmt" type="text" inputmode="numeric" min="0" step="1" value="${period.myAmount || 0}">
       </div>
       <div id="wdP${idx}_ratioCfg" class="cfg-grid" style="display:none">
         <label>아내 기여비율 (%)</label>
-        <input id="wdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${period.wifeRatio || 50}">
+        <input id="wdP${idx}_wifeRatio" type="text" inputmode="numeric" min="0" max="100" step="1" value="${period.wifeRatio || 50}">
       </div>
     </div>` : '';
   const _wdMinYr = (idx === 0) ? (getMinPeriodStartYear() || 2020) : 2020;
@@ -13936,7 +13936,7 @@ function renderWdPeriodCard(idx, period, hasWife, endYr) {
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <strong style="font-size:13px">구간 ${idx+1}</strong>
-      <input id="wdP${idx}_start" type="number" min="${_wdMinYr}" max="2080" value="${period.startYear || ''}"
+      <input id="wdP${idx}_start" type="text" inputmode="numeric" min="${_wdMinYr}" max="2080" value="${period.startYear || ''}"
              style="width:70px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:12px">년
       <span style="font-size:11px;color:var(--muted)">(~${endYr || '?'}년 자동)</span>
       ${_wdHint ? `<span style="font-size:11px;color:var(--muted)">· ${_wdHint}</span>` : ''}
@@ -13956,13 +13956,13 @@ function renderWdPeriodCard(idx, period, hasWife, endYr) {
   <div id="wdP${idx}_fixedCfg">
     <div class="cfg-grid">
       <label id="wdP${idx}_fixedLabel">총인출금액 (만원/월, ${new Date().getFullYear()}년 현재가치)</label>
-      <input id="wdP${idx}_totalAmt" type="number" min="0" step="1" value="${period.totalAmount || 0}">
+      <input id="wdP${idx}_totalAmt" type="text" inputmode="numeric" min="0" step="1" value="${period.totalAmount || 0}">
     </div>${wifeContribSection}
   </div>
   <div id="wdP${idx}_pctCfg">
     <div class="cfg-grid">
       <label>인출율 (%)</label>
-      <input id="wdP${idx}_pctVal" type="number" min="0.1" max="20" step="0.1" value="${period.pct || 4}">
+      <input id="wdP${idx}_pctVal" type="text" inputmode="decimal" min="0.1" max="20" step="0.1" value="${period.pct || 4}">
     </div>
     <div style="font-size:11px;color:var(--muted);padding:2px 0 4px;line-height:1.5">본인·배우자 각자 자기 계좌에서 해당 비율만큼 인출</div>
   </div>
@@ -14563,10 +14563,10 @@ function renderQuickPeriodCard(idx, period, hasWife, endYr) {
     ? 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #93c5fd;cursor:pointer;background:#eff6ff;color:#1d4ed8;'
     : 'padding:2px 7px;font-size:11px;border-radius:4px;border:1px solid #fcd34d;cursor:pointer;background:#fffbeb;color:#b45309;';
   const wifeCfgHtml = wc === 'topup'
-    ? `<span style="color:var(--muted);font-size:11px">본인 고정 <input id="qwdP${idx}_myAmt" type="number" min="0" step="1" value="${p.myAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`
+    ? `<span style="color:var(--muted);font-size:11px">본인 고정 <input id="qwdP${idx}_myAmt" type="text" inputmode="numeric" min="0" step="1" value="${p.myAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`
     : wc === 'ratio'
-    ? `<span style="color:var(--muted);font-size:11px">아내 <input id="qwdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}" style="width:40px;${inStyle}" oninput="saveQuickWdPlan()">%</span>`
-    : `<span style="color:var(--muted);font-size:11px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`;
+    ? `<span style="color:var(--muted);font-size:11px">아내 <input id="qwdP${idx}_wifeRatio" type="text" inputmode="numeric" min="0" max="100" step="1" value="${p.wifeRatio||50}" style="width:40px;${inStyle}" oninput="saveQuickWdPlan()">%</span>`
+    : `<span style="color:var(--muted);font-size:11px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="text" inputmode="numeric" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>`;
   const wcLabel = wc === 'topup' ? '부족분충당' : wc === 'ratio' ? '일정비율' : '고정금액';
   const _qwdMinYr = (idx === 0) ? (getMinPeriodStartYear() || 2000) : 2000;
   const _qwdHint  = (idx === 0) ? _minStartHint() : '';
@@ -14574,7 +14574,7 @@ function renderQuickPeriodCard(idx, period, hasWife, endYr) {
     <!-- 행1: 구간정보 + 타입 + 공적연금 + 총인출/인출율 + 삭제 -->
     <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
       <span style="font-weight:600;color:#334155;min-width:34px">구간${idx+1}</span>
-      <input id="qwdP${idx}_start" type="number" min="${_qwdMinYr}" max="2100" step="1" value="${p.startYear||''}"
+      <input id="qwdP${idx}_start" type="text" inputmode="numeric" min="${_qwdMinYr}" max="2100" step="1" value="${p.startYear||''}"
              style="width:60px;padding:2px 5px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
              oninput="onQwdStartYearChange(${idx})"
              onblur="onQwdStartYearBlur(${idx})">년
@@ -14582,8 +14582,8 @@ function renderQuickPeriodCard(idx, period, hasWife, endYr) {
       ${_qwdHint ? `<span style="font-size:10px;color:var(--muted)">· ${_qwdHint}</span>` : ''}
       <button id="qwdP${idx}_typeBt" data-type="${pType}" onclick="cycleQwdType(${idx})" style="${btnAct}">${typeLabel}</button>
       <button id="qwdP${idx}_pensionMode" data-mode="${p.publicPensionMode||'include'}" onclick="toggleQwdPensionMode(${idx})" style="${pnStyle}">${(p.publicPensionMode||'include')==='include'?'공적연금포함':'공적연금가산'}</button>
-      <span id="qwdP${idx}_totalAmtSpan" style="display:${isFix?'inline-flex':'none'};align-items:center;gap:2px;color:var(--muted)">총인출 <input id="qwdP${idx}_totalAmt" type="number" min="0" step="1" value="${p.totalAmount||0}" style="width:52px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>
-      <span id="qwdP${idx}_pctSpan" style="display:${isFix?'none':'inline-flex'};align-items:center;gap:2px;color:var(--muted)">인출율 <input id="qwdP${idx}_pct" type="number" min="0" max="20" step="0.1" value="${p.pct||4}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">%</span>
+      <span id="qwdP${idx}_totalAmtSpan" style="display:${isFix?'inline-flex':'none'};align-items:center;gap:2px;color:var(--muted)">총인출 <input id="qwdP${idx}_totalAmt" type="text" inputmode="numeric" min="0" step="1" value="${p.totalAmount||0}" style="width:52px;${inStyle}" oninput="saveQuickWdPlan()">만/월</span>
+      <span id="qwdP${idx}_pctSpan" style="display:${isFix?'none':'inline-flex'};align-items:center;gap:2px;color:var(--muted)">인출율 <input id="qwdP${idx}_pct" type="text" inputmode="decimal" min="0" max="20" step="0.1" value="${p.pct||4}" style="width:46px;${inStyle}" oninput="saveQuickWdPlan()">%</span>
       <button onclick="removeWdPeriod(${idx})" style="margin-left:auto;padding:2px 6px;font-size:11px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;cursor:pointer;color:#dc2626">삭제</button>
     </div>
     <!-- 행2: 배우자 기여방식 (고정 모드 + 배우자 있음) -->
@@ -14629,12 +14629,12 @@ function setQwdPeriodWifeContrib(i, mode, noSync) {
       wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">(본인 부족분 충당)</span>`;
     } else if (mode === 'ratio') {
       wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내
-        <input id="qwdP${i}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}"
+        <input id="qwdP${i}_wifeRatio" type="text" inputmode="numeric" min="0" max="100" step="1" value="${p.wifeRatio||50}"
                style="width:40px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
                oninput="saveQuickWdPlan()">%</span>`;
     } else {
       wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 고정
-        <input id="qwdP${i}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}"
+        <input id="qwdP${i}_wifeAmt" type="text" inputmode="numeric" min="0" step="1" value="${p.wifeAmount||0}"
                style="width:46px;padding:2px 4px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px"
                oninput="saveQuickWdPlan()">만/월</span>`;
     }
@@ -14691,11 +14691,11 @@ function cycleQwdWifeContrib(idx) {
   const wifeCfg = document.getElementById(`qwdP${idx}_wifeCfg`);
   if (wifeCfg) {
     if (next === 'topup') {
-      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">본인 고정 <input id="qwdP${idx}_myAmt" type="number" min="0" step="1" value="${p.myAmount||0}" style="width:46px;${is}" oninput="saveQuickWdPlan()">만/월</span>`;
+      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">본인 고정 <input id="qwdP${idx}_myAmt" type="text" inputmode="numeric" min="0" step="1" value="${p.myAmount||0}" style="width:46px;${is}" oninput="saveQuickWdPlan()">만/월</span>`;
     } else if (next === 'ratio') {
-      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 <input id="qwdP${idx}_wifeRatio" type="number" min="0" max="100" step="1" value="${p.wifeRatio||50}" style="width:40px;${is}" oninput="saveQuickWdPlan()">%</span>`;
+      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 <input id="qwdP${idx}_wifeRatio" type="text" inputmode="numeric" min="0" max="100" step="1" value="${p.wifeRatio||50}" style="width:40px;${is}" oninput="saveQuickWdPlan()">%</span>`;
     } else {
-      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="number" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${is}" oninput="saveQuickWdPlan()">만/월</span>`;
+      wifeCfg.innerHTML = `<span style="color:var(--muted);font-size:11px;margin-left:4px">아내 고정 <input id="qwdP${idx}_wifeAmt" type="text" inputmode="numeric" min="0" step="1" value="${p.wifeAmount||0}" style="width:46px;${is}" oninput="saveQuickWdPlan()">만/월</span>`;
     }
   }
   saveQuickWdPlan();
@@ -16569,7 +16569,7 @@ function wdPrepStep2Html() {
           <div>
             <div style="font-size:11px;color:#166534;margin-bottom:3px">배정 안세공 (백만원) <span style="font-size:10px;color:#15803d">← 조정 가능</span></div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <input type="number" id="${pp1InputId}" min="${minPP1Anse}" max="${maxPP1Anse}" step="10" value="${cappedPP1}"
+              <input type="text" inputmode="numeric" id="${pp1InputId}" min="${minPP1Anse}" max="${maxPP1Anse}" step="10" value="${cappedPP1}"
                 style="width:90px;padding:5px 8px;border:1.5px solid #86efac;border-radius:6px;font-size:13px;background:#fff"
                 oninput="wdPrepStep2UpdatePreview()">
               <span style="font-size:11px;color:#166534">유효: ${fmt(minPP1Anse)}~${fmt(maxPP1Anse)}백만원</span>
@@ -17452,7 +17452,7 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
   h += `<tr class="cons-dc"><td rowspan="2">나 퇴직연금</td><td>퇴직금</td><td>${mv(t.myDCPrincipal)}</td></tr>`;
   h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.myDCRegular)}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">나 개인통합1</td><td>안세공</td>
-    <td><input type="number" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxPP1}" oninput="updateConsPP2()"></td></tr>`;
+    <td><input type="text" inputmode="numeric" id="cons_pp1_anse" value="${pp1Anse}" min="0" max="${maxPP1}" oninput="updateConsPP2()"></td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp1_reg">${pp1Reg}</td></tr>`;
   h += `<tr class="cons-anse"><td rowspan="2">나 개인통합2</td><td>안세공</td><td class="cons-auto" id="cons_pp2_anse">${pp2Anse}</td></tr>`;
   h += `<tr><td>연금세</td><td class="cons-auto" id="cons_pp2_reg">${pp2Reg}</td></tr>`;
@@ -17464,9 +17464,9 @@ function renderConsRightTable(pp1Anse, wp1Anse, wp1TotalOvr) {
       h += `<tr class="cons-dc"><td>연금세</td><td>${mv(t.wifeDCRegular)}</td></tr>`;
     }
     h += `<tr class="cons-anse"><td rowspan="3">${_cWt} 개인통합1</td><td>총잔액</td>
-      <td><input type="number" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="updateConsWP2()"></td></tr>`;
+      <td><input type="text" inputmode="numeric" id="cons_wp1_total" value="${wp1TotOvr}" min="0" max="${wifePP1TotalNat}" oninput="updateConsWP2()"></td></tr>`;
     h += `<tr class="cons-anse"><td>안세공</td>
-      <td><input type="number" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
+      <td><input type="text" inputmode="numeric" id="cons_wp1_anse" value="${wp1AnseCapped}" min="0" max="${maxWP1}" oninput="updateConsWP2()"></td></tr>`;
     h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp1_reg">${wp1Reg}</td></tr>`;
     h += `<tr class="cons-anse"><td rowspan="2">${_cWt} 개인통합2</td><td>안세공</td><td class="cons-auto" id="cons_wp2_anse">${wp2Anse}</td></tr>`;
     h += `<tr><td>연금세</td><td class="cons-auto" id="cons_wp2_reg">${wp2Reg}</td></tr>`;
@@ -18377,12 +18377,12 @@ window.addEventListener('message', e => {
     </div>
     <div class="mplan-form-row">
       <label>적립금액</label>
-      <input type="number" id="mplanFormAmt" min="0" step="1" placeholder="0">
+      <input type="text" inputmode="numeric" id="mplanFormAmt" min="0" step="1" placeholder="0">
       <span class="mplan-form-unit">만원</span>
     </div>
     <div class="mplan-form-row">
       <label>안세공</label>
-      <input type="number" id="mplanFormAnse" min="0" step="1" placeholder="0">
+      <input type="text" inputmode="numeric" id="mplanFormAnse" min="0" step="1" placeholder="0">
       <span class="mplan-form-unit">만원</span>
     </div>
     <div class="mplan-form-row">
@@ -18498,7 +18498,7 @@ window.addEventListener('message', e => {
     </div>
     <div class="div-focused-ps-row">
       <label style="font-size:13px;white-space:nowrap">주당 배당금</label>
-      <input type="number" id="divStockEditPs" min="0" step="1" oninput="updateDivStockEditPreview()">
+      <input type="text" inputmode="numeric" id="divStockEditPs" min="0" step="1" oninput="updateDivStockEditPreview()">
     </div>
     <div class="div-focused-col3 div-focused-acc-header">
       <span>계좌</span><span style="text-align:right">수량</span><span style="text-align:right">배당금</span>
