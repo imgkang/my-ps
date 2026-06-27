@@ -275,12 +275,18 @@
     openCommon('ym');
   };
 
-  // 마커가 붙은 입력을 readonly 로 전환(네이티브 피커/키보드 차단) ----------------
+  // 마커가 붙은 입력을 커스텀 전용으로 전환(네이티브 피커/키보드 차단) ----------------
+  // ※ iOS Safari 는 readonly 로 type=date/number 네이티브 피커를 막지 못한다(탭하면 애플 달력이
+  //   먼저 떴다가 커스텀으로 바뀌는 깜빡임 발생). 그래서 type 자체를 text 로 바꿔 네이티브 UI 를
+  //   원천 제거한다. 값은 문자열(YYYY-MM-DD / 숫자) 그대로 보존되어 기존 read/save 로직과 무관.
   function scanDateInputs(root) {
     (root || document).querySelectorAll('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year]').forEach((el) => {
       if (el._iuxRO) return;
       el._iuxRO = true;
+      try { if (el.type !== 'text') el.type = 'text'; } catch (_) {}
       el.readOnly = true;
+      el.setAttribute('inputmode', 'none');   // 소프트 키보드 차단
+      el.setAttribute('autocomplete', 'off');
       el.style.cursor = 'pointer';
     });
   }
