@@ -1393,8 +1393,9 @@
     </div>
     <div class="records-input-card">
       <div class="records-input-top">
-        <label><span>연도</span><input type="number" id="kdDivYear" data-iux-ym-month="kdDivMonth" min="2000" max="2100" step="1" placeholder="YYYY"></label>
-        <label><span>월</span><input type="number" id="kdDivMonth" data-iux-ym-year="kdDivYear" min="1" max="12" step="1" placeholder="M"></label>
+        <label><span>연·월</span><button type="button" class="iux-ym-chip" data-iux-ym-chip="kdDivYear"><span class="iux-ym-text"></span><span class="iux-ym-chev">›</span></button></label>
+        <input type="number" id="kdDivYear" data-iux-ym-month="kdDivMonth" min="2000" max="2100" step="1">
+        <input type="number" id="kdDivMonth" data-iux-ym-year="kdDivYear" min="1" max="12" step="1">
       </div>
       <div style="overflow-x:auto;margin-top:8px">
         <table class="div-stock-table">
@@ -1510,7 +1511,7 @@
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-const APP_VERSION = 'KDeal v0.646';
+const APP_VERSION = 'KDeal v0.648';
 InputUX.setNumberDefaults({ locale: 'ko-KR' });  // Stage 2: KDeal 기본 숫자 locale
 // Stage 1: 숫자/금액 입력 탭 시 기존값 자동선택
 InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');
@@ -2948,6 +2949,7 @@ function kdOpenDividendModal() {
   const d = new Date();
   document.getElementById('kdDivYear').value  = d.getFullYear();
   document.getElementById('kdDivMonth').value = d.getMonth() + 1;
+  if (window.InputUX) InputUX.scanYMChips();
   kdEditingDivId = null;
   const saveBtn = document.getElementById('kdDivSaveBtn');
   if (saveBtn) saveBtn.textContent = '➕ 추가';
@@ -3175,6 +3177,7 @@ function kdEditDividendRecord(id) {
   if (!rec) return;
   document.getElementById('kdDivYear').value = rec.year;
   document.getElementById('kdDivMonth').value = rec.month;
+  if (window.InputUX) InputUX.scanYMChips();
   if (kdDivRecIsMisc(rec)) {
     kdEditingDivId = null;
     const stockSaveBtn = document.getElementById('kdDivSaveBtn');

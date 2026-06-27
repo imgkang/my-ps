@@ -1393,8 +1393,9 @@
     </div>
     <div class="records-input-card">
       <div class="records-input-top">
-        <label><span>연도</span><input type="number" id="nkDivYear" data-iux-ym-month="nkDivMonth" min="2000" max="2100" step="1" placeholder="YYYY"></label>
-        <label><span>월</span><input type="number" id="nkDivMonth" data-iux-ym-year="nkDivYear" min="1" max="12" step="1" placeholder="M"></label>
+        <label><span>연·월</span><button type="button" class="iux-ym-chip" data-iux-ym-chip="nkDivYear"><span class="iux-ym-text"></span><span class="iux-ym-chev">›</span></button></label>
+        <input type="number" id="nkDivYear" data-iux-ym-month="nkDivMonth" min="2000" max="2100" step="1">
+        <input type="number" id="nkDivMonth" data-iux-ym-year="nkDivYear" min="1" max="12" step="1">
       </div>
       <div style="overflow-x:auto;margin-top:8px">
         <table class="div-stock-table">
@@ -1510,7 +1511,7 @@
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
 <script>
-const APP_VERSION = 'NonK v0.646';
+const APP_VERSION = 'NonK v0.648';
 InputUX.setNumberDefaults({ locale: 'en-US' });  // Stage 2: NonK 기본 숫자 locale
 // Stage 1: 숫자/금액 입력 탭 시 기존값 자동선택
 InputUX.setAutoSelectSelector('input[inputmode=numeric], input[inputmode=decimal], [data-iux-num]');
@@ -2894,6 +2895,7 @@ function nkOpenDividendModal() {
   const d = new Date();
   document.getElementById('nkDivYear').value  = d.getFullYear();
   document.getElementById('nkDivMonth').value = d.getMonth() + 1;
+  if (window.InputUX) InputUX.scanYMChips();
   nkEditingDivId = null;
   const saveBtn = document.getElementById('nkDivSaveBtn');
   if (saveBtn) saveBtn.textContent = '➕ 추가';
@@ -3123,6 +3125,7 @@ function nkEditDividendRecord(id) {
   if (!rec) return;
   document.getElementById('nkDivYear').value = rec.year;
   document.getElementById('nkDivMonth').value = rec.month;
+  if (window.InputUX) InputUX.scanYMChips();
   if (nkDivRecIsMisc(rec)) {
     nkEditingDivId = null;
     const stockSaveBtn = document.getElementById('nkDivSaveBtn');

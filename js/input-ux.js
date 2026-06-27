@@ -394,15 +394,62 @@
     else if (el.hasAttribute('data-iux-ym-year')) { e.preventDefault(); el.blur(); const yEl = document.getElementById(el.getAttribute('data-iux-ym-year')); if (yEl) UX.openYMFor(yEl, el); }
   }, true);
 
+  /* ----- 연/월 요약 칩 (data-iux-ym-chip="<년input id>") ------------------------
+   * 두 개의 입력 박스 대신 "YYYY년 M월 ›" 형태의 탭 가능한 요약 한 칸으로 표시한다.
+   * 칩 클릭 → 연결된 년 input 클릭(기존 위임이 휠 오픈). 값 변경 시 칩 텍스트 자동 갱신.
+   * 실제 값은 기존 input(id) 에 그대로 보존 → read/save 로직과 무관. 짝 input 은 숨긴다. */
+  let _ymChipCss = false;
+  function ensureYMChipCss() {
+    if (_ymChipCss) return; _ymChipCss = true;
+    const st = document.createElement('style');
+    st.textContent =
+      '.iux-ym-chip{display:inline-flex;align-items:center;gap:8px;background:#f1f5f9;border:1px solid #e2e8f0;' +
+      'border-radius:8px;padding:8px 12px;font:inherit;font-size:15px;font-weight:600;color:#0f172a;cursor:pointer;' +
+      '-webkit-tap-highlight-color:transparent}' +
+      '.iux-ym-chip .iux-ym-chev{color:#94a3b8;font-size:13px;font-weight:400}';
+    document.head.appendChild(st);
+  }
+  function _ymChipText(chip) {
+    const yEl = document.getElementById(chip.getAttribute('data-iux-ym-chip'));
+    if (!yEl) return;
+    const mEl = document.getElementById(yEl.getAttribute('data-iux-ym-month') || '');
+    const y = (yEl.value || '').trim(), m = mEl ? (mEl.value || '').trim() : '';
+    const t = chip.querySelector('.iux-ym-text') || chip;
+    t.textContent = y ? (m ? (y + '년 ' + m + '월') : (y + '년')) : '미설정';
+  }
+  function scanYMChips(root) {
+    ensureYMChipCss();
+    (root || document).querySelectorAll('[data-iux-ym-chip]').forEach((chip) => {
+      const yEl = document.getElementById(chip.getAttribute('data-iux-ym-chip'));
+      if (yEl) { yEl.style.display = 'none'; const mEl = document.getElementById(yEl.getAttribute('data-iux-ym-month') || ''); if (mEl) mEl.style.display = 'none'; }
+      _ymChipText(chip);
+    });
+  }
+  UX.scanYMChips = scanYMChips;
+  document.addEventListener('click', function (e) {     // 칩 클릭 → 휠 오픈
+    const chip = e.target.closest && e.target.closest('[data-iux-ym-chip]');
+    if (!chip) return;
+    const yEl = document.getElementById(chip.getAttribute('data-iux-ym-chip'));
+    if (yEl) { e.preventDefault(); yEl.click(); }
+  }, true);
+  document.addEventListener('change', function (e) {    // 값 변경 → 칩 텍스트 갱신
+    const el = e.target;
+    if (el && el.hasAttribute && (el.hasAttribute('data-iux-ym-month') || el.hasAttribute('data-iux-ym-year')))
+      document.querySelectorAll('[data-iux-ym-chip]').forEach(_ymChipText);
+  });
+
   // 초기/동적 추가 입력 모두 readonly 처리
   function init() {
     scanDateInputs(document);
+    scanYMChips(document);
     try {
       new MutationObserver((muts) => {
         for (const mu of muts) for (const n of mu.addedNodes) {
           if (n.nodeType !== 1) continue;
           if (n.matches && n.matches('input[data-iux-date],input[data-iux-ym-month],input[data-iux-ym-year]')) scanDateInputs(n.parentNode || document);
           else if (n.querySelector) scanDateInputs(n);
+          if (n.matches && n.matches('[data-iux-ym-chip]')) scanYMChips(n.parentNode || document);
+          else if (n.querySelector && n.querySelector('[data-iux-ym-chip]')) scanYMChips(n);
         }
       }).observe(document.body, { childList: true, subtree: true });
     } catch (_) {}
