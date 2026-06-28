@@ -13,6 +13,7 @@ import { env } from './env.js';
 import { db, getTokenSecret } from './db.js';
 import { upsertGoogleUser } from './users.js';
 import { isEmailAllowed } from './allowlist.js';
+import { bumpActivity } from './engagement.js';
 
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30일
 
@@ -55,6 +56,8 @@ export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
   const exists = db.prepare('SELECT 1 FROM users WHERE id = ?').get(uid);
   if (!exists) return reply.code(401).send({ error: 'unauthorized' });
   (req as any).userId = uid;
+  // 패시브 참여도: 인증요청 1건으로 last_active 갱신(활동일 집계는 실제 상호작용 시에만).
+  try { bumpActivity(uid, { req: true }); } catch { /* 집계 실패는 무시 */ }
 }
 
 // 라우트 내에서 인증된 사용자 ID 를 꺼내는 헬퍼.

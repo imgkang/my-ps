@@ -143,6 +143,13 @@
     <div class="section-note" id="derivedClientNote"></div>
   </div>
 
+  <!-- 능동 참여도 점수 -->
+  <div class="card">
+    <div class="card-title">능동 참여도 <span style="font-size:.65rem;font-weight:400;text-transform:none;letter-spacing:0">(최근 <span id="engWindow">28</span>일 · 0~100점)</span></div>
+    <div id="engagementBox"><div class="status-sub">불러오는 중...</div></div>
+    <div class="section-note">점수 = 저장(35%)·체류시간(25%)·기능폭(15%)·활동일(15%)·최근성(10%). 포그라운드 능동 행동만 집계.</div>
+  </div>
+
   <!-- 주요 지표 -->
   <div class="card">
     <div class="card-title">주요 지표</div>
@@ -398,6 +405,7 @@ async function loadStatus() {
     await Promise.all([
       loadLogs().then(() => progressTick('로그 ✓')).catch(() => progressTick('로그 실패')),
       loadDerived().then(() => progressTick('파생상태 ✓')).catch(() => progressTick('파생상태 실패')),
+      loadEngagement().catch(() => {}),
       loadAllowlist().then(() => progressTick('허용목록 ✓')).catch(() => progressTick('허용목록 실패')),
     ]);
     startAutoRefresh();
@@ -447,6 +455,35 @@ async function loadDerived() {
       note.textContent = '이 브라우저엔 앱 캐시 없음 — 앱과 다른 저장소(PWA 독립 실행 등)일 수 있음. 위 서버 값이 진실값입니다.';
     }
   } catch (_) {}
+}
+
+// 능동 참여도 점수 — 사용자별 RFDBI 점수(서버 집계). 점수 내림차순.
+async function loadEngagement() {
+  const box = document.getElementById('engagementBox');
+  const tierColor = { '파워유저': 'var(--green)', '액티브': 'var(--accent)', '라이트': 'var(--yellow)', '휴면': 'var(--muted)' };
+  try {
+    const res = await fetch(`${getBase()}/api/admin/engagement?token=${encodeURIComponent(token)}`);
+    if (!res.ok) { box.innerHTML = '<div class="status-sub">조회 실패 — 서버가 최신 빌드(/api/admin/engagement 포함)인지 확인</div>'; return; }
+    const d = await res.json();
+    const win = document.getElementById('engWindow');
+    if (win && d.window_days) win.textContent = d.window_days;
+    if (!d.users || !d.users.length) { box.innerHTML = '<div class="status-sub">집계된 활동 없음</div>'; return; }
+    box.innerHTML = d.users.map(u => {
+      const la = u.lastActive ? new Date(u.lastActive).toLocaleString('ko-KR') : '—';
+      const col = tierColor[u.tier] || 'var(--muted)';
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div style="font-size:1.4rem;font-weight:800;color:${col};min-width:42px;text-align:right">${u.score}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(u.email || '—')}
+            <span style="font-size:.7rem;font-weight:700;color:${col};border:1px solid ${col};border-radius:6px;padding:1px 6px;margin-left:4px">${u.tier}</span></div>
+          <div class="status-sub">저장 ${u.saves} · 체류 ${u.fgMinutes}분 · 활동 ${u.activeDays}일 · 기능 ${u.featCount}종 · 전환 ${u.navs}</div>
+          <div class="status-sub">최근 활동: ${la}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div class="status-sub">조회 중 오류</div>';
+  }
 }
 
 // ── 테스터 허용목록 ──
