@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
 import { requireAuth, userId } from '../auth.js';
 import { recomputeDerivedForUser } from '../derived-store.js';
+import { bumpActivity } from '../engagement.js';
 
 type BundleRow = { version: number; json: string; updated_at: string | null };
 
@@ -59,6 +60,9 @@ export default async function syncRoutes(app: FastifyInstance) {
          json = excluded.json,
          updated_at = excluded.updated_at`
     ).run(uid, incoming, JSON.stringify(body), now);
+
+    // 능동 참여도: 실제 영속된 저장 1건 = 강한 능동 신호(Depth).
+    try { bumpActivity(uid, { save: 1, feats: ['save'] }); } catch { /* 집계 실패 무시 */ }
 
     // 저장 직후 파생상태 선계산 → 응답에 동봉(편집 후 단일 왕복으로 최신 표시).
     let derived = null;

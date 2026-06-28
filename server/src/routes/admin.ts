@@ -10,6 +10,7 @@ import { metrics } from '../metrics.js';
 import { restartSelf } from './webhook.js';
 import { listAllowedEmails, addAllowedEmail, removeAllowedEmail } from '../allowlist.js';
 import { runBench, storeSnapshot, latestSnapshot, history, withDeltas, frontendCompare } from '../bench/index.js';
+import { computeScores, WINDOW_DAYS } from '../engagement.js';
 
 // 큰 로그 파일에서 끝부분 maxBytes 만 읽어온다 (전체 로딩 방지).
 function tailBytes(path: string, maxBytes: number): string {
@@ -132,6 +133,14 @@ export default async function adminRoutes(app: FastifyInstance) {
       tasks,
       ts: new Date().toISOString(),
     };
+  });
+
+  // GET /api/admin/engagement?token=...&window=28
+  //   사용자별 능동 참여도 점수(RFDBI) — 점수 내림차순.
+  app.get('/api/admin/engagement', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const w = Math.max(1, Math.min(Number((req.query as any).window) || WINDOW_DAYS, 365));
+    return { ok: true, window_days: w, users: computeScores(w), ts: new Date().toISOString() };
   });
 
   // GET /api/admin/derived?token=...

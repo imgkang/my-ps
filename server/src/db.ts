@@ -105,6 +105,29 @@ db.exec(`
     updated_at   TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  -- 사용자 능동 참여도 누계 (engagement). 점수화 입력.
+  CREATE TABLE IF NOT EXISTS user_activity (
+    user_id     INTEGER PRIMARY KEY,
+    last_active TEXT,
+    req_count   INTEGER NOT NULL DEFAULT 0,   -- 인증요청 누계(패시브)
+    save_count  INTEGER NOT NULL DEFAULT 0,   -- 능동 저장(PUT /api/sync) 누계
+    fg_seconds  INTEGER NOT NULL DEFAULT 0,   -- 포그라운드 체류초 누계
+    nav_count   INTEGER NOT NULL DEFAULT 0,   -- 탭/앱 전환 누계
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  -- 일자별 활동 롤업 (윈도 집계용, 카디널리티 = 사용자 × 활동일).
+  CREATE TABLE IF NOT EXISTS activity_daily (
+    user_id INTEGER NOT NULL,
+    day     TEXT NOT NULL,               -- YYYY-MM-DD (UTC)
+    saves   INTEGER NOT NULL DEFAULT 0,
+    fg_sec  INTEGER NOT NULL DEFAULT 0,
+    navs    INTEGER NOT NULL DEFAULT 0,
+    feats   TEXT NOT NULL DEFAULT '',    -- 사용 기능 토큰 set(csv) — breadth용
+    PRIMARY KEY (user_id, day),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
 `);
 
 // 구(舊) 단일 사용자 스키마 감지 → 마이그레이션 유도.

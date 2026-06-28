@@ -4008,7 +4008,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.657';
+const APP_VERSION = 'MyGP v0.658';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -4141,6 +4141,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyNavVisibility();
   recordVisitDay();
   applyUserLevel();          // body.lvl-N 적용 + 자동추천 배너 평가
+  if (window.EngageTracker) EngageTracker.init();  // 능동 참여도 수집 시작
   maybeShowOnboarding();     // 신규 설치 시 수준 선택 1회
   if (typeof applyWithdrawalTabVisibility === 'function') applyWithdrawalTabVisibility();
   // 시작하기 마법사 자동 실행
@@ -4169,6 +4170,7 @@ function switchTab(name) {
     if (panel) panel.classList.toggle('active', t === name);
     if (btn)   btn.classList.toggle('active',   t === name);
   });
+  if (window.EngageTracker) EngageTracker.nav('tab:' + name);
 }
 
 // ===== 계좌 정의 (8개) =====
@@ -13884,6 +13886,68 @@ function snoozeLevelSuggestion() {
   if (wrap) wrap.style.display = 'none';
 }
 
+// ============================================================
+// 능동 참여도 수집기 (EngageTracker)
+// 포그라운드 체류초 + 탭/앱 전환 + 사용 기능만 모아 /api/events 로 주기 전송.
+// 저장(Depth)은 서버 PUT /api/sync 에서 집계하므로 여기서 보내지 않음(이중 계상 방지).
+// 입력 "내용"은 절대 수집하지 않음. 로그인 상태에서만 동작.
+// ============================================================
+window.EngageTracker = (function () {
+  const FLUSH_MS = 60000;        // visible 동안 60초 주기 전송
+  const buf = { fgSeconds: 0, navCount: 0, feats: new Set() };
+  let fgStart = null;            // 포그라운드 진입 시각(ms)
+  let flushTimer = null;
+
+  function authed() {
+    return !!(window.MyPMApi && MyPMApi.isConfigured && MyPMApi.isConfigured()
+      && MyPMApi.isAuthenticated && MyPMApi.isAuthenticated());
+  }
+  function accrueForeground() {
+    if (fgStart != null) {
+      buf.fgSeconds += Math.max(0, Math.round((Date.now() - fgStart) / 1000));
+      fgStart = null;
+    }
+  }
+  function nav(feat) {
+    buf.navCount++;
+    if (feat && buf.feats.size < 64) buf.feats.add(String(feat).slice(0, 24));
+  }
+  function flush(useKeepalive) {
+    accrueForeground();
+    if (document.visibilityState === 'visible') fgStart = Date.now(); // 계속 보고 있으면 재시작
+    if (!authed()) { _reset(); return; }
+    const payload = { fgSeconds: buf.fgSeconds, navCount: buf.navCount, feats: [...buf.feats] };
+    if (!payload.fgSeconds && !payload.navCount && !payload.feats.length) return;
+    const base = (MyPMApi.getBaseUrl && MyPMApi.getBaseUrl()) || '';
+    const token = localStorage.getItem('mypm_auth_token') || '';
+    if (!base || !token) return;
+    try {
+      fetch(base + '/api/events', {
+        method: 'POST',
+        keepalive: !!useKeepalive,   // 이탈 중에도 전송
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    } catch (_) {}
+    _reset();
+  }
+  function _reset() { buf.fgSeconds = 0; buf.navCount = 0; buf.feats.clear(); }
+
+  function init() {
+    if (document.visibilityState === 'visible') fgStart = Date.now();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { accrueForeground(); flush(true); }
+      else { fgStart = Date.now(); }
+    });
+    window.addEventListener('blur', accrueForeground);
+    window.addEventListener('focus', () => { if (fgStart == null) fgStart = Date.now(); });
+    window.addEventListener('pagehide', () => flush(true));
+    window.addEventListener('beforeunload', () => flush(true));
+    flushTimer = setInterval(() => { if (document.visibilityState === 'visible') flush(false); }, FLUSH_MS);
+  }
+  return { init, nav, flush };
+})();
+
 function applyZoomSetting(allow) {
   const meta = document.querySelector('meta[name="viewport"]');
   if (!meta) return;
@@ -18610,6 +18674,7 @@ function showSubFrame(name) {
     frame.dataset.loaded = '1';
   }
   frame.style.display = '';
+  if (window.EngageTracker) EngageTracker.nav('app:' + name);
   return false;
 }
 
