@@ -596,6 +596,36 @@ registerMobileTooltipDismiss();
   }
   .pf-hero-since-static { font-size: 12px; color: var(--muted); }
   .pf-hero-since-value { font-size: 17px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  /* ===== Lv1 입문: 계좌별 현황 + 종목 단순 리스트 (가로 스크롤 없음) ===== */
+  .pf-acc-summary { padding: 12px 14px; margin-bottom: 12px; }
+  .pf-acc-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .pf-acc-row { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); }
+  .pf-acc-row:first-of-type { border-top: none; }
+  .pf-acc-name { flex: 1; font-size: 14px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-acc-val { font-size: 14px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .pf-acc-rate { font-size: 13px; font-weight: 600; min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
+  .pf-simple-list { margin-bottom: 16px; }
+  .pf-simple-card { display: flex; align-items: center; gap: 10px; padding: 13px 14px; margin-bottom: 8px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
+  .pf-simple-card:active { background: #f3f4f6; }
+  .pf-sc-left { flex: 1; min-width: 0; }
+  .pf-sc-name { font-size: 15px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-sc-code { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .pf-sc-right { text-align: right; flex: none; }
+  .pf-sc-val { font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .pf-sc-sub { font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  /* ===== Lv2 적응: 2줄 압축 표 (한 칸 2지표, 가로 스크롤 없음) ===== */
+  .pf-cond-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 16px; }
+  .pf-cond-table th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: right; padding: 6px 6px; background: #f9fafb; border-bottom: 1px solid var(--border); }
+  .pf-cond-table th.cd-th-left { text-align: left; }
+  .pf-cond-table th .cd-h2 { font-weight: 400; opacity: 0.75; }
+  .pf-cond-table td { text-align: right; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .pf-cond-table td.cd-name { text-align: left; }
+  .pf-cond-table .cd-main { font-size: 13.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-cond-table td.cd-name .cd-main { cursor: pointer; }
+  .pf-cond-table .cd-sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pf-cond-table tfoot td { border-top: 2px solid var(--border); border-bottom: none; }
+  .pf-cond-table tfoot .cd-main { color: var(--text); }
   .detail-table-wrap { overflow-x: auto; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; }
   .detail-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .detail-table th, .detail-table td {
@@ -4008,7 +4038,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.658';
+const APP_VERSION = 'MyGP v0.659';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -7304,23 +7334,14 @@ function render() {
       <button class="btn-primary" onclick="openAddStockModal()">+ 종목 추가</button>
     </div>
   `;
-  // ===== 종목 리스트: 저장된 컬럼 순서대로 렌더 =====
+  // ===== 종목 리스트: 사용 수준별 레이아웃 =====
   const dayCls = totalDayChange > 0 ? 'diff-positive' : (totalDayChange < 0 ? 'diff-negative' : '');
   const _cashWeight = totalValue > 0 ? (totalCash / totalValue) * 100 : 0;
   const _cashAccountCount = Object.entries(cashAccounts).filter(([id, v]) => _activeAccIdSet.has(id) && (Number(v) || 0) > 0).length;
   const colCtx = { totalCost, totalValue, totalCash, totalDayChange, totalProfit, totalProfitRate, profitCls, profitSign, dayCls, cashWeight: _cashWeight };
-  const cols = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS);
-  html += `
-    <div class="detail-table-wrap">
-      <table class="detail-table">
-        <thead>
-          <tr><th>종목</th>${cols.map(c => `<th>${c.header}</th>`).join('')}<th>매수/매도</th><th></th></tr>
-        </thead>
-        <tbody>
-  `;
 
+  // 행 파생값 선계산 (모든 레이아웃이 it._* 로 참조)
   for (const it of items) {
-    // 행 파생값 선계산 (컬럼 descriptor 가 it._* 로 참조)
     it._buyWeight = totalCost > 0 ? (it.cost / totalCost) * 100 : 0;
     it._curWeight = totalValue > 0 ? (it.currentValue / totalValue) * 100 : 0;
     it._diff = it._curWeight - it._buyWeight;
@@ -7330,7 +7351,45 @@ function render() {
     it._dayChangeAmount = it._dayChangePerShare * it.qty;
     it._dCls2 = it._dayChangeAmount > 0 ? 'diff-positive' : (it._dayChangeAmount < 0 ? 'diff-negative' : '');
     it._dRateCls = it._dayRate > 0 ? 'diff-positive' : (it._dayRate < 0 ? 'diff-negative' : '');
+  }
 
+  const _lvl = getUserLevel();
+  if (_lvl <= 1)       html += buildHoldingsSimple(items, colCtx);
+  else if (_lvl === 2) html += buildHoldingsCondensed(items, colCtx);
+  else                 html += buildHoldingsFullTable(items, colCtx, _cashAccountCount);
+
+  container.innerHTML = html;
+}
+
+// 억/만원 단위 축약 (입문·적응 레이아웃용). 예: 172,018,780 → "1.72억", 30,000,000 → "3,000만"
+function formatKRWShort(n) {
+  if (n == null || isNaN(n)) return '-';
+  const a = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (a >= 1e8) return sign + (a / 1e8).toFixed(2) + '억';
+  if (a >= 1e4) return sign + Math.round(a / 1e4).toLocaleString('ko-KR') + '만';
+  return sign + Math.round(a).toLocaleString('ko-KR');
+}
+function _pctStr(n) {
+  if (n == null || isNaN(n)) return '-';
+  return (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+}
+function _signCls(n) {
+  return n > 0 ? 'diff-positive' : (n < 0 ? 'diff-negative' : '');
+}
+
+// ===== Lv3 숙련: 현행 전체 스크롤 표 (기존 동작 그대로) =====
+function buildHoldingsFullTable(items, colCtx, cashAccountCount) {
+  const cols = orderedCols(getPortfolioColOrder(), PORTFOLIO_COLS);
+  let html = `
+    <div class="detail-table-wrap">
+      <table class="detail-table">
+        <thead>
+          <tr><th>종목</th>${cols.map(c => `<th>${c.header}</th>`).join('')}<th>매수/매도</th><th></th></tr>
+        </thead>
+        <tbody>
+  `;
+  for (const it of items) {
     html += `<tr>`
       + `<td class="stock-name-cell" onclick="openTradeModal('${it.code}','buy')" title="클릭하여 매수/매도"><div class="stock-name">${escapeHtml(it.name)}${it.hasAccounts ? `<span class="account-dot" title="${it.accountCount}개 계좌에 분산"></span>` : ''}</div><div class="stock-code">${it.code}</div></td>`
       + cols.map(c => `<td ${c.tdAttr ? c.tdAttr(it, colCtx) : ''}>${c.cell(it, colCtx)}</td>`).join('')
@@ -7338,21 +7397,96 @@ function render() {
       + `<td><button class="tbl-icon-btn" onclick="openAccountModal('${it.code}')" title="계좌별 수량 입력">✏️</button><button class="tbl-icon-btn" onclick="removeStock('${it.code}')" title="삭제">🗑️</button></td>`
       + `</tr>`;
   }
-
-  // 현금 행 (값/비중만 표시, 나머지는 '-')
   html += `<tr class="row-cash">`
-    + `<td onclick="openCashAccountModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${_cashAccountCount > 0 ? `<span class="account-dot" title="${_cashAccountCount}개 계좌에 분산"></span>` : ''}</div><div class="stock-code">CASH${_cashAccountCount ? ` · ${_cashAccountCount}개 계좌` : ''}</div></td>`
+    + `<td onclick="openCashAccountModal()" class="cash-edit-cell" title="계좌별 현금 입력 (클릭)"><div class="stock-name">💵 현금 (예수금) <span class="cash-edit-icon">✏️</span>${cashAccountCount > 0 ? `<span class="account-dot" title="${cashAccountCount}개 계좌에 분산"></span>` : ''}</div><div class="stock-code">CASH${cashAccountCount ? ` · ${cashAccountCount}개 계좌` : ''}</div></td>`
     + cols.map(c => `<td ${c.cashAttr ? c.cashAttr(colCtx) : ''}>${c.cash ? c.cash(colCtx) : '-'}</td>`).join('')
     + `<td></td><td></td>`
     + `</tr>`;
-
-  // 합계 행
   html += `</tbody><tfoot><tr><td>합계</td>`
     + cols.map(c => `<td ${c.footAttr ? c.footAttr(colCtx) : ''}>${c.foot ? c.foot(colCtx) : '-'}</td>`).join('')
     + `<td></td><td></td>`
     + `</tr></tfoot></table></div>`;
+  return html;
+}
 
-  container.innerHTML = html;
+// ===== Lv1 입문: 계좌별 현황 요약 + 종목 단순 리스트 (가로 스크롤 없음) =====
+function buildHoldingsSimple(items, colCtx) {
+  // 계좌별 현황 (활성 계좌 중 평가금액·원금이 있는 것만)
+  let accRows = '';
+  for (const a of getActiveAccounts()) {
+    const v = computeAccountValue(a.id);
+    const p = getAccountNetTotal(a.id);
+    if (!(v > 0 || p > 0)) continue;
+    const rate = p > 0 ? ((v - p) / p) * 100 : null;
+    accRows += `<div class="pf-acc-row">`
+      + `<span class="pf-acc-name">${escapeHtml(a.name)}</span>`
+      + `<span class="pf-acc-val">${formatKRWShort(v)}</span>`
+      + `<span class="pf-acc-rate ${_signCls(rate)}">${rate == null ? '-' : _pctStr(rate)}</span>`
+      + `</div>`;
+  }
+  const accSummary = accRows
+    ? `<div class="card pf-acc-summary"><div class="pf-acc-title">계좌별 현황</div>${accRows}</div>`
+    : '';
+
+  // 종목 단순 리스트
+  let cards = '';
+  for (const it of items) {
+    const sub = it.profitRate == null
+      ? ''
+      : `<div class="pf-sc-sub"><span class="${_signCls(it.profit)}">${formatKRWShort(it.profit)}</span> · <span class="${_signCls(it.profitRate)}">${_pctStr(it.profitRate)}</span></div>`;
+    cards += `<div class="pf-simple-card" onclick="openAccountModal('${it.code}')" title="계좌별 보기/입력">`
+      + `<div class="pf-sc-left"><div class="pf-sc-name">${escapeHtml(it.name)}</div><div class="pf-sc-code">${it.code}</div></div>`
+      + `<div class="pf-sc-right"><div class="pf-sc-val">${formatKRWShort(it.currentValue)}</div>${sub}</div>`
+      + `</div>`;
+  }
+  if (colCtx.totalCash > 0) {
+    cards += `<div class="pf-simple-card" onclick="openCashAccountModal()" title="현금 입력">`
+      + `<div class="pf-sc-left"><div class="pf-sc-name">💵 현금</div><div class="pf-sc-code">예수금</div></div>`
+      + `<div class="pf-sc-right"><div class="pf-sc-val">${formatKRWShort(colCtx.totalCash)}</div></div>`
+      + `</div>`;
+  }
+  return accSummary + `<div class="pf-simple-list">${cards}</div>`;
+}
+
+// ===== Lv2 적응: 2줄 압축 표 (한 칸에 2지표, 가로 스크롤 없음) =====
+function buildHoldingsCondensed(items, colCtx) {
+  const won = n => (n == null || isNaN(n)) ? '-' : Math.round(n).toLocaleString('ko-KR');
+  let rows = '';
+  for (const it of items) {
+    rows += `<tr>`
+      + `<td class="cd-name" onclick="openTradeModal('${it.code}','buy')" title="클릭하여 매수/매도">`
+        + `<div class="cd-main">${escapeHtml(it.name)}${it.hasAccounts ? `<span class="account-dot" title="${it.accountCount}개 계좌에 분산"></span>` : ''}</div>`
+        + `<div class="cd-sub">${it.qty.toLocaleString('ko-KR')}주</div></td>`
+      + `<td><div class="cd-main ${_signCls(it.profit)}">${it.profitRate == null ? '-' : formatKRWShort(it.profit)}</div>`
+        + `<div class="cd-sub ${_signCls(it.profitRate)}">${it.profitRate == null ? '-' : _pctStr(it.profitRate)}</div></td>`
+      + `<td><div class="cd-main">${formatKRWShort(it.currentValue)}</div><div class="cd-sub">${it.cost > 0 ? formatKRWShort(it.cost) : '-'}</div></td>`
+      + `<td><div class="cd-main">${won(it.price)}</div><div class="cd-sub">${it.avgPrice > 0 ? won(it.avgPrice) : '-'}</div></td>`
+      + `</tr>`;
+  }
+  if (colCtx.totalCash > 0) {
+    rows += `<tr class="row-cash" onclick="openCashAccountModal()">`
+      + `<td class="cd-name"><div class="cd-main">💵 현금</div><div class="cd-sub">예수금</div></td>`
+      + `<td><div class="cd-main">-</div></td>`
+      + `<td><div class="cd-main">${formatKRWShort(colCtx.totalCash)}</div></td>`
+      + `<td><div class="cd-main">-</div></td></tr>`;
+  }
+  const tp = colCtx.totalProfit, tpr = colCtx.totalProfitRate;
+  return `
+    <table class="pf-cond-table">
+      <thead><tr>
+        <th class="cd-th-left"><div>종목명</div><div class="cd-h2">보유수량</div></th>
+        <th><div>평가손익</div><div class="cd-h2">수익률</div></th>
+        <th><div>평가금액</div><div class="cd-h2">매입금액</div></th>
+        <th><div>현재가</div><div class="cd-h2">평균단가</div></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr>
+        <td class="cd-name"><div class="cd-main">합계</div></td>
+        <td><div class="cd-main ${_signCls(tp)}">${formatKRWShort(tp)}</div><div class="cd-sub ${_signCls(tpr)}">${tpr == null ? '-' : _pctStr(tpr)}</div></td>
+        <td><div class="cd-main">${formatKRWShort(colCtx.totalValue)}</div><div class="cd-sub">${formatKRWShort(colCtx.totalCost)}</div></td>
+        <td><div class="cd-main">-</div></td>
+      </tr></tfoot>
+    </table>`;
 }
 
 function escapeHtml(s) {
@@ -13775,6 +13909,8 @@ function applyUserLevel() {
     const min = Number(activeBtn.getAttribute('data-min-level') || 1);
     if (min > n) switchTab('portfolio');
   }
+  // 종목 리스트는 수준별 레이아웃이 다르므로 다시 그린다
+  if (typeof render === 'function' && typeof holdings !== 'undefined') { try { render(); } catch (_) {} }
   refreshLevelSuggestBanner();
 }
 
