@@ -604,6 +604,7 @@ registerMobileTooltipDismiss();
   .pf-acc-name { flex: 1; font-size: 14px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pf-acc-val { font-size: 14px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
   .pf-acc-rate { font-size: 13px; font-weight: 600; min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
+  .pf-simple-hint { font-size: 12px; color: var(--muted); margin: 0 2px 8px; }
   .pf-simple-list { margin-bottom: 16px; }
   .pf-simple-card { display: flex; align-items: center; gap: 10px; padding: 13px 14px; margin-bottom: 8px;
     background: var(--card); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
@@ -4041,7 +4042,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.660';
+const APP_VERSION = 'MyGP v0.661';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -7437,7 +7438,7 @@ function buildHoldingsSimple(items, colCtx) {
     const sub = it.profitRate == null
       ? ''
       : `<div class="pf-sc-sub"><span class="${_signCls(it.profit)}">${formatKRWShort(it.profit)}</span> · <span class="${_signCls(it.profitRate)}">${_pctStr(it.profitRate)}</span></div>`;
-    cards += `<div class="pf-simple-card" onclick="openAccountModal('${it.code}')" title="계좌별 보기/입력">`
+    cards += `<div class="pf-simple-card" onclick="openTradeModal('${it.code}','buy')" title="거래(매수/매도) 기록">`
       + `<div class="pf-sc-left"><div class="pf-sc-name">${escapeHtml(it.name)}</div><div class="pf-sc-code">${it.code}</div></div>`
       + `<div class="pf-sc-right"><div class="pf-sc-val">${formatKRWShort(it.currentValue)}</div>${sub}</div>`
       + `</div>`;
@@ -7448,7 +7449,10 @@ function buildHoldingsSimple(items, colCtx) {
       + `<div class="pf-sc-right"><div class="pf-sc-val">${formatKRWShort(colCtx.totalCash)}</div></div>`
       + `</div>`;
   }
-  return accSummary + `<div class="pf-simple-list">${cards}</div>`;
+  const hint = items.length
+    ? `<div class="pf-simple-hint">💡 종목을 누르면 거래(매수·매도)를 기록할 수 있어요.</div>`
+    : '';
+  return accSummary + hint + `<div class="pf-simple-list">${cards}</div>`;
 }
 
 // ===== Lv2 적응: 2줄 압축 표 (한 칸에 2지표, 가로 스크롤 없음) =====
