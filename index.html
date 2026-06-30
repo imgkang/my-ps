@@ -1001,6 +1001,22 @@ registerMobileTooltipDismiss();
   }
   .div-toggle-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
+  /* 연간 배당 달력 매트릭스 (월×종목/계좌) */
+  .div-matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 4px; }
+  .div-matrix { border-collapse: collapse; font-size: 12px; white-space: nowrap; min-width: 100%; }
+  .div-matrix th, .div-matrix td {
+    padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border);
+  }
+  .div-matrix th { font-weight: 600; color: var(--muted); position: sticky; top: 0; background: var(--card-bg, #fff); }
+  .div-matrix td { font-variant-numeric: tabular-nums; }
+  .div-matrix .div-mx-name {
+    text-align: left; position: sticky; left: 0; background: var(--card-bg, #fff);
+    font-weight: 600; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .div-matrix th.div-mx-name { z-index: 1; }
+  .div-matrix .div-mx-sum { font-weight: 700; }
+  .div-matrix .div-mx-foot td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
+
   /* 연간 계획 모달 */
   .annual-plan-wrap { }
   .annual-plan-combined {
@@ -3868,6 +3884,7 @@ registerMobileTooltipDismiss();
       <!-- 월별 배당 내역 -->
       <div class="div-breakdown-toggle">
         <button id="divModeToggle" class="div-toggle-btn active" onclick="toggleDivBreakdownMode()">종목별</button>
+        <button id="divViewMatrixBtn" class="div-toggle-btn" onclick="setDivViewMode('matrix')">표</button>
         <button id="divViewDonutBtn" class="div-toggle-btn" onclick="setDivViewMode('donut')">배당비중</button>
       </div>
       <div id="divDonutWrap" style="display:none">
@@ -4046,7 +4063,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.665';
+const APP_VERSION = 'MyGP v0.666';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -9703,6 +9720,7 @@ function openDividendModal() {
   document.getElementById('divModeToggle').textContent = '종목별';
   document.getElementById('divModeToggle').classList.add('active');
   document.getElementById('divViewDonutBtn').classList.remove('active');
+  document.getElementById('divViewMatrixBtn')?.classList.remove('active');
   document.getElementById('divDonutWrap').style.display = 'none';
   document.querySelectorAll('#divPeriodBtns .rec-period-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.period === 'year');
@@ -10675,6 +10693,8 @@ function toggleDivBreakdownMode() {
 function setDivViewMode(mode) {
   _divViewMode = (_divViewMode === mode) ? 'list' : mode;
   document.getElementById('divViewDonutBtn').classList.toggle('active', _divViewMode === 'donut');
+  const mxBtn = document.getElementById('divViewMatrixBtn');
+  if (mxBtn) mxBtn.classList.toggle('active', _divViewMode === 'matrix');
   renderDivBreakdownView();
 }
 
@@ -10692,10 +10712,59 @@ function renderDivBreakdownView() {
       breakdownEl.style.display = 'none';
     } else {
       breakdownEl.style.display = '';
-      if (_divBreakdownMode === 'stock') renderDivMonthlyBreakdown();
+      if (_divViewMode === 'matrix') renderDivMatrix();
+      else if (_divBreakdownMode === 'stock') renderDivMonthlyBreakdown();
       else renderDivMonthlyBreakdownByAcc();
     }
   }
+}
+
+// 연간 "월×종목 / 월×계좌" 달력형 매트릭스 (선택 연도, 종목별/계좌별 토글 공용)
+function renderDivMatrix() {
+  const wrap = document.getElementById('divMonthlyBreakdown');
+  if (!wrap) return;
+  const year = _divSelectedYear;
+  const yearRecs = dividendRecords.filter(r => r.year === year);
+  if (!yearRecs.length) { wrap.innerHTML = '<div class="div-empty">해당 연도에 배당 기록이 없습니다.</div>'; return; }
+
+  const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const rows = new Map(); // key -> { label, m:{month:amt}, total }
+  const ensure = (key, label) => { if (!rows.has(key)) rows.set(key, { label, m: {}, total: 0 }); return rows.get(key); };
+  const add = (key, label, month, amt) => { const r = ensure(key, label); r.m[month] = (r.m[month] || 0) + amt; r.total += amt; };
+
+  if (_divBreakdownMode === 'stock') {
+    for (const rec of yearRecs) {
+      if (divRecIsMisc(rec)) {
+        const t = divRecMiscTotal(rec); if (t) add('__misc__', '기타', rec.month, t);
+      } else {
+        for (const code of divRecCodes(rec)) {
+          const amt = divRecAmount(rec, code); if (!amt) continue;
+          add(code, holdings.find(h => h.code === code)?.name || code, rec.month, amt);
+        }
+      }
+    }
+  } else {
+    for (const acc of getActiveAccounts()) ensure(acc.id, getAccName(acc.id) || acc.id);
+    for (const rec of yearRecs) {
+      const accMap = divRecIsMisc(rec) ? (rec.misc?.accounts || {}) : (rec.accounts || {});
+      for (const [id, v] of Object.entries(accMap)) {
+        const amt = Number(v) || 0; if (!amt) continue;
+        add(id, getAccName(id) || id, rec.month, amt);
+      }
+    }
+  }
+
+  const rowArr = [...rows.values()].filter(r => r.total !== 0).sort((a, b) => b.total - a.total);
+  if (!rowArr.length) { wrap.innerHTML = '<div class="div-empty">해당 연도에 배당 기록이 없습니다.</div>'; return; }
+
+  const monthTotals = {}; let grand = 0;
+  for (const r of rowArr) for (const m of MONTHS) { const v = r.m[m] || 0; monthTotals[m] = (monthTotals[m] || 0) + v; grand += v; }
+
+  const fmt = v => v ? Math.round(v).toLocaleString('ko-KR') : '-';
+  const head = `<tr><th class="div-mx-name">${_divBreakdownMode === 'stock' ? '종목' : '계좌'}</th>${MONTHS.map(m => `<th>${m}월</th>`).join('')}<th class="div-mx-sum">합계</th></tr>`;
+  const body = rowArr.map(r => `<tr><td class="div-mx-name">${r.label}</td>${MONTHS.map(m => `<td>${fmt(r.m[m] || 0)}</td>`).join('')}<td class="div-mx-sum">${fmt(r.total)}</td></tr>`).join('');
+  const foot = `<tr class="div-mx-foot"><td class="div-mx-name">합계</td>${MONTHS.map(m => `<td>${fmt(monthTotals[m] || 0)}</td>`).join('')}<td class="div-mx-sum">${fmt(grand)}</td></tr>`;
+  wrap.innerHTML = `<div class="div-matrix-scroll"><table class="div-matrix">${head}${body}${foot}</table></div>`;
 }
 
 function renderDivDonutChart() {
