@@ -98,6 +98,66 @@ export async function recomputeWithLivePrices(
   return recomputeDerivedForUser(userId, { prices: fresh });
 }
 
+// ── 자동 계좌기록 스냅샷 (주 1회 마감 후 cron) ────────────────────────────
+export interface AccountSnapshot { day: string; accounts: Record<string, number>; total: number; pricedAt: string | null }
+
+// 라이브 시세로 재계산한 derived 에서 앱별 계좌 평가금액을 뽑아 account_snapshots 에 upsert.
+//   dayStr  : KST 'YYYY-MM-DD' (cron 콜백이 전달)
+//   markets : 라이브로 조회할 시장 (KR 마감 cron='kr', US 마감 cron='us')
+//   apps    : 기록할 앱 (KR cron=['mypm','kd'], US cron=['nk'])
+export async function recordWeeklySnapshot(
+  userId: number,
+  dayStr: string,
+  opts?: { markets?: Array<'kr' | 'us'>; apps?: Array<'mypm' | 'kd' | 'nk'> },
+): Promise<void> {
+  const markets = opts?.markets ?? ['kr', 'us'];
+  const apps = opts?.apps ?? ['mypm', 'kd', 'nk'];
+  const row = await recomputeWithLivePrices(userId, markets);
+  if (!row) return;
+  const d: any = row.data;
+  const now = new Date().toISOString();
+
+  // 앱별 (계좌맵, 합계) 추출. mypm=top-level accounts, kd=d.kd, nk=d.nk.
+  const sources: Record<string, { accounts: any; total: number }> = {
+    mypm: { accounts: d.accounts || {}, total: d.totals?.totalValue || 0 },
+    kd:   { accounts: d.kd?.accounts || {}, total: d.kd?.totals?.totalValue || 0 },
+    nk:   { accounts: d.nk?.accounts || {}, total: d.nk?.totals?.totalValue || 0 },
+  };
+
+  const stmt = db.prepare(
+    `INSERT INTO account_snapshots (user_id, app, day, accounts, total, priced_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, app, day) DO UPDATE SET
+       accounts = excluded.accounts,
+       total = excluded.total,
+       priced_at = excluded.priced_at,
+       updated_at = excluded.updated_at`,
+  );
+  for (const app of apps) {
+    const src = sources[app];
+    if (!src) continue;
+    const valueMap: Record<string, number> = {};
+    for (const [accId, ad] of Object.entries(src.accounts)) {
+      valueMap[accId] = Number((ad as any)?.value) || 0;
+    }
+    // 보유/계좌가 전혀 없는 앱은 빈 행을 만들지 않음.
+    if (!Object.keys(valueMap).length && !src.total) continue;
+    stmt.run(userId, app, dayStr, JSON.stringify(valueMap), src.total, row.pricedAt, now);
+  }
+}
+
+// 앱별 스냅샷 시계열 (day 오름차순).
+export function getAccountSnapshots(userId: number, app: string): AccountSnapshot[] {
+  const rows = db.prepare(
+    'SELECT day, accounts, total, priced_at FROM account_snapshots WHERE user_id = ? AND app = ? ORDER BY day ASC',
+  ).all(userId, app) as { day: string; accounts: string; total: number; priced_at: string | null }[];
+  return rows.map((r) => {
+    let accounts: Record<string, number> = {};
+    try { accounts = JSON.parse(r.accounts) || {}; } catch { /* 손상행 무시 */ }
+    return { day: r.day, accounts, total: r.total, pricedAt: r.priced_at };
+  });
+}
+
 export function getDerivedForUser(userId: number): DerivedRow | null {
   const row = db.prepare('SELECT data_version, priced_at, json, updated_at FROM derived WHERE user_id = ?').get(userId) as
     | { data_version: number; priced_at: string | null; json: string; updated_at: string }

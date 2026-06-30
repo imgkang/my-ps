@@ -4046,7 +4046,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.664';
+const APP_VERSION = 'MyGP v0.665';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -6549,6 +6549,32 @@ function saveMonthlyRecords() {
 let _recChart = null;
 let _recChartPeriod = 'all';
 
+// 서버가 주1회 마감 후 적재한 자동 계좌기록 스냅샷 (별도 점선 시리즈로 표시).
+let _autoSnapshots = [];
+let _autoSnapFetched = false;
+async function refreshAutoSnapshots() {
+  if (!(window.MyPMApi && MyPMApi.isAuthenticated && MyPMApi.isAuthenticated()
+        && typeof MyPMApi.getAccountSnapshots === 'function')) return;
+  try {
+    const r = await MyPMApi.getAccountSnapshots('mypm');
+    _autoSnapshots = (r && r.snapshots) || [];
+    renderRecChart();
+  } catch (_) { /* 자동기록 없음/오프라인 — 무시 */ }
+}
+// 자동 스냅샷을 차트 점({x,y})으로 변환. x = year*12+month + (day-1)/월일수 → 월 눈금 사이 배치.
+function _autoSnapshotPoints(cutoffX) {
+  const activeAccs = getActiveAccounts();
+  return (_autoSnapshots || []).map(s => {
+    const [y, m, d] = String(s.day).split('-').map(Number);
+    if (!y || !m) return null;
+    const dim = new Date(y, m, 0).getDate();
+    const x = y * 12 + m + (Math.max(1, d || 1) - 1) / dim;
+    if (cutoffX && x < cutoffX) return null;
+    const total = activeAccs.reduce((sum, a) => sum + (Number(s.accounts[a.id]) || 0), 0);
+    return { x, y: Math.round(total / 100000) / 10 };
+  }).filter(Boolean);
+}
+
 function setRecChartPeriod(period) {
   _recChartPeriod = period;
   document.querySelectorAll('.rec-period-btn').forEach(btn => {
@@ -6563,11 +6589,15 @@ function renderRecChart() {
   if (!canvas) return;
   if (typeof Chart === 'undefined') { setTimeout(renderRecChart, 200); return; }
 
+  // 자동 스냅샷은 모달 진입 시 1회 지연 로드(받으면 renderRecChart 재호출).
+  if (!_autoSnapFetched) { _autoSnapFetched = true; refreshAutoSnapshots(); }
+
   // 포트폴리오 차트와 동일한 공용 헬퍼 사용 (이전엔 데이터·그라디언트·Chart 설정을 복붙했음).
   const { cutoffX, xAxisOpts } = _calcPeriodOpts(_recChartPeriod);
   const series = buildChartSeries(null, cutoffX);
+  series.autoData = _autoSnapshotPoints(cutoffX);
 
-  if (!series.evalData.length) {
+  if (!series.evalData.length && !series.autoData.length) {
     if (_recChart) { _recChart.destroy(); _recChart = null; }
     canvas.style.display = 'none';
     if (empty) empty.style.display = 'block';
@@ -7040,7 +7070,8 @@ function renderTrendChart(target, cfg) {
 
 // 월 단위 자산/원금(+예상) 라인차트 — 포트폴리오·계좌상세·계좌기록 공용 래퍼.
 function createLineChart(ctx, series, xAxisOpts = null) {
-  const xVals = series.evalData.map(d => d.x);
+  const xVals = series.evalData.map(d => d.x)
+    .concat((series.autoData || []).map(d => d.x));
   const range = xVals.length > 1 ? Math.max(...xVals) - Math.min(...xVals) : 0;
   const stepSize = range <= 12 ? 1 : range <= 30 ? 3 : range <= 72 ? 6 : 12;
   const lines = [
@@ -7049,6 +7080,10 @@ function createLineChart(ctx, series, xAxisOpts = null) {
   ];
   if (series.expectedData && series.expectedData.length) {
     lines.push({ label: `예상(${Math.round(getExpectedRate() * 100)}%)`, data: series.expectedData, colorBorder: '#10b981', dash: [6, 3], width: 1.5, order: 3 });
+  }
+  // 서버 자동 주간 기록(별도 점선 시리즈) — renderRecChart 가 채울 때만 표시.
+  if (series.autoData && series.autoData.length) {
+    lines.push({ label: '자동기록', data: series.autoData, colorBorder: '#3b82f6', dash: [3, 3], width: 1.5, order: 4, pointRadius: 2 });
   }
   return renderTrendChart(ctx, {
     lines,

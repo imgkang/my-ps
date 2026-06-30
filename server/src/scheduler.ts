@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import cron from 'node-cron';
 import { db } from './db.js';
 import { gitPullAndPurge } from './routes/webhook.js';
-import { recomputeWithLivePrices } from './derived-store.js';
+import { recomputeWithLivePrices, recordWeeklySnapshot } from './derived-store.js';
 
 const execAsync = promisify(exec);
 const repoRoot = resolve(process.cwd(), '..');
@@ -79,6 +79,37 @@ export function startScheduler() {
     () => recomputeAllDerived(['us']).catch((e) => console.error('[scheduler] US derived tick error', e)),
     { timezone: 'Asia/Seoul' }
   );
+
+  // 자동 계좌기록(주 1회) — 마감 후 1회 스냅샷을 account_snapshots 에 적재.
+  //   KR(mypm/kd): 금 15:50 KST(국내 종가 후).  NonK(nk): 토 06:30 KST(미국 금요일 종가 후).
+  cron.schedule(
+    '50 15 * * 5',
+    () => recordWeeklyAll(['kr'], ['mypm', 'kd']).catch((e) => console.error('[weekly snapshot KR]', e)),
+    { timezone: 'Asia/Seoul' }
+  );
+  cron.schedule(
+    '30 6 * * 6',
+    () => recordWeeklyAll(['us'], ['nk']).catch((e) => console.error('[weekly snapshot US]', e)),
+    { timezone: 'Asia/Seoul' }
+  );
+}
+
+// KST 기준 오늘 날짜 'YYYY-MM-DD'.
+function kstDay(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+}
+
+// 번들이 있는 모든 사용자에 대해 주간 스냅샷 1건씩 기록.
+async function recordWeeklyAll(
+  markets: Array<'kr' | 'us'>,
+  apps: Array<'mypm' | 'kd' | 'nk'>,
+): Promise<void> {
+  const day = kstDay();
+  const users = db.prepare('SELECT user_id FROM data_bundle').all() as { user_id: number }[];
+  for (const u of users) {
+    try { await recordWeeklySnapshot(u.user_id, day, { markets, apps }); }
+    catch (e: any) { console.error('[weekly snapshot] user', u.user_id, e?.message); }
+  }
 }
 
 // 번들이 있는 모든 사용자의 파생상태를 라이브 시세로 재계산·저장.

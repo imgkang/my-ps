@@ -901,13 +901,44 @@ function Render() {
   RenderAccountButtons();
 }
 
+// ── 서버 자동 계좌기록 스냅샷 (주1회 마감 후 적재 → 별도 점선 시리즈) ──
+let _autoSnapFetched = false;
+async function FetchAutoSnapshots() {
+  if (!(window.MyPMApi && MyPMApi.isAuthenticated && MyPMApi.isAuthenticated()
+        && typeof MyPMApi.getAccountSnapshots === 'function')) return;
+  try {
+    const r = await MyPMApi.getAccountSnapshots(MarketCore.cfg.snapKey);
+    ST.autoSnapshots = (r && r.snapshots) || [];
+    RenderChart();
+  } catch (_) { /* 자동기록 없음/오프라인 — 무시 */ }
+}
+
+// x = year*12+month (선형, 시간 비례). 정수 → "YYYY.MM" 라벨.
+function _ymLabel(x) { const m = ((x - 1) % 12) + 1, y = Math.floor((x - 1) / 12); return `${y}.${String(m).padStart(2,'0')}`; }
+
 // ── 공유: 포맷터만 달랐던 렌더/업데이트 함수 (Phase 7e) ──
 function RenderChart() {
   const CFG = MarketCore.cfg;
   const canvas = document.getElementById('PortfolioChart');
   const empty  = document.getElementById('ChartEmpty');
   if (!canvas) return;
-  if (!ST.monthly.length) {
+  // 자동 스냅샷은 1회 지연 로드(받으면 RenderChart 재호출).
+  if (!_autoSnapFetched) { _autoSnapFetched = true; FetchAutoSnapshots(); }
+
+  const _activeForChart = ST.accounts.filter(a => a.active !== false);
+  const _activeChartIds = _activeForChart.map(a => a.id);
+
+  // 자동 주간 스냅샷 → 분수 x 로 월 눈금 사이 배치.
+  const autoData = (ST.autoSnapshots || []).map(s => {
+    const [y, m, d] = String(s.day).split('-').map(Number);
+    if (!y || !m) return null;
+    const dim = new Date(y, m, 0).getDate();
+    return { x: y * 12 + m + (Math.max(1, d || 1) - 1) / dim,
+             y: _activeForChart.reduce((sum, a) => sum + (Number(s.accounts[a.id]) || 0), 0) };
+  }).filter(Boolean);
+
+  if (!ST.monthly.length && !autoData.length) {
+    if (ST.chartInstance) { ST.chartInstance.destroy(); ST.chartInstance = null; }
     canvas.style.display = 'none';
     if (empty) empty.style.display = '';
     return;
@@ -916,31 +947,43 @@ function RenderChart() {
   if (empty) empty.style.display = 'none';
 
   const sorted = [...ST.monthly].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
-  const labels = sorted.map(r => `${r.year}.${String(r.month).padStart(2,'0')}`);
-  const _activeForChart = ST.accounts.filter(a => a.active !== false);
-  const evalVals = sorted.map(r => _activeForChart.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0));
+  const evalData = sorted.map(r => ({
+    x: r.year * 12 + r.month,
+    y: _activeForChart.reduce((s, a) => s + (Number(r.accounts[a.id]) || 0), 0)
+  }));
 
   // Deposit principal: cumulative deposits up to each month (active accounts only)
-  const _activeChartIds = _activeForChart.map(a => a.id);
   const txns = [...ST.deposits.transactions]
     .filter(t => _activeChartIds.includes(t.accId))
     .sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
-  const depVals = sorted.map(r => {
+  const depData = sorted.map(r => {
     const cutoff = `${r.year}-${String(r.month).padStart(2,'0')}-31`;
-    return txns.filter(t => (t.date || '') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0);
+    return { x: r.year * 12 + r.month,
+             y: txns.filter(t => (t.date || '') <= cutoff).reduce((s, t) => s + (t.type === 'withdraw' ? -Number(t.amount) : Number(t.amount)), 0) };
   });
+
+  const datasets = [
+    { label: '누적 입금액', data: depData, borderColor: '#2e7d32', backgroundColor: 'rgba(46,125,50,0.15)', fill: true, tension: 0.2, pointRadius: 2 },
+    { label: '평가총액', data: evalData, borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,0.15)', fill: true, tension: 0.2, pointRadius: 2 }
+  ];
+  if (autoData.length) {
+    datasets.push({ label: '자동기록', data: autoData, borderColor: '#3b82f6', borderDash: [3, 3], pointRadius: 2, fill: false, tension: 0.2 });
+  }
 
   if (ST.chartInstance) ST.chartInstance.destroy();
   ST.chartInstance = new Chart(canvas, {
     type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: '누적 입금액', data: depVals, borderColor: '#2e7d32', backgroundColor: 'rgba(46,125,50,0.15)', fill: true, tension: 0.2 },
-        { label: '평가총액', data: evalVals, borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,0.15)', fill: true, tension: 0.2 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { ticks: { callback: v => CFG.fmt.money(v) } } } }
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { type: 'linear',
+             ticks: { stepSize: 1, autoSkip: true, maxRotation: 45,
+                      callback: v => Number.isInteger(v) ? _ymLabel(v) : '' } },
+        y: { ticks: { callback: v => CFG.fmt.money(v) } }
+      }
+    }
   });
 }
 function UpdateAddTotals() {

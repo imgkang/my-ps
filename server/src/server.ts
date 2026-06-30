@@ -15,6 +15,7 @@ import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
 import computeRoutes from './routes/compute.js';
 import derivedRoutes from './routes/derived.js';
+import snapshotRoutes from './routes/snapshots.js';
 import eventsRoutes from './routes/events.js';
 import { startScheduler } from './scheduler.js';
 import { recordRequest } from './metrics.js';
@@ -52,6 +53,7 @@ await app.register(webhookRoutes);
 await app.register(adminRoutes);
 await app.register(computeRoutes);
 await app.register(derivedRoutes);
+await app.register(snapshotRoutes);
 await app.register(eventsRoutes);
 
 // 프론트 정적 서빙 (로컬 테스트용 단일 출처). API 라우트 등록 뒤에 둔다.

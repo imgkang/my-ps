@@ -128,6 +128,21 @@ db.exec(`
     PRIMARY KEY (user_id, day),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  -- 자동 계좌기록 스냅샷 (서버 소유, 주 1회 마감 후 cron 이 append/upsert).
+  -- 클라이언트는 GET 으로 읽기만 한다(data_bundle 통째 덮어쓰기와 무관 → 동기화 충돌 없음).
+  -- app: 'mypm'(연금) | 'kd'(KDeal) | 'nk'(NonK) = MARKET_CONFIG.snapKey 와 동일 규칙.
+  CREATE TABLE IF NOT EXISTS account_snapshots (
+    user_id    INTEGER NOT NULL,
+    app        TEXT NOT NULL,            -- 'mypm' | 'kd' | 'nk'
+    day        TEXT NOT NULL,            -- 'YYYY-MM-DD' (스냅샷 날짜, 주 1회)
+    accounts   TEXT NOT NULL,            -- {accId: value} JSON (계좌별 평가금액)
+    total      REAL NOT NULL,            -- 활성계좌 평가금액 합
+    priced_at  TEXT,                     -- 적용 시세 시각
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, app, day),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
 `);
 
 // 구(舊) 단일 사용자 스키마 감지 → 마이그레이션 유도.
