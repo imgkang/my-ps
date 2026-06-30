@@ -4046,7 +4046,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.663';
+const APP_VERSION = 'MyGP v0.664';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5954,7 +5954,9 @@ async function refreshPricesSilent(suppressSync = false) {
     try {
       const info = await fetchStockInfo(h.code);
       h.price = info.price; h.change = info.change; h.changeRate = info.changeRate;
-      if (info.name) h.name = info.name;
+      // 이름은 등록 시 한글로 정해지고 사용자가 직접 수정 가능 → 시세 갱신이 덮어쓰지 않음.
+      // (네이버 실패 시 야후 영문명으로 폴백되어 한글명이 영문으로 바뀌던 버그 방지. refreshAll과 동일 가드)
+      if (info.name && (!h.name || h.name === '(이름 불러오기 실패)')) h.name = info.name;
       h.updatedAt = Date.now();
     } catch (_) {}
   }));
