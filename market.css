@@ -655,6 +655,35 @@
     overflow: auto; max-height: 280px; border: 1px solid var(--border);
     border-radius: 8px; margin-bottom: 16px;
   }
+  /* 연간 배당 달력 매트릭스 (월×종목/계좌) */
+  .div-matrix-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .div-mx-yearnav { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+  .div-mx-yrbtn {
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 16px; line-height: 1;
+  }
+  .div-mx-yrbtn:hover { border-color: var(--primary); color: var(--primary); }
+  .div-mx-modebtn {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1.5px solid var(--primary); background: var(--primary); color: #fff;
+  }
+  .div-matrix-scroll {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px;
+  }
+  .div-matrix { border-collapse: collapse; font-size: 12px; white-space: nowrap; min-width: 100%; }
+  .div-matrix th, .div-matrix td {
+    padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  .div-matrix th { font-weight: 600; color: var(--muted); position: sticky; top: 0; background: var(--card); }
+  .div-matrix .div-mx-name {
+    text-align: left; position: sticky; left: 0; background: var(--card);
+    font-weight: 600; max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .div-matrix th.div-mx-name { z-index: 1; }
+  .div-matrix .div-mx-sum { font-weight: 700; color: var(--text); }
+  .div-matrix .div-mx-foot td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
   .div-records-inner { min-width: max-content; }
   .div-records-body {}
   .div-table-header, .div-record-row {

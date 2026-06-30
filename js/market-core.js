@@ -1188,6 +1188,70 @@ function RenderDividendLists() {
       }).join('');
     }
   }
+  RenderDivMatrix(); // 연간 달력 매트릭스도 함께 갱신
+}
+
+// ── 연간 배당 달력 매트릭스 (월×종목 / 월×계좌) ──
+function _defaultDivMatrixYear() {
+  const years = ST.dividends.map(r => r.year).filter(Boolean);
+  return years.length ? Math.max(...years) : new Date().getFullYear();
+}
+function ChangeDivMatrixYear(delta) {
+  if (ST.divMatrixYear == null) ST.divMatrixYear = _defaultDivMatrixYear();
+  ST.divMatrixYear += delta;
+  RenderDivMatrix();
+}
+function ToggleDivMatrixMode() {
+  ST.divMatrixMode = ST.divMatrixMode === 'account' ? 'stock' : 'account';
+  RenderDivMatrix();
+}
+function RenderDivMatrix() {
+  const CFG = MarketCore.cfg;
+  const table = document.getElementById('DivMatrixTable');
+  if (!table) return;
+  if (ST.divMatrixYear == null) ST.divMatrixYear = _defaultDivMatrixYear();
+  if (ST.divMatrixMode == null) ST.divMatrixMode = 'stock';
+  const year = ST.divMatrixYear;
+  const label = document.getElementById('DivMatrixYearLabel');
+  if (label) label.textContent = year + '년';
+  const modeBtn = document.getElementById('DivMatrixModeBtn');
+  if (modeBtn) modeBtn.textContent = ST.divMatrixMode === 'stock' ? '종목별' : '계좌별';
+
+  const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const yearRecs = ST.dividends.filter(r => r.year === year);
+  const empty = () => { table.innerHTML = `<tr><td class="div-empty" style="padding:18px;text-align:center">${year}년 배당 기록이 없습니다.</td></tr>`; };
+  if (!yearRecs.length) { empty(); return; }
+
+  const rows = new Map();
+  const ensure = (k, l) => { if (!rows.has(k)) rows.set(k, { label: l, m: {}, total: 0 }); return rows.get(k); };
+  const add = (k, l, mo, amt) => { const r = ensure(k, l); r.m[mo] = (r.m[mo] || 0) + amt; r.total += amt; };
+
+  if (ST.divMatrixMode === 'stock') {
+    for (const rec of yearRecs) {
+      if (divRecIsMisc(rec)) { const t = divRecMiscTotal(rec); if (t) add('__misc__', '기타', rec.month, t); }
+      else for (const code of divRecCodes(rec)) { const amt = DivRecAmount(rec, code); if (amt) add(code, code, rec.month, amt); }
+    }
+  } else {
+    for (const a of ST.accounts) ensure(a.id, a.name);
+    for (const rec of yearRecs) {
+      const accMap = divRecIsMisc(rec) ? ((rec.misc && rec.misc.accounts) || {}) : (rec.accounts || {});
+      for (const [id, v] of Object.entries(accMap)) {
+        const amt = Number(v) || 0; if (!amt) continue;
+        const a = ST.accounts.find(x => x.id === id);
+        add(id, a ? a.name : id, rec.month, amt);
+      }
+    }
+  }
+
+  const rowArr = [...rows.values()].filter(r => r.total !== 0).sort((a, b) => b.total - a.total);
+  if (!rowArr.length) { empty(); return; }
+  const monthTotals = {}; let grand = 0;
+  for (const r of rowArr) for (const m of MONTHS) { const v = r.m[m] || 0; monthTotals[m] = (monthTotals[m] || 0) + v; grand += v; }
+  const fmt = v => v ? CFG.fmt.money(v) : '-';
+  const head = `<tr><th class="div-mx-name">${ST.divMatrixMode === 'stock' ? '종목' : '계좌'}</th>${MONTHS.map(m => `<th>${m}월</th>`).join('')}<th class="div-mx-sum">합계</th></tr>`;
+  const body = rowArr.map(r => `<tr><td class="div-mx-name">${r.label}</td>${MONTHS.map(m => `<td>${fmt(r.m[m] || 0)}</td>`).join('')}<td class="div-mx-sum">${fmt(r.total)}</td></tr>`).join('');
+  const foot = `<tr class="div-mx-foot"><td class="div-mx-name">합계</td>${MONTHS.map(m => `<td>${fmt(monthTotals[m] || 0)}</td>`).join('')}<td class="div-mx-sum">${fmt(grand)}</td></tr>`;
+  table.innerHTML = head + body + foot;
 }
 
 // ── 공유 (Phase 7f): 계좌버튼/입력포맷 ──
