@@ -617,6 +617,10 @@ registerMobileTooltipDismiss();
   .pf-sc-sub { font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
   /* ===== Lv2 적응: 2줄 압축 표 (한 칸 2지표, 가로 스크롤 없음) ===== */
   .pf-cond-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 16px; }
+  .pf-cond-table th:nth-child(1), .pf-cond-table td:nth-child(1) { width: 37%; }  /* 종목명/보유수량 */
+  .pf-cond-table th:nth-child(2), .pf-cond-table td:nth-child(2) { width: 20%; }  /* 평가손익/수익률 */
+  .pf-cond-table th:nth-child(3), .pf-cond-table td:nth-child(3) { width: 20%; }  /* 평가금액/매입금액 */
+  .pf-cond-table th:nth-child(4), .pf-cond-table td:nth-child(4) { width: 23%; }  /* 현재가/평균단가 */
   .pf-cond-table th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: right; padding: 6px 6px; background: #f9fafb; border-bottom: 1px solid var(--border); }
   .pf-cond-table th.cd-th-left { text-align: left; }
   .pf-cond-table th .cd-h2 { font-weight: 400; opacity: 0.75; }
@@ -4042,7 +4046,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.661';
+const APP_VERSION = 'MyGP v0.662';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
