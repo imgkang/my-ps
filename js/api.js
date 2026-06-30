@@ -223,6 +223,13 @@
     return request('/api/derived/meta', { auth: true }).then(function (r) { return r.data; });
   }
 
+  // ───────────────────────── 자동 계좌기록 스냅샷 (서버 주1회 적재) ─────────────────────────
+  // GET /api/account-snapshots?app=mypm|kd|nk → { app, snapshots: [{day, accounts, total, pricedAt}] }
+  function getAccountSnapshots(app) {
+    return request('/api/account-snapshots?app=' + encodeURIComponent(app || 'mypm'), { auth: true })
+      .then(function (r) { return r.data; });
+  }
+
   // ───────────────────────── 종목 검색 ─────────────────────────
   function search(q, opts) {
     opts = opts || {};
@@ -264,6 +271,8 @@
     // 파생상태(서버 선계산)
     getDerived: getDerived,
     getDerivedMeta: getDerivedMeta,
+    // 자동 계좌기록 스냅샷
+    getAccountSnapshots: getAccountSnapshots,
     // 검색
     search: search,
     tickersCount: tickersCount,
