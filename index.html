@@ -4046,7 +4046,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.662';
+const APP_VERSION = 'MyGP v0.663';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5493,6 +5493,7 @@ function openAccountDetail(accId) {
 
   const tableEl = document.getElementById('detailTable');
   if (!items.length && accCash <= 0) {
+    tableEl.className = 'detail-table';
     tableEl.innerHTML = `<tbody><tr><td class="detail-empty">이 계좌에 등록된 종목이나 현금이 없습니다.<br>메인 화면에서 <strong>📂 계좌별</strong> 버튼으로 수량/매입단가/현금을 먼저 입력해 주세요.</td></tr></tbody>`;
     document.getElementById('accountDetailModal').classList.add('open');
     _accDetailChartPeriod = 'all';
@@ -5553,7 +5554,16 @@ function openAccountDetail(accId) {
     `;
   }
 
-  tableEl.innerHTML = `
+  if (getUserLevel() <= 2) {
+    // 메인 Lv2 "전체보기"와 동일한 2줄 압축표 (계좌별 per-account 값으로)
+    const items2 = items.map(it => ({ ...it, avgPrice: it.avg }));  // 압축표는 it.avgPrice 참조
+    const ctx2 = { totalCash: accCash, totalProfit, totalProfitRate, totalValue, totalCost };
+    tableEl.className = 'pf-cond-table';
+    tableEl.innerHTML = buildCondensedInner(items2, ctx2);
+  } else {
+    // Lv3 숙련: 현행 전체 11컬럼 표 유지
+    tableEl.className = 'detail-table';
+    tableEl.innerHTML = `
     <thead>
       <tr>
         <th>종목</th>
@@ -5586,6 +5596,7 @@ function openAccountDetail(accId) {
       </tr>
     </tfoot>
   `;
+  }
 
   document.getElementById('accountDetailModal').classList.add('open');
   _accDetailChartPeriod = 'all';
@@ -7461,6 +7472,10 @@ function buildHoldingsSimple(items, colCtx) {
 
 // ===== Lv2 적응: 2줄 압축 표 (한 칸에 2지표, 가로 스크롤 없음) =====
 function buildHoldingsCondensed(items, colCtx) {
+  return `<table class="pf-cond-table">${buildCondensedInner(items, colCtx)}</table>`;
+}
+// 압축표 내부(thead/tbody/tfoot)만 생성 — 메인 Lv2 리스트와 계좌 상세에서 공용.
+function buildCondensedInner(items, colCtx) {
   const won = n => (n == null || isNaN(n)) ? '-' : Math.round(n).toLocaleString('ko-KR');
   let rows = '';
   for (const it of items) {
@@ -7483,7 +7498,6 @@ function buildHoldingsCondensed(items, colCtx) {
   }
   const tp = colCtx.totalProfit, tpr = colCtx.totalProfitRate;
   return `
-    <table class="pf-cond-table">
       <thead><tr>
         <th class="cd-th-left"><div>종목명</div><div class="cd-h2">보유수량</div></th>
         <th><div>평가손익</div><div class="cd-h2">수익률</div></th>
@@ -7496,8 +7510,7 @@ function buildHoldingsCondensed(items, colCtx) {
         <td><div class="cd-main ${_signCls(tp)}">${formatKRWShort(tp)}</div><div class="cd-sub ${_signCls(tpr)}">${tpr == null ? '-' : _pctStr(tpr)}</div></td>
         <td><div class="cd-main">${formatKRWShort(colCtx.totalValue)}</div><div class="cd-sub">${formatKRWShort(colCtx.totalCost)}</div></td>
         <td><div class="cd-main">-</div></td>
-      </tr></tfoot>
-    </table>`;
+      </tr></tfoot>`;
 }
 
 function escapeHtml(s) {
