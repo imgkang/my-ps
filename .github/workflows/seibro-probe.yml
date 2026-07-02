@@ -22,7 +22,9 @@ jobs:
       - name: Probe data.go.kr dataset specs + search + SEIBRO
         run: |
           UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
-          KW='분배|분배금|배당|distribution|dividend|ETF|주당|기준일|지급일|종목코드|operation|getStk|getEtf|getETF|getSecn|Secn'
+          # Broaden operation-token capture: SEIBRO dev-guide pages list service
+          # operations named like getETF..., getStk..., getBnd...
+          KW='분배|분배금|배당|distribution|dividend|ETF|ETN|주당|기준일|지급일|get[A-Z][A-Za-z]{3,40}|Svc|Service'
 
           probe() {
             local label="$1"; local url="$2"
@@ -30,34 +32,26 @@ jobs:
             echo "========================================================"
             echo "### $label"
             echo "URL: $url"
-            code=$(curl -sS -L -A "$UA" -m 40 -o /tmp/body.html -w '%{http_code}' "$url" || echo "ERR")
+            code=$(curl -sS -L -A "$UA" -m 25 -o /tmp/body.html -w '%{http_code}' "$url" || echo "ERR")
             echo "HTTP: $code   bytes: $(wc -c </tmp/body.html 2>/dev/null || echo 0)"
-            echo "--- keyword hits (unique, first 60) ---"
-            grep -ioE "$KW" /tmp/body.html 2>/dev/null | sort | uniq -c | sort -rn | head -60 || true
-            echo "--- lines mentioning 분배/ETF/배당 (first 40) ---"
-            grep -inE '분배|ETF|배당|distribution|주당|기준일|지급' /tmp/body.html 2>/dev/null \
-              | sed -E 's/<[^>]+>/ /g' | tr -s ' ' | head -40 || true
+            echo "--- operation/keyword hits (unique, first 80) ---"
+            grep -oE "$KW" /tmp/body.html 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
+            echo "--- lines mentioning 분배/ETF/배당 (first 30) ---"
+            grep -inE '분배|ETF|ETN|배당|distribution' /tmp/body.html 2>/dev/null \
+              | sed -E 's/<[^>]+>/ /g' | tr -s ' ' | cut -c1-200 | head -30 || true
           }
 
-          # data.go.kr dataset detail (server-renders 상세기능/요청·응답 필드 표)
-          probe "data.go.kr 금융위 주식배당정보 (15043284) detail" \
-            "https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15043284"
-          probe "data.go.kr 예탁결제원 주식정보서비스 (15001145) detail" \
-            "https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15001145"
-          probe "data.go.kr 금융위 증권상품시세정보 (15094806) detail" \
-            "https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15094806"
-          probe "data.go.kr 금융위 주식권리일정정보 (15059609) detail" \
-            "https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15059609"
-
-          # data.go.kr keyword search — is there a dedicated ETF 분배금 dataset?
-          probe "data.go.kr search: ETF 분배금" \
-            "https://www.data.go.kr/tcs/dss/selectDataSetList.do?dType=API&keyword=$(python3 -c "import urllib.parse;print(urllib.parse.quote('ETF 분배금'))")"
-          probe "data.go.kr search: 분배금" \
-            "https://www.data.go.kr/tcs/dss/selectDataSetList.do?dType=API&keyword=$(python3 -c "import urllib.parse;print(urllib.parse.quote('분배금'))")"
-
-          # SEIBRO legacy OpenAPI base (does it respond / list a service?)
-          probe "SEIBRO legacy OpenAPI base" \
-            "http://api.seibro.or.kr/openapi/service/StockSvc"
+          # api.seibro.or.kr is reachable from GitHub runners (data.go.kr is NOT).
+          # SEIBRO OpenAPI dev-guide portal — server-rendered service/operation lists.
+          probe "SEIBRO OpenAPI home" \
+            "https://api.seibro.or.kr/pubc/pubr/cmm/CMPubrHome/viewCMPubrHome.do"
+          probe "SEIBRO dev-guide list" \
+            "https://api.seibro.or.kr/pubc/pubr/cmm/CMPubrHome/viewRQDevGuideList.do"
+          probe "SEIBRO service list (guess: viewRQSvcList)" \
+            "https://api.seibro.or.kr/pubc/pubr/cmm/CMPubrHome/viewRQSvcList.do"
+          # SEIBRO ETF portal 분배금지급현황 screen (may expose an internal data URL)
+          probe "SEIBRO ETF 분배금지급현황 screen" \
+            "https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/etf/BIP_CNTS06030V.xml&menuNo=179"
 
           echo ""
           echo "========================================================"
