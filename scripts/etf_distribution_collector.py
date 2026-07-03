@@ -1,50 +1,55 @@
 #!/usr/bin/env python3
 """
-Collect KRX ETF distribution (분배금) history → etf_distributions.json.
+Collect ETF distribution (분배금) history from SEIBRO → etf_distributions.json.
 
 The pension web app computes "실수령 배당 = 보유수량 × 주당분배금 × (1 − 0.154)".
 Holdings quantity is manual (localStorage); the *per-share distribution* is
-collected here from the KRX Information Data System (data.krx.co.kr) and
-committed as a static JSON the PWA fetches — mirroring scripts/update_tickers.py
-→ tickers.json (GitHub Actions cron commits the result).
+collected here from SEIBRO (한국예탁결제원, seibro.or.kr) — the authoritative
+source for ETF distributions — and committed as a static JSON the PWA fetches,
+mirroring scripts/update_tickers.py → tickers.json (GitHub Actions cron commits
+the result).
 
-KRX serves this data from an internal endpoint, not the official OpenAPI:
-  POST http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd
-  body: bld=<screen id>&<date params>&locale=ko_KR&csvxls_isNo=false
-The `bld` identifies the screen ("분배금 내역"). It is NOT a stable public API,
-so it must be *captured* from the live site (F12 → Network → getJsonData.cmd)
-and confirmed with `--discover` before `--run` can map columns correctly.
+Source: SEIBRO 「ETF 권리행사정보 > 분배금지급현황」(screen BIP_CNTS06030V).
+  POST https://seibro.or.kr/websquare/engine/proworks/callServletService.jsp
+  body: <reqParam action="exerInfoDtramtPayStatPlist"
+          task="ksd.safe.bip.cnts.etf.process.EtfExerInfoPTask"> ...filters... </reqParam>
+  → <vector><data><result><ISIN value=".."/><ESTM_STDPRC value=".."/>...</result></data></vector>
+An empty `isin`/`mngco_custno`/sort filter returns *all* ETFs for the date
+range in one call (verified reachable from GitHub runners without login).
+
+KRX was evaluated first but does not publish ETF distributions; a free official
+open-API for per-share ETF distribution does not exist, so SEIBRO's internal
+WebSquare servlet is used. It can break if SEIBRO changes the screen; re-run
+`--raw` to re-confirm the action/fields if parsing ever goes empty.
 
 Subcommands:
-  --discover YYYYMMDD [--bld BLD]
-        POST the screen for that date and dump the raw top-level keys + the
-        first row's keys/values, so BLD and FIELD_MAP can be pinned to the
-        real response. With no --bld/BLD set, probes CANDIDATE_BLDS.
-  --run [--days N] [--bld BLD]
-        Collect the trailing window (default: this year), map via FIELD_MAP,
-        merge into etf_distributions.json keyed by (ticker, record_date).
-  --show TICKER
-        Print stored records for one ticker from etf_distributions.json.
-
-Once BLD/FIELD_MAP are confirmed, set the BLD constant (or pass --bld / the
-KRX_ETF_DIST_BLD env var) so the cron workflow runs unattended.
+  --run [--days N]   Collect the trailing window (default 400 days), map to our
+                     schema, merge into etf_distributions.json keyed by
+                     (ticker, record_date).
+  --show TICKER      Print stored records for one ticker.
+  --raw [--days N]   Dump the first raw <result> records (for re-confirming
+                     field names when SEIBRO changes).
 """
 import argparse
 import json
 import re
 import sys
-import os
 import urllib.request
-import urllib.parse
 import urllib.error
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "etf_distributions.json"
 
-KRX_JSON_URL = "http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd"
-KRX_REFERER = "http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd"
+SEIBRO_URL = "https://seibro.or.kr/websquare/engine/proworks/callServletService.jsp"
+SEIBRO_REFERER = (
+    "https://seibro.or.kr/websquare/control.jsp"
+    "?w2xPath=/IPORTAL/user/etf/BIP_CNTS06030V.xml&menuNo=179"
+)
+ACTION = "exerInfoDtramtPayStatPlist"
+TASK = "ksd.safe.bip.cnts.etf.process.EtfExerInfoPTask"
 
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -52,96 +57,82 @@ UA = (
 )
 TIMEOUT = 60
 
-# The confirmed screen id. Fill in after --discover pins it down (or pass
-# --bld / set env KRX_ETF_DIST_BLD). Left empty on purpose so an unconfigured
-# --run fails loudly instead of silently hitting the wrong screen.
-BLD = os.environ.get("KRX_ETF_DIST_BLD", "").strip()
+# SEIBRO response field → our internal key. Confirmed against a live CI call.
+F_ISIN = "ISIN"                    # full ISIN, e.g. KR7316300003
+F_NAME = "KOR_SECN_NM"             # 종목명
+F_RECORD_DT = "RGT_STD_DT"         # 지급기준일  → rd
+F_PAY_DT = "TH1_PAY_TERM_BEGIN_DT"  # 실지급일    → pay
+F_PER_SHARE = "ESTM_STDPRC"        # 주당분배금(원) → ps
+F_RGT_KIND = "RGT_RSN_DTAIL_NM"    # 배당구분(이익분배/청산분배)
 
-# Best-effort candidates to probe with --discover when BLD is unset. These are
-# starting guesses for the KRX "분배금 내역"/ETF distribution screens; --discover
-# reports which (if any) return rows. Update once the real one is captured.
-CANDIDATE_BLDS = [
-    "dbms/MDC/STAT/standard/MDCSTAT06901",
-    "dbms/MDC/STAT/standard/MDCSTAT05001",
-    "dbms/MDC/STAT/standard/MDCSTAT04801",
-]
-
-# Maps our internal keys → KRX response column keys. KRX uses codes like
-# ISU_SRT_CD / ISU_ABBRV; the date/amount keys vary per screen, so confirm
-# each against --discover output before trusting --run. Multiple candidates
-# per field are tried in order (first present wins).
-FIELD_MAP = {
-    "t":   ["ISU_SRT_CD", "SHRT_ISU_CD"],          # short ticker code
-    "name": ["ISU_ABBRV", "ISU_NM", "ISU_KOR_ABBRV"],
-    "rd":  ["RGHT_STD_DD", "SETL_STD_DD", "STD_DD", "BAS_DD"],  # record date
-    "pay": ["PAY_DD", "DIST_PAY_DD", "PAYM_DD"],   # payment date
-    "ps":  ["DIST_AMT", "PER_STK_DIST_AMT", "ALOT_AMT", "DVDN_AMT"],  # /share
-}
-
-# Request-param templates tried in order during --discover. Distribution-history
-# screens key off either a single trade date or a start/end range; we don't yet
-# know which, so probe both shapes.
-PARAM_TEMPLATES = [
-    lambda d1, d2: {"trdDd": d2},
-    lambda d1, d2: {"strtDd": d1, "endDd": d2},
-    lambda d1, d2: {"strtDd": d1, "endDd": d2, "trdDd": d2},
-]
-
-# Sanity floor: a full-year run should surface many distributing ETFs. Below
-# this the response is almost certainly partial/blocked — refuse to commit.
-THRESHOLD_ROWS = 30
+# Sanity floor: a full year of ETF distributions across the market is in the
+# thousands. Well below this the response is almost certainly partial/blocked —
+# refuse to commit so a bad file is not pushed.
+THRESHOLD_ROWS = 100
 
 
-def post_json(bld, params):
-    """POST to getJsonData.cmd and return the parsed JSON dict."""
-    body = {"bld": bld, "locale": "ko_KR", "csvxls_isNo": "false"}
-    body.update(params)
-    data = urllib.parse.urlencode(body).encode("utf-8")
+def _req_body(start_yyyymmdd, end_yyyymmdd, start_page=1, end_page=99999):
+    """Build the reqParam XML for the 전종목(all ETFs) distribution query."""
+    return (
+        f'<reqParam action="{ACTION}" task="{TASK}">'
+        f'<START_PAGE value="{start_page}"/>'
+        f'<END_PAGE value="{end_page}"/>'
+        '<etf_big_sort_cd value=""/>'
+        '<etf_sort_cd value=""/>'
+        '<isin value=""/>'
+        '<mngco_custno value=""/>'
+        '<RGT_RSN_DTAIL_SORT_CD value=""/>'
+        f'<fromRGT_STD_DT value="{start_yyyymmdd}"/>'
+        f'<toRGT_STD_DT value="{end_yyyymmdd}"/>'
+        '</reqParam>'
+    )
+
+
+def fetch(start_yyyymmdd, end_yyyymmdd):
+    """POST the distribution query, return the raw XML bytes."""
+    body = _req_body(start_yyyymmdd, end_yyyymmdd).encode("utf-8")
     req = urllib.request.Request(
-        KRX_JSON_URL,
-        data=data,
+        SEIBRO_URL,
+        data=body,
         headers={
             "User-Agent": UA,
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Accept-Language": "ko,en;q=0.8",
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Accept": "application/xml, text/xml, */*",
+            "Content-Type": "application/xml; charset=UTF-8",
             "X-Requested-With": "XMLHttpRequest",
-            "Referer": KRX_REFERER,
-            "Origin": "http://data.krx.co.kr",
+            "Referer": SEIBRO_REFERER,
+            "Origin": "https://seibro.or.kr",
         },
     )
     with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-        raw = r.read().decode("utf-8", errors="replace")
-    return json.loads(raw)
+        return r.read()
 
 
-def extract_rows(payload):
-    """KRX wraps rows under a screen-specific key (OutBlock_1, output, ...).
+def parse_rows(raw):
+    """Parse the <vector><data><result>...</result> XML into row dicts.
 
-    Return the first top-level value that is a list of dicts.
+    Each <result> holds children like <ISIN value=".."/>; return a list of
+    {tag: value} dicts.
     """
-    if not isinstance(payload, dict):
-        return []
-    for val in payload.values():
-        if isinstance(val, list) and val and isinstance(val[0], dict):
-            return val
-    # Some screens return an empty list under a known key — surface [].
-    for val in payload.values():
-        if isinstance(val, list):
-            return val
-    return []
+    rows = []
+    root = ET.fromstring(raw)
+    for result in root.iter("result"):
+        row = {}
+        for child in result:
+            row[child.tag] = (child.get("value") or "").strip()
+        if row:
+            rows.append(row)
+    return rows
 
 
-def pick(row, keys):
-    """First present, non-empty value among candidate keys."""
-    for k in keys:
-        if k in row and str(row[k]).strip() not in ("", "-"):
-            return str(row[k]).strip()
+def norm_date(s):
+    """'YYYYMMDD' or 'YYYY/MM/DD' → 'YYYY-MM-DD' (or '' if unknown)."""
+    digits = re.sub(r"\D", "", str(s))
+    if len(digits) == 8:
+        return f"{digits[0:4]}-{digits[4:6]}-{digits[6:8]}"
     return ""
 
 
 def to_number(s):
-    """KRX numbers arrive as strings with thousands separators."""
     s = str(s).replace(",", "").strip()
     if not s or s == "-":
         return None
@@ -151,28 +142,32 @@ def to_number(s):
         return None
 
 
-def norm_date(s):
-    """Normalize 'YYYY/MM/DD' or 'YYYYMMDD' → 'YYYY-MM-DD' (or '' if unknown)."""
-    digits = re.sub(r"\D", "", str(s))
-    if len(digits) == 8:
-        return f"{digits[0:4]}-{digits[4:6]}-{digits[6:8]}"
+def isin_to_ticker(isin):
+    """KR ISIN → 6-char KRX short code (chars 3..9). e.g. KR7316300003→316300."""
+    isin = (isin or "").strip().upper()
+    if len(isin) >= 9 and isin.startswith("KR"):
+        return isin[3:9]
     return ""
 
 
 def map_row(row):
-    """Map one KRX row → our record, or None if required fields are missing."""
-    t = pick(row, FIELD_MAP["t"]).upper()
-    rd = norm_date(pick(row, FIELD_MAP["rd"]))
-    ps = to_number(pick(row, FIELD_MAP["ps"]))
+    """SEIBRO row → our record, or None if required fields missing."""
+    isin = row.get(F_ISIN, "")
+    t = isin_to_ticker(isin)
+    rd = norm_date(row.get(F_RECORD_DT, ""))
+    ps = to_number(row.get(F_PER_SHARE, ""))
     if not t or not rd or ps is None:
         return None
-    rec = {"t": t, "rd": rd, "ps": ps, "cur": "KRW"}
-    name = pick(row, FIELD_MAP["name"])
-    pay = norm_date(pick(row, FIELD_MAP["pay"]))
+    rec = {"t": t, "isin": isin, "rd": rd, "ps": ps, "cur": "KRW"}
+    name = row.get(F_NAME, "")
+    pay = norm_date(row.get(F_PAY_DT, ""))
+    kind = row.get(F_RGT_KIND, "")
     if name:
         rec["name"] = name
     if pay:
         rec["pay"] = pay
+    if kind:
+        rec["kind"] = kind
     return rec
 
 
@@ -181,87 +176,41 @@ def load_existing():
         try:
             data = json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))
             items = data.get("items", [])
-            return {(it["t"], it["rd"]): it for it in items if it.get("t") and it.get("rd")}
+            return {(it["t"], it["rd"]): it
+                    for it in items if it.get("t") and it.get("rd")}
         except (json.JSONDecodeError, KeyError):
             pass
     return {}
 
 
-def resolve_bld(cli_bld):
-    return (cli_bld or BLD or "").strip()
-
-
-def cmd_discover(args):
-    bld = resolve_bld(args.bld)
-    blds = [bld] if bld else CANDIDATE_BLDS
-    d2 = re.sub(r"\D", "", args.date)
-    if len(d2) != 8:
-        print(f"bad date '{args.date}' — expected YYYYMMDD", file=sys.stderr)
-        return 2
-    d1 = re.sub(r"\D", "", (date(int(d2[:4]), 1, 1)).strftime("%Y%m%d"))
-
-    any_rows = False
-    for b in blds:
-        print(f"\n=== bld: {b} ===", file=sys.stderr)
-        for tmpl in PARAM_TEMPLATES:
-            params = tmpl(d1, d2)
-            try:
-                payload = post_json(b, params)
-            except (urllib.error.URLError, urllib.error.HTTPError,
-                    json.JSONDecodeError) as e:
-                print(f"  params={params}  ERROR: {e}", file=sys.stderr)
-                continue
-            rows = extract_rows(payload)
-            top_keys = list(payload.keys()) if isinstance(payload, dict) else []
-            print(f"  params={params}  top_keys={top_keys}  rows={len(rows)}",
-                  file=sys.stderr)
-            if rows:
-                any_rows = True
-                print("  first row keys: "
-                      + ", ".join(rows[0].keys()), file=sys.stderr)
-                print("  first row: "
-                      + json.dumps(rows[0], ensure_ascii=False), file=sys.stderr)
-                break  # found a working param shape for this bld
-    if not any_rows:
-        print("\nNo rows from any candidate. Capture the real bld via F12 "
-              "(Network → getJsonData.cmd) and pass it with --bld.",
-              file=sys.stderr)
-        return 1
-    print("\nSet BLD (or KRX_ETF_DIST_BLD) and align FIELD_MAP to the keys "
-          "above, then run --run.", file=sys.stderr)
-    return 0
+def _window(days):
+    end = date.today()
+    start = end - timedelta(days=days or 400)
+    return start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
 
 
 def cmd_run(args):
-    bld = resolve_bld(args.bld)
-    if not bld:
-        print("BLD not set. Confirm it with --discover, then set the BLD "
-              "constant / KRX_ETF_DIST_BLD env / pass --bld.", file=sys.stderr)
+    d1, d2 = _window(args.days)
+    try:
+        raw = fetch(d1, d2)
+    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+        print(f"SEIBRO request failed: {e}", file=sys.stderr)
+        return 2
+    try:
+        rows = parse_rows(raw)
+    except ET.ParseError as e:
+        print(f"XML parse failed: {e}\nfirst 300 bytes: {raw[:300]!r}",
+              file=sys.stderr)
         return 2
 
-    end = date.today()
-    start = end - timedelta(days=args.days) if args.days else date(end.year, 1, 1)
-    d1, d2 = start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
-
-    payload = None
-    for tmpl in PARAM_TEMPLATES:
-        try:
-            payload = post_json(bld, tmpl(d1, d2))
-        except (urllib.error.URLError, urllib.error.HTTPError,
-                json.JSONDecodeError) as e:
-            print(f"request failed: {e}", file=sys.stderr)
-            continue
-        if extract_rows(payload):
-            break
-    rows = extract_rows(payload) if payload else []
     mapped = [m for m in (map_row(r) for r in rows) if m]
-    print(f"KRX returned {len(rows)} rows → {len(mapped)} usable records "
+    print(f"SEIBRO returned {len(rows)} rows → {len(mapped)} usable "
           f"({d1}~{d2})", file=sys.stderr)
 
     if len(mapped) < THRESHOLD_ROWS:
         print(f"\nFAIL — only {len(mapped)} records (< {THRESHOLD_ROWS}). "
-              "Likely a wrong bld/FIELD_MAP or a block; refusing to write.",
-              file=sys.stderr)
+              "Likely a changed SEIBRO screen or a block; refusing to write. "
+              "Re-run with --raw to re-confirm fields.", file=sys.stderr)
         return 2
 
     merged = load_existing()
@@ -277,6 +226,7 @@ def cmd_run(args):
     output = {
         "version": now.strftime("%Y-%m-%d"),
         "updated_at": now.isoformat().replace("+00:00", "Z"),
+        "source": "seibro",
         "count": len(items),
         "items": items,
     }
@@ -305,25 +255,34 @@ def cmd_show(args):
     return 0
 
 
+def cmd_raw(args):
+    d1, d2 = _window(args.days)
+    raw = fetch(d1, d2)
+    rows = parse_rows(raw)
+    print(f"result rows: {len(rows)} ({d1}~{d2})", file=sys.stderr)
+    for r in rows[:5]:
+        print(json.dumps(r, ensure_ascii=False))
+    return 0
+
+
 def main():
-    p = argparse.ArgumentParser(description="KRX ETF distribution collector")
+    p = argparse.ArgumentParser(description="SEIBRO ETF distribution collector")
     g = p.add_mutually_exclusive_group(required=True)
-    g.add_argument("--discover", metavar="YYYYMMDD", dest="date",
-                   help="probe the screen for a date and dump raw columns")
     g.add_argument("--run", action="store_true", help="collect & merge JSON")
     g.add_argument("--show", metavar="TICKER", dest="ticker",
                    help="print stored records for one ticker")
-    p.add_argument("--bld", default="", help="override the screen id")
+    g.add_argument("--raw", action="store_true",
+                   help="dump first raw SEIBRO records (field re-confirm)")
     p.add_argument("--days", type=int, default=0,
-                   help="trailing window in days (default: since Jan 1)")
+                   help="trailing window in days (default 400)")
     args = p.parse_args()
 
-    if args.date:
-        return cmd_discover(args)
     if args.run:
         return cmd_run(args)
     if args.ticker:
         return cmd_show(args)
+    if args.raw:
+        return cmd_raw(args)
     return 2
 
 

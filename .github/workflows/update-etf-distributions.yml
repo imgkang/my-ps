@@ -1,17 +1,21 @@
 name: Update etf_distributions.json
 
 on:
+  # TEMP: seed the first etf_distributions.json from this feature branch
+  # (workflow_dispatch is only available once the workflow is on the default
+  # branch). Removed after the initial data file is generated.
+  push:
+    branches: [claude/auto-read-chat-dividends-gnxwi7]
+    paths:
+      - 'scripts/etf_distribution_collector.py'
+      - '.github/workflows/update-etf-distributions.yml'
   schedule:
-    # Weekdays 09:00 KST (00:00 UTC) — after KRX has settled the prior session.
-    - cron: '0 0 * * 1-5'
+    # Weekdays 10:00 KST (01:00 UTC) — after SEIBRO settles the prior session.
+    - cron: '0 1 * * 1-5'
   workflow_dispatch:
     inputs:
-      discover:
-        description: 'Run --discover for this date (YYYYMMDD) instead of --run'
-        required: false
-        default: ''
-      bld:
-        description: 'Override KRX screen id (bld)'
+      days:
+        description: 'Trailing window in days (default 400)'
         required: false
         default: ''
 
@@ -21,11 +25,6 @@ permissions:
 concurrency:
   group: update-etf-distributions
   cancel-in-progress: false
-
-env:
-  # Confirmed KRX screen id. Leave blank until captured; a manual run can pass
-  # `bld` via workflow_dispatch. Scheduled --run fails loudly if still unset.
-  KRX_ETF_DIST_BLD: ''
 
 jobs:
   update:
@@ -38,30 +37,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
-          cache-dependency-path: scripts/requirements.txt
 
-      - name: Install dependencies
-        run: pip install -r scripts/requirements.txt
-
-      # Discovery mode: dump raw KRX columns to the log so bld/FIELD_MAP can be
-      # pinned down. GitHub runners can reach data.krx.co.kr (unlike the dev
-      # sandbox), so this is where the bld gets confirmed.
-      - name: Discover KRX columns
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.discover != '' }}
-        run: |
-          python3 scripts/etf_distribution_collector.py \
-            --discover "${{ inputs.discover }}" \
-            ${{ inputs.bld != '' && format('--bld {0}', inputs.bld) || '' }}
-
-      - name: Collect ETF distributions
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.discover == '' }}
+      # Collector uses only the Python stdlib (urllib/xml) — no pip install.
+      # GitHub runners can reach seibro.or.kr (verified); the dev sandbox cannot.
+      - name: Collect ETF distributions (SEIBRO)
         run: |
           python3 scripts/etf_distribution_collector.py --run \
-            ${{ inputs.bld != '' && format('--bld {0}', inputs.bld) || '' }}
+            ${{ inputs.days != '' && format('--days {0}', inputs.days) || '' }}
 
       - name: Commit if changed
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.discover == '' }}
         run: |
           if [ ! -f etf_distributions.json ]; then
             echo "etf_distributions.json missing — collector failed."
