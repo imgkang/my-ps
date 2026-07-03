@@ -1,0 +1,54 @@
+name: Update etf_distributions.json
+
+on:
+  schedule:
+    # Weekdays 10:00 KST (01:00 UTC) — after SEIBRO settles the prior session.
+    - cron: '0 1 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Trailing window in days (default 400)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-etf-distributions
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Collector uses only the Python stdlib (urllib/xml) — no pip install.
+      # GitHub runners can reach seibro.or.kr (verified); the dev sandbox cannot.
+      - name: Collect ETF distributions (SEIBRO)
+        run: |
+          python3 scripts/etf_distribution_collector.py --run \
+            ${{ inputs.days != '' && format('--days {0}', inputs.days) || '' }}
+
+      - name: Commit if changed
+        run: |
+          if [ ! -f etf_distributions.json ]; then
+            echo "etf_distributions.json missing — collector failed."
+            exit 1
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add etf_distributions.json
+          if git diff --cached --quiet -- etf_distributions.json; then
+            echo "etf_distributions.json unchanged — skipping commit."
+            exit 0
+          fi
+          git commit -m "chore(data): update etf_distributions.json $(date -u +%Y-%m-%d)"
+          git push
