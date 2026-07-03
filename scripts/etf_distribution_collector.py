@@ -34,6 +34,7 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
@@ -49,7 +50,14 @@ SEIBRO_REFERER = (
     "?w2xPath=/IPORTAL/user/etf/BIP_CNTS06030V.xml&menuNo=179"
 )
 ACTION = "exerInfoDtramtPayStatPlist"
+ACTION_CNT = "exerInfoDtramtPayStatPlistCnt"
 TASK = "ksd.safe.bip.cnts.etf.process.EtfExerInfoPTask"
+
+# SEIBRO caps each list response at 30 rows; START_PAGE is the 1-based row
+# offset, so page by stepping the offset by PAGE_SIZE. A daily full year is
+# ~4.5k rows → ~150 calls.
+PAGE_SIZE = 30
+MAX_PAGES = 1000  # safety guard (~30k rows)
 
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -71,29 +79,23 @@ F_RGT_KIND = "RGT_RSN_DTAIL_NM"    # 배당구분(이익분배/청산분배)
 THRESHOLD_ROWS = 100
 
 
-def _req_body(start_yyyymmdd, end_yyyymmdd, start_page=1, end_page=99999):
-    """Build the reqParam XML for the 전종목(all ETFs) distribution query."""
+def _filters(d1, d2):
     return (
-        f'<reqParam action="{ACTION}" task="{TASK}">'
-        f'<START_PAGE value="{start_page}"/>'
-        f'<END_PAGE value="{end_page}"/>'
         '<etf_big_sort_cd value=""/>'
         '<etf_sort_cd value=""/>'
         '<isin value=""/>'
         '<mngco_custno value=""/>'
         '<RGT_RSN_DTAIL_SORT_CD value=""/>'
-        f'<fromRGT_STD_DT value="{start_yyyymmdd}"/>'
-        f'<toRGT_STD_DT value="{end_yyyymmdd}"/>'
-        '</reqParam>'
+        f'<fromRGT_STD_DT value="{d1}"/>'
+        f'<toRGT_STD_DT value="{d2}"/>'
     )
 
 
-def fetch(start_yyyymmdd, end_yyyymmdd):
-    """POST the distribution query, return the raw XML bytes."""
-    body = _req_body(start_yyyymmdd, end_yyyymmdd).encode("utf-8")
+def _post(body_xml):
+    """POST a reqParam XML to SEIBRO, return the raw XML bytes."""
     req = urllib.request.Request(
         SEIBRO_URL,
-        data=body,
+        data=body_xml.encode("utf-8"),
         headers={
             "User-Agent": UA,
             "Accept": "application/xml, text/xml, */*",
@@ -105,6 +107,44 @@ def fetch(start_yyyymmdd, end_yyyymmdd):
     )
     with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
         return r.read()
+
+
+def fetch_count(d1, d2):
+    """Total distribution rows for the window (LIST_CNT), or None on failure."""
+    body = (f'<reqParam action="{ACTION_CNT}" task="{TASK}">'
+            f'{_filters(d1, d2)}</reqParam>')
+    try:
+        raw = _post(body)
+        m = re.search(r'LIST_CNT value="(\d+)"', raw.decode("utf-8", "replace"))
+        return int(m.group(1)) if m else None
+    except (urllib.error.URLError, urllib.error.HTTPError, ValueError):
+        return None
+
+
+def fetch_page(d1, d2, start):
+    """Fetch one page (<=PAGE_SIZE rows) starting at 1-based row offset."""
+    body = (f'<reqParam action="{ACTION}" task="{TASK}">'
+            f'<START_PAGE value="{start}"/>'
+            f'<END_PAGE value="{start + PAGE_SIZE - 1}"/>'
+            f'{_filters(d1, d2)}</reqParam>')
+    return parse_rows(_post(body))
+
+
+def fetch_all(d1, d2):
+    """Page through the full result set, return (rows, total_count)."""
+    total = fetch_count(d1, d2)
+    rows = []
+    start = 1
+    for _ in range(MAX_PAGES):
+        page = fetch_page(d1, d2, start)
+        if not page:
+            break
+        rows.extend(page)
+        start += PAGE_SIZE
+        if total and len(rows) >= total:
+            break
+        time.sleep(0.12)  # be polite to SEIBRO
+    return rows, total
 
 
 def parse_rows(raw):
@@ -192,19 +232,16 @@ def _window(days):
 def cmd_run(args):
     d1, d2 = _window(args.days)
     try:
-        raw = fetch(d1, d2)
+        rows, total = fetch_all(d1, d2)
     except (urllib.error.URLError, urllib.error.HTTPError) as e:
         print(f"SEIBRO request failed: {e}", file=sys.stderr)
         return 2
-    try:
-        rows = parse_rows(raw)
     except ET.ParseError as e:
-        print(f"XML parse failed: {e}\nfirst 300 bytes: {raw[:300]!r}",
-              file=sys.stderr)
+        print(f"XML parse failed: {e}", file=sys.stderr)
         return 2
 
     mapped = [m for m in (map_row(r) for r in rows) if m]
-    print(f"SEIBRO returned {len(rows)} rows → {len(mapped)} usable "
+    print(f"SEIBRO: total={total} fetched={len(rows)} → {len(mapped)} usable "
           f"({d1}~{d2})", file=sys.stderr)
 
     if len(mapped) < THRESHOLD_ROWS:
@@ -257,9 +294,10 @@ def cmd_show(args):
 
 def cmd_raw(args):
     d1, d2 = _window(args.days)
-    raw = fetch(d1, d2)
-    rows = parse_rows(raw)
-    print(f"result rows: {len(rows)} ({d1}~{d2})", file=sys.stderr)
+    total = fetch_count(d1, d2)
+    rows = fetch_page(d1, d2, 1)
+    print(f"total={total}  first page rows={len(rows)} ({d1}~{d2})",
+          file=sys.stderr)
     for r in rows[:5]:
         print(json.dumps(r, ensure_ascii=False))
     return 0
