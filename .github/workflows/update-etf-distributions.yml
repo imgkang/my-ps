@@ -1,14 +1,6 @@
 name: Update etf_distributions.json
 
 on:
-  # TEMP: seed the first etf_distributions.json from this feature branch
-  # (workflow_dispatch is only available once the workflow is on the default
-  # branch). Removed after the initial data file is generated.
-  push:
-    branches: [claude/auto-read-chat-dividends-gnxwi7]
-    paths:
-      - 'scripts/etf_distribution_collector.py'
-      - '.github/workflows/update-etf-distributions.yml'
   schedule:
     # Weekdays 10:00 KST (01:00 UTC) — after SEIBRO settles the prior session.
     - cron: '0 1 * * 1-5'
