@@ -4086,7 +4086,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.669';
+const APP_VERSION = 'MyGP v0.670';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -10932,13 +10932,16 @@ function renderEtfDistMatrix() {
       const acctLine = info.byAcc && info.byAcc.length
         ? '<br>' + info.byAcc.map(b => `· ${_etfEsc(b.name)} ${qFmt(b.qty)}주`).join(' ')
         : (info.uncl ? `<br>· 미분류 ${qFmt(info.uncl)}주` : '');
+      const accShareTxt = info.byAcc && info.byAcc.length
+        ? ' <span style="opacity:.7">(' + info.byAcc.map(b => `${_etfEsc(b.name)} ${qFmt(b.qty)}`).join(' · ') + ')</span>'
+        : (info.uncl ? ` <span style="opacity:.7">(미분류 ${qFmt(info.uncl)})</span>` : '');
       const tips = { name: `<b>${_etfEsc(info.name)}</b><br>보유 ${qFmt(info.qty)}주 · ${facNote}${acctLine}` };
       for (const mo of MONTHS) {
         const psSum = a.monthPs[mo]; if (!psSum) continue;
         const amt = info.qty * psSum * factor;
         m[mo] = amt; total += amt;
         const recs = a.monthRecs[mo] || [];
-        const lines = recs.map(r => `${r.rd.slice(5).replace('-', '/')} 기준: ${qFmt(info.qty)}주 × ${psFmt(r.ps)}원${facTxt} = ${won(info.qty * r.ps * factor)}`);
+        const lines = recs.map(r => `${r.rd.slice(5).replace('-', '/')} 기준: ${qFmt(info.qty)}주 × ${psFmt(r.ps)}원${facTxt} = ${won(info.qty * r.ps * factor)}${accShareTxt}`);
         let bodyTxt = lines.join('<br>');
         if (recs.length > 1) bodyTxt += `<br>─ 합계 ${won(amt)}`;
         tips['m' + mo] = `<b>${_etfEsc(info.name)} · ${mo}월</b><br>${bodyTxt}`;
