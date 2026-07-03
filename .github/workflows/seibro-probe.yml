@@ -18,34 +18,26 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch SEIBRO screen def + referenced JS
+      - name: POST real SEIBRO distribution call (all ETFs, 1yr)
         run: |
           UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'
+          URL='https://seibro.or.kr/websquare/engine/proworks/callServletService.jsp'
+          REF='https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/etf/BIP_CNTS06030V.xml&menuNo=179'
 
-          get() {
-            local label="$1"; local url="$2"
-            echo ""
-            echo "======================================================== $label"
-            echo "URL: $url"
-            code=$(curl -sS -L -A "$UA" -m 25 -H "Referer: https://seibro.or.kr/" \
-              -o /tmp/b.txt -w '%{http_code}' "$url" || echo ERR)
-            echo "HTTP: $code  bytes: $(wc -c </tmp/b.txt 2>/dev/null || echo 0)"
-          }
+          # Optional: prime a session cookie by loading the screen first.
+          curl -sS -c /tmp/cj.txt -A "$UA" -m 25 -o /dev/null "$REF" || true
 
-          dump() {
-            echo "--- lines with action=/task=/callServlet ---"
-            grep -noE 'action="[^"]+"|task="[^"]+"|callServletService[^"'"'"' ]*' /tmp/b.txt | head -60 || true
-            echo "--- distribution-ish ids/fields (Setl/Dist/Alot/분배/지급/기준/Pay/Evl) ---"
-            grep -noiE '(SETL|DIST|ALOT|ALOC|DVDN|PAY|EVL|STD_DT|BAS_DT|RGHT|분배|지급|기준|주당)[A-Za-z_0-9]*' /tmp/b.txt \
-              | sort -t: -k2 | awk -F: '!seen[$2]++' | head -80 || true
-          }
+          BODY='<reqParam action="exerInfoDtramtPayStatPlist" task="ksd.safe.bip.cnts.etf.process.EtfExerInfoPTask"><START_PAGE value="1"/><END_PAGE value="30"/><etf_big_sort_cd value=""/><etf_sort_cd value=""/><isin value=""/><mngco_custno value=""/><RGT_RSN_DTAIL_SORT_CD value=""/><fromRGT_STD_DT value="20250101"/><toRGT_STD_DT value="20261231"/></reqParam>'
 
-          get "screen BIP_CNTS06030V.xml" \
-            "https://seibro.or.kr/IPORTAL/user/etf/BIP_CNTS06030V.xml"
-          sed -E 's/></>\n</g' /tmp/b.txt > /tmp/s.txt
-          echo "===== reqParam template (param node names) ====="
-          awk '/<reqParam/{p=1} p{print NR": "$0} /<\/reqParam>/{if(p){print NR": "$0; if(++n>=3) p=0; else p=0}}' /tmp/s.txt | cut -c1-200 | head -120 || true
-          echo "===== xf:instance / xf:bind blocks ====="
-          grep -inE '<xf:(instance|bind|model)|nodeset=|ref="request' /tmp/s.txt | cut -c1-200 | head -80 || true
-          echo "===== input controls bound to reqParam (유형/운용사/배당구분/기간) ====="
-          grep -inE 'reqParam/|STD_DT|PAY_TERM|BEGIN_DT|END_DT|ISIN|MNGCO_CUSTNO|ETF_SORT_CD|RGHT_TPCD|SDT|EDT|inputCalendar|selectbox' /tmp/s.txt | cut -c1-200 | head -80 || true
+          echo "POST $URL"
+          code=$(curl -sS -m 30 -b /tmp/cj.txt -A "$UA" \
+            -H 'Content-Type: application/xml; charset=UTF-8' \
+            -H 'Accept: application/xml, text/xml, */*' \
+            -H "Referer: $REF" -H 'Origin: https://seibro.or.kr' \
+            -H 'X-Requested-With: XMLHttpRequest' \
+            --data-raw "$BODY" -o /tmp/r.xml -w '%{http_code}' "$URL" || echo ERR)
+          echo "HTTP: $code   bytes: $(wc -c </tmp/r.xml 2>/dev/null || echo 0)"
+          echo "===== result count / vector header ====="
+          grep -oE '<vector[^>]*result="[0-9]+"' /tmp/r.xml | head -1 || true
+          echo "===== first 2 <result> records (field names!) ====="
+          sed -E 's/></>\n</g' /tmp/r.xml | sed -n '1,80p' | cut -c1-200 || true
