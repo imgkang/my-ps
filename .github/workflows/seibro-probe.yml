@@ -42,7 +42,10 @@ jobs:
 
           get "screen BIP_CNTS06030V.xml" \
             "https://seibro.or.kr/IPORTAL/user/etf/BIP_CNTS06030V.xml"
-          dump
-          echo "===== RAW (first 300 lines, tags stripped) ====="
-          sed -E 's/></>\n</g' /tmp/b.txt | grep -inE 'submission|callServlet|action|task|Setl|Dist|Alot|분배|지급|grid|dataMap|colInfo' \
-            | cut -c1-240 | head -120 || true
+          sed -E 's/></>\n</g' /tmp/b.txt > /tmp/s.txt
+          echo "===== reqParam template (param node names) ====="
+          awk '/<reqParam/{p=1} p{print NR": "$0} /<\/reqParam>/{if(p){print NR": "$0; if(++n>=3) p=0; else p=0}}' /tmp/s.txt | cut -c1-200 | head -120 || true
+          echo "===== xf:instance / xf:bind blocks ====="
+          grep -inE '<xf:(instance|bind|model)|nodeset=|ref="request' /tmp/s.txt | cut -c1-200 | head -80 || true
+          echo "===== input controls bound to reqParam (유형/운용사/배당구분/기간) ====="
+          grep -inE 'reqParam/|STD_DT|PAY_TERM|BEGIN_DT|END_DT|ISIN|MNGCO_CUSTNO|ETF_SORT_CD|RGHT_TPCD|SDT|EDT|inputCalendar|selectbox' /tmp/s.txt | cut -c1-200 | head -80 || true
