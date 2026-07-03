@@ -1603,6 +1603,10 @@ registerMobileTooltipDismiss();
   #obBody { min-height:0; }
   #ob-tip { position:fixed; bottom:16px; left:16px; right:16px; background:#1e293b; color:#f1f5f9; padding:10px 14px; border-radius:8px; font-size:12px; line-height:1.5; border-left:3px solid #3b82f6; z-index:1300; display:none; box-shadow:0 -4px 16px rgba(0,0,0,0.3); pointer-events:none; }
   #ob-tip.visible { display:block; }
+  /* 자동수집 ETF 분배금 — 칸별 계산식 하단 툴팁 */
+  #etfCellTip { position:fixed; bottom:16px; left:16px; right:16px; max-width:560px; margin:0 auto; background:#1e293b; color:#f1f5f9; padding:12px 14px; border-radius:10px; font-size:12.5px; line-height:1.65; border-left:3px solid #10b981; z-index:1350; display:none; box-shadow:0 -4px 16px rgba(0,0,0,0.35); max-height:45vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  #etfCellTip.visible { display:block; }
+  #etfCellTip b { color:#fff; }
   /* 시작하기 마법사 - 전체화면 (카카오 설정 스타일) */
   .ob-fs { position:fixed; inset:0; background:#fff; z-index:1100; display:none; flex-direction:column; }
   .ob-fs.open { display:flex; }
@@ -3905,6 +3909,10 @@ registerMobileTooltipDismiss();
             <span>실수령 (배당세 15.4% 차감)</span>
           </label>
         </div>
+        <div class="div-breakdown-toggle" style="margin-bottom:8px">
+          <button id="etfDistModeStock" class="div-toggle-btn active" onclick="setEtfDistMode('stock')">종목별</button>
+          <button id="etfDistModeAcc" class="div-toggle-btn" onclick="setEtfDistMode('account')">계좌별</button>
+        </div>
         <div id="etfDistMatrix"><div class="div-empty">불러오는 중…</div></div>
         <div id="etfDistNote" style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5"></div>
       </div>
@@ -4078,7 +4086,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.667';
+const APP_VERSION = 'MyGP v0.668';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -10741,6 +10749,16 @@ const ETF_DIV_TAX = 0.154; // 배당소득세
 let _etfDistIndex = null;   // Map(code -> [{rd, ps, pay, name}] 오름차순)
 let _etfDistLoaded = false;
 let _etfDistLoading = null;
+let _etfDistMode = 'stock'; // 'stock' | 'account' — 종목별 / 계좌별
+let _etfTipData = {};       // 칸별 계산식 설명 (key -> HTML 문자열)
+
+// 종목별 ↔ 계좌별 토글
+function setEtfDistMode(mode) {
+  _etfDistMode = (mode === 'account') ? 'account' : 'stock';
+  document.getElementById('etfDistModeStock')?.classList.toggle('active', _etfDistMode === 'stock');
+  document.getElementById('etfDistModeAcc')?.classList.toggle('active', _etfDistMode === 'account');
+  renderEtfDistMatrix();
+}
 
 function _etfEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -10786,7 +10804,23 @@ function _heldQtyByCode() {
   return out;
 }
 
-// 보유 ETF × 자동수집 주당분배금 → 월×ETF 실수령/예상 매트릭스 (선택 연도)
+// 칸별 계산식 툴팁 — 화면 하단에 표시 (탭 시)
+let _etfTipTimer = null;
+function showEtfCellTip(html) {
+  const t = document.getElementById('etfCellTip');
+  if (!t || !html) return;
+  t.innerHTML = html;
+  t.classList.add('visible');
+  clearTimeout(_etfTipTimer);
+  _etfTipTimer = setTimeout(() => t.classList.remove('visible'), 7000);
+}
+function hideEtfCellTip() {
+  const t = document.getElementById('etfCellTip');
+  if (t) t.classList.remove('visible');
+  clearTimeout(_etfTipTimer);
+}
+
+// 보유 ETF × 자동수집 주당분배금 → 월×(종목|계좌) 실수령/예상 매트릭스 (선택 연도)
 function renderEtfDistMatrix() {
   const wrap = document.getElementById('etfDistMatrix');
   if (!wrap) return;
@@ -10802,34 +10836,117 @@ function renderEtfDistMatrix() {
   const net = document.getElementById('etfDistNet')?.checked !== false;
   const factor = net ? (1 - ETF_DIV_TAX) : 1;
   const year = _divSelectedYear;
-  const held = _heldQtyByCode();
   const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
   // 예상(연): 최근 365일 실적 기준
   const cutoff = (() => { const d = new Date(); d.setDate(d.getDate() - 365); return d.toISOString().slice(0, 10); })();
 
-  const rowArr = [];
-  for (const [code, info] of held) {
+  // 표시/설명용 포매터
+  const fmt   = v => v ? Math.round(v).toLocaleString('ko-KR') : '-';
+  const won   = v => Math.round(v).toLocaleString('ko-KR') + '원';
+  const qFmt  = q => Number(q).toLocaleString('ko-KR');
+  const psFmt = p => Number(p).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+  const facTxt  = net ? ' × 84.6%' : '';
+  const facNote = net ? '실수령 · 배당소득세 15.4% 차감' : '세전 기준';
+
+  // 종목(code)별 선택연도 월별 주당분배금 합 + 지급기록 + 최근12개월 합(ttm) 캐시
+  const aggCache = new Map();
+  const aggFor = code => {
+    if (aggCache.has(code)) return aggCache.get(code);
     const recs = idx.get(code);
-    if (!recs || !recs.length) continue;
-    const m = {}; let total = 0, ttm = 0;
-    for (const rec of recs) {
-      if (rec.rd >= cutoff) ttm += rec.ps;
+    const a = { monthPs: {}, monthRecs: {}, ttm: 0, has: false };
+    if (recs) for (const rec of recs) {
+      if (rec.rd >= cutoff) a.ttm += rec.ps;
       if (+rec.rd.slice(0, 4) !== year) continue;
-      const amt = info.qty * rec.ps * factor;
       const mo = +rec.rd.slice(5, 7);
-      m[mo] = (m[mo] || 0) + amt;
-      total += amt;
+      a.monthPs[mo] = (a.monthPs[mo] || 0) + rec.ps;
+      (a.monthRecs[mo] = a.monthRecs[mo] || []).push({ rd: rec.rd, ps: rec.ps });
+      a.has = true;
     }
-    const est = info.qty * ttm * factor;
-    if (total === 0 && est === 0) continue;
-    rowArr.push({ label: info.name, m, total, est });
+    aggCache.set(code, a);
+    return a;
+  };
+
+  const rowArr = [];
+
+  if (_etfDistMode === 'account') {
+    // ── 계좌별: 활성계좌 순회 + 미분류(계좌 미배정 잔여수량) ──
+    const activeAccs = getActiveAccounts();
+    const activeIds  = new Set(activeAccs.map(a => a.id));
+    const buildAccRow = (label, qtyOf) => {
+      const m = {}; let total = 0, est = 0;
+      const monthParts = {}; const estParts = [];
+      for (const h of holdings) {
+        const qty = qtyOf(h); if (!qty) continue;
+        const a = aggFor(String(h.code)); if (!a.has && !a.ttm) continue;
+        const nm = h.name || h.code;
+        for (const mo of MONTHS) {
+          const psSum = a.monthPs[mo]; if (!psSum) continue;
+          const amt = qty * psSum * factor;
+          m[mo] = (m[mo] || 0) + amt; total += amt;
+          (monthParts[mo] = monthParts[mo] || []).push({ name: nm, qty, psSum, amt });
+        }
+        if (a.ttm) { const e = qty * a.ttm * factor; est += e; estParts.push({ name: nm, qty, ttm: a.ttm, amt: e }); }
+      }
+      if (total === 0 && est === 0) return null;
+      const tips = { name: `<b>${_etfEsc(label)}</b><br>${year} 합계 ${won(total)} · ${facNote}` };
+      for (const mo of MONTHS) {
+        const parts = monthParts[mo]; if (!parts) continue;
+        const lines = parts.map(p => `· ${_etfEsc(p.name)}: ${qFmt(p.qty)}주 × ${psFmt(p.psSum)}원${facTxt} = ${won(p.amt)}`);
+        tips['m' + mo] = `<b>${_etfEsc(label)} · ${mo}월</b> = ${won(m[mo])}<br>${lines.join('<br>')}`;
+      }
+      tips.sum = `<b>${_etfEsc(label)} · ${year} 합계</b><br>1~12월 합 = ${won(total)}<br>(${facNote})`;
+      const eLines = estParts.map(p => `· ${_etfEsc(p.name)}: ${qFmt(p.qty)}주 × 최근12개월 ${psFmt(p.ttm)}원${facTxt} = ${won(p.amt)}`);
+      tips.est = `<b>${_etfEsc(label)} · 예상(연)</b> = ${won(est)}<br>${eLines.join('<br>')}<br>(직전 365일 실적 기준)`;
+      return { label, m, total, est, tips };
+    };
+    for (const acc of activeAccs) {
+      const row = buildAccRow(getAccName(acc.id) || acc.id, h => Number(h.accounts?.[acc.id]?.qty) || 0);
+      if (row) rowArr.push(row);
+    }
+    // 미분류: 활성계좌 배정 합이 0인데 총수량(h.quantity)이 있는 종목 → 종목별 합계와 일치 보장
+    const unclRow = buildAccRow('미분류', h => {
+      let assigned = 0;
+      for (const [id, a] of Object.entries(h.accounts || {})) if (activeIds.has(id)) assigned += Number(a.qty) || 0;
+      return assigned === 0 ? (Number(h.quantity) || 0) : 0;
+    });
+    if (unclRow) rowArr.push(unclRow);
+
+    if (!rowArr.length) {
+      wrap.innerHTML = '<div class="div-empty">계좌에 배정된 분배금 지급 ETF가 없습니다.</div>';
+      if (note) note.textContent = '';
+      return;
+    }
+  } else {
+    // ── 종목별: 보유종목(활성계좌 합) 순회 ──
+    const held = _heldQtyByCode();
+    for (const [code, info] of held) {
+      const a = aggFor(code);
+      if (!a.has && !a.ttm) continue;
+      const m = {}; let total = 0;
+      const tips = { name: `<b>${_etfEsc(info.name)}</b><br>보유 ${qFmt(info.qty)}주 · ${facNote}` };
+      for (const mo of MONTHS) {
+        const psSum = a.monthPs[mo]; if (!psSum) continue;
+        const amt = info.qty * psSum * factor;
+        m[mo] = amt; total += amt;
+        const recs = a.monthRecs[mo] || [];
+        const lines = recs.map(r => `${r.rd.slice(5).replace('-', '/')} 기준: ${qFmt(info.qty)}주 × ${psFmt(r.ps)}원${facTxt} = ${won(info.qty * r.ps * factor)}`);
+        let bodyTxt = lines.join('<br>');
+        if (recs.length > 1) bodyTxt += `<br>─ 합계 ${won(amt)}`;
+        tips['m' + mo] = `<b>${_etfEsc(info.name)} · ${mo}월</b><br>${bodyTxt}`;
+      }
+      const est = info.qty * a.ttm * factor;
+      if (total === 0 && est === 0) continue;
+      tips.sum = `<b>${_etfEsc(info.name)} · ${year} 합계</b><br>1~12월 분배금 합 = ${won(total)}<br>(${facNote})`;
+      tips.est = `<b>${_etfEsc(info.name)} · 예상(연)</b><br>${qFmt(info.qty)}주 × 최근 12개월 주당분배금 합 ${psFmt(a.ttm)}원${facTxt} = ${won(est)}<br>(직전 365일 실적 기준)`;
+      rowArr.push({ label: info.name, m, total, est, tips });
+    }
+    if (!rowArr.length) {
+      wrap.innerHTML = '<div class="div-empty">보유 중인 종목 가운데 분배금 지급 ETF가 없습니다.</div>';
+      if (note) note.textContent = '';
+      return;
+    }
   }
 
-  if (!rowArr.length) {
-    wrap.innerHTML = '<div class="div-empty">보유 중인 종목 가운데 분배금 지급 ETF가 없습니다.</div>';
-    if (note) note.textContent = '';
-    return;
-  }
   rowArr.sort((a, b) => (b.total - a.total) || (b.est - a.est));
 
   const monthTotals = {}; let grand = 0, grandEst = 0;
@@ -10838,12 +10955,50 @@ function renderEtfDistMatrix() {
     grandEst += r.est;
   }
 
-  const fmt = v => v ? Math.round(v).toLocaleString('ko-KR') : '-';
-  const head = `<tr><th class="div-mx-name">종목</th>${MONTHS.map(mo => `<th>${mo}월</th>`).join('')}<th class="div-mx-sum">${year} 합계</th><th class="div-mx-sum">예상(연)</th></tr>`;
-  const body = rowArr.map(r => `<tr><td class="div-mx-name">${_etfEsc(r.label)}</td>${MONTHS.map(mo => `<td>${fmt(r.m[mo] || 0)}</td>`).join('')}<td class="div-mx-sum">${fmt(r.total)}</td><td class="div-mx-sum" style="color:var(--muted)">${fmt(r.est)}</td></tr>`).join('');
-  const foot = `<tr class="div-mx-foot"><td class="div-mx-name">합계</td>${MONTHS.map(mo => `<td>${fmt(monthTotals[mo] || 0)}</td>`).join('')}<td class="div-mx-sum">${fmt(grand)}</td><td class="div-mx-sum">${fmt(grandEst)}</td></tr>`;
+  // 칸별 설명 문자열 등록
+  _etfTipData = {};
+  const nameHdr = _etfDistMode === 'account' ? '계좌' : '종목';
+  const head = `<tr><th class="div-mx-name">${nameHdr}</th>${MONTHS.map(mo => `<th>${mo}월</th>`).join('')}<th class="div-mx-sum">${year} 합계</th><th class="div-mx-sum">예상(연)</th></tr>`;
+  const body = rowArr.map((r, i) => {
+    const rk = 'r' + i;
+    _etfTipData[rk + ':name'] = r.tips.name || '';
+    _etfTipData[rk + ':sum']  = r.tips.sum || '';
+    _etfTipData[rk + ':est']  = r.tips.est || '';
+    const nameCell = `<td class="div-mx-name" data-tip="${rk}:name" style="cursor:pointer">${_etfEsc(r.label)}</td>`;
+    const monthCells = MONTHS.map(mo => {
+      const v = r.m[mo] || 0;
+      if (r.tips['m' + mo]) { _etfTipData[rk + ':m' + mo] = r.tips['m' + mo]; return `<td data-tip="${rk}:m${mo}" style="cursor:pointer">${fmt(v)}</td>`; }
+      return `<td>${fmt(v)}</td>`;
+    }).join('');
+    const sumCell = `<td class="div-mx-sum" data-tip="${rk}:sum" style="cursor:pointer">${fmt(r.total)}</td>`;
+    const estCell = `<td class="div-mx-sum" data-tip="${rk}:est" style="cursor:pointer;color:var(--muted)">${fmt(r.est)}</td>`;
+    return `<tr>${nameCell}${monthCells}${sumCell}${estCell}</tr>`;
+  }).join('');
+  const rowKind = _etfDistMode === 'account' ? '계좌' : '종목';
+  for (const mo of MONTHS) _etfTipData['foot:m' + mo] = `<b>${mo}월 전체 합계</b> = ${won(monthTotals[mo] || 0)}<br>(모든 ${rowKind} 합 · ${facNote})`;
+  _etfTipData['foot:sum'] = `<b>${year} 전체 합계</b> = ${won(grand)}<br>(모든 ${rowKind}·1~12월 합)`;
+  _etfTipData['foot:est'] = `<b>예상(연) 전체 합계</b> = ${won(grandEst)}<br>(모든 ${rowKind} 예상 합)`;
+  const foot = `<tr class="div-mx-foot"><td class="div-mx-name">합계</td>${MONTHS.map(mo => `<td data-tip="foot:m${mo}" style="cursor:pointer">${fmt(monthTotals[mo] || 0)}</td>`).join('')}<td class="div-mx-sum" data-tip="foot:sum" style="cursor:pointer">${fmt(grand)}</td><td class="div-mx-sum" data-tip="foot:est" style="cursor:pointer">${fmt(grandEst)}</td></tr>`;
+
   wrap.innerHTML = `<div class="div-matrix-scroll"><table class="div-matrix">${head}${body}${foot}</table></div>`;
-  if (note) note.innerHTML = `단위: 원 · ${net ? '<b>실수령</b>(배당소득세 15.4% 차감)' : '<b>세전</b>'} · 보유수량 현재 기준 · 예상(연) = 직전 12개월 주당분배금 합 × 보유수량`;
+  if (note) note.innerHTML = `단위: 원 · ${net ? '<b>실수령</b>(배당소득세 15.4% 차감)' : '<b>세전</b>'} · ${_etfDistMode === 'account' ? '계좌별' : '종목별'} · 보유수량 현재 기준 · 예상(연) = 직전 12개월 주당분배금 합 × 보유수량<br>💡 표의 숫자 칸을 탭하면 계산식이 화면 하단에 표시됩니다.`;
+
+  // 칸 탭 → 하단 툴팁 (위임 리스너 1회 바인딩)
+  if (!wrap._etfTipBound) {
+    wrap._etfTipBound = true;
+    wrap.addEventListener('click', e => {
+      const td = e.target.closest('[data-tip]');
+      if (!td || !wrap.contains(td)) return;
+      showEtfCellTip(_etfTipData[td.getAttribute('data-tip')]);
+    });
+  }
+  if (!window._etfTipDocBound) {
+    window._etfTipDocBound = true;
+    document.addEventListener('click', e => {
+      if (e.target.closest('#etfCellTip') || e.target.closest('#etfDistMatrix [data-tip]')) return;
+      hideEtfCellTip();
+    });
+  }
 }
 
 // 연간 "월×종목 / 월×계좌" 달력형 매트릭스 (선택 연도, 종목별/계좌별 토글 공용)
@@ -19227,6 +19382,7 @@ window.addEventListener('message', e => {
 
 <div id="wd-cell-info"></div>
 <div id="ob-tip"></div>
+<div id="etfCellTip"></div>
 <!-- 계좌별 배분 모달 -->
 <div id="obAllocModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1400;display:none;align-items:center;justify-content:center">
   <div style="background:var(--bg);border-radius:12px;padding:20px;max-width:360px;width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
