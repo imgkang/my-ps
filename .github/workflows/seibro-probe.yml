@@ -1,0 +1,47 @@
+name: SEIBRO probe (temporary)
+
+on:
+  push:
+    branches: [claude/auto-read-chat-dividends-gnxwi7]
+    paths: ['.github/workflows/seibro-probe.yml']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test SEIBRO pagination semantics
+        run: |
+          UA='Mozilla/5.0 (X11; Linux x86_64) Chrome/124 Safari/537.36'
+          URL='https://seibro.or.kr/websquare/engine/proworks/callServletService.jsp'
+          REF='https://seibro.or.kr/websquare/control.jsp?w2xPath=/IPORTAL/user/etf/BIP_CNTS06030V.xml&menuNo=179'
+
+          call() {
+            local sp="$1"; local ep="$2"; local extra="$3"
+            local body='<reqParam action="exerInfoDtramtPayStatPlist" task="ksd.safe.bip.cnts.etf.process.EtfExerInfoPTask"><START_PAGE value="'"$sp"'"/><END_PAGE value="'"$ep"'"/><etf_big_sort_cd value=""/><etf_sort_cd value=""/><isin value=""/><mngco_custno value=""/><RGT_RSN_DTAIL_SORT_CD value=""/><fromRGT_STD_DT value="20250101"/><toRGT_STD_DT value="20261231"/>'"$extra"'</reqParam>'
+            curl -sS -m 30 -A "$UA" -H 'Content-Type: application/xml; charset=UTF-8' \
+              -H "Referer: $REF" -H 'Origin: https://seibro.or.kr' \
+              --data-raw "$body" -o /tmp/r.xml "$URL" || echo ERR
+            local n=$(grep -c '<result>' /tmp/r.xml)
+            local dates=$(grep -oE 'RGT_STD_DT value="[0-9]+"' /tmp/r.xml | sort -u | wc -l)
+            local first=$(grep -oE 'ISIN value="[^"]+"' /tmp/r.xml | head -1)
+            local last=$(grep -oE 'ISIN value="[^"]+"' /tmp/r.xml | tail -1)
+            local vhdr=$(grep -oE '<vector[^>]*result="[0-9]+"' /tmp/r.xml | grep -oE 'result="[0-9]+"')
+            echo "SP=$sp EP=$ep extra='$extra' -> rows=$n distinctDates=$dates vectorResult=$vhdr firstISIN=[$first] lastISIN=[$last]"
+          }
+
+          echo "=== A: default range calls ==="
+          call 1 30 ""
+          call 31 60 ""
+          call 1 2000 ""
+          call 1 99999 ""
+          echo "=== B: with a Cnt-style total (does adding CO_CNT/pageSize help?) ==="
+          call 1 5000 '<CO_CNT value="5000"/>'
+          call 1 5000 '<pageSize value="5000"/>'
+          echo "=== C: count action ==="
+          body='<reqParam action="exerInfoDtramtPayStatPlistCnt" task="ksd.safe.bip.cnts.etf.process.EtfExerInfoPTask"><etf_big_sort_cd value=""/><etf_sort_cd value=""/><isin value=""/><mngco_custno value=""/><RGT_RSN_DTAIL_SORT_CD value=""/><fromRGT_STD_DT value="20250101"/><toRGT_STD_DT value="20261231"/></reqParam>'
+          curl -sS -m 30 -A "$UA" -H 'Content-Type: application/xml; charset=UTF-8' -H "Referer: $REF" -H 'Origin: https://seibro.or.kr' --data-raw "$body" -o /tmp/c.xml "$URL" || true
+          echo "Cnt response (first 500 chars):"; head -c 500 /tmp/c.xml; echo
