@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.666';
+const CACHE_NAME = 'mypm-v0.667';
 
 const BASE = '/my-ps/';
 
@@ -13,9 +13,10 @@ const ASSETS = [
   BASE + 'js/ticker-search.js',
   BASE + 'js/api.js',
   BASE + 'js/input-ux.js',
-  BASE + 'js/market-core.js?v=0.666',
-  BASE + 'market.css?v=0.666',
+  BASE + 'js/market-core.js?v=0.667',
+  BASE + 'market.css?v=0.667',
   BASE + 'tickers.json',
+  BASE + 'etf_distributions.json',
   BASE + 'manifest.json',
   BASE + 'icon.svg',
   // Chart.js CDN 은 런타임 fetch handler 에서 캐싱 (precache 실패 시 PWA 가 깨지는 것 방지)
@@ -64,10 +65,11 @@ self.addEventListener('fetch', event => {
   // GET 외(POST/PUT/DELETE)는 캐시 대상이 아니므로 그대로 네트워크.
   if (event.request.method !== 'GET') return;
 
-  // tickers.json 은 네트워크 우선 — 종목 마스터 데이터가 갱신되면 즉시 반영.
-  // (캐시 우선이면 새 ETF 등이 다음 로드까지 안 보임). 오프라인은 캐시로 폴백.
+  // tickers.json / etf_distributions.json 은 네트워크 우선 — 마스터/분배금 데이터가
+  // 갱신되면 즉시 반영(캐시 우선이면 다음 로드까지 안 보임). 오프라인은 캐시로 폴백.
   try {
-    if (new URL(event.request.url).pathname.endsWith('/tickers.json')) {
+    const _p = new URL(event.request.url).pathname;
+    if (_p.endsWith('/tickers.json') || _p.endsWith('/etf_distributions.json')) {
       event.respondWith(
         fetch(event.request).then(response => {
           if (response && response.status === 200) {
