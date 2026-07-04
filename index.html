@@ -39,17 +39,18 @@ window.ensureChartJs = function() {
 function registerMobileTooltipDismiss() {
   if (typeof Chart === 'undefined' || Chart.__mtd) return;
   Chart.__mtd = true;
-  // 모바일 툴팁 자동 닫기: touchend 후 2초 뒤 사라짐
+  // 모바일 툴팁 자동 닫기: touchend 후 앱설정 '셀 정보 패널 · 표시 유지 시간' 만큼 뒤 사라짐
   Chart.register({
     id: 'mobileTooltipDismiss',
     afterInit(chart) {
       let _timer = null;
       chart.canvas.addEventListener('touchend', () => {
         clearTimeout(_timer);
+        const ms = (typeof _tipDurationMs === 'function') ? _tipDurationMs() : 2000;
         _timer = setTimeout(() => {
           chart.tooltip.setActiveElements([], {x: 0, y: 0});
           chart.update('none');
-        }, 2000);
+        }, ms);
       });
     }
   });
@@ -4086,7 +4087,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.669';
+const APP_VERSION = 'MyGP v0.671';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -10810,6 +10811,11 @@ function _heldQtyByCode() {
   return out;
 }
 
+// 앱 전역 툴팁 표시 유지 시간(ms) — 앱설정 '셀 정보 패널 · 표시 유지 시간' 공용
+function _tipDurationMs() {
+  return Math.max(1, Number(appSettings?.cellInfoDuration) || 5) * 1000;
+}
+
 // 칸별 계산식 툴팁 — 화면 하단에 표시 (탭 시)
 let _etfTipTimer = null;
 function showEtfCellTip(html) {
@@ -10818,7 +10824,7 @@ function showEtfCellTip(html) {
   t.innerHTML = html;
   t.classList.add('visible');
   clearTimeout(_etfTipTimer);
-  _etfTipTimer = setTimeout(() => t.classList.remove('visible'), 7000);
+  _etfTipTimer = setTimeout(() => t.classList.remove('visible'), _tipDurationMs());
 }
 function hideEtfCellTip() {
   const t = document.getElementById('etfCellTip');
@@ -10930,15 +10936,18 @@ function renderEtfDistMatrix() {
       if (!a.has && !a.ttm) continue;
       const m = {}; let total = 0;
       const acctLine = info.byAcc && info.byAcc.length
-        ? '<br>' + info.byAcc.map(b => `· ${_etfEsc(b.name)} ${qFmt(b.qty)}주`).join(' ')
+        ? '<br>' + info.byAcc.map(b => `· ${_etfEsc(b.name)} ${qFmt(b.qty)}주`).join('<br>')
         : (info.uncl ? `<br>· 미분류 ${qFmt(info.uncl)}주` : '');
+      const accShareTxt = info.byAcc && info.byAcc.length
+        ? '<br>' + info.byAcc.map(b => `<span style="opacity:.7">· ${_etfEsc(b.name)} ${qFmt(b.qty)}주</span>`).join('<br>')
+        : (info.uncl ? `<br><span style="opacity:.7">· 미분류 ${qFmt(info.uncl)}주</span>` : '');
       const tips = { name: `<b>${_etfEsc(info.name)}</b><br>보유 ${qFmt(info.qty)}주 · ${facNote}${acctLine}` };
       for (const mo of MONTHS) {
         const psSum = a.monthPs[mo]; if (!psSum) continue;
         const amt = info.qty * psSum * factor;
         m[mo] = amt; total += amt;
         const recs = a.monthRecs[mo] || [];
-        const lines = recs.map(r => `${r.rd.slice(5).replace('-', '/')} 기준: ${qFmt(info.qty)}주 × ${psFmt(r.ps)}원${facTxt} = ${won(info.qty * r.ps * factor)}`);
+        const lines = recs.map(r => `${r.rd.slice(5).replace('-', '/')} 기준: ${qFmt(info.qty)}주 × ${psFmt(r.ps)}원${facTxt} = ${won(info.qty * r.ps * factor)}${accShareTxt}`);
         let bodyTxt = lines.join('<br>');
         if (recs.length > 1) bodyTxt += `<br>─ 합계 ${won(amt)}`;
         tips['m' + mo] = `<b>${_etfEsc(info.name)} · ${mo}월</b><br>${bodyTxt}`;
@@ -11053,7 +11062,7 @@ function renderDivMatrix() {
           } else qty = Number(sh) || 0;
           let line;
           if (ps > 0 && qty > 0) {
-            const accTxt = perAcc.length > 1 ? ' ' + dim(`(${perAcc.map(p => `${_etfEsc(p.name)} ${qFmt(p.qty)}`).join(' · ')})`) : '';
+            const accTxt = perAcc.length > 1 ? '<br>' + perAcc.map(p => dim(`· ${_etfEsc(p.name)} ${qFmt(p.qty)}주`)).join('<br>') : '';
             line = `${md} 기준: ${qFmt(qty)}주 × ${psFmt(ps)}원 = ${won(amt)}${accTxt}`;
           } else {
             line = `${md}: ${won(amt)} ${dim('(직접입력)')}`;
@@ -13290,7 +13299,7 @@ function obShowTip(msg) {
   t.innerHTML = msg.replace(/\n/g, '<br>');
   t.classList.add('visible');
   clearTimeout(_obTipTimer);
-  _obTipTimer = setTimeout(() => t.classList.remove('visible'), 6000);
+  _obTipTimer = setTimeout(() => t.classList.remove('visible'), _tipDurationMs());
 }
 
 function obOpenAllocModal(who) {
@@ -16577,8 +16586,7 @@ function wdShowCellInfo(event, td) {
 
 function wdStartDismiss() {
   clearTimeout(_wdDismissTimer);
-  const dur = (appSettings.cellInfoDuration ?? 5) * 1000;
-  _wdDismissTimer = setTimeout(wdDismissPanel, dur);
+  _wdDismissTimer = setTimeout(wdDismissPanel, _tipDurationMs());
 }
 
 function wdDismissPanel() {
