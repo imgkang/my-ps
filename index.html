@@ -1345,6 +1345,12 @@ registerMobileTooltipDismiss();
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfg-row-chev { color: #c4c7cc; font-size: 19px; line-height: 1; flex-shrink: 0; }
   .cfg-row-edit { display: none; }
+  /* 계좌별 수량 입력 모달 — 설정화면 스타일 인라인 편집(아코디언) */
+  #accountInputs .cfg-section:first-child { margin-top: 2px; }
+  #accountInputs .cfg-row-chev { transition: transform .15s; }
+  #accountInputs .cfg-item.editing .cfg-row-edit { display: block; padding: 2px 16px 12px; }
+  #accountInputs .cfg-item.editing .cfg-row-chev { transform: rotate(90deg); }
+  #accountInputs .cfg-row-value.zero { color: #c4c7cc; }
   /* 종목 리스트 열 순서 편집 모달 */
   .col-edit-hint { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
   .col-edit-row { display: flex; justify-content: space-between; align-items: center;
@@ -4090,7 +4096,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.681';
+const APP_VERSION = 'MyGP v0.682';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5230,25 +5236,38 @@ function openAccountModal(code) {
     const qty = val.qty || 0;
     const avg = val.avgPrice || 0;
     const rowTotal = qty && avg ? Math.round(qty * avg).toLocaleString('ko-KR') + ' 원' : '0 원';
+    const qtyTxt = (qty ? (+qty).toLocaleString('ko-KR') : '0') + ' 주';
+    const avgTxt = (avg ? Math.round(+avg).toLocaleString('ko-KR') : '0') + ' 원';
     html += `
-      <div class="account-card">
-        <div class="acc-card-header">
-          <span class="acc-card-name">${escapeHtml(acc.name)}</span>
-          <span class="acc-card-total${qty && avg ? '' : ' zero'}" id="total_${acc.id}">${rowTotal}</span>
-        </div>
-        <div class="acc-card-inputs">
-          <label>
-            <span>수량</span>
+      <div class="cfg-section">${escapeHtml(acc.name)}</div>
+      <div class="cfg-list">
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="accRowEdit(this)">
+            <span class="cfg-row-label">주식수</span>
+            <span class="cfg-row-value${qty ? '' : ' zero'}" id="qtyVal_${acc.id}">${qtyTxt}</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit"><div class="cfg-edit-inline">
             <input type="text" inputmode="numeric" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty"
-              value="${qty ? (+qty).toLocaleString('ko-KR') : ''}" placeholder="0"
-              oninput="liveKRWInput(this); updateModalTotal()">
-          </label>
-          <label>
-            <span>단가 (원)</span>
+              style="width:140px;text-align:right" value="${qty ? (+qty).toLocaleString('ko-KR') : ''}" placeholder="0"
+              oninput="liveKRWInput(this); accSyncRow('${acc.id}')"><span>주</span>
+          </div></div>
+        </div>
+        <div class="cfg-item">
+          <button type="button" class="cfg-row" onclick="accRowEdit(this)">
+            <span class="cfg-row-label">단가</span>
+            <span class="cfg-row-value${avg ? '' : ' zero'}" id="avgVal_${acc.id}">${avgTxt}</span>
+            <span class="cfg-row-chev">›</span>
+          </button>
+          <div class="cfg-row-edit"><div class="cfg-edit-inline">
             <input type="text" inputmode="numeric" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg"
-              value="${avg ? Math.round(+avg).toLocaleString('ko-KR') : ''}" placeholder="0"
-              oninput="liveKRWInput(this); updateModalTotal()">
-          </label>
+              style="width:140px;text-align:right" value="${avg ? Math.round(+avg).toLocaleString('ko-KR') : ''}" placeholder="0"
+              oninput="liveKRWInput(this); accSyncRow('${acc.id}')"><span>원</span>
+          </div></div>
+        </div>
+        <div class="cfg-row-static">
+          <span class="cfg-row-label">매입가</span>
+          <span class="cfg-row-value${qty && avg ? '' : ' zero'}" id="total_${acc.id}">${rowTotal}</span>
         </div>
       </div>
     `;
@@ -5260,8 +5279,33 @@ function openAccountModal(code) {
   backdrop.classList.add('open');
   // 보유수량 추이 차트
   try { (window.ensureChartJs ? ensureChartJs() : Promise.resolve()).then(() => renderQtyHistChart(code)).catch(() => {}); } catch (_) {}
-  // 첫 번째 수량 인풋에 포커스
-  setTimeout(() => { const first = container.querySelector('input[data-field="qty"]'); if (first) first.focus(); }, 30);
+}
+
+// 설정화면 스타일 행: 탭하면 그 자리에서 편집(인라인 아코디언, 한 번에 하나만 펼침)
+function accRowEdit(btn) {
+  const item = btn.closest('.cfg-item');
+  const cont = document.getElementById('accountInputs');
+  if (!item || !cont) return;
+  const wasOpen = item.classList.contains('editing');
+  cont.querySelectorAll('.cfg-item.editing').forEach(el => el.classList.remove('editing'));
+  if (!wasOpen) {
+    item.classList.add('editing');
+    const inp = item.querySelector('.cfg-row-edit input');
+    if (inp) setTimeout(() => { inp.focus(); try { inp.select(); } catch (_) {} }, 30);
+  }
+}
+
+// 편집 인풋 값 → 표시 텍스트(주식수/단가) + 매입가·합계 실시간 반영
+function accSyncRow(id) {
+  const qEl = document.getElementById('qty_' + id);
+  const aEl = document.getElementById('avg_' + id);
+  const q = qEl ? (Number(qEl.value.replace(/,/g, '')) || 0) : 0;
+  const a = aEl ? (Number(aEl.value.replace(/,/g, '')) || 0) : 0;
+  const qv = document.getElementById('qtyVal_' + id);
+  const av = document.getElementById('avgVal_' + id);
+  if (qv) { qv.textContent = q.toLocaleString('ko-KR') + ' 주'; qv.classList.toggle('zero', q === 0); }
+  if (av) { av.textContent = a.toLocaleString('ko-KR') + ' 원'; av.classList.toggle('zero', a === 0); }
+  updateModalTotal();
 }
 
 // 계좌별 수량 입력 모달 안의 '계좌별 누적' 계단 영역 차트 (holdingsHist 원장 기준)
