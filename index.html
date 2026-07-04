@@ -2885,7 +2885,7 @@ registerMobileTooltipDismiss();
       </span>
     </div>
     <div id="qtyHistWrap" style="display:none;margin-top:14px">
-      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">📈 보유수량 추이 (총수량)</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">📈 보유수량 추이 (계좌별 누적 · 맨 위 = 총수량)</div>
       <div style="height:130px"><canvas id="qtyHistChart"></canvas></div>
     </div>
     <div class="modal-actions">
@@ -4090,7 +4090,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.680';
+const APP_VERSION = 'MyGP v0.681';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5264,55 +5264,74 @@ function openAccountModal(code) {
   setTimeout(() => { const first = container.querySelector('input[data-field="qty"]'); if (first) first.focus(); }, 30);
 }
 
-// 계좌별 수량 입력 모달 안의 '총수량' 계단선 차트 (holdingsHist 원장 기준)
+// 계좌별 수량 입력 모달 안의 '계좌별 누적' 계단 영역 차트 (holdingsHist 원장 기준)
+// 각 계좌를 아래부터 쌓아 맨 위 높이 = 총수량이 되도록 표시(stacked area).
 let _qtyHistChart = null;
+function _hexToRgba(hex, a) {
+  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex || '');
+  return m ? `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${a})` : hex;
+}
 function renderQtyHistChart(code) {
   const wrap = document.getElementById('qtyHistWrap');
   const canvas = document.getElementById('qtyHistChart');
   if (!wrap || !canvas) return;
   code = String(code);
   const arr = (holdingsHist[code] || []).slice().sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
-  const pts = arr.map(e => ({ d: e.d, q: Object.values(e.a || {}).reduce((s, v) => s + (Number(v) || 0), 0) }));
-  // 오늘 현재 수량으로 선을 현재까지 연장
-  const h = holdings.find(x => String(x.code) === code);
-  const curQty = h ? Object.values(_histAccsOf(h)).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
   const today = _todayStr();
-  if (pts.length) {
-    const last = pts[pts.length - 1];
-    if (last.d === today) last.q = curQty;
-    else pts.push({ d: today, q: curQty });
-  }
-  if (typeof Chart === 'undefined' || !pts.length) {
+  const h = holdings.find(x => String(x.code) === code);
+  const curAccs = h ? _histAccsOf(h) : {};
+
+  // x축 날짜 = 이력 날짜들 + (마지막이 오늘이 아니면) 오늘
+  const dates = arr.map(e => e.d);
+  if (dates.length && dates[dates.length - 1] !== today) dates.push(today);
+
+  if (typeof Chart === 'undefined' || !dates.length) {
     if (_qtyHistChart) { _qtyHistChart.destroy(); _qtyHistChart = null; }
     wrap.style.display = 'none';
     return;
   }
   wrap.style.display = '';
+
+  // 등장한 적 있는 계좌들(이력 + 현재) — 활성 계좌 순서 우선
+  const accSet = new Set();
+  arr.forEach(e => Object.keys(e.a || {}).forEach(id => accSet.add(id)));
+  Object.keys(curAccs).forEach(id => accSet.add(id));
+  const activeOrder = getActiveAccounts().map(a => a.id);
+  const accIds = [...activeOrder.filter(id => accSet.has(id)), ...[...accSet].filter(id => !activeOrder.includes(id))];
+
+  // 각 날짜 시점의 계좌별 수량(오늘 칸은 현재 보유값으로 정정)
+  const valAt = (accId, d) => d === today ? (Number(curAccs[accId]) || 0) : (qtyAsOfHist(code, accId, d) || 0);
   const lbl = d => d === '2000-01-01' ? '이전' : d.slice(2).replace(/-/g, '/');  // YY/MM/DD
+
+  const datasets = accIds.map((accId, i) => {
+    const col = _DIV_COLORS[i % _DIV_COLORS.length];
+    return {
+      label: getAccName(accId) || accId,
+      data: dates.map(d => valAt(accId, d)),
+      borderColor: col, backgroundColor: _hexToRgba(col, 0.35),
+      borderWidth: 1.5, pointRadius: 2, pointBackgroundColor: col,
+      fill: true, stepped: 'before', tension: 0,
+    };
+  });
+
   if (_qtyHistChart) { _qtyHistChart.destroy(); _qtyHistChart = null; }
   _qtyHistChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
-    data: {
-      labels: pts.map(p => lbl(p.d)),
-      datasets: [{
-        data: pts.map(p => p.q),
-        borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.12)',
-        borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#6366f1',
-        fill: true, stepped: 'before', tension: 0,
-      }]
-    },
+    data: { labels: dates.map(lbl), datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: { display: accIds.length > 1, position: 'bottom', labels: { boxWidth: 10, font: { size: 9 }, padding: 6 } },
         tooltip: { callbacks: {
-          title: items => { const p = pts[items[0].dataIndex]; return p.d === '2000-01-01' ? '이전' : p.d; },
-          label: c => c.parsed.y.toLocaleString('ko-KR') + ' 주',
+          title: items => { const d = dates[items[0].dataIndex]; return d === '2000-01-01' ? '이전' : d; },
+          label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString('ko-KR')} 주`,
+          footer: items => '합계 ' + items.reduce((s, it) => s + (it.parsed.y || 0), 0).toLocaleString('ko-KR') + ' 주',
         } }
       },
       scales: {
-        x: { ticks: { font: { size: 9 } }, grid: { display: false } },
-        y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('ko-KR'), font: { size: 9 } }, grid: { color: '#f3f4f6' } }
+        x: { stacked: true, ticks: { font: { size: 9 } }, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, ticks: { callback: v => v.toLocaleString('ko-KR'), font: { size: 9 } }, grid: { color: '#f3f4f6' } }
       }
     }
   });
