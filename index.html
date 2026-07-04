@@ -4087,7 +4087,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.672';
+const APP_VERSION = 'MyGP v0.673';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -10887,18 +10887,18 @@ function renderEtfDistMatrix() {
   const facTxt  = net ? ' × 84.6%' : '';
   const facNote = net ? '실수령 · 배당소득세 15.4% 차감' : '세전 기준';
 
-  // 종목(code)별 선택연도 월별 주당분배금 합 + 지급기록 + 최근12개월 합(ttm) 캐시
+  // 종목(code)별 캐시: 월 집계는 지급일(pay) 기준, 금액 수량은 배당기준일(rd) 기준, ttm은 최근12개월
   const aggCache = new Map();
   const aggFor = code => {
     if (aggCache.has(code)) return aggCache.get(code);
     const recs = idx.get(code);
-    const a = { monthPs: {}, monthRecs: {}, ttm: 0, has: false };
+    const a = { monthRecs: {}, ttm: 0, has: false };
     if (recs) for (const rec of recs) {
-      if (rec.rd >= cutoff) a.ttm += rec.ps;
-      if (+rec.rd.slice(0, 4) !== year) continue;
-      const mo = +rec.rd.slice(5, 7);
-      a.monthPs[mo] = (a.monthPs[mo] || 0) + rec.ps;
-      (a.monthRecs[mo] = a.monthRecs[mo] || []).push({ rd: rec.rd, ps: rec.ps });
+      if (rec.rd >= cutoff) a.ttm += rec.ps;                 // 예상(연): 기준일 트레일링 유지
+      const bucket = /^\d{4}-\d{2}/.test(rec.pay || '') ? rec.pay : rec.rd;  // 지급일 우선, 없으면 기준일 폴백
+      if (+bucket.slice(0, 4) !== year) continue;
+      const mo = +bucket.slice(5, 7);
+      (a.monthRecs[mo] = a.monthRecs[mo] || []).push({ rd: rec.rd, ps: rec.ps, pay: rec.pay || '', bucket });
       a.has = true;
     }
     aggCache.set(code, a);
@@ -10933,7 +10933,7 @@ function renderEtfDistMatrix() {
             m[mo] = (m[mo] || 0) + amt; total += amt;
             const isEst = (accId == null) || !te || rec.rd < te.earliest;
             if (isEst) estM[mo] = true;
-            (monthParts[mo] = monthParts[mo] || []).push({ name: nm, qty, ps: rec.ps, amt, rd: rec.rd, est: isEst });
+            (monthParts[mo] = monthParts[mo] || []).push({ name: nm, qty, ps: rec.ps, amt, rd: rec.rd, pay: rec.pay, est: isEst });
           }
         }
         if (a.ttm) { const e = curQty * a.ttm * factor; est += e; estParts.push({ name: nm, qty: curQty, ttm: a.ttm, amt: e }); }
@@ -10942,7 +10942,7 @@ function renderEtfDistMatrix() {
       const tips = { name: `<b>${_etfEsc(label)}</b><br>${year} 합계 ${won(total)} · ${facNote}` };
       for (const mo of MONTHS) {
         const parts = monthParts[mo]; if (!parts) continue;
-        const lines = parts.map(p => `· ${p.rd.slice(5).replace('-', '/')} ${_etfEsc(p.name)} ${qFmt(p.qty)}주 × ${psFmt(p.ps)}원${facTxt} = ${won(p.amt)}${p.est ? ' <span style="opacity:.7">*추정</span>' : ''}`);
+        const lines = parts.map(p => `· ${(p.pay || p.rd).slice(5).replace('-', '/')} 지급 ${_etfEsc(p.name)} ${qFmt(p.qty)}주 × ${psFmt(p.ps)}원${facTxt} = ${won(p.amt)}${p.est ? ' <span style="opacity:.7">*추정</span>' : ''}`);
         tips['m' + mo] = `<b>${_etfEsc(label)} · ${mo}월</b> = ${won(m[mo])}<br>${lines.join('<br>')}${estM[mo] ? estNote : ''}`;
       }
       tips.sum = `<b>${_etfEsc(label)} · ${year} 합계</b><br>1~12월 합 = ${won(total)}<br>(${facNote})`;
@@ -10998,8 +10998,9 @@ function renderEtfDistMatrix() {
           const accTxt = accBreak.length
             ? '<br>' + accBreak.map(x => `<span style="opacity:.7">· ${_etfEsc(x.name)} ${qFmt(x.q)}주</span>`).join('<br>')
             : (info.uncl ? `<br><span style="opacity:.7">· 미분류 ${qFmt(qty)}주</span>` : '');
-          const md = rec.rd.slice(5).replace('-', '/');
-          lineArr.push(`${md} 기준: ${qFmt(qty)}주 × ${psFmt(rec.ps)}원${facTxt} = ${won(amt)}${isEst ? ' <span style="opacity:.7">*추정</span>' : ''}${accTxt}`);
+          const payMd = (rec.pay || rec.rd).slice(5).replace('-', '/');
+          const rdMd  = rec.rd.slice(5).replace('-', '/');
+          lineArr.push(`${payMd} 지급: ${qFmt(qty)}주 × ${psFmt(rec.ps)}원${facTxt} = ${won(amt)}${isEst ? ' <span style="opacity:.7">*추정</span>' : ''} <span style="opacity:.6">(기준일 ${rdMd})</span>${accTxt}`);
         }
         if (!lineArr.length) continue;
         m[mo] = amtMo; total += amtMo;
@@ -11057,7 +11058,7 @@ function renderEtfDistMatrix() {
 
   wrap.innerHTML = `<div class="div-matrix-scroll"><table class="div-matrix">${head}${body}${foot}</table></div>`;
   const anyEst = rowArr.some(r => r.estM && Object.keys(r.estM).length);
-  if (note) note.innerHTML = `단위: 원 · ${net ? '<b>실수령</b>(배당소득세 15.4% 차감)' : '<b>세전</b>'} · ${_etfDistMode === 'account' ? '계좌별' : '종목별'} · 보유수량 = <b>배당락일(기준일) 기준</b>(거래내역 역산) · 예상(연) = 현재 보유수량 × 직전 12개월 주당분배금 합${anyEst ? '<br><sup>*</sup> 거래내역 이전 구간은 현재 보유수량 기준 추정치' : ''}<br>💡 표의 숫자 칸을 탭하면 계산식이 화면 하단에 표시됩니다.`;
+  if (note) note.innerHTML = `단위: 원 · ${net ? '<b>실수령</b>(배당소득세 15.4% 차감)' : '<b>세전</b>'} · ${_etfDistMode === 'account' ? '계좌별' : '종목별'} · 월 집계 = <b>지급일 기준</b> · 수량 = 배당기준일(기준일) 보유수량(거래내역 역산) · 예상(연) = 현재 보유수량 × 직전 12개월 주당분배금 합${anyEst ? '<br><sup>*</sup> 거래내역 이전 구간은 현재 보유수량 기준 추정치' : ''}<br>💡 표의 숫자 칸을 탭하면 계산식이 화면 하단에 표시됩니다.`;
 
   // 칸 탭 → 하단 툴팁 (위임 리스너 1회 바인딩)
   if (!wrap._etfTipBound) {
