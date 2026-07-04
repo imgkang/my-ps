@@ -2870,6 +2870,11 @@ registerMobileTooltipDismiss();
       <button class="close-btn" onclick="closeAccountModal()" aria-label="닫기">×</button>
     </div>
     <div id="modalHint"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-size:13px;flex-wrap:wrap">
+      <span style="color:var(--muted);font-weight:600">적용일</span>
+      <input type="date" id="accEffDate" style="padding:6px 8px">
+      <span style="font-size:11px;color:var(--muted)">이 수량이 적용되는 날짜(배당 계산 기준). 매수·변경일로 지정하면 과거도 정정됩니다.</span>
+    </div>
     <div id="accountInputs"></div>
     <div class="modal-total">
       <span>합계</span>
@@ -4081,7 +4086,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.678';
+const APP_VERSION = 'MyGP v0.679';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -4477,7 +4482,65 @@ function loadHoldings() {
 }
 function saveHoldings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings));
+  try { snapshotHoldingsToday(); } catch (_) {}   // 보유수량 이력 자동 기록(배당 as-of용)
   scheduleBackendAutoSave();
+}
+
+// ===== 보유수량 이력 원장 (날짜별 스냅샷) — 배당 자동계산 as-of 기준 =====
+const HOLDINGS_HIST_KEY = 'pension_holdings_hist_v1';
+let holdingsHist = loadHoldingsHist();  // { code: [ {d:'YYYY-MM-DD', a:{accId:qty}} ...오름차순 ] }
+function loadHoldingsHist() {
+  try { const r = JSON.parse(localStorage.getItem(HOLDINGS_HIST_KEY)); return (r && typeof r === 'object' && !Array.isArray(r)) ? r : {}; } catch (_) { return {}; }
+}
+function saveHoldingsHist() { try { localStorage.setItem(HOLDINGS_HIST_KEY, JSON.stringify(holdingsHist)); } catch (_) {} scheduleBackendAutoSave(); }
+function _todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function _histAccsOf(h) { const a = {}; for (const [id, v] of Object.entries(h.accounts || {})) { const q = Number(v.qty) || 0; if (q > 0) a[id] = q; } return a; }
+function _eqAccs(a, b) { const ka = Object.keys(a || {}), kb = Object.keys(b || {}); if (ka.length !== kb.length) return false; return ka.every(k => (a[k]) === (b[k])); }
+function _dedupeHist(code) {
+  const arr = holdingsHist[code]; if (!arr) return;
+  for (let i = arr.length - 1; i > 0; i--) if (_eqAccs(arr[i].a, arr[i - 1].a)) arr.splice(i, 1);
+}
+function upsertHoldingSnapshot(code, date, accs) {
+  code = String(code);
+  const arr = holdingsHist[code] = holdingsHist[code] || [];
+  const i = arr.findIndex(e => e.d === date);
+  if (i >= 0) arr[i] = { d: date, a: accs };
+  else { arr.push({ d: date, a: accs }); arr.sort((x, y) => x.d < y.d ? -1 : x.d > y.d ? 1 : 0); }
+  _dedupeHist(code);
+}
+// 현재 보유 상태를 오늘 날짜로 기록(변경분만) + 매도로 사라진 종목은 0 기록
+function snapshotHoldingsToday() {
+  const today = _todayStr(); let changed = false; const held = new Set();
+  for (const h of holdings) {
+    const code = String(h.code); held.add(code); const accs = _histAccsOf(h);
+    const arr = holdingsHist[code]; const last = arr && arr.length ? arr[arr.length - 1] : null;
+    if (!last || !_eqAccs(last.a, accs)) { upsertHoldingSnapshot(code, today, accs); changed = true; }
+  }
+  for (const code of Object.keys(holdingsHist)) {
+    if (held.has(code)) continue;
+    const arr = holdingsHist[code]; const last = arr[arr.length - 1];
+    if (last && Object.keys(last.a).length) { upsertHoldingSnapshot(code, today, {}); changed = true; }
+  }
+  if (changed) saveHoldingsHist();
+}
+// 최초 1회: 기존 보유종목을 '가장 이른 근거일'로 시드(거래일 or 수동배당월, 없으면 예전부터)
+function _seedHoldingsHist() {
+  if (localStorage.getItem('pension_holdings_hist_seeded_v1')) return;
+  const eTrade = {}; for (const t of (tradeRecords || [])) { const c = String(t.code || ''), d = String(t.date || ''); if (c && d && (!eTrade[c] || d < eTrade[c])) eTrade[c] = d; }
+  const eDiv = {}; for (const r of (dividendRecords || [])) { for (const c of divRecCodes(r)) { const d = `${r.year}-${String(r.month).padStart(2, '0')}-01`; if (!eDiv[c] || d < eDiv[c]) eDiv[c] = d; } }
+  for (const h of holdings) { const code = String(h.code); if (holdingsHist[code] && holdingsHist[code].length) continue; const d = eTrade[code] || eDiv[code] || '2000-01-01'; upsertHoldingSnapshot(code, d, _histAccsOf(h)); }
+  saveHoldingsHist();
+  localStorage.setItem('pension_holdings_hist_seeded_v1', '1');
+}
+// 기준일(dateStr) 보유수량 — 원장 기준. 최초기록 이전=0, 이력없음=null(폴백)
+function qtyAsOfHist(code, accId, dateStr) {
+  const arr = holdingsHist[String(code)];
+  if (!arr || !arr.length) return null;
+  if (dateStr < arr[0].d) return 0;
+  let e = null; for (const x of arr) { if (x.d <= dateStr) e = x; else break; }
+  if (!e) return 0;
+  if (accId != null) return Number(e.a[accId]) || 0;
+  return Object.values(e.a).reduce((s, v) => s + (Number(v) || 0), 0);
 }
 
 // ===== 거래내역 (매수/매도) =====
@@ -5144,6 +5207,7 @@ function openAccountModal(code) {
 
   document.getElementById('modalTitle').textContent = h.name || code;
   document.getElementById('modalSubtitle').textContent = `${h.code} · 계좌별 주식수 · 매입단가 입력`;
+  const _eff = document.getElementById('accEffDate'); if (_eff) _eff.value = _todayStr();
 
   const accounts = h.accounts || {};
   const accountsQtySum = Object.values(accounts).reduce((s, v) => s + (Number(v.qty) || 0), 0);
@@ -5262,6 +5326,14 @@ function saveAccountQuantities() {
     h.quantity = totalQty;
   }
   saveHoldings();
+  // 적용일이 오늘이 아니면 그 날짜로 이력 소급 기록 (매수·변경일 정정)
+  const effEl = document.getElementById('accEffDate');
+  const eff = effEl && effEl.value;
+  if (eff && /^\d{4}-\d{2}-\d{2}$/.test(eff)) {
+    const h2 = holdings.find(x => x.code === modalStockCode);
+    upsertHoldingSnapshot(modalStockCode, eff, h2 ? _histAccsOf(h2) : {});
+    saveHoldingsHist();
+  }
   closeAccountModal();
   render();
 }
@@ -5927,6 +5999,7 @@ function importFromFile(event) {
       if (newWdScenarios) localStorage.setItem(WD_SCENARIO_KEY, JSON.stringify(newWdScenarios));
       if (Array.isArray(src.setupScenarios)) localStorage.setItem(SETUP_SCENARIO_KEY, JSON.stringify(src.setupScenarios));
       if (Array.isArray(src.cashAdjRecords)) { cashAdjRecords = src.cashAdjRecords; saveCashAdjRecords(); }
+      if (src.holdingsHist && typeof src.holdingsHist === 'object' && !Array.isArray(src.holdingsHist)) { holdingsHist = src.holdingsHist; saveHoldingsHist(); }
       if (Array.isArray(data.colOrder)) localStorage.setItem('mypm_col_order_v1', JSON.stringify(data.colOrder));
       render();
       renderPortfolioChart();
@@ -10951,9 +11024,18 @@ function _tipDurationMs() {
   return Math.max(1, Number(appSettings?.cellInfoDuration) || 5) * 1000;
 }
 
+// 기준일 보유수량 — 원장(이력) 우선 → 거래역산 → 현재수량(추정). {qty, est} 반환.
+function _divQtyAsOf(code, accId, rd, curQty, te, canRecon, activeIds) {
+  const qh = qtyAsOfHist(code, accId, rd);
+  if (qh !== null) return { qty: qh, est: false };            // 원장 = 정확
+  if (canRecon) return { qty: _qtyAsOf(curQty, te, rd, accId, activeIds), est: rd < te.earliest };
+  return { qty: curQty, est: true };                          // 근거 없음 → 현재수량 추정
+}
+
 // 자동수집 분배금(연금·과세 미적용)을 code×지급월로 집계 — 통합 리스트/요약/차트의 '자동' 소스
 // → Map(code -> { name, cls, qty, byAcc, uncl, byMo: {mo: {amt, est, day, perAcc:{accId:amt}}} })
 function _autoDivMonthly(year) {
+  try { _seedHoldingsHist(); } catch (_) {}
   const idx = _etfDistIndex || new Map();
   const held = _heldQtyByCode();
   const tradeIdx = _tradeSignedByCode();
@@ -10968,15 +11050,16 @@ function _autoDivMonthly(year) {
       const bucket = /^\d{4}-\d{2}/.test(rec.pay || '') ? rec.pay : rec.rd;
       if (+bucket.slice(0, 4) !== year) continue;
       const mo = +bucket.slice(5, 7);
-      const qty = canRecon ? _qtyAsOf(info.qty, te, rec.rd, null, activeIds) : info.qty;
-      if (!qty) continue;
-      const est = !canRecon || rec.rd < te.earliest;
+      const tot = _divQtyAsOf(code, null, rec.rd, info.qty, te, canRecon, activeIds);
+      const qty = tot.qty;
+      if (!qty) continue;   // 기준일 미보유 → 배당 없음
+      const est = tot.est;
       const amt = qty * rec.ps;   // 연금 과세이연/비과세재원 → 전액
       const e = (byMo[mo] = byMo[mo] || { amt: 0, est: false, day: +bucket.slice(8, 10) || 1, perAcc: {}, qtyTot: 0, qtyByAcc: {} });
       e.amt += amt; if (est) e.est = true;
       e.day = +bucket.slice(8, 10) || e.day;   // 최신(마지막) 지급일
       e.qtyTot = qty; e.qtyByAcc = {};          // 최신 rec 기준 보유수량 스냅샷(프리필용)
-      if (info.byAcc.length) { for (const b of info.byAcc) { const q = canRecon ? _qtyAsOf(b.qty, te, rec.rd, b.id, null) : b.qty; if (q > 0) { e.perAcc[b.id] = (e.perAcc[b.id] || 0) + q * rec.ps; e.qtyByAcc[b.id] = q; } } }
+      if (info.byAcc.length) { for (const b of info.byAcc) { const q = _divQtyAsOf(code, b.id, rec.rd, b.qty, te, canRecon, activeIds).qty; if (q > 0) { e.perAcc[b.id] = (e.perAcc[b.id] || 0) + q * rec.ps; e.qtyByAcc[b.id] = q; } } }
       else if (info.uncl) { e.perAcc.__unc__ = (e.perAcc.__unc__ || 0) + amt; e.qtyByAcc.__unc__ = qty; }
     }
     if (Object.keys(byMo).length) out.set(code, { name: info.name, cls: _divClassOf(code, info.name), qty: info.qty, byAcc: info.byAcc, uncl: info.uncl, byMo });
@@ -11103,15 +11186,15 @@ function renderEtfDistMatrix() {
       let autoAmt = 0; const autoAcc = {}; const aLines = []; let moEst = false;
       const recs = a.monthRecs[mo];
       if (recs && info) for (const rec of recs) {
-        const qty = canRecon ? _qtyAsOf(info.qty, te, rec.rd, null, activeIds) : info.qty;
-        const isEst = !canRecon || rec.rd < te.earliest;
+        const tot = _divQtyAsOf(code, null, rec.rd, info.qty, te, canRecon, activeIds);
+        const qty = tot.qty; const isEst = tot.est;
         if (isEst) moEst = true;
         if (!qty) continue;
         const amt = qty * rec.ps * factor; autoAmt += amt;
-        if (info.byAcc.length) { for (const b of info.byAcc) { const q = canRecon ? _qtyAsOf(b.qty, te, rec.rd, b.id, null) : b.qty; if (q > 0) autoAcc[b.id] = (autoAcc[b.id] || 0) + q * rec.ps * factor; } }
+        if (info.byAcc.length) { for (const b of info.byAcc) { const q = _divQtyAsOf(code, b.id, rec.rd, b.qty, te, canRecon, activeIds).qty; if (q > 0) autoAcc[b.id] = (autoAcc[b.id] || 0) + q * rec.ps * factor; } }
         else if (info.uncl) autoAcc.__unc__ = (autoAcc.__unc__ || 0) + amt;
         const payMd = (rec.pay || rec.rd).slice(5).replace('-', '/'), rdMd = rec.rd.slice(5).replace('-', '/');
-        const accQ = info.byAcc.length ? info.byAcc.map(b => ({ name: b.name, q: canRecon ? _qtyAsOf(b.qty, te, rec.rd, b.id, null) : b.qty })).filter(x => x.q > 0) : (info.uncl ? [{ name: '미분류', q: qty }] : []);
+        const accQ = info.byAcc.length ? info.byAcc.map(b => ({ name: b.name, q: _divQtyAsOf(code, b.id, rec.rd, b.qty, te, canRecon, activeIds).qty })).filter(x => x.q > 0) : (info.uncl ? [{ name: '미분류', q: qty }] : []);
         const accTxt = accQ.length ? '<br>' + accQ.map(x => `<span style="opacity:.7">· ${_etfEsc(x.name)} ${qFmt(x.q)}주</span>`).join('<br>') : '';
         aLines.push(`${payMd} 지급: ${qFmt(qty)}주 × ${psFmt(rec.ps)}원 = ${won(amt)}${isEst ? ' <span style="opacity:.7">*추정</span>' : ''} <span style="opacity:.6">(기준일 ${rdMd})</span>${accTxt}`);
       }
@@ -19055,6 +19138,7 @@ function buildDriveBundle() {
       setupScenarios: loadSetupScenarios(),
       trades: tradeRecords,
       cashAdjRecords: cashAdjRecords,
+      holdingsHist: holdingsHist,
     },
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
@@ -19190,6 +19274,8 @@ function _applyImportData(data) {
                           localStorage.setItem(TRADES_KEY,         JSON.stringify(src.trades));
   if (src.cashAdjRecords && Array.isArray(src.cashAdjRecords))
                           localStorage.setItem(CASH_ADJ_KEY,       JSON.stringify(src.cashAdjRecords));
+  if (src.holdingsHist && typeof src.holdingsHist === 'object' && !Array.isArray(src.holdingsHist))
+                          localStorage.setItem(HOLDINGS_HIST_KEY,  JSON.stringify(src.holdingsHist));
   if (data.nonk && data.version !== 9) {
     if (data.nonk.holdings)  localStorage.setItem('nonk_holdings_v1',  JSON.stringify(data.nonk.holdings));
     if (data.nonk.cash)      localStorage.setItem('nonk_cash_v1',      JSON.stringify(data.nonk.cash));
