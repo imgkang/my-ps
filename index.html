@@ -1017,6 +1017,8 @@ registerMobileTooltipDismiss();
   .div-matrix th.div-mx-name { z-index: 1; }
   .div-matrix .div-mx-sum { font-weight: 700; }
   .div-matrix .div-mx-foot td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 700; }
+  .div-matrix .div-mx-sub td { border-top: 1px dashed var(--border); background: var(--card-bg,#fff); font-weight: 600; color: var(--muted); }
+  .div-matrix .div-mx-sub .div-mx-name { color: var(--text); }
 
   /* 연간 계획 모달 */
   .annual-plan-wrap { }
@@ -1608,6 +1610,9 @@ registerMobileTooltipDismiss();
   #etfCellTip { position:fixed; bottom:16px; left:16px; right:16px; max-width:560px; margin:0 auto; background:#1e293b; color:#f1f5f9; padding:12px 14px; border-radius:10px; font-size:12.5px; line-height:1.65; border-left:3px solid #10b981; z-index:1350; display:none; box-shadow:0 -4px 16px rgba(0,0,0,0.35); max-height:45vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   #etfCellTip.visible { display:block; }
   #etfCellTip b { color:#fff; }
+  /* 재원 분류 세그먼트 버튼 */
+  .edc-btn { padding:4px 9px; font-size:12px; border:1px solid var(--border); background:var(--card-bg,#fff); color:var(--muted); border-radius:6px; cursor:pointer; }
+  .edc-btn.on { background:var(--primary); border-color:var(--primary); color:#fff; font-weight:700; }
   /* 시작하기 마법사 - 전체화면 (카카오 설정 스타일) */
   .ob-fs { position:fixed; inset:0; background:#fff; z-index:1100; display:none; flex-direction:column; }
   .ob-fs.open { display:flex; }
@@ -3905,10 +3910,7 @@ registerMobileTooltipDismiss();
           <div style="font-weight:700;font-size:14px">🤖 자동수집 ETF 분배금
             <small style="color:var(--muted);font-weight:400">보유수량 × 주당분배금 (SEIBRO)</small>
           </div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted)">
-            <input type="checkbox" id="etfDistNet" checked onchange="renderEtfDistMatrix()">
-            <span>실수령 (배당세 15.4% 차감)</span>
-          </label>
+          <button type="button" class="btn-secondary" style="padding:4px 10px;font-size:12px" onclick="openEtfDivClassModal()">🏷 재원 분류</button>
         </div>
         <div class="div-breakdown-toggle" style="margin-bottom:8px">
           <button id="etfDistModeStock" class="div-toggle-btn active" onclick="setEtfDistMode('stock')">종목별</button>
@@ -4087,7 +4089,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.673';
+const APP_VERSION = 'MyGP v0.674';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -10754,6 +10756,75 @@ let _etfDistMode = 'stock'; // 'stock' | 'account' — 종목별 / 계좌별
 let _etfTipData = {};       // 칸별 계산식 설명 (key -> HTML 문자열)
 let _divTipData = {};       // 수동 배당 표 칸별 설명 (key -> HTML 문자열)
 
+// ===== 분배금 재원 구분 (연금: 국내형=과세이연 / 국내상장 해외형=이미 과세된 비과세재원) =====
+const DIV_FOREIGN_KW = ['미국','나스닥','S&P','SP500','다우','글로벌','해외','선진국','신흥국','차이나','중국','인도','베트남','일본','유럽','닛케이','항셍','필라델피아','토탈월드','월드','FTSE','미국채','반도체','빅테크','테슬라','엔비디아','애플','팔란티어','BYD','대만','브라질','멕시코','인도네시아'];
+function _guessDivClass(name) {
+  const n = String(name || '');
+  return DIV_FOREIGN_KW.some(k => n.includes(k)) ? 'nontax' : 'defer';
+}
+function _divClassOf(code, name) {
+  const m = appSettings.etfDivClass || {};
+  return m[String(code)] || _guessDivClass(name);
+}
+function _divClassBadge(c) {
+  return c === 'nontax'
+    ? '<span style="font-size:10px;font-weight:700;color:#2563eb;background:#eff6ff;border-radius:4px;padding:1px 4px;margin-left:4px">비과세</span>'
+    : '<span style="font-size:10px;font-weight:700;color:#b45309;background:#fffbeb;border-radius:4px;padding:1px 4px;margin-left:4px">이연</span>';
+}
+function _divClassDesc(c) {
+  return c === 'nontax'
+    ? '비과세재원(국내상장 해외형) · 이미 ~15% 반영된 세후 재원, 인출 시 추가 과세 없음'
+    : '과세이연(국내형) · 지금 세금 없이 전액 수령, 인출 시 연금소득세';
+}
+
+// 재원 분류 편집 모달
+function openEtfDivClassModal() {
+  if (!_etfDistLoaded) { loadEtfDist().then(openEtfDivClassModal); return; }
+  const idx = _etfDistIndex || new Map();
+  const held = _heldQtyByCode();
+  const rows = [];
+  for (const [code, info] of held) if (idx.has(code)) rows.push({ code, name: info.name });
+  rows.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const cur = appSettings.etfDivClass || {};
+  const body = rows.length ? rows.map(r => {
+    const c = cur[r.code] || _guessDivClass(r.name);
+    const auto = !cur[r.code];
+    return `<div class="edc-row" data-code="${r.code}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:13px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_etfEsc(r.name)}${auto ? ' <span style="color:var(--muted);font-size:11px">(자동)</span>' : ''}</div>
+      <div class="edc-seg" style="display:flex;gap:4px;flex-shrink:0">
+        <button type="button" class="edc-btn${c === 'defer' ? ' on' : ''}" data-v="defer" onclick="_edcPick(this)">과세이연</button>
+        <button type="button" class="edc-btn${c === 'nontax' ? ' on' : ''}" data-v="nontax" onclick="_edcPick(this)">비과세재원</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="div-empty">보유 중인 분배금 지급 ETF가 없습니다.</div>';
+  let modal = document.getElementById('etfDivClassModal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'etfDivClassModal'; modal.className = 'modal-backdrop'; modal.setAttribute('onclick', 'if(event.target===this)closeEtfDivClassModal()'); document.body.appendChild(modal); }
+  modal.innerHTML = `<div class="modal" style="max-width:520px">
+    <div class="modal-header"><div><h2>🏷 분배금 재원 분류</h2></div><button class="close-btn" onclick="closeEtfDivClassModal()" aria-label="닫기">×</button></div>
+    <div style="font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.55">연금계좌 기준 · <b>과세이연(국내형)</b>: 지금 세금 없이 전액 수령, 인출 시 과세 · <b>비과세재원(해외형)</b>: 이미 ~15% 반영된 세후 재원. 자동 추정값을 종목별로 확인·수정하세요.</div>
+    <div style="max-height:50vh;overflow-y:auto">${body}</div>
+    <div class="records-input-actions" style="margin-top:12px"><button class="btn-secondary" onclick="closeEtfDivClassModal()">취소</button><button class="btn-primary" onclick="saveEtfDivClass()">저장</button></div>
+  </div>`;
+  modal.classList.add('open');
+}
+function _edcPick(btn) {
+  btn.closest('.edc-seg').querySelectorAll('.edc-btn').forEach(b => b.classList.toggle('on', b === btn));
+}
+function closeEtfDivClassModal() { document.getElementById('etfDivClassModal')?.classList.remove('open'); }
+function saveEtfDivClass() {
+  const modal = document.getElementById('etfDivClassModal'); if (!modal) return;
+  const map = Object.assign({}, appSettings.etfDivClass || {});
+  modal.querySelectorAll('.edc-row').forEach(row => {
+    const code = row.getAttribute('data-code');
+    const on = row.querySelector('.edc-btn.on');
+    if (code && on) map[code] = on.getAttribute('data-v');
+  });
+  appSettings.etfDivClass = map;
+  saveAppSettings();
+  closeEtfDivClassModal();
+  renderEtfDistMatrix();
+}
+
 // 종목별 ↔ 계좌별 토글
 function setEtfDistMode(mode) {
   _etfDistMode = (mode === 'account') ? 'account' : 'stock';
@@ -10872,8 +10943,8 @@ function renderEtfDistMatrix() {
     return;
   }
 
-  const net = document.getElementById('etfDistNet')?.checked !== false;
-  const factor = net ? (1 - ETF_DIV_TAX) : 1;
+  // 연금계좌: 수령 시 배당소득세 미과세(과세이연/비과세재원) → 분배금 전액 = 수령액 (15.4% 미적용)
+  const factor = 1;
   const year = _divSelectedYear;
   const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
   // 예상(연): 최근 365일 실적 기준
@@ -10884,8 +10955,13 @@ function renderEtfDistMatrix() {
   const won   = v => Math.round(v).toLocaleString('ko-KR') + '원';
   const qFmt  = q => Number(q).toLocaleString('ko-KR');
   const psFmt = p => Number(p).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
-  const facTxt  = net ? ' × 84.6%' : '';
-  const facNote = net ? '실수령 · 배당소득세 15.4% 차감' : '세전 기준';
+  const facTxt  = '';
+  const facNote = '연금 과세이연/비과세재원 · 분배금 전액 수령';
+  // 재원별 집계 (defer=과세이연/국내형, nontax=비과세재원/해외형)
+  const classM = { defer: {}, nontax: {} };
+  const classTotal = { defer: 0, nontax: 0 };
+  const classEst = { defer: 0, nontax: 0 };
+  const addClass = (cls, mo, amt) => { classM[cls][mo] = (classM[cls][mo] || 0) + amt; classTotal[cls] += amt; };
 
   // 종목(code)별 캐시: 월 집계는 지급일(pay) 기준, 금액 수량은 배당기준일(rd) 기준, ttm은 최근12개월
   const aggCache = new Map();
@@ -10981,7 +11057,8 @@ function renderEtfDistMatrix() {
       const acctLineNow = info.byAcc.length
         ? '<br>' + info.byAcc.map(b => `· ${_etfEsc(b.name)} ${qFmt(b.qty)}주`).join('<br>')
         : (info.uncl ? `<br>· 미분류 ${qFmt(info.uncl)}주` : '');
-      const tips = { name: `<b>${_etfEsc(info.name)}</b><br>현재 보유 ${qFmt(info.qty)}주 · ${facNote}${acctLineNow}` };
+      const cls = _divClassOf(code, info.name);
+      const tips = { name: `<b>${_etfEsc(info.name)}</b> ${_divClassBadge(cls)}<br>${_divClassDesc(cls)}<br>현재 보유 ${qFmt(info.qty)}주${acctLineNow}` };
       for (const mo of MONTHS) {
         const recs = a.monthRecs[mo]; if (!recs) continue;
         let amtMo = 0; const lineArr = [];
@@ -11013,7 +11090,7 @@ function renderEtfDistMatrix() {
       if (total === 0 && est === 0) continue;
       tips.sum = `<b>${_etfEsc(info.name)} · ${year} 합계</b><br>1~12월 분배금 합 = ${won(total)}<br>(${facNote})`;
       tips.est = `<b>${_etfEsc(info.name)} · 예상(연)</b><br>현재 ${qFmt(info.qty)}주 × 최근 12개월 주당분배금 합 ${psFmt(a.ttm)}원${facTxt} = ${won(est)}<br>(직전 365일 실적 기준)`;
-      rowArr.push({ label: info.name, m, total, est, tips, estM });
+      rowArr.push({ label: info.name, m, total, est, tips, estM, cls });
     }
     if (!rowArr.length) {
       wrap.innerHTML = '<div class="div-empty">보유 중인 종목 가운데 분배금 지급 ETF가 없습니다.</div>';
@@ -11030,6 +11107,27 @@ function renderEtfDistMatrix() {
     grandEst += r.est;
   }
 
+  // 재원별 소계 (뷰 모드 무관 — 종목(code) 기준 as-of 계산, 합계와 항상 일치)
+  {
+    const heldC = _heldQtyByCode();
+    const activeIdsC = new Set(getActiveAccounts().map(a => a.id));
+    for (const [code, info] of heldC) {
+      const a = aggFor(code); if (!a.has && !a.ttm) continue;
+      const te = tradeIdx.get(code);
+      const canRecon = te && info.byAcc.length;
+      const cls = _divClassOf(code, info.name);
+      for (const mo of MONTHS) {
+        const recs = a.monthRecs[mo]; if (!recs) continue;
+        for (const rec of recs) {
+          const qty = canRecon ? _qtyAsOf(info.qty, te, rec.rd, null, activeIdsC) : info.qty;
+          if (!qty) continue;
+          addClass(cls, mo, qty * rec.ps * factor);
+        }
+      }
+      classEst[cls] += info.qty * a.ttm * factor;
+    }
+  }
+
   // 칸별 설명 문자열 등록
   _etfTipData = {};
   const nameHdr = _etfDistMode === 'account' ? '계좌' : '종목';
@@ -11039,7 +11137,7 @@ function renderEtfDistMatrix() {
     _etfTipData[rk + ':name'] = r.tips.name || '';
     _etfTipData[rk + ':sum']  = r.tips.sum || '';
     _etfTipData[rk + ':est']  = r.tips.est || '';
-    const nameCell = `<td class="div-mx-name" data-tip="${rk}:name" style="cursor:pointer">${_etfEsc(r.label)}</td>`;
+    const nameCell = `<td class="div-mx-name" data-tip="${rk}:name" style="cursor:pointer">${_etfEsc(r.label)}${r.cls ? _divClassBadge(r.cls) : ''}</td>`;
     const monthCells = MONTHS.map(mo => {
       const v = r.m[mo] || 0;
       const mark = (r.estM && r.estM[mo] && v) ? '<sup style="color:var(--muted)">*</sup>' : '';
@@ -11051,14 +11149,27 @@ function renderEtfDistMatrix() {
     return `<tr>${nameCell}${monthCells}${sumCell}${estCell}</tr>`;
   }).join('');
   const rowKind = _etfDistMode === 'account' ? '계좌' : '종목';
-  for (const mo of MONTHS) _etfTipData['foot:m' + mo] = `<b>${mo}월 전체 합계</b> = ${won(monthTotals[mo] || 0)}<br>(모든 ${rowKind} 합 · ${facNote})`;
-  _etfTipData['foot:sum'] = `<b>${year} 전체 합계</b> = ${won(grand)}<br>(모든 ${rowKind}·1~12월 합)`;
+  // 재원별 소계 2줄 (과세이연 / 비과세재원)
+  const clsRow = (cls, label, note2) => {
+    const mt = classM[cls] || {};
+    _etfTipData[cls + ':name'] = `<b>${label}</b><br>${note2}`;
+    _etfTipData[cls + ':sum']  = `<b>${label} · ${year} 합계</b> = ${won(classTotal[cls] || 0)}`;
+    _etfTipData[cls + ':est']  = `<b>${label} · 예상(연)</b> = ${won(classEst[cls] || 0)}`;
+    for (const mo of MONTHS) _etfTipData[cls + ':m' + mo] = `<b>${label} · ${mo}월</b> = ${won(mt[mo] || 0)}<br>${note2}`;
+    const monthCells = MONTHS.map(mo => `<td data-tip="${cls}:m${mo}" style="cursor:pointer">${fmt(mt[mo] || 0)}</td>`).join('');
+    return `<tr class="div-mx-sub"><td class="div-mx-name" data-tip="${cls}:name" style="cursor:pointer">${label}${_divClassBadge(cls)}</td>${monthCells}<td class="div-mx-sum" data-tip="${cls}:sum" style="cursor:pointer">${fmt(classTotal[cls] || 0)}</td><td class="div-mx-sum" data-tip="${cls}:est" style="cursor:pointer;color:var(--muted)">${fmt(classEst[cls] || 0)}</td></tr>`;
+  };
+  const subRows = clsRow('defer', '과세이연(국내형) 소계', '연금 수령 시 세금 없이 전액 · 인출 시 연금소득세')
+                + clsRow('nontax', '비과세재원(해외형) 소계', '이미 ~15% 반영된 세후 재원 · 인출 시 추가 과세 없음');
+
+  for (const mo of MONTHS) _etfTipData['foot:m' + mo] = `<b>${mo}월 전체 합계</b> = ${won(monthTotals[mo] || 0)}<br>(모든 ${rowKind} 합)`;
+  _etfTipData['foot:sum'] = `<b>${year} 전체 합계</b> = ${won(grand)}<br>과세이연 ${won(classTotal.defer || 0)} + 비과세재원 ${won(classTotal.nontax || 0)}`;
   _etfTipData['foot:est'] = `<b>예상(연) 전체 합계</b> = ${won(grandEst)}<br>(모든 ${rowKind} 예상 합)`;
   const foot = `<tr class="div-mx-foot"><td class="div-mx-name">합계</td>${MONTHS.map(mo => `<td data-tip="foot:m${mo}" style="cursor:pointer">${fmt(monthTotals[mo] || 0)}</td>`).join('')}<td class="div-mx-sum" data-tip="foot:sum" style="cursor:pointer">${fmt(grand)}</td><td class="div-mx-sum" data-tip="foot:est" style="cursor:pointer">${fmt(grandEst)}</td></tr>`;
 
-  wrap.innerHTML = `<div class="div-matrix-scroll"><table class="div-matrix">${head}${body}${foot}</table></div>`;
+  wrap.innerHTML = `<div class="div-matrix-scroll"><table class="div-matrix">${head}${body}${subRows}${foot}</table></div>`;
   const anyEst = rowArr.some(r => r.estM && Object.keys(r.estM).length);
-  if (note) note.innerHTML = `단위: 원 · ${net ? '<b>실수령</b>(배당소득세 15.4% 차감)' : '<b>세전</b>'} · ${_etfDistMode === 'account' ? '계좌별' : '종목별'} · 월 집계 = <b>지급일 기준</b> · 수량 = 배당기준일(기준일) 보유수량(거래내역 역산) · 예상(연) = 현재 보유수량 × 직전 12개월 주당분배금 합${anyEst ? '<br><sup>*</sup> 거래내역 이전 구간은 현재 보유수량 기준 추정치' : ''}<br>💡 표의 숫자 칸을 탭하면 계산식이 화면 하단에 표시됩니다.`;
+  if (note) note.innerHTML = `단위: 원 · <b>연금 과세이연/비과세재원</b>(수령 시 15.4% 미과세) · ${_etfDistMode === 'account' ? '계좌별' : '종목별'} · 월 집계 = <b>지급일 기준</b> · 수량 = 배당기준일 보유수량(거래내역 역산) · 예상(연) = 현재 보유수량 × 직전 12개월 주당분배금 합${anyEst ? '<br><sup>*</sup> 거래내역 이전 구간은 현재 보유수량 기준 추정치' : ''}<br>🏷 재원 분류는 자동 추정 기본값 — 우측 상단 ‘재원 분류’에서 종목별로 수정(연금저축·IRP·DC 기준) · 💡 칸을 탭하면 계산식 표시`;
 
   // 칸 탭 → 하단 툴팁 (위임 리스너 1회 바인딩)
   if (!wrap._etfTipBound) {
