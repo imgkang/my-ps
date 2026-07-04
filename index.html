@@ -1345,19 +1345,25 @@ registerMobileTooltipDismiss();
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfg-row-chev { color: #c4c7cc; font-size: 19px; line-height: 1; flex-shrink: 0; }
   .cfg-row-edit { display: none; }
-  /* 계좌별 수량 입력 모달 — 컴팩트 2줄(좌: 계좌명 / 우: 주수·단가 입력) */
-  .acc-row2 { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; margin-bottom: 8px; background: #fff; }
-  .acc-row2-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text);
+  /* 계좌별 수량 입력 모달 — 좌: 계좌명 / 우: (주식수·단가 한 줄) + 매입가 아랫줄 */
+  .acc-row3 { display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; margin-bottom: 8px; background: #fff; }
+  .acc-row3-name { width: 82px; flex-shrink: 0; font-size: 14px; font-weight: 600; color: var(--text);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .acc-row2-vals { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .acc-row2-line { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
-  .acc-row2-line input { width: 100px; text-align: right; padding: 4px 7px; font-size: 15px; font-weight: 600;
-    color: var(--text); background: #f6f8fa; border: 1px solid transparent; border-radius: 6px; box-sizing: border-box; }
-  .acc-row2-line input:focus { outline: none; border-color: var(--primary); background: #fff; }
-  .acc-row2-sub input { font-size: 13px; font-weight: 500; color: var(--muted); }
-  .acc-row2-pre { font-size: 11px; color: var(--muted); }
-  .acc-row2-unit { font-size: 12px; color: var(--muted); width: 12px; text-align: left; }
+  .acc-row3-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .acc-row3-top { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .acc-chip { display: inline-flex; align-items: center; gap: 3px; padding: 5px 8px;
+    background: #f6f8fa; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+  .acc-chip:active { background: #eef1f4; }
+  .acc-chip-lbl { font-size: 11px; color: var(--muted); }
+  .acc-chip-val { font-size: 14px; font-weight: 700; color: var(--text); }
+  .acc-chip-val.zero { color: #c4c7cc; }
+  .acc-chip-unit { font-size: 11px; color: var(--muted); }
+  .acc-chip-chev { font-size: 15px; line-height: 1; color: #c4c7cc; margin-left: 1px; }
+  .acc-row3-bottom { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .acc-row3-buylbl { color: var(--muted); }
+  .acc-row3-buy { font-weight: 600; color: var(--primary); }
+  .acc-row3-buy.zero { color: #9ca3af; }
   /* 종목 리스트 열 순서 편집 모달 */
   .col-edit-hint { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
   .col-edit-row { display: flex; justify-content: space-between; align-items: center;
@@ -2908,6 +2914,26 @@ registerMobileTooltipDismiss();
   </div>
 </div>
 
+<!-- 계좌 필드(주식수/단가) 편집 팝업 — 숫자 키보드 동반 -->
+<div class="modal-backdrop" id="accFieldEditModal" style="z-index:1100" onclick="if(event.target.id==='accFieldEditModal')closeAccFieldEdit(false)">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-header">
+      <h2 id="accFieldTitle">편집</h2>
+      <button class="close-btn" onclick="closeAccFieldEdit(false)" aria-label="닫기">×</button>
+    </div>
+    <div class="cfg-edit-inline">
+      <input type="text" inputmode="numeric" id="accFieldInput" style="flex:1;text-align:right;font-size:18px"
+        placeholder="0" oninput="liveKRWInput(this)"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();closeAccFieldEdit(true);}">
+      <span id="accFieldUnit">주</span>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-secondary" onclick="closeAccFieldEdit(false)">취소</button>
+      <button class="btn-primary" onclick="closeAccFieldEdit(true)">완료</button>
+    </div>
+  </div>
+</div>
+
 <!-- 계좌 입출금 패널 -->
 <div id="panel-deposit" class="tab-panel">
   <div class="modal-header">
@@ -4103,7 +4129,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.683';
+const APP_VERSION = 'MyGP v0.684';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5242,24 +5268,34 @@ function openAccountModal(code) {
     const val = accounts[acc.id] || { qty: 0, avgPrice: 0 };
     const qty = val.qty || 0;
     const avg = val.avgPrice || 0;
+    const qtyTxt = qty ? (+qty).toLocaleString('ko-KR') : '0';
+    const avgTxt = avg ? Math.round(+avg).toLocaleString('ko-KR') : '0';
+    const rowTotal = qty && avg ? Math.round(qty * avg).toLocaleString('ko-KR') + ' 원' : '0 원';
     html += `
-      <div class="acc-row2">
-        <span class="acc-row2-name">${escapeHtml(acc.name)}</span>
-        <div class="acc-row2-vals">
-          <label class="acc-row2-line">
-            <input type="text" inputmode="numeric" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty"
-              value="${qty ? (+qty).toLocaleString('ko-KR') : ''}" placeholder="0"
-              oninput="liveKRWInput(this); updateModalTotal()">
-            <span class="acc-row2-unit">주</span>
-          </label>
-          <label class="acc-row2-line acc-row2-sub">
-            <span class="acc-row2-pre">단가</span>
-            <input type="text" inputmode="numeric" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg"
-              value="${avg ? Math.round(+avg).toLocaleString('ko-KR') : ''}" placeholder="0"
-              oninput="liveKRWInput(this); updateModalTotal()">
-            <span class="acc-row2-unit">원</span>
-          </label>
+      <div class="acc-row3">
+        <span class="acc-row3-name">${escapeHtml(acc.name)}</span>
+        <div class="acc-row3-body">
+          <div class="acc-row3-top">
+            <button type="button" class="acc-chip" onclick="openAccFieldEdit('${acc.id}','qty')">
+              <span class="acc-chip-lbl">주식수</span>
+              <span class="acc-chip-val${qty ? '' : ' zero'}" id="qtyVal_${acc.id}">${qtyTxt}</span>
+              <span class="acc-chip-unit">주</span>
+              <span class="acc-chip-chev">›</span>
+            </button>
+            <button type="button" class="acc-chip" onclick="openAccFieldEdit('${acc.id}','avg')">
+              <span class="acc-chip-lbl">단가</span>
+              <span class="acc-chip-val${avg ? '' : ' zero'}" id="avgVal_${acc.id}">${avgTxt}</span>
+              <span class="acc-chip-unit">원</span>
+              <span class="acc-chip-chev">›</span>
+            </button>
+          </div>
+          <div class="acc-row3-bottom">
+            <span class="acc-row3-buylbl">매입가</span>
+            <span class="acc-row3-buy${qty && avg ? '' : ' zero'}" id="total_${acc.id}">${rowTotal}</span>
+          </div>
         </div>
+        <input type="hidden" id="qty_${acc.id}" data-acc="${acc.id}" data-field="qty" value="${qty || ''}">
+        <input type="hidden" id="avg_${acc.id}" data-acc="${acc.id}" data-field="avg" value="${avg || ''}">
       </div>
     `;
   }
@@ -5270,6 +5306,35 @@ function openAccountModal(code) {
   backdrop.classList.add('open');
   // 보유수량 추이 차트
   try { (window.ensureChartJs ? ensureChartJs() : Promise.resolve()).then(() => renderQtyHistChart(code)).catch(() => {}); } catch (_) {}
+}
+
+// 주식수/단가 편집 팝업 — 탭(사용자 제스처) 내에서 동기 focus → 숫자 키보드 동반
+let _accEditCtx = null;
+function openAccFieldEdit(id, field) {
+  _accEditCtx = { id, field };
+  const src = document.getElementById((field === 'qty' ? 'qty_' : 'avg_') + id);
+  const raw = src ? (Number(String(src.value).replace(/,/g, '')) || 0) : 0;
+  const input = document.getElementById('accFieldInput');
+  document.getElementById('accFieldTitle').textContent = (field === 'qty' ? '주식수' : '단가') + ' · ' + getAccName(id);
+  document.getElementById('accFieldUnit').textContent = field === 'qty' ? '주' : '원';
+  input.value = raw ? raw.toLocaleString('ko-KR') : '';
+  document.getElementById('accFieldEditModal').classList.add('open');
+  // 동기 focus (setTimeout 금지) — iOS에서 숫자 키보드가 팝업과 함께 뜨게
+  input.focus();
+  try { input.select(); } catch (_) {}
+}
+function closeAccFieldEdit(apply) {
+  if (apply && _accEditCtx) {
+    const { id, field } = _accEditCtx;
+    const raw = Number(String(document.getElementById('accFieldInput').value).replace(/,/g, '')) || 0;
+    const hid = document.getElementById((field === 'qty' ? 'qty_' : 'avg_') + id);
+    if (hid) hid.value = raw ? String(raw) : '';
+    const valSpan = document.getElementById((field === 'qty' ? 'qtyVal_' : 'avgVal_') + id);
+    if (valSpan) { valSpan.textContent = raw ? raw.toLocaleString('ko-KR') : '0'; valSpan.classList.toggle('zero', raw === 0); }
+    updateModalTotal();
+  }
+  document.getElementById('accFieldEditModal').classList.remove('open');
+  _accEditCtx = null;
 }
 
 // 계좌별 수량 입력 모달 안의 '계좌별 누적' 계단 영역 차트 (holdingsHist 원장 기준)
