@@ -994,6 +994,8 @@ registerMobileTooltipDismiss();
   .div-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .div-item-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
   .div-item-amount { font-size: 13px; font-weight: 700; color: #1e40af; white-space: nowrap; flex-shrink: 0; }
+  /* 자동수집 행: 잘 동작하므로 굵게 강조 */
+  .div-auto-row .div-item-name, .div-auto-row .div-item-amount { font-weight: 800; }
   .div-breakdown-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
   .div-toggle-btn {
     padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
@@ -4129,7 +4131,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.684';
+const APP_VERSION = 'MyGP v0.685';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -11854,15 +11856,22 @@ function renderDivMonthlyBreakdown() {
       const color = _DIV_COLORS[ci >= 0 ? ci % _DIV_COLORS.length : 0];
       const initial = (d.name || code).slice(0, 1).toUpperCase();
       const dayStr = e.day ? String(e.day).padStart(2, '0') + '일' : '-';
-      autoRows += `<div class="div-month-item" style="opacity:.6">
+      const aps = e.qtyTot ? Math.round(e.amt / e.qtyTot) : 0;
+      const autoSub = e.qtyTot
+        ? `${e.qtyTot.toLocaleString('ko-KR')}주 · 주당 ${aps.toLocaleString('ko-KR')}원${e.est ? ' · 추정' : ''}`
+        : '자동 추정';
+      autoRows += `<div class="div-month-item div-auto-row">
         <span style="font-size:12px;min-width:28px;text-align:center;color:var(--muted)">${dayStr}</span>
         <div class="div-stock-badge" style="background:${color}">${initial}</div>
         <div class="div-item-info">
           <div class="div-item-name">${_etfEsc(d.name)} ${_divClassBadge(d.cls)}<span style="font-size:10px;color:var(--muted);margin-left:4px">자동</span></div>
-          <div class="div-item-sub">자동 추정${e.est ? ' · 거래내역 이전' : ''} · 지급일 기준</div>
+          <div class="div-item-sub">${autoSub}</div>
         </div>
         <div class="div-item-amount">${Math.round(e.amt).toLocaleString('ko-KR')} 원</div>
-        <div style="display:flex;gap:4px;flex-shrink:0"><button class="tbl-icon-btn" onclick="recordAutoDividend('${code}',${m})" title="실제로 기록">✏️</button></div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="tbl-icon-btn" onclick="confirmAutoDividend('${code}',${m})" title="이 추정을 실제로 확정">✓</button>
+          <button class="tbl-icon-btn" onclick="recordAutoDividend('${code}',${m})" title="수정해서 실제로 기록">✏️</button>
+        </div>
       </div>`;
     }
 
@@ -11893,6 +11902,34 @@ function recordAutoDividend(code, mo) {
   } else {
     renderDivStockInputs({}, null);
   }
+}
+
+// 자동 추정을 모달 없이 한 번에 '실제 배당'으로 확정 저장 → 그 종목×월 자동 재계산 중단
+function confirmAutoDividend(code, mo) {
+  const d = _autoDivMonthly(_divSelectedYear).get(code);
+  const e = d && d.byMo[mo];
+  if (!e || !(e.qtyTot > 0)) return;
+  // 이미 실제 기록이 있으면(자동 억제 중) 중복 방지
+  if (dividendRecords.some(r => r.year === _divSelectedYear && r.month === mo && divRecCodes(r).includes(code) && divRecAmount(r, code) > 0)) return;
+  const ps = Math.round(e.amt / e.qtyTot);
+  const shares = {}; for (const [aid, q] of Object.entries(e.qtyByAcc || {})) if (aid !== '__unc__' && q > 0) shares[aid] = q;
+  const hasAcc = Object.keys(shares).length > 0;
+  const day = e.day || 1;
+  const dateVal = `${_divSelectedYear}-${String(mo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (!confirm(`${d.name} ${mo}월 자동 추정(${Math.round(e.amt).toLocaleString('ko-KR')}원)을 실제 배당으로 확정할까요?\n확정하면 이 종목·월은 자동 재계산되지 않고, 실제 기록처럼 수정·삭제할 수 있습니다.`)) return;
+  const accounts = {};
+  if (hasAcc) for (const [aid, q] of Object.entries(shares)) accounts[aid] = Math.round(ps * q);
+  const stocksPerShare = { [code]: ps };
+  const stocksShares = { [code]: hasAcc ? shares : e.qtyTot };
+  const newId = String(Date.now()) + Math.floor(Math.random() * 1000);
+  dividendRecords.push({ id: newId, year: _divSelectedYear, month: mo, day, stocksPerShare, stocksShares, accounts });
+  // 실제 기록과 동일하게 계좌 현금(예수금) 반영 + 조정이력 기록
+  const negAccs = applyDividendCashDelta(accounts, +1);
+  pushDividendCashAdj(newId, dateVal, accounts);
+  saveDividendRecords();
+  if (negAccs && negAccs.length) alert(`⚠️ 현금이 부족한 계좌가 있습니다:\n${negAccs.join('\n')}`);
+  renderDivYearView();
+  renderTradeList();
 }
 
 function renderDivMonthlyBreakdownByAcc() {
