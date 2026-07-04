@@ -3894,8 +3894,8 @@ registerMobileTooltipDismiss();
       <!-- 월별 배당 내역 -->
       <div class="div-breakdown-toggle">
         <button id="divModeToggle" class="div-toggle-btn active" onclick="toggleDivBreakdownMode()">종목별</button>
-        <button id="divViewMatrixBtn" class="div-toggle-btn" onclick="setDivViewMode('matrix')">표</button>
         <button id="divViewDonutBtn" class="div-toggle-btn" onclick="setDivViewMode('donut')">배당비중</button>
+        <button type="button" class="div-toggle-btn" style="margin-left:auto" onclick="openEtfDivClassModal()">🏷 재원</button>
       </div>
       <div id="divDonutWrap" style="display:none">
         <div id="divDonutTopItem" style="padding:6px 0 2px;text-align:center"></div>
@@ -4087,7 +4087,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.675';
+const APP_VERSION = 'MyGP v0.676';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -10570,10 +10570,11 @@ function renderDivYearView() {
   const labelEl = document.getElementById('divYearLabel');
   if (labelEl) labelEl.textContent = _divSelectedYear + '년';
 
+  if (!_etfDistLoaded) loadEtfDist().then(renderDivYearView);  // 자동 로드 후 통합 재계산
   const yearRecs = dividendRecords.filter(r => r.year === _divSelectedYear);
-  const yearTotal = yearRecs.reduce((s, r) => s + divRecTotal(r), 0);
+  const yearTotal = _mergedDivMonthly(_divSelectedYear).grand;  // 통합(실제+자동)
   const totalEl = document.getElementById('divYearTotal');
-  if (totalEl) totalEl.textContent = yearTotal.toLocaleString('ko-KR') + ' 원';
+  if (totalEl) totalEl.textContent = Math.round(yearTotal).toLocaleString('ko-KR') + ' 원';
 
   const yieldEl = document.getElementById('divYearYield');
   const yield2El = document.getElementById('divYearYield2');
@@ -10667,8 +10668,9 @@ function renderDivMonthlyChart() {
     return;
   }
 
-  // 연도별 모드: 선택 연도 월간 막대 (기존)
-  const yearRecs = dividendRecords.filter(r => r.year === _divSelectedYear);
+  // 연도별 모드: 선택 연도 월간 막대 (통합 = 실제+자동)
+  const mergedYr = _mergedDivMonthly(_divSelectedYear);
+  const yearRecs = Object.keys(mergedYr.monthTotal).length ? [1] : [];  // 통합 데이터 유무
 
   if (!yearRecs.length) {
     if (_divMonthlyChart) { _divMonthlyChart.destroy(); _divMonthlyChart = null; }
@@ -10679,10 +10681,7 @@ function renderDivMonthlyChart() {
   canvas.style.display = '';
   if (emptyEl) emptyEl.style.display = 'none';
 
-  const monthTotals = Array.from({length: 12}, (_, i) => {
-    const m = i + 1;
-    return yearRecs.filter(r => r.month === m).reduce((s, r) => s + divRecTotal(r), 0);
-  });
+  const monthTotals = Array.from({length: 12}, (_, i) => Math.round(mergedYr.monthTotal[i + 1] || 0));
 
   if (_divMonthlyChart) { _divMonthlyChart.destroy(); _divMonthlyChart = null; }
   _divMonthlyChart = new Chart(canvas.getContext('2d'), {
@@ -10738,8 +10737,7 @@ function renderDivBreakdownView() {
       breakdownEl.style.display = 'none';
     } else {
       breakdownEl.style.display = '';
-      if (_divViewMode === 'matrix') renderDivMatrix();
-      else if (_divBreakdownMode === 'stock') renderDivMonthlyBreakdown();
+      if (_divBreakdownMode === 'stock') renderDivMonthlyBreakdown();
       else renderDivMonthlyBreakdownByAcc();
     }
   }
@@ -10944,6 +10942,60 @@ function _qtyAsOf(curQty, tradeEntry, rd, accId, activeIds) {
 }
 function _tipDurationMs() {
   return Math.max(1, Number(appSettings?.cellInfoDuration) || 5) * 1000;
+}
+
+// 자동수집 분배금(연금·과세 미적용)을 code×지급월로 집계 — 통합 리스트/요약/차트의 '자동' 소스
+// → Map(code -> { name, cls, qty, byAcc, uncl, byMo: {mo: {amt, est, day, perAcc:{accId:amt}}} })
+function _autoDivMonthly(year) {
+  const idx = _etfDistIndex || new Map();
+  const held = _heldQtyByCode();
+  const tradeIdx = _tradeSignedByCode();
+  const activeIds = new Set(getActiveAccounts().map(a => a.id));
+  const out = new Map();
+  for (const [code, info] of held) {
+    const recs = idx.get(code); if (!recs || !recs.length) continue;
+    const te = tradeIdx.get(code);
+    const canRecon = te && info.byAcc.length;
+    const byMo = {};
+    for (const rec of recs) {
+      const bucket = /^\d{4}-\d{2}/.test(rec.pay || '') ? rec.pay : rec.rd;
+      if (+bucket.slice(0, 4) !== year) continue;
+      const mo = +bucket.slice(5, 7);
+      const qty = canRecon ? _qtyAsOf(info.qty, te, rec.rd, null, activeIds) : info.qty;
+      if (!qty) continue;
+      const est = !canRecon || rec.rd < te.earliest;
+      const amt = qty * rec.ps;   // 연금 과세이연/비과세재원 → 전액
+      const e = (byMo[mo] = byMo[mo] || { amt: 0, est: false, day: +bucket.slice(8, 10) || 1, perAcc: {}, qtyTot: 0, qtyByAcc: {} });
+      e.amt += amt; if (est) e.est = true;
+      e.day = +bucket.slice(8, 10) || e.day;   // 최신(마지막) 지급일
+      e.qtyTot = qty; e.qtyByAcc = {};          // 최신 rec 기준 보유수량 스냅샷(프리필용)
+      if (info.byAcc.length) { for (const b of info.byAcc) { const q = canRecon ? _qtyAsOf(b.qty, te, rec.rd, b.id, null) : b.qty; if (q > 0) { e.perAcc[b.id] = (e.perAcc[b.id] || 0) + q * rec.ps; e.qtyByAcc[b.id] = q; } } }
+      else if (info.uncl) { e.perAcc.__unc__ = (e.perAcc.__unc__ || 0) + amt; e.qtyByAcc.__unc__ = qty; }
+    }
+    if (Object.keys(byMo).length) out.set(code, { name: info.name, cls: _divClassOf(code, info.name), qty: info.qty, byAcc: info.byAcc, uncl: info.uncl, byMo });
+  }
+  return out;
+}
+
+// 통합 월별 합계(수동 실제 + 자동 gap) — 요약/월별차트/도넛 공용. code×월 실제 우선.
+function _mergedDivMonthly(year) {
+  const monthTotal = {};   // mo -> won
+  const byNameTotal = {};  // 종목/기타 name -> won (도넛용)
+  let grand = 0;
+  const add = (mo, name, amt) => { if (!amt) return; monthTotal[mo] = (monthTotal[mo] || 0) + amt; byNameTotal[name] = (byNameTotal[name] || 0) + amt; grand += amt; };
+  const manCM = new Set();
+  for (const rec of dividendRecords) {
+    if (rec.year !== year) continue;
+    if (divRecIsMisc(rec)) { const t = divRecMiscTotal(rec); if (t) add(rec.month, '기타', t); continue; }
+    const codes = divRecCodes(rec);
+    if (!codes.length) { const t = Object.values(rec.accounts || {}).reduce((s, v) => s + (Number(v) || 0), 0); if (t) add(rec.month, '기타', t); continue; }
+    for (const code of codes) { const amt = divRecAmount(rec, code); if (!amt) continue; manCM.add(code + ':' + rec.month); add(rec.month, holdings.find(h => h.code === code)?.name || code, amt); }
+  }
+  for (const [code, d] of _autoDivMonthly(year)) for (const mo of Object.keys(d.byMo)) {
+    if (manCM.has(code + ':' + mo)) continue;   // 실제 있으면 자동 skip
+    add(+mo, d.name, d.byMo[mo].amt);
+  }
+  return { monthTotal, byNameTotal, grand };
 }
 
 // 칸별 계산식 툴팁 — 화면 하단에 표시 (탭 시)
@@ -11330,8 +11382,11 @@ function renderDivDonutChart() {
   else if (_divChartPeriod === '5y') recs = dividendRecords.filter(r => r.year >= curYear - 4);
   else                               recs = dividendRecords;
 
-  const totals = {};
-  if (_divBreakdownMode === 'stock') {
+  let totals = {};
+  if (_divChartPeriod === 'year' && _divBreakdownMode === 'stock') {
+    // 통합(실제+자동) 종목별 비중
+    totals = Object.assign({}, _mergedDivMonthly(_divSelectedYear).byNameTotal);
+  } else if (_divBreakdownMode === 'stock') {
     for (const rec of recs) {
       if (divRecIsMisc(rec)) {
         const t = divRecMiscTotal(rec);
@@ -11438,29 +11493,31 @@ function renderDivMonthlyBreakdown() {
   const wrap = document.getElementById('divMonthlyBreakdown');
   if (!wrap) return;
 
+  const year = _divSelectedYear;
   const yearRecs = dividendRecords
-    .filter(r => r.year === _divSelectedYear)
+    .filter(r => r.year === year)
     .sort((a, b) => b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0));
+  const auto = _autoDivMonthly(year);   // 자동 추정 (gap-fill)
 
-  if (!yearRecs.length) {
-    wrap.innerHTML = '<div class="div-empty">해당 연도에 배당 기록이 없습니다.</div>';
-    return;
-  }
+  // 수동 (code,month) 존재 집합 — 종목×월 실제 우선
+  const manCM = new Set();
+  for (const rec of yearRecs) { if (divRecIsMisc(rec)) continue; for (const c of divRecCodes(rec)) if (divRecAmount(rec, c)) manCM.add(c + ':' + rec.month); }
 
   // 전체 데이터 기준 종목 색상 인덱스 (추이 차트와 색상 일치)
   const allCodesOrdered = [];
-  for (const rec of dividendRecords) {
-    for (const code of divRecCodes(rec)) {
-      if (!allCodesOrdered.includes(code)) allCodesOrdered.push(code);
-    }
-  }
+  for (const rec of dividendRecords) for (const code of divRecCodes(rec)) if (!allCodesOrdered.includes(code)) allCodesOrdered.push(code);
+  for (const code of auto.keys()) if (!allCodesOrdered.includes(code)) allCodesOrdered.push(code);
 
-  const months = [...new Set(yearRecs.map(r => r.month))].sort((a, b) => b - a);
+  // 월 유니버스 = 수동 월 ∪ 자동 gap 월
+  const monthSet = new Set(yearRecs.map(r => r.month));
+  for (const [code, d] of auto) for (const mo of Object.keys(d.byMo)) if (!manCM.has(code + ':' + mo)) monthSet.add(+mo);
+  const months = [...monthSet].sort((a, b) => b - a);
+  if (!months.length) { wrap.innerHTML = '<div class="div-empty">해당 연도에 배당 기록이 없습니다.</div>'; return; }
   const MONTH_KR = ['','1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
   wrap.innerHTML = months.map(m => {
     const mRecs = yearRecs.filter(r => r.month === m);
-    const mTotal = mRecs.reduce((s, r) => s + divRecTotal(r), 0);
+    let mTotal = mRecs.reduce((s, r) => s + divRecTotal(r), 0);
 
     const rows = mRecs.flatMap(rec => {
       const dayStr = rec.day ? String(rec.day).padStart(2, '0') + '일' : '-';
@@ -11542,36 +11599,87 @@ function renderDivMonthlyBreakdown() {
       }).filter(Boolean);
     }).join('');
 
+    // 자동 추정 gap 행 (해당 종목·월에 수동 기록이 없을 때만)
+    let autoRows = '';
+    for (const [code, d] of auto) {
+      const e = d.byMo[m]; if (!e) continue;
+      if (manCM.has(code + ':' + m)) continue;
+      mTotal += e.amt;
+      const ci = allCodesOrdered.indexOf(code);
+      const color = _DIV_COLORS[ci >= 0 ? ci % _DIV_COLORS.length : 0];
+      const initial = (d.name || code).slice(0, 1).toUpperCase();
+      const dayStr = e.day ? String(e.day).padStart(2, '0') + '일' : '-';
+      autoRows += `<div class="div-month-item" style="opacity:.6">
+        <span style="font-size:12px;min-width:28px;text-align:center;color:var(--muted)">${dayStr}</span>
+        <div class="div-stock-badge" style="background:${color}">${initial}</div>
+        <div class="div-item-info">
+          <div class="div-item-name">${_etfEsc(d.name)} ${_divClassBadge(d.cls)}<span style="font-size:10px;color:var(--muted);margin-left:4px">자동</span></div>
+          <div class="div-item-sub">자동 추정${e.est ? ' · 거래내역 이전' : ''} · 지급일 기준</div>
+        </div>
+        <div class="div-item-amount">${Math.round(e.amt).toLocaleString('ko-KR')} 원</div>
+        <div style="display:flex;gap:4px;flex-shrink:0"><button class="tbl-icon-btn" onclick="recordAutoDividend('${code}',${m})" title="실제로 기록">✏️</button></div>
+      </div>`;
+    }
+
     return `<div class="div-month-group">
       <div class="div-month-hdr">
         <span>${MONTH_KR[m]}</span>
-        <span class="div-month-hdr-total">${mTotal.toLocaleString('ko-KR')} 원</span>
+        <span class="div-month-hdr-total">${Math.round(mTotal).toLocaleString('ko-KR')} 원</span>
       </div>
-      ${rows}
+      ${rows}${autoRows}
     </div>`;
   }).join('');
+}
+
+// 자동 추정 항목을 '실제로 기록' — 배당 입력 모달을 해당 종목·월·수량으로 프리필
+function recordAutoDividend(code, mo) {
+  const d = _autoDivMonthly(_divSelectedYear).get(code);
+  const e = d && d.byMo[mo];
+  _divEditingId = null; _divMiscEditingId = null;
+  const sb = document.getElementById('divSaveBtn'); if (sb) sb.textContent = '저장';
+  const cb = document.getElementById('divCancelBtn'); if (cb) cb.style.display = 'none';
+  openDivRecModal('실제 배당 기록');
+  const dd = String((e && e.day) || 1).padStart(2, '0');
+  const dEl = document.getElementById('divDate'); if (dEl) dEl.value = `${_divSelectedYear}-${String(mo).padStart(2, '0')}-${dd}`;
+  if (e && e.qtyTot > 0) {
+    const ps = Math.round(e.amt / e.qtyTot);
+    const shares = {}; for (const [aid, q] of Object.entries(e.qtyByAcc || {})) if (aid !== '__unc__' && q > 0) shares[aid] = q;
+    renderDivStockInputs({ [code]: ps }, Object.keys(shares).length ? { [code]: shares } : null);
+  } else {
+    renderDivStockInputs({}, null);
+  }
 }
 
 function renderDivMonthlyBreakdownByAcc() {
   const wrap = document.getElementById('divMonthlyBreakdown');
   if (!wrap) return;
 
+  const year = _divSelectedYear;
   const yearRecs = dividendRecords
-    .filter(r => r.year === _divSelectedYear)
+    .filter(r => r.year === year)
     .sort((a, b) => b.month !== a.month ? b.month - a.month : (b.day || 0) - (a.day || 0));
-
-  if (!yearRecs.length) {
-    wrap.innerHTML = '<div class="div-empty">해당 연도에 배당 기록이 없습니다.</div>';
-    return;
+  const auto = _autoDivMonthly(year);
+  const manCM = new Set();
+  for (const rec of yearRecs) { if (divRecIsMisc(rec)) continue; for (const c of divRecCodes(rec)) if (divRecAmount(rec, c)) manCM.add(c + ':' + rec.month); }
+  // 자동 gap 을 (월 → 계좌 → 금액)으로 집계
+  const autoByMoAcc = {};   // mo -> { accId: amt }
+  for (const [code, d] of auto) for (const mo of Object.keys(d.byMo)) {
+    if (manCM.has(code + ':' + mo)) continue;
+    const acc = (autoByMoAcc[mo] = autoByMoAcc[mo] || {});
+    for (const [aid, v] of Object.entries(d.byMo[mo].perAcc || {})) acc[aid] = (acc[aid] || 0) + v;
   }
 
   const activeAccs = getActiveAccounts();
-  const months = [...new Set(yearRecs.map(r => r.month))].sort((a, b) => b - a);
+  const monthSet = new Set(yearRecs.map(r => r.month));
+  for (const mo of Object.keys(autoByMoAcc)) monthSet.add(+mo);
+  const months = [...monthSet].sort((a, b) => b - a);
+  if (!months.length) { wrap.innerHTML = '<div class="div-empty">해당 연도에 배당 기록이 없습니다.</div>'; return; }
   const MONTH_KR = ['','1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const accName2 = id => id === '__unc__' ? '미분류' : (getAccName(id) || id);
 
   wrap.innerHTML = months.map(m => {
     const mRecs = yearRecs.filter(r => r.month === m);
-    const mTotal = mRecs.reduce((s, r) => s + divRecTotal(r), 0);
+    let mTotal = mRecs.reduce((s, r) => s + divRecTotal(r), 0);
 
     const rows = mRecs.flatMap(rec => {
       const dayStr = rec.day ? String(rec.day).padStart(2, '0') + '일' : '-';
@@ -11632,12 +11740,31 @@ function renderDivMonthlyBreakdownByAcc() {
       }).filter(Boolean);
     }).join('');
 
+    // 자동 추정 gap (계좌별 합산, 읽기전용 — 기록은 종목별 탭에서)
+    let autoRows = '';
+    const aAcc = autoByMoAcc[m];
+    if (aAcc) {
+      const ids = [...activeAccs.map(a => a.id), '__unc__'];
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i]; const amt = aAcc[id]; if (!amt) continue;
+        mTotal += amt;
+        const color = _DIV_COLORS[i % _DIV_COLORS.length];
+        const nm = accName2(id);
+        autoRows += `<div class="div-month-item" style="opacity:.6">
+          <span style="font-size:12px;min-width:28px;text-align:center;color:var(--muted)">-</span>
+          <div class="div-stock-badge" style="background:${color}">${(nm || '?').slice(0, 1).toUpperCase()}</div>
+          <div class="div-item-info"><div class="div-item-name">${_etfEsc(nm)}<span style="font-size:10px;color:var(--muted);margin-left:4px">자동</span></div><div class="div-item-sub">자동 추정 · 종목별 탭에서 기록</div></div>
+          <div class="div-item-amount">${Math.round(amt).toLocaleString('ko-KR')} 원</div>
+        </div>`;
+      }
+    }
+
     return `<div class="div-month-group">
       <div class="div-month-hdr">
         <span>${MONTH_KR[m]}</span>
-        <span class="div-month-hdr-total">${mTotal.toLocaleString('ko-KR')} 원</span>
+        <span class="div-month-hdr-total">${Math.round(mTotal).toLocaleString('ko-KR')} 원</span>
       </div>
-      ${rows || '<div class="div-empty" style="padding:12px 0">계좌별 금액 정보가 없습니다.</div>'}
+      ${(rows + autoRows) || '<div class="div-empty" style="padding:12px 0">계좌별 금액 정보가 없습니다.</div>'}
     </div>`;
   }).join('');
 }
