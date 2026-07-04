@@ -2884,6 +2884,10 @@ registerMobileTooltipDismiss();
         <span id="modalAvgPrice" style="display:block;margin-top:4px;font-size:12px;color:var(--muted);font-weight:400;">평균 매입단가 -</span>
       </span>
     </div>
+    <div id="qtyHistWrap" style="display:none;margin-top:14px">
+      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">📈 보유수량 추이 (총수량)</div>
+      <div style="height:130px"><canvas id="qtyHistChart"></canvas></div>
+    </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeAccountModal()">취소</button>
       <button class="btn-primary" onclick="saveAccountQuantities()">저장</button>
@@ -4086,7 +4090,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.679';
+const APP_VERSION = 'MyGP v0.680';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5254,13 +5258,70 @@ function openAccountModal(code) {
 
   const backdrop = document.getElementById('accountModal');
   backdrop.classList.add('open');
+  // 보유수량 추이 차트
+  try { (window.ensureChartJs ? ensureChartJs() : Promise.resolve()).then(() => renderQtyHistChart(code)).catch(() => {}); } catch (_) {}
   // 첫 번째 수량 인풋에 포커스
   setTimeout(() => { const first = container.querySelector('input[data-field="qty"]'); if (first) first.focus(); }, 30);
+}
+
+// 계좌별 수량 입력 모달 안의 '총수량' 계단선 차트 (holdingsHist 원장 기준)
+let _qtyHistChart = null;
+function renderQtyHistChart(code) {
+  const wrap = document.getElementById('qtyHistWrap');
+  const canvas = document.getElementById('qtyHistChart');
+  if (!wrap || !canvas) return;
+  code = String(code);
+  const arr = (holdingsHist[code] || []).slice().sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
+  const pts = arr.map(e => ({ d: e.d, q: Object.values(e.a || {}).reduce((s, v) => s + (Number(v) || 0), 0) }));
+  // 오늘 현재 수량으로 선을 현재까지 연장
+  const h = holdings.find(x => String(x.code) === code);
+  const curQty = h ? Object.values(_histAccsOf(h)).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  const today = _todayStr();
+  if (pts.length) {
+    const last = pts[pts.length - 1];
+    if (last.d === today) last.q = curQty;
+    else pts.push({ d: today, q: curQty });
+  }
+  if (typeof Chart === 'undefined' || !pts.length) {
+    if (_qtyHistChart) { _qtyHistChart.destroy(); _qtyHistChart = null; }
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  const lbl = d => d === '2000-01-01' ? '이전' : d.slice(2).replace(/-/g, '/');  // YY/MM/DD
+  if (_qtyHistChart) { _qtyHistChart.destroy(); _qtyHistChart = null; }
+  _qtyHistChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: pts.map(p => lbl(p.d)),
+      datasets: [{
+        data: pts.map(p => p.q),
+        borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.12)',
+        borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#6366f1',
+        fill: true, stepped: 'before', tension: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          title: items => { const p = pts[items[0].dataIndex]; return p.d === '2000-01-01' ? '이전' : p.d; },
+          label: c => c.parsed.y.toLocaleString('ko-KR') + ' 주',
+        } }
+      },
+      scales: {
+        x: { ticks: { font: { size: 9 } }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('ko-KR'), font: { size: 9 } }, grid: { color: '#f3f4f6' } }
+      }
+    }
+  });
 }
 
 function closeAccountModal() {
   document.getElementById('accountModal').classList.remove('open');
   modalStockCode = null;
+  if (_qtyHistChart) { _qtyHistChart.destroy(); _qtyHistChart = null; }
 }
 
 function handleBackdropClick(e) {
