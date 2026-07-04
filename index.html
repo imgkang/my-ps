@@ -3907,9 +3907,7 @@ registerMobileTooltipDismiss();
       <!-- 🤖 자동수집 ETF 분배금 (SEIBRO) — 읽기전용 분석 -->
       <div class="etfdist-block" style="margin-top:22px;border-top:1px solid var(--border,#e5e7eb);padding-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <div style="font-weight:700;font-size:14px">🤖 자동수집 ETF 분배금
-            <small style="color:var(--muted);font-weight:400">보유수량 × 주당분배금 (SEIBRO)</small>
-          </div>
+          <div style="font-weight:700;font-size:14px">💰 통합 분배금 <small style="color:var(--muted);font-weight:400">실제 기록 우선 · 빈 곳 자동 추정(SEIBRO)</small></div>
           <button type="button" class="btn-secondary" style="padding:4px 10px;font-size:12px" onclick="openEtfDivClassModal()">🏷 재원 분류</button>
         </div>
         <div class="div-breakdown-toggle" style="margin-bottom:8px">
@@ -4089,7 +4087,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.674';
+const APP_VERSION = 'MyGP v0.675';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -10882,6 +10880,40 @@ function _heldQtyByCode() {
   return out;
 }
 
+// 수동 배당(dividendRecords)의 선택연도 실제 수령액을 code×월×계좌로 집계 (통합 표 '실제' 소스)
+// → { byCode: Map(code -> {name, m:{mo:amt}, mAcc:{mo:{accId:amt}}}), misc: {m, mAcc} }
+function _manDivByCode(year) {
+  const byCode = new Map();
+  const misc = { m: {}, mAcc: {} };
+  const ensure = code => { let e = byCode.get(code); if (!e) { e = { name: holdings.find(h => h.code === code)?.name || code, m: {}, mAcc: {} }; byCode.set(code, e); } return e; };
+  for (const rec of (dividendRecords || [])) {
+    if (rec.year !== year) continue;
+    const mo = rec.month;
+    if (divRecIsMisc(rec)) {
+      for (const [aid, v] of Object.entries(rec.misc?.accounts || {})) {
+        const amt = Number(v) || 0; if (!amt) continue;
+        misc.m[mo] = (misc.m[mo] || 0) + amt;
+        (misc.mAcc[mo] = misc.mAcc[mo] || {})[aid] = (misc.mAcc[mo][aid] || 0) + amt;
+      }
+      continue;
+    }
+    for (const code of divRecCodes(rec)) {
+      const amt = divRecAmount(rec, code); if (!amt) continue;
+      const e = ensure(code);
+      e.m[mo] = (e.m[mo] || 0) + amt;
+      const accMap = (e.mAcc[mo] = e.mAcc[mo] || {});
+      const sh = rec.stocksShares?.[code];
+      const ps = Number(rec.stocksPerShare?.[code]) || 0;
+      if (sh && typeof sh === 'object' && ps > 0) {
+        for (const [aid, q] of Object.entries(sh)) { const a = Math.round(ps * (Number(q) || 0)); if (a) accMap[aid] = (accMap[aid] || 0) + a; }
+      } else {
+        accMap.__unc__ = (accMap.__unc__ || 0) + amt; // 계좌 분해 불가 → 미분류
+      }
+    }
+  }
+  return { byCode, misc };
+}
+
 // 거래내역(pension_trades_v1)을 code별 signed 거래로 인덱싱 → 배당락일 기준 보유수량 역산용
 // Map(code -> { list:[{date, accId, q}], earliest:'YYYY-MM-DD'|null })  (q: 매수 +qty / 매도 −qty)
 function _tradeSignedByCode() {
@@ -10984,148 +11016,118 @@ function renderEtfDistMatrix() {
   const rowArr = [];
   const tradeIdx = _tradeSignedByCode();  // 배당락일 기준 보유수량 역산용
   const estNote = '<br><span style="opacity:.7">⚠ 거래내역 이전 구간 · 현재 수량에서 역산한 추정치</span>';
+  const man = _manDivByCode(year);        // 수동(실제) 배당
+  const held = _heldQtyByCode();
+  const activeAccs = getActiveAccounts();
+  const activeIds  = new Set(activeAccs.map(a => a.id));
+  const accName = id => id === '__unc__' ? '미분류' : (getAccName(id) || id);
+  const srcTag  = s => s === 'actual' ? ' <span style="color:#059669;font-weight:700;font-size:11px">실제</span>' : ' <span style="opacity:.6;font-size:11px">자동 추정</span>';
+  const bucketOf = aid => activeIds.has(aid) ? aid : '__unc__';
+
+  // ── code×월 병합(수동 실제 우선, 없으면 자동 추정) ──
+  const codeSet = new Set();
+  for (const c of held.keys()) { const a = aggFor(c); if (a.has || a.ttm) codeSet.add(c); }
+  for (const c of man.byCode.keys()) codeSet.add(c);
+
+  const merged = new Map(); // code -> { name, cls, M, SRC, ACC, estM, tipM, estYr, info, ttm }
+  for (const code of codeSet) {
+    const a = aggFor(code);
+    const info = held.get(code);
+    const te = tradeIdx.get(code);
+    const canRecon = te && info && info.byAcc.length;
+    const name = (info && info.name) || idx.get(code)?.[0]?.name || man.byCode.get(code)?.name || code;
+    const cls = _divClassOf(code, name);
+    const manE = man.byCode.get(code);
+    const M = {}, SRC = {}, ACC = {}, estM = {}, tipM = {};
+    for (const mo of MONTHS) {
+      // 자동 추정(해당 월)
+      let autoAmt = 0; const autoAcc = {}; const aLines = []; let moEst = false;
+      const recs = a.monthRecs[mo];
+      if (recs && info) for (const rec of recs) {
+        const qty = canRecon ? _qtyAsOf(info.qty, te, rec.rd, null, activeIds) : info.qty;
+        const isEst = !canRecon || rec.rd < te.earliest;
+        if (isEst) moEst = true;
+        if (!qty) continue;
+        const amt = qty * rec.ps * factor; autoAmt += amt;
+        if (info.byAcc.length) { for (const b of info.byAcc) { const q = canRecon ? _qtyAsOf(b.qty, te, rec.rd, b.id, null) : b.qty; if (q > 0) autoAcc[b.id] = (autoAcc[b.id] || 0) + q * rec.ps * factor; } }
+        else if (info.uncl) autoAcc.__unc__ = (autoAcc.__unc__ || 0) + amt;
+        const payMd = (rec.pay || rec.rd).slice(5).replace('-', '/'), rdMd = rec.rd.slice(5).replace('-', '/');
+        const accQ = info.byAcc.length ? info.byAcc.map(b => ({ name: b.name, q: canRecon ? _qtyAsOf(b.qty, te, rec.rd, b.id, null) : b.qty })).filter(x => x.q > 0) : (info.uncl ? [{ name: '미분류', q: qty }] : []);
+        const accTxt = accQ.length ? '<br>' + accQ.map(x => `<span style="opacity:.7">· ${_etfEsc(x.name)} ${qFmt(x.q)}주</span>`).join('<br>') : '';
+        aLines.push(`${payMd} 지급: ${qFmt(qty)}주 × ${psFmt(rec.ps)}원 = ${won(amt)}${isEst ? ' <span style="opacity:.7">*추정</span>' : ''} <span style="opacity:.6">(기준일 ${rdMd})</span>${accTxt}`);
+      }
+      // 수동 실제(해당 월) 우선
+      const manAmt = manE?.m[mo] || 0;
+      if (manAmt > 0) {
+        M[mo] = manAmt; SRC[mo] = 'actual'; ACC[mo] = Object.assign({}, manE.mAcc[mo] || {});
+        const accLines = Object.entries(ACC[mo]).map(([aid, v]) => `<span style="opacity:.7">· ${_etfEsc(accName(aid))} ${won(v)}</span>`);
+        tipM[mo] = `<b>${_etfEsc(name)} · ${mo}월</b>${srcTag('actual')}<br>수령 ${won(manAmt)}${accLines.length ? '<br>' + accLines.join('<br>') : ''}`;
+      } else if (autoAmt > 0) {
+        M[mo] = autoAmt; SRC[mo] = 'auto'; ACC[mo] = autoAcc; if (moEst) estM[mo] = true;
+        let body = aLines.join('<br>'); if (aLines.length > 1) body += `<br>─ 합계 ${won(autoAmt)}`; if (estM[mo]) body += estNote;
+        tipM[mo] = `<b>${_etfEsc(name)} · ${mo}월</b>${srcTag('auto')}<br>${body}`;
+      }
+    }
+    const ttm = a.ttm || 0;
+    const estYr = info ? info.qty * ttm * factor : 0;
+    merged.set(code, { name, cls, M, SRC, ACC, estM, tipM, estYr, info, ttm });
+    for (const mo of MONTHS) if (M[mo]) addClass(cls, mo, M[mo]);
+    classEst[cls] += estYr;
+  }
+  // 기타(misc, 실제) 월별
+  const miscMo = {}; let miscTotal = 0;
+  for (const mo of MONTHS) { const v = man.misc.m[mo] || 0; if (v) { miscMo[mo] = v; miscTotal += v; } }
 
   if (_etfDistMode === 'account') {
-    // ── 계좌별: 활성계좌 순회 + 미분류(계좌 미배정 잔여수량) ──
-    const activeAccs = getActiveAccounts();
-    const activeIds  = new Set(activeAccs.map(a => a.id));
-    // accId=null → 미분류(계좌 귀속 불가 → 거래 역산 불가 → 항상 현재수량·추정)
-    const buildAccRow = (label, accId, qtyOf) => {
-      const m = {}; let total = 0, est = 0;
-      const monthParts = {}; const estParts = []; const estM = {};
-      for (const h of holdings) {
-        const curQty = qtyOf(h); if (!curQty) continue;
-        const code = String(h.code);
-        const a = aggFor(code); if (!a.has && !a.ttm) continue;
-        const nm = h.name || h.code;
-        const te = tradeIdx.get(code);
-        const canRecon = accId != null && te;
-        for (const mo of MONTHS) {
-          const recs = a.monthRecs[mo]; if (!recs) continue;
-          for (const rec of recs) {
-            const qty = canRecon ? _qtyAsOf(curQty, te, rec.rd, accId, null) : curQty;
-            if (!qty) continue;
-            const amt = qty * rec.ps * factor;
-            m[mo] = (m[mo] || 0) + amt; total += amt;
-            const isEst = (accId == null) || !te || rec.rd < te.earliest;
-            if (isEst) estM[mo] = true;
-            (monthParts[mo] = monthParts[mo] || []).push({ name: nm, qty, ps: rec.ps, amt, rd: rec.rd, pay: rec.pay, est: isEst });
-          }
-        }
-        if (a.ttm) { const e = curQty * a.ttm * factor; est += e; estParts.push({ name: nm, qty: curQty, ttm: a.ttm, amt: e }); }
-      }
-      if (total === 0 && est === 0) return null;
+    // ── 계좌별: 병합 ACC + misc를 계좌 버킷으로 집계 ──
+    const accAgg = new Map();
+    const ensureA = id => { let e = accAgg.get(id); if (!e) { e = { m: {}, est: 0, contrib: {} }; accAgg.set(id, e); } return e; };
+    for (const [, d] of merged) for (const mo of MONTHS) {
+      const acc = d.ACC[mo]; if (!acc) continue; const src = d.SRC[mo];
+      for (const [aid, amt] of Object.entries(acc)) { if (!amt) continue; const e = ensureA(bucketOf(aid)); e.m[mo] = (e.m[mo] || 0) + amt; (e.contrib[mo] = e.contrib[mo] || []).push({ name: d.name, amt, src }); }
+    }
+    for (const mo of MONTHS) for (const [aid, v] of Object.entries(man.misc.mAcc[mo] || {})) { const amt = Number(v) || 0; if (!amt) continue; const e = ensureA(bucketOf(aid)); e.m[mo] = (e.m[mo] || 0) + amt; (e.contrib[mo] = e.contrib[mo] || []).push({ name: '기타', amt, src: 'actual' }); }
+    // 계좌별 예상(연): 현재 보유수량 기준
+    for (const [, d] of merged) { const info = d.info; if (!info || !d.ttm) continue; if (info.byAcc.length) { for (const b of info.byAcc) ensureA(bucketOf(b.id)).est += b.qty * d.ttm * factor; } else if (info.uncl) ensureA('__unc__').est += info.uncl * d.ttm * factor; }
+    for (const id of [...activeAccs.map(a => a.id), '__unc__']) {
+      const e = accAgg.get(id); if (!e) continue;
+      let total = 0; for (const mo of MONTHS) total += e.m[mo] || 0;
+      if (total === 0 && !e.est) continue;
+      const label = accName(id); const srcM = {};
       const tips = { name: `<b>${_etfEsc(label)}</b><br>${year} 합계 ${won(total)} · ${facNote}` };
-      for (const mo of MONTHS) {
-        const parts = monthParts[mo]; if (!parts) continue;
-        const lines = parts.map(p => `· ${(p.pay || p.rd).slice(5).replace('-', '/')} 지급 ${_etfEsc(p.name)} ${qFmt(p.qty)}주 × ${psFmt(p.ps)}원${facTxt} = ${won(p.amt)}${p.est ? ' <span style="opacity:.7">*추정</span>' : ''}`);
-        tips['m' + mo] = `<b>${_etfEsc(label)} · ${mo}월</b> = ${won(m[mo])}<br>${lines.join('<br>')}${estM[mo] ? estNote : ''}`;
-      }
-      tips.sum = `<b>${_etfEsc(label)} · ${year} 합계</b><br>1~12월 합 = ${won(total)}<br>(${facNote})`;
-      const eLines = estParts.map(p => `· ${_etfEsc(p.name)}: ${qFmt(p.qty)}주 × 최근12개월 ${psFmt(p.ttm)}원${facTxt} = ${won(p.amt)}`);
-      tips.est = `<b>${_etfEsc(label)} · 예상(연)</b> = ${won(est)}<br>${eLines.join('<br>')}<br>(현재 보유수량 · 직전 365일 실적 기준)`;
-      return { label, m, total, est, tips, estM };
-    };
-    for (const acc of activeAccs) {
-      const row = buildAccRow(getAccName(acc.id) || acc.id, acc.id, h => Number(h.accounts?.[acc.id]?.qty) || 0);
-      if (row) rowArr.push(row);
+      for (const mo of MONTHS) { const parts = e.contrib[mo]; if (!parts) continue; srcM[mo] = parts.every(p => p.src === 'auto') ? 'auto' : 'actual'; const lines = parts.map(p => `· ${_etfEsc(p.name)} ${won(p.amt)}${srcTag(p.src)}`); tips['m' + mo] = `<b>${_etfEsc(label)} · ${mo}월</b> = ${won(e.m[mo])}<br>${lines.join('<br>')}`; }
+      tips.sum = `<b>${_etfEsc(label)} · ${year} 합계</b> = ${won(total)}`;
+      tips.est = `<b>${_etfEsc(label)} · 예상(연)</b> = ${won(e.est)}<br>(현재 보유수량 · 직전 365일 실적 기준)`;
+      rowArr.push({ label, m: e.m, srcM, total, est: e.est, tips, estM: {}, cls: null });
     }
-    // 미분류: 활성계좌 배정 합이 0인데 총수량(h.quantity)이 있는 종목 → 종목별 합계와 일치 보장
-    const unclRow = buildAccRow('미분류', null, h => {
-      let assigned = 0;
-      for (const [id, a] of Object.entries(h.accounts || {})) if (activeIds.has(id)) assigned += Number(a.qty) || 0;
-      return assigned === 0 ? (Number(h.quantity) || 0) : 0;
-    });
-    if (unclRow) rowArr.push(unclRow);
-
-    if (!rowArr.length) {
-      wrap.innerHTML = '<div class="div-empty">계좌에 배정된 분배금 지급 ETF가 없습니다.</div>';
-      if (note) note.textContent = '';
-      return;
-    }
+    if (!rowArr.length) { wrap.innerHTML = '<div class="div-empty">계좌 배당이 없습니다.</div>'; if (note) note.textContent = ''; return; }
   } else {
-    // ── 종목별: 보유종목 순회, 각 배당락일(rd) 기준 보유수량으로 계산 ──
-    const held = _heldQtyByCode();
-    const activeIds = new Set(getActiveAccounts().map(a => a.id));
-    for (const [code, info] of held) {
-      const a = aggFor(code);
-      if (!a.has && !a.ttm) continue;
-      const te = tradeIdx.get(code);
-      const canRecon = te && info.byAcc.length;  // 계좌 분해 + 거래내역 있어야 역산
-      const m = {}; let total = 0; const estM = {};
-      // 이름칸: 현재 보유(계좌별) — 참고용
-      const acctLineNow = info.byAcc.length
-        ? '<br>' + info.byAcc.map(b => `· ${_etfEsc(b.name)} ${qFmt(b.qty)}주`).join('<br>')
-        : (info.uncl ? `<br>· 미분류 ${qFmt(info.uncl)}주` : '');
-      const cls = _divClassOf(code, info.name);
-      const tips = { name: `<b>${_etfEsc(info.name)}</b> ${_divClassBadge(cls)}<br>${_divClassDesc(cls)}<br>현재 보유 ${qFmt(info.qty)}주${acctLineNow}` };
-      for (const mo of MONTHS) {
-        const recs = a.monthRecs[mo]; if (!recs) continue;
-        let amtMo = 0; const lineArr = [];
-        for (const rec of recs) {
-          const qty = canRecon ? _qtyAsOf(info.qty, te, rec.rd, null, activeIds) : info.qty;
-          const isEst = !canRecon || rec.rd < te.earliest;
-          if (isEst) estM[mo] = true;
-          if (!qty) continue;  // 기준일에 보유 0 → 배당 없음
-          const amt = qty * rec.ps * factor; amtMo += amt;
-          // 배당락일 기준 계좌별 수량(줄바꿈)
-          const accBreak = info.byAcc
-            .map(b => ({ name: b.name, q: canRecon ? _qtyAsOf(b.qty, te, rec.rd, b.id, null) : b.qty }))
-            .filter(x => x.q > 0);
-          const accTxt = accBreak.length
-            ? '<br>' + accBreak.map(x => `<span style="opacity:.7">· ${_etfEsc(x.name)} ${qFmt(x.q)}주</span>`).join('<br>')
-            : (info.uncl ? `<br><span style="opacity:.7">· 미분류 ${qFmt(qty)}주</span>` : '');
-          const payMd = (rec.pay || rec.rd).slice(5).replace('-', '/');
-          const rdMd  = rec.rd.slice(5).replace('-', '/');
-          lineArr.push(`${payMd} 지급: ${qFmt(qty)}주 × ${psFmt(rec.ps)}원${facTxt} = ${won(amt)}${isEst ? ' <span style="opacity:.7">*추정</span>' : ''} <span style="opacity:.6">(기준일 ${rdMd})</span>${accTxt}`);
-        }
-        if (!lineArr.length) continue;
-        m[mo] = amtMo; total += amtMo;
-        let bodyTxt = lineArr.join('<br>');
-        if (lineArr.length > 1) bodyTxt += `<br>─ 합계 ${won(amtMo)}`;
-        if (estM[mo]) bodyTxt += estNote;
-        tips['m' + mo] = `<b>${_etfEsc(info.name)} · ${mo}월</b><br>${bodyTxt}`;
-      }
-      const est = info.qty * a.ttm * factor;  // 예상(연): 현재 보유수량 기준(미래 지향)
-      if (total === 0 && est === 0) continue;
-      tips.sum = `<b>${_etfEsc(info.name)} · ${year} 합계</b><br>1~12월 분배금 합 = ${won(total)}<br>(${facNote})`;
-      tips.est = `<b>${_etfEsc(info.name)} · 예상(연)</b><br>현재 ${qFmt(info.qty)}주 × 최근 12개월 주당분배금 합 ${psFmt(a.ttm)}원${facTxt} = ${won(est)}<br>(직전 365일 실적 기준)`;
-      rowArr.push({ label: info.name, m, total, est, tips, estM, cls });
+    // ── 종목별: 병합 code 행 + 기타(misc) 행 ──
+    for (const [, d] of merged) {
+      let total = 0; for (const mo of MONTHS) total += d.M[mo] || 0;
+      if (total === 0 && d.estYr === 0) continue;
+      const info = d.info;
+      const acctLineNow = info && info.byAcc.length ? '<br>' + info.byAcc.map(b => `· ${_etfEsc(b.name)} ${qFmt(b.qty)}주`).join('<br>') : (info && info.uncl ? `<br>· 미분류 ${qFmt(info.uncl)}주` : '');
+      const tips = { name: `<b>${_etfEsc(d.name)}</b> ${_divClassBadge(d.cls)}<br>${_divClassDesc(d.cls)}${info ? `<br>현재 보유 ${qFmt(info.qty)}주${acctLineNow}` : '<br><span style="opacity:.7">현재 미보유 · 과거 실제 기록</span>'}` };
+      for (const mo of MONTHS) if (d.tipM[mo]) tips['m' + mo] = d.tipM[mo];
+      tips.sum = `<b>${_etfEsc(d.name)} · ${year} 합계</b> = ${won(total)}`;
+      tips.est = `<b>${_etfEsc(d.name)} · 예상(연)</b> = ${won(d.estYr)}${info ? `<br>현재 ${qFmt(info.qty)}주 × 최근12개월 ${psFmt(d.ttm)}원` : ''}`;
+      rowArr.push({ label: d.name, m: d.M, srcM: d.SRC, total, est: d.estYr, tips, estM: d.estM, cls: d.cls });
     }
-    if (!rowArr.length) {
-      wrap.innerHTML = '<div class="div-empty">보유 중인 종목 가운데 분배금 지급 ETF가 없습니다.</div>';
-      if (note) note.textContent = '';
-      return;
+    if (miscTotal > 0) {
+      const srcM = {}; const tips = { name: `<b>기타</b><br>종목 없이 입력한 실제 배당(기타항목)` };
+      for (const mo of MONTHS) if (miscMo[mo]) { srcM[mo] = 'actual'; const accLines = Object.entries(man.misc.mAcc[mo] || {}).map(([aid, v]) => `<span style="opacity:.7">· ${_etfEsc(accName(aid))} ${won(v)}</span>`); tips['m' + mo] = `<b>기타 · ${mo}월</b>${srcTag('actual')}<br>실제 ${won(miscMo[mo])}${accLines.length ? '<br>' + accLines.join('<br>') : ''}`; }
+      tips.sum = `<b>기타 · ${year} 합계</b> = ${won(miscTotal)}`;
+      rowArr.push({ label: '기타', m: miscMo, srcM, total: miscTotal, est: 0, tips, estM: {}, cls: null });
     }
+    if (!rowArr.length) { wrap.innerHTML = '<div class="div-empty">표시할 배당이 없습니다.</div>'; if (note) note.textContent = ''; return; }
   }
 
   rowArr.sort((a, b) => (b.total - a.total) || (b.est - a.est));
-
   const monthTotals = {}; let grand = 0, grandEst = 0;
   for (const r of rowArr) {
     for (const mo of MONTHS) { const v = r.m[mo] || 0; monthTotals[mo] = (monthTotals[mo] || 0) + v; grand += v; }
     grandEst += r.est;
-  }
-
-  // 재원별 소계 (뷰 모드 무관 — 종목(code) 기준 as-of 계산, 합계와 항상 일치)
-  {
-    const heldC = _heldQtyByCode();
-    const activeIdsC = new Set(getActiveAccounts().map(a => a.id));
-    for (const [code, info] of heldC) {
-      const a = aggFor(code); if (!a.has && !a.ttm) continue;
-      const te = tradeIdx.get(code);
-      const canRecon = te && info.byAcc.length;
-      const cls = _divClassOf(code, info.name);
-      for (const mo of MONTHS) {
-        const recs = a.monthRecs[mo]; if (!recs) continue;
-        for (const rec of recs) {
-          const qty = canRecon ? _qtyAsOf(info.qty, te, rec.rd, null, activeIdsC) : info.qty;
-          if (!qty) continue;
-          addClass(cls, mo, qty * rec.ps * factor);
-        }
-      }
-      classEst[cls] += info.qty * a.ttm * factor;
-    }
   }
 
   // 칸별 설명 문자열 등록
@@ -11141,8 +11143,10 @@ function renderEtfDistMatrix() {
     const monthCells = MONTHS.map(mo => {
       const v = r.m[mo] || 0;
       const mark = (r.estM && r.estM[mo] && v) ? '<sup style="color:var(--muted)">*</sup>' : '';
-      if (r.tips['m' + mo]) { _etfTipData[rk + ':m' + mo] = r.tips['m' + mo]; return `<td data-tip="${rk}:m${mo}" style="cursor:pointer">${fmt(v)}${mark}</td>`; }
-      return `<td>${fmt(v)}${mark}</td>`;
+      const auto = v && r.srcM && r.srcM[mo] === 'auto';   // 자동 추정 셀은 흐리게
+      const st = 'cursor:pointer' + (auto ? ';opacity:.55' : '');
+      if (r.tips['m' + mo]) { _etfTipData[rk + ':m' + mo] = r.tips['m' + mo]; return `<td data-tip="${rk}:m${mo}" style="${st}">${fmt(v)}${mark}</td>`; }
+      return `<td style="${auto ? 'opacity:.55' : ''}">${fmt(v)}${mark}</td>`;
     }).join('');
     const sumCell = `<td class="div-mx-sum" data-tip="${rk}:sum" style="cursor:pointer">${fmt(r.total)}</td>`;
     const estCell = `<td class="div-mx-sum" data-tip="${rk}:est" style="cursor:pointer;color:var(--muted)">${fmt(r.est)}</td>`;
@@ -11163,13 +11167,13 @@ function renderEtfDistMatrix() {
                 + clsRow('nontax', '비과세재원(해외형) 소계', '이미 ~15% 반영된 세후 재원 · 인출 시 추가 과세 없음');
 
   for (const mo of MONTHS) _etfTipData['foot:m' + mo] = `<b>${mo}월 전체 합계</b> = ${won(monthTotals[mo] || 0)}<br>(모든 ${rowKind} 합)`;
-  _etfTipData['foot:sum'] = `<b>${year} 전체 합계</b> = ${won(grand)}<br>과세이연 ${won(classTotal.defer || 0)} + 비과세재원 ${won(classTotal.nontax || 0)}`;
+  _etfTipData['foot:sum'] = `<b>${year} 전체 합계</b> = ${won(grand)}<br>과세이연 ${won(classTotal.defer || 0)} + 비과세재원 ${won(classTotal.nontax || 0)}${miscTotal ? ` + 기타 ${won(miscTotal)}` : ''}`;
   _etfTipData['foot:est'] = `<b>예상(연) 전체 합계</b> = ${won(grandEst)}<br>(모든 ${rowKind} 예상 합)`;
   const foot = `<tr class="div-mx-foot"><td class="div-mx-name">합계</td>${MONTHS.map(mo => `<td data-tip="foot:m${mo}" style="cursor:pointer">${fmt(monthTotals[mo] || 0)}</td>`).join('')}<td class="div-mx-sum" data-tip="foot:sum" style="cursor:pointer">${fmt(grand)}</td><td class="div-mx-sum" data-tip="foot:est" style="cursor:pointer">${fmt(grandEst)}</td></tr>`;
 
   wrap.innerHTML = `<div class="div-matrix-scroll"><table class="div-matrix">${head}${body}${subRows}${foot}</table></div>`;
   const anyEst = rowArr.some(r => r.estM && Object.keys(r.estM).length);
-  if (note) note.innerHTML = `단위: 원 · <b>연금 과세이연/비과세재원</b>(수령 시 15.4% 미과세) · ${_etfDistMode === 'account' ? '계좌별' : '종목별'} · 월 집계 = <b>지급일 기준</b> · 수량 = 배당기준일 보유수량(거래내역 역산) · 예상(연) = 현재 보유수량 × 직전 12개월 주당분배금 합${anyEst ? '<br><sup>*</sup> 거래내역 이전 구간은 현재 보유수량 기준 추정치' : ''}<br>🏷 재원 분류는 자동 추정 기본값 — 우측 상단 ‘재원 분류’에서 종목별로 수정(연금저축·IRP·DC 기준) · 💡 칸을 탭하면 계산식 표시`;
+  if (note) note.innerHTML = `단위: 원 · <b style="color:#059669">실제</b>=수동 기록 · <span style="opacity:.6">흐림=자동 추정(빈 곳)</span> · 겹치면 <b>종목×월 단위로 실제 우선</b> · ${_etfDistMode === 'account' ? '계좌별' : '종목별'} · 연금 과세이연/비과세재원(수령 시 15.4% 미과세) · 월 집계 = 지급일 기준 · 수량 = 배당기준일 보유수량${anyEst ? ' · <sup>*</sup>거래내역 이전 추정' : ''}<br>⚠ 수동 입력월과 자동 지급월이 다르면 같은 배당이 다른 달에 보일 수 있음 · 🏷 우측 상단 ‘재원 분류’에서 종목별 수정 · 💡 칸을 탭하면 계산식 표시`;
 
   // 칸 탭 → 하단 툴팁 (위임 리스너 1회 바인딩)
   if (!wrap._etfTipBound) {
