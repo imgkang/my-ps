@@ -991,7 +991,9 @@ registerMobileTooltipDismiss();
     font-size: 11px; font-weight: 700; color: #fff;
   }
   .div-item-info { flex: 1; min-width: 0; }
-  .div-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .div-item-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; min-width: 0; }
+  .div-item-name > span { flex-shrink: 0; }
+  .div-item-name > .din-txt { flex-shrink: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .div-item-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
   .div-item-amount { font-size: 13px; font-weight: 700; color: #1e40af; white-space: nowrap; flex-shrink: 0; }
   /* 자동수집 행: 잘 동작하므로 굵게 강조 */
@@ -4131,7 +4133,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.687';
+const APP_VERSION = 'MyGP v0.688';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -11871,7 +11873,7 @@ function renderDivMonthlyBreakdown() {
           <span class="div-date-link" style="font-size:12px;min-width:28px;text-align:center" onclick="editDividendRecord('${rec.id}')" title="전체 수정">${dayStr}</span>
           <div class="div-stock-badge" style="background:${color}">${initial}</div>
           <div class="div-item-info">
-            <div class="div-item-name">${name}${_divFreqBadge(code)}</div>
+            <div class="div-item-name"><span class="din-txt">${name}</span>${_divFreqBadge(code)}</div>
             <div class="div-item-sub">${subText}</div>
           </div>
           <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
@@ -11898,7 +11900,7 @@ function renderDivMonthlyBreakdown() {
         <span style="font-size:12px;min-width:28px;text-align:center;color:var(--muted)">${dayStr}</span>
         <div class="div-stock-badge" style="background:${color}">${initial}</div>
         <div class="div-item-info">
-          <div class="div-item-name">${_etfEsc(d.name)}${_divFreqBadge(code)} ${_divClassBadge(d.cls)}<span style="font-size:10px;color:var(--muted);margin-left:4px">자동</span></div>
+          <div class="div-item-name"><span class="din-txt">${_etfEsc(d.name)}</span>${_divFreqBadge(code)} ${_divClassBadge(d.cls)}<span style="font-size:10px;color:var(--muted);margin-left:4px">자동</span></div>
           <div class="div-item-sub">${autoSub}</div>
         </div>
         <div class="div-item-amount">${Math.round(e.amt).toLocaleString('ko-KR')} 원</div>
