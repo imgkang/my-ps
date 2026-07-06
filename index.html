@@ -4131,7 +4131,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.685';
+const APP_VERSION = 'MyGP v0.686';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -5934,7 +5934,7 @@ function handleCashBackdropClick(e) {
 function exportToFile() {
   const tryParse = key => { try { return JSON.parse(localStorage.getItem(key)); } catch(_) { return null; } };
   const payload = {
-    version: 11,
+    version: 12,
     exportedAt: new Date().toISOString(),
     colOrder: tryParse('mypm_col_order_v1') || null,   // 종목 리스트 열 순서 (세 앱 공유)
     mypm: {
@@ -5949,7 +5949,9 @@ function exportToFile() {
       wdConsolidated: wdConsolidated,
       wdScenarios: loadWdScenarios(),
       setupScenarios: loadSetupScenarios(),
+      trades: tradeRecords,          // 거래내역 — 파일 백업에도 포함 (buildDriveBundle 과 일치)
       cashAdjRecords: cashAdjRecords,
+      holdingsHist: holdingsHist,     // 보유수량 이력 — 배당 as-of 계산용
     },
     nonk: {
       holdings:  tryParse('nonk_holdings_v1')  || [],
