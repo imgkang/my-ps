@@ -4131,7 +4131,7 @@ InputUX.setNumberDefaults({ locale: 'ko-KR' });
   }
 })();
 
-const APP_VERSION = 'MyGP v0.686';
+const APP_VERSION = 'MyGP v0.687';
 
 // ===== 🛟 로컬 자동 백업/복원 (버전 업데이트 시 데이터 손상 대비) =====
 // 앱 데이터 localStorage 키들을 raw 문자열 그대로 스냅샷해 둔다(최근 3개).
@@ -11012,6 +11012,38 @@ function _divClassDesc(c) {
     : '과세이연(국내형) · 지금 세금 없이 전액 수령, 인출 시 연금소득세';
 }
 
+// ===== 분배 주기 배지 (월/격월/분기/반기/연배당) — 자동수집 기록의 지급일 간격으로 추론 =====
+const _divFreqCache = new Map();
+function _daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 86400000); }
+// code → { label, cls } | null(기록 없음/미상). 지급일(pay 우선, 없으면 rd) 유니크 간격의 중앙값으로 판정.
+function _divFrequency(code) {
+  code = String(code);
+  if (_divFreqCache.has(code)) return _divFreqCache.get(code);
+  const arr = (_etfDistIndex && _etfDistIndex.get(code)) || null;
+  let out = null;
+  if (arr && arr.length) {
+    const ds = [...new Set(arr.map(r => (/^\d{4}-\d{2}-\d{2}$/.test(r.pay || '') ? r.pay : r.rd)).filter(Boolean))].sort();
+    if (ds.length === 1) out = { label: '연배당', cls: 'y' };   // 400일 창에 1회 → 사실상 연배당
+    else {
+      const gaps = []; for (let i = 1; i < ds.length; i++) gaps.push(_daysBetween(ds[i - 1], ds[i]));
+      gaps.sort((a, b) => a - b); const med = gaps[Math.floor(gaps.length / 2)] || 0;
+      out = med <= 45  ? { label: '월배당',   cls: 'm' }
+          : med <= 75  ? { label: '격월배당', cls: 'b' }
+          : med <= 135 ? { label: '분기배당', cls: 'q' }
+          : med <= 270 ? { label: '반기배당', cls: 'h' }
+          :              { label: '연배당',   cls: 'y' };
+    }
+  }
+  _divFreqCache.set(code, out);
+  return out;
+}
+const _DIV_FREQ_COLORS = { m: ['#059669', '#ecfdf5'], b: ['#0d9488', '#f0fdfa'], q: ['#2563eb', '#eff6ff'], h: ['#7c3aed', '#f5f3ff'], y: ['#b45309', '#fffbeb'] };
+function _divFreqBadge(code) {
+  const f = _divFrequency(code); if (!f) return '';
+  const [fg, bg] = _DIV_FREQ_COLORS[f.cls] || ['#6b7280', '#f3f4f6'];
+  return `<span style="font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:4px;color:${fg};background:${bg}">${f.label}</span>`;
+}
+
 // 재원 분류 편집 모달
 function openEtfDivClassModal() {
   if (!_etfDistLoaded) { loadEtfDist().then(openEtfDivClassModal); return; }
@@ -11839,7 +11871,7 @@ function renderDivMonthlyBreakdown() {
           <span class="div-date-link" style="font-size:12px;min-width:28px;text-align:center" onclick="editDividendRecord('${rec.id}')" title="전체 수정">${dayStr}</span>
           <div class="div-stock-badge" style="background:${color}">${initial}</div>
           <div class="div-item-info">
-            <div class="div-item-name">${name}</div>
+            <div class="div-item-name">${name}${_divFreqBadge(code)}</div>
             <div class="div-item-sub">${subText}</div>
           </div>
           <div class="div-item-amount">${amt.toLocaleString('ko-KR')} 원</div>
@@ -11866,7 +11898,7 @@ function renderDivMonthlyBreakdown() {
         <span style="font-size:12px;min-width:28px;text-align:center;color:var(--muted)">${dayStr}</span>
         <div class="div-stock-badge" style="background:${color}">${initial}</div>
         <div class="div-item-info">
-          <div class="div-item-name">${_etfEsc(d.name)} ${_divClassBadge(d.cls)}<span style="font-size:10px;color:var(--muted);margin-left:4px">자동</span></div>
+          <div class="div-item-name">${_etfEsc(d.name)}${_divFreqBadge(code)} ${_divClassBadge(d.cls)}<span style="font-size:10px;color:var(--muted);margin-left:4px">자동</span></div>
           <div class="div-item-sub">${autoSub}</div>
         </div>
         <div class="div-item-amount">${Math.round(e.amt).toLocaleString('ko-KR')} 원</div>
