@@ -69,20 +69,28 @@ async function autoDeploy() {
   }
 }
 
-// 매일 06:10 KST — update_tickers.py 실행 후 tickers.json 을 테이블로 재적재
 export function startScheduler() {
   // 5분마다 자동 배포 polling
   cron.schedule('*/5 * * * *', () => autoDeploy().catch(e => console.error('[auto-deploy]', e)));
 
-  cron.schedule(
-    '10 6 * * *',
-    () => {
-      const script = resolve(process.cwd(), '../scripts/update_tickers.py');
-      // PYTHON_BIN(.env) → py 런처 → python → python3 순으로 폴백 실행.
-      spawnPython([script], { cwd: resolve(process.cwd(), '..') });
-    },
-    { timezone: 'Asia/Seoul' }
-  );
+  // tickers.json 은 이미 GitHub Actions(.github/workflows/update-tickers.yml)가
+  // 매일 06:00 KST 에 생성·커밋하고, 위 auto-deploy 가 그 커밋을 pull 하므로
+  // 로컬에서 update_tickers.py 를 돌릴 필요가 없다(중복). 따라서 로컬 실행은
+  // opt-in: .env 의 PYTHON_BIN(FinanceDataReader 가 설치된 python 절대경로)이
+  // 지정된 경우에만 매일 06:10 KST 에 백업으로 실행한다. 미지정 시 건너뛴다.
+  if (env.PYTHON_BIN) {
+    cron.schedule(
+      '10 6 * * *',
+      () => {
+        const script = resolve(process.cwd(), '../scripts/update_tickers.py');
+        spawnPython([script], { cwd: resolve(process.cwd(), '..') });
+      },
+      { timezone: 'Asia/Seoul' }
+    );
+    console.log(`[scheduler] 로컬 티커 갱신 활성 (PYTHON_BIN=${env.PYTHON_BIN}) — 매일 06:10 KST`);
+  } else {
+    console.log('[scheduler] 로컬 티커 갱신 비활성 (PYTHON_BIN 미설정) — tickers.json 은 GitHub Actions 가 갱신');
+  }
 
   // 장중(평일 09:00~15:40 KST) 2분마다 시세 폴링 → 알림 조건 확인
   cron.schedule(

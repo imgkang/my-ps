@@ -36,10 +36,13 @@ export const env = {
   // 프론트 정적 파일 서빙(로컬 테스트용 단일 출처). 'false' 면 API 전용.
   SERVE_STATIC: (process.env.SERVE_STATIC ?? 'true') !== 'false',
 
-  // 스케줄러가 update_tickers.py 를 실행할 때 쓸 python 실행 파일.
-  // 작업 스케줄러(SYSTEM 계정) PATH 에 python 이 없어 ENOENT 가 나면
-  // 여기에 절대경로를 지정한다. 예: C:\Python312\python.exe
-  // 비어 있으면 플랫폼별 폴백(win32: py→python→python3)으로 자동 탐색.
+  // 로컬 티커 갱신(update_tickers.py) 백업 실행용 python 절대경로.
+  // tickers.json 은 기본적으로 GitHub Actions 가 매일 갱신하므로 로컬 실행은
+  // opt-in 이다. 이 값이 설정된 경우에만 스케줄러가 매일 06:10 KST 에
+  // 해당 python 으로 스크립트를 돌린다(FinanceDataReader 설치 필요).
+  // 미설정(기본)이면 로컬 크론 자체를 등록하지 않는다.
+  // 예: C:\Python312\python.exe  (작업 스케줄러가 SYSTEM 계정이므로
+  //     전체 사용자용으로 설치된 python 이어야 접근 가능)
   PYTHON_BIN: (process.env.PYTHON_BIN ?? '').trim(),
 
   // ── 구글 로그인 / 다중 사용자 ──
