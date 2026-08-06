@@ -36,6 +36,12 @@ export const env = {
   // 프론트 정적 파일 서빙(로컬 테스트용 단일 출처). 'false' 면 API 전용.
   SERVE_STATIC: (process.env.SERVE_STATIC ?? 'true') !== 'false',
 
+  // 스케줄러가 update_tickers.py 를 실행할 때 쓸 python 실행 파일.
+  // 작업 스케줄러(SYSTEM 계정) PATH 에 python 이 없어 ENOENT 가 나면
+  // 여기에 절대경로를 지정한다. 예: C:\Python312\python.exe
+  // 비어 있으면 플랫폼별 폴백(win32: py→python→python3)으로 자동 탐색.
+  PYTHON_BIN: (process.env.PYTHON_BIN ?? '').trim(),
+
   // ── 구글 로그인 / 다중 사용자 ──
   // 구글 OAuth 웹 클라이언트 ID (프론트 GIS 와 동일 값). 비밀 아님.
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? '',

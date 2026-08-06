@@ -5,11 +5,55 @@ import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import cron from 'node-cron';
 import { db } from './db.js';
+import { env } from './env.js';
 import { gitPullAndPurge } from './routes/webhook.js';
 import { recomputeWithLivePrices, recordWeeklySnapshot } from './derived-store.js';
 
 const execAsync = promisify(exec);
 const repoRoot = resolve(process.cwd(), '..');
+
+// python 실행 파일 후보 목록.
+//  1) .env 의 PYTHON_BIN(절대경로)이 있으면 최우선.
+//  2) win32 는 py 런처(C:\Windows\py.exe — SYSTEM PATH 에 존재)를 먼저 시도.
+//     작업 스케줄러가 SYSTEM 계정으로 돌 때 사용자 PATH 의 python 을 못 찾는 문제를 우회한다.
+function pythonCandidates(): string[] {
+  const list: string[] = [];
+  if (env.PYTHON_BIN) list.push(env.PYTHON_BIN);
+  if (process.platform === 'win32') list.push('py', 'python', 'python3');
+  else list.push('python3', 'python');
+  return list;
+}
+
+// 후보를 순서대로 시도하며 파이썬 스크립트를 실행한다. ENOENT(실행파일 없음)면 다음 후보로 폴백.
+function spawnPython(args: string[], opts: { cwd: string }): void {
+  const candidates = pythonCandidates();
+  const tryAt = (i: number): void => {
+    if (i >= candidates.length) {
+      console.error(
+        '[scheduler] python 실행 파일을 찾을 수 없습니다. .env 의 PYTHON_BIN 에 절대경로를 지정하세요.',
+      );
+      return;
+    }
+    const cmd = candidates[i];
+    const py = spawn(cmd, args, opts);
+    py.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'ENOENT') {
+        tryAt(i + 1); // 다음 후보로 폴백
+        return;
+      }
+      console.error(`[scheduler] update_tickers.py 실행 오류 (${cmd}):`, err.message);
+    });
+    py.on('close', (code) => {
+      if (code === 0) {
+        console.log(`[scheduler] update_tickers.py 완료 (${cmd}) → load-tickers 재적재 필요`);
+        // TODO: load-tickers 로직 재사용하여 자동 적재
+      } else if (code !== null) {
+        console.error(`[scheduler] update_tickers.py 실패 (${cmd}) code`, code);
+      }
+    });
+  };
+  tryAt(0);
+}
 
 // 5분마다 origin/main과 HEAD를 비교 → 차이 있으면 git pull + CF purge
 async function autoDeploy() {
@@ -34,20 +78,8 @@ export function startScheduler() {
     '10 6 * * *',
     () => {
       const script = resolve(process.cwd(), '../scripts/update_tickers.py');
-      // python / python3 둘 다 없으면 ENOENT → error 이벤트로 잡지 않으면 uncaughtException
-      const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
-      const py = spawn(pyCmd, [script], { cwd: resolve(process.cwd(), '..') });
-      py.on('error', (err) => {
-        console.error(`[scheduler] update_tickers.py 실행 불가 (${pyCmd} 없음?):`, err.message);
-      });
-      py.on('close', (code) => {
-        if (code === 0) {
-          console.log('[scheduler] update_tickers.py 완료 → load-tickers 재적재 필요');
-          // TODO: load-tickers 로직 재사용하여 자동 적재
-        } else if (code !== null) {
-          console.error('[scheduler] update_tickers.py 실패 code', code);
-        }
-      });
+      // PYTHON_BIN(.env) → py 런처 → python → python3 순으로 폴백 실행.
+      spawnPython([script], { cwd: resolve(process.cwd(), '..') });
     },
     { timezone: 'Asia/Seoul' }
   );
