@@ -97,9 +97,15 @@ function applyServerPrices() {
     const snap = JSON.parse(localStorage.getItem('mypm_derived_v1') || 'null');
     const pm = snap && snap.data && snap.data.prices;
     if (!pm) return covered;
+    // 스냅샷이 실제로 시세를 찍은 시각. 이보다 최근에 라이브로 받은 종목은 덮어쓰지 않는다.
+    const snapAt = snap.pricedAt ? new Date(snap.pricedAt).getTime() : 0;
     ST.holdings.forEach(h => {
       const p = pm[h.ticker];
       if (p && typeof p.price === 'number' && p.price > 0) {
+        // 수동 '가격 갱신'(라이브 조회)로 더 최근에 받은 값이 있으면 묵은 스냅샷으로 덮어쓰지 않음.
+        // covered 에는 그대로 넣어 RefreshAll 의 재조회 대상에서는 제외(라이브 값 유지).
+        const liveAt = h._liveAt ? new Date(h._liveAt).getTime() : 0;
+        if (liveAt && snapAt && liveAt > snapAt) { covered.add(h.ticker); return; }
         h.price = p.price;
         h.change = Number(p.change) || 0;
         const prev = p.price - h.change;
