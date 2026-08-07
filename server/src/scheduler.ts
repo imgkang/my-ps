@@ -108,14 +108,16 @@ export function startScheduler() {
 
   // 미국장 2분마다 → US 시세(Finnhub)로 선계산. 미국 정규장 09:30~16:00 ET 는
   // KST 로 대략 22:30~06:00(서머타임/표준시에 따라 ±1h). 여유 있게 22~23시(월~금) +
-  // 00~06시(화~토, 미국 기준 전일 야간)를 커버한다. KR 종가는 캐시로 유지되므로 함께 반영됨.
+  // 00~10시(화~토, 미국 기준 전일 야간)를 커버한다. KR 종가는 캐시로 유지되므로 함께 반영됨.
+  // 00~10시: 정규장(~06:00 KST) + 애프터장(16:00~20:00 ET ≈ 05:00~10:00 KST, DST 에 따라 ±1h)까지
+  //          커버해 아침 시간대(07~10시 KST) 스냅샷이 묵지 않도록 한다.
   cron.schedule(
     '*/2 22,23 * * 1-5',
     () => recomputeAllDerived(['us']).catch((e) => console.error('[scheduler] US derived tick error', e)),
     { timezone: 'Asia/Seoul' }
   );
   cron.schedule(
-    '*/2 0-6 * * 2-6',
+    '*/2 0-10 * * 2-6',
     () => recomputeAllDerived(['us']).catch((e) => console.error('[scheduler] US derived tick error', e)),
     { timezone: 'Asia/Seoul' }
   );

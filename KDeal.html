@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="KDeal">
 <title>KDeal · KR Portfolio</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="market.css?v=0.691">
+<link rel="stylesheet" href="market.css?v=0.692">
 <style>
   :root {
     --primary: #ca8a04;
@@ -565,9 +565,9 @@
 <script src="js/ticker-search.js"></script>
 <script src="js/api.js"></script>
 <script src="js/input-ux.js"></script>
-<script src="js/market-core.js?v=0.691"></script>
+<script src="js/market-core.js?v=0.692"></script>
 <script>
-const APP_VERSION = 'KDeal v0.691';
+const APP_VERSION = 'KDeal v0.692';
 const MARKET_CONFIG = {
   market: 'kdeal', version: APP_VERSION, locale: 'ko-KR', snapKey: 'kd',
   storageKeys: {
@@ -811,6 +811,7 @@ async function RefreshAll(suppressDone = false, preferSnapshot = true) {
       h.price = info.price; h.change = info.change;
       h.changeRate = info.changeRate;
       h.updatedAt  = new Date().toISOString();
+      h._liveAt    = h.updatedAt;   // 라이브 조회 시각 — 묵은 스냅샷이 덮어쓰지 못하게 표시
     } catch(e) { failCount++; }
   }));
 
