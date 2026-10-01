@@ -19561,6 +19561,15 @@ function setBackendStatus(type, msg) {
   if (el) { el.className = 'drive-status ' + type; el.textContent = msg; }
 }
 
+// 401(토큰 만료/무효) 공통 처리 — 데이터는 건드리지 않고 토큰만 제거한 뒤
+// 재로그인 UI(구글 버튼)를 노출한다. 데이터 전체를 지우는 backendLogout 과 다르다.
+function isAuthError(e) { return !!(e && (e.name === 'ApiAuthError' || e.status === 401)); }
+function handleBackendAuthExpired() {
+  try { MyPMApi.logout(); } catch (_) {}   // 토큰만 삭제(localStorage.clear 아님 → 데이터 보존)
+  try { updateBackendUI(); } catch (_) {}  // 토큰이 사라졌으므로 로그인 섹션 + 구글 버튼 노출
+  setBackendStatus('error', '🔑 로그인이 만료되었습니다. 다시 로그인하세요. (데이터는 그대로 유지됩니다)');
+}
+
 function updateBackendUI() {
   const authed = !!(window.MyPMApi && MyPMApi.isAuthenticated());
   const loginSec = document.getElementById('backendLoginSection');
@@ -19575,7 +19584,7 @@ function updateBackendUI() {
     try {
       MyPMApi.me().then(function (u) {
         if (u && u.email) setBackendStatus('ok', '✅ ' + u.email + ' 로그인됨');
-      }).catch(function () {});
+      }).catch(function (err) { if (isAuthError(err)) handleBackendAuthExpired(); });
     } catch (_) {}
   } else if (window.MyPMApi && MyPMApi.isConfigured()) {
     setBackendStatus('idle', '구글 계정으로 로그인하세요');
@@ -19816,6 +19825,7 @@ async function backendSave(silent, force) {
       setBackendStatus('ok', '✅ 저장 완료 — ' + new Date().toLocaleTimeString('ko-KR') + ' (' + _vDisp + ')');
     }
   } catch (e) {
+    if (isAuthError(e)) { handleBackendAuthExpired(); return; }
     setBackendStatus('error', '❌ ' + (e?.message || '저장 실패'));
   }
 }
@@ -19837,6 +19847,7 @@ async function backendLoad() {
     setBackendStatus('ok', '✅ 불러오기 완료 — 새로고침 중...');
     setTimeout(() => location.reload(), 1000);
   } catch (e) {
+    if (isAuthError(e)) { handleBackendAuthExpired(); return; }
     setBackendStatus('error', '❌ ' + (e?.message || '불러오기 실패'));
   }
 }
