@@ -139,6 +139,14 @@ export default async function authRoutes(app: FastifyInstance) {
     return row ?? {};
   });
 
+  // 토큰 자동 갱신(슬라이딩 세션) — 현재 유효한 토큰을 새 30일 토큰으로 재발급.
+  // requireAuth 가 서명·만료·사용자 존재를 검증하므로, 만료된 토큰은 401 로 거부되어
+  // 스스로 갱신할 수 없다(의도된 동작: 만료 후에는 재로그인 필요).
+  // 프론트는 페이지 로드 시 만료까지 10일 미만 남았을 때만 호출한다.
+  app.post('/api/auth/refresh', { preHandler: requireAuth }, async (req) => {
+    return { token: signToken(userId(req)) };
+  });
+
   // GIS redirect 모드 — Google이 인증 후 form POST로 credential 전달
   app.addContentTypeParser(
     'application/x-www-form-urlencoded',
