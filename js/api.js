@@ -145,6 +145,29 @@
     return request('/api/auth/me', { auth: true }).then(function (r) { return r.data; });
   }
 
+  // 토큰 자동 갱신(슬라이딩 세션). 현재 유효한 토큰을 새 30일 토큰으로 교체한다.
+  // 성공 시 true(새 토큰 저장), 갱신 불필요/실패 시 false. 만료 토큰은 서버가 401.
+  function refresh() {
+    return request('/api/auth/refresh', { method: 'POST', auth: true }).then(function (r) {
+      if (r && r.data && r.data.token) { lsSet(LS_TOKEN, r.data.token); return true; }
+      return false;
+    });
+  }
+
+  // 토큰 만료까지 남은 밀리초(만료/파싱불가면 null). payload=base64url(JSON{uid,exp}).
+  function tokenMsLeft() {
+    try {
+      var tok = getToken();
+      var dot = tok.indexOf('.');
+      if (dot < 0) return null;
+      var b = tok.slice(0, dot).replace(/-/g, '+').replace(/_/g, '/');
+      while (b.length % 4) b += '=';
+      var obj = JSON.parse(global.atob(b));
+      if (!obj || typeof obj.exp !== 'number') return null;
+      return obj.exp - Date.now();
+    } catch (_) { return null; }
+  }
+
   // ───────────────────────── 데이터 동기화 ─────────────────────────
   function getCachedBundle() {
     var raw = lsGet(LS_CACHE_BUNDLE);
@@ -256,6 +279,8 @@
     isConfigured: isConfigured,
     loginGoogle: loginGoogle,
     me: me,
+    refresh: refresh,
+    tokenMsLeft: tokenMsLeft,
     logout: logout,
     isAuthenticated: isAuthenticated,
     // 동기화
