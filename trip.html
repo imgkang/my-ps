@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <title>시드니 여행경비</title>
+  <link rel="icon" href="icon.svg">
+  <style>
+    :root {
+      --bg: #f5f6f8; --card: #fff; --line: #e5e7eb; --text: #111827; --sub: #6b7280;
+      --accent: #0f766e; --accent-weak: #ccfbf1; --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      font-size: 15px; -webkit-text-size-adjust: 100%; }
+    header { background: var(--accent); color: #fff; padding: 16px 16px 14px;
+      padding-top: calc(16px + env(safe-area-inset-top)); }
+    header h1 { margin: 0; font-size: 19px; }
+    header .meta { font-size: 13px; opacity: .85; margin-top: 2px; }
+    .total { margin-top: 10px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .total .big { font-size: 28px; font-weight: 700; letter-spacing: -.5px; }
+    .total .alt { font-size: 13px; opacity: .85; }
+    main { max-width: 720px; margin: 0 auto; padding: 12px 16px 40px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .card h2 { margin: 0 0 10px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    label { font-size: 12px; color: var(--sub); display: block; margin-bottom: 4px; }
+    input, select, button { font: inherit; }
+    input, select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); min-width: 0; }
+    input:focus, select:focus { outline: 2px solid var(--accent-weak); border-color: var(--accent); }
+    .row { display: grid; gap: 8px; margin-bottom: 8px; }
+    .r2 { grid-template-columns: 1fr 1fr; }
+    .r-amt { grid-template-columns: 1fr 104px; }
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .seg button { flex: 1; border: 0; background: #fff; padding: 9px 4px; cursor: pointer; color: var(--sub); }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button.on { background: var(--accent); color: #fff; font-weight: 600; }
+    .cats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+    .cats button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 2px; cursor: pointer; font-size: 13px; color: var(--text); }
+    .cats button .ic { display: block; font-size: 18px; margin-bottom: 2px; }
+    .cats button.on { border-color: var(--accent); background: var(--accent-weak); font-weight: 600; }
+    .btn { border: 0; border-radius: 8px; padding: 11px 14px; cursor: pointer; background: var(--accent); color: #fff; font-weight: 600; }
+    .btn.full { width: 100%; }
+    .btn.ghost { background: #fff; color: var(--text); border: 1px solid var(--line); font-weight: 500; }
+    .btn.sm { padding: 6px 10px; font-size: 13px; }
+    .btn.danger { color: var(--danger); }
+    .hint { font-size: 12px; color: var(--sub); margin-top: 6px; }
+    .conv { font-size: 13px; color: var(--accent); min-height: 18px; margin: -2px 0 8px; }
+
+    .catrow { display: grid; grid-template-columns: 76px 1fr auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .catrow:last-child { border-bottom: 0; }
+    .catrow .nm { font-size: 14px; white-space: nowrap; }
+    .bar { height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+    .catrow .v { text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .catrow .v small { display: block; color: var(--sub); font-size: 11px; }
+    .catrow.sel { background: var(--accent-weak); border-radius: 6px; }
+
+    .curtbl { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .curtbl th, .curtbl td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+    .curtbl th:first-child, .curtbl td:first-child { text-align: left; }
+    .curtbl th { color: var(--sub); font-weight: 500; }
+
+    .day { font-size: 12px; color: var(--sub); margin: 12px 0 4px; display: flex; justify-content: space-between; }
+    .item { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .item .ic { font-size: 20px; width: 28px; text-align: center; }
+    .item .body { flex: 1; min-width: 0; }
+    .item .t { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item .s { font-size: 12px; color: var(--sub); }
+    .item .amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .item .amt b { font-size: 14px; display: block; }
+    .item .amt small { font-size: 11px; color: var(--sub); }
+    .empty { text-align: center; color: var(--sub); padding: 18px 0; font-size: 14px; }
+    .chip { font-size: 12px; background: var(--accent-weak); color: var(--accent); border-radius: 10px; padding: 2px 8px; font-weight: 500; }
+    .tools { display: flex; flex-wrap: wrap; gap: 6px; }
+    details summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+    details[open] summary { margin-bottom: 10px; }
+    .editing { outline: 2px solid #f59e0b; }
+    .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #111827; color: #fff;
+      padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .toast.show { opacity: .92; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="tripTitle">🇦🇺 시드니 가족여행</h1>
+    <div class="meta" id="tripMeta">2027년 2월</div>
+    <div class="total">
+      <span class="big" id="totalBig">₩0</span>
+      <span class="alt" id="totalAlt"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- 입력 -->
+    <section class="card" id="formCard">
+      <h2><span id="formTitle">지출 입력</span><button class="btn ghost sm" id="cancelEdit" hidden>취소</button></h2>
+      <div class="cats" id="catPick"></div>
+      <div class="row r-amt">
+        <div>
+          <label for="amt">금액</label>
+          <input id="amt" inputmode="decimal" placeholder="0" autocomplete="off">
+        </div>
+        <div>
+          <label>통화</label>
+          <div class="seg" id="curPick"></div>
+        </div>
+      </div>
+      <div class="conv" id="convPreview"></div>
+      <div class="row r2">
+        <div>
+          <label for="date">날짜</label>
+          <input id="date" type="date">
+        </div>
+        <div>
+          <label for="pay">결제</label>
+          <select id="pay">
+            <option>카드</option><option>현금</option><option>기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="memo">내용</label>
+          <input id="memo" placeholder="예: 오페라하우스 투어" autocomplete="off">
+        </div>
+      </div>
+      <button class="btn full" id="save">추가</button>
+      <button class="btn ghost full danger" id="del" hidden style="margin-top:6px">삭제</button>
+    </section>
+
+    <!-- 카테고리별 -->
+    <section class="card">
+      <h2>카테고리별 사용액
+        <div class="seg" id="viewCur" style="width:150px"></div>
+      </h2>
+      <div id="catSummary"></div>
+      <div class="hint">카테고리를 누르면 아래 내역이 그 항목만 보입니다.</div>
+    </section>
+
+    <!-- 통화별 -->
+    <section class="card">
+      <h2>통화별 실제 지출</h2>
+      <table class="curtbl" id="curSummary"></table>
+    </section>
+
+    <!-- 내역 -->
+    <section class="card">
+      <h2>지출 내역 <span class="chip" id="filterChip" hidden></span></h2>
+      <div id="list"></div>
+    </section>
+
+    <!-- 설정 -->
+    <section class="card">
+      <details>
+        <summary>환율 · 여행 정보 · 백업</summary>
+        <div class="row r2">
+          <div><label for="rAUD">1 AUD = ? 원</label><input id="rAUD" inputmode="decimal"></div>
+          <div><label for="rUSD">1 USD = ? 원</label><input id="rUSD" inputmode="decimal"></div>
+        </div>
+        <div class="tools" style="margin-bottom:6px">
+          <button class="btn ghost sm" id="fetchRate">최신 환율 가져오기</button>
+        </div>
+        <div class="hint" id="rateInfo"></div>
+        <div class="hint">합계는 위 환율로 환산합니다. 환율을 바꾸면 모든 합계가 다시 계산됩니다.</div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+        <div class="row r2">
+          <div><label for="tName">여행 이름</label><input id="tName"></div>
+          <div><label for="tPeriod">기간</label><input id="tPeriod" placeholder="2027-02-10 ~ 02-17"></div>
+        </div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+        <div class="tools">
+          <button class="btn ghost sm" id="exportCsv">CSV 내보내기</button>
+          <button class="btn ghost sm" id="exportJson">백업 파일 저장</button>
+          <button class="btn ghost sm" id="importJson">백업 불러오기</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+        <div class="hint">데이터는 이 기기의 브라우저에만 저장됩니다. 기기를 바꾸거나 가족과 합칠 때는 백업 파일을 쓰세요.</div>
+      </details>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const KEY = 'trip-sydney-2027';
+  const CATS = [
+    { id: 'flight', name: '항공', ic: '✈️' },
+    { id: 'trans',  name: '교통', ic: '🚆' },
+    { id: 'stay',   name: '숙박', ic: '🏨' },
+    { id: 'food',   name: '식사', ic: '🍽️' },
+    { id: 'tour',   name: '관광', ic: '🎡' },
+    { id: 'gift',   name: '선물', ic: '🎁' },
+    { id: 'etc',    name: '기타', ic: '📌' },
+  ];
+  const CURS = ['AUD', 'KRW', 'USD'];
+  const SYM = { AUD: 'A$', KRW: '₩', USD: 'US$' };
+  const DEC = { AUD: 2, KRW: 0, USD: 2 };
+  const catOf = id => CATS.find(c => c.id === id) || CATS[CATS.length - 1];
+
+  // ── 상태 ──
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY));
+      if (s && Array.isArray(s.items)) return s;
+    } catch (_) {}
+    return { name: '🇦🇺 시드니 가족여행', period: '2027년 2월',
+             rates: { AUD: 900, USD: 1380 }, rateAt: '', items: [] };
+  }
+  let S = load();
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch (_) { toast('저장 실패 — 브라우저 저장소를 확인하세요'); }
+  }
+
+  let form = { cat: 'food', cur: 'AUD' };
+  let viewCur = 'KRW';
+  let filterCat = null;
+  let editId = null;
+
+  // ── 숫자 ──
+  const toKRW = (amt, cur) => cur === 'KRW' ? amt : amt * (S.rates[cur] || 0);
+  const fromKRW = (krw, cur) => cur === 'KRW' ? krw : krw / (S.rates[cur] || 1);
+  function fmt(v, cur) {
+    const d = DEC[cur];
+    return SYM[cur] + Number(v).toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function parseNum(s) {
+    const n = parseFloat(String(s).replace(/[^0-9.]/g, ''));
+    return isFinite(n) ? n : 0;
+  }
+
+  const $ = id => document.getElementById(id);
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function today() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  let toastT;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  // ── 입력 폼 ──
+  function renderPickers() {
+    $('catPick').innerHTML = CATS.map(c =>
+      `<button type="button" data-c="${c.id}" class="${form.cat === c.id ? 'on' : ''}"><span class="ic">${c.ic}</span>${c.name}</button>`
+    ).join('');
+    $('curPick').innerHTML = CURS.map(c =>
+      `<button type="button" data-u="${c}" class="${form.cur === c ? 'on' : ''}">${c === 'KRW' ? '원' : c === 'AUD' ? 'A$' : 'US$'}</button>`
+    ).join('');
+    $('viewCur').innerHTML = CURS.map(c =>
+      `<button type="button" data-v="${c}" class="${viewCur === c ? 'on' : ''}">${c === 'KRW' ? '원' : c === 'AUD' ? 'A$' : 'US$'}</button>`
+    ).join('');
+    updateConv();
+  }
+  function updateConv() {
+    const a = parseNum($('amt').value);
+    if (!a) { $('convPreview').textContent = ''; return; }
+    const krw = toKRW(a, form.cur);
+    const others = CURS.filter(c => c !== form.cur).map(c => '≈ ' + fmt(fromKRW(krw, c), c));
+    $('convPreview').textContent = others.join('  ·  ');
+  }
+  $('catPick').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    form.cat = b.dataset.c; renderPickers();
+  });
+  $('curPick').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    form.cur = b.dataset.u; renderPickers();
+  });
+  $('viewCur').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    viewCur = b.dataset.v; renderPickers(); renderAll();
+  });
+  $('amt').addEventListener('input', updateConv);
+  $('amt').addEventListener('blur', () => {
+    const a = parseNum($('amt').value);
+    if (a) $('amt').value = a.toLocaleString('ko-KR', { maximumFractionDigits: DEC[form.cur] });
+  });
+
+  function resetForm() {
+    editId = null;
+    $('amt').value = ''; $('memo').value = '';
+    $('formTitle').textContent = '지출 입력';
+    $('save').textContent = '추가';
+    $('cancelEdit').hidden = true; $('del').hidden = true;
+    $('formCard').classList.remove('editing');
+    updateConv();
+  }
+
+  $('save').addEventListener('click', () => {
+    const amount = parseNum($('amt').value);
+    if (!amount) { toast('금액을 입력하세요'); $('amt').focus(); return; }
+    const rec = {
+      cat: form.cat, cur: form.cur, amount: Math.round(amount * 100) / 100,
+      date: $('date').value || today(), pay: $('pay').value, memo: $('memo').value.trim(),
+    };
+    if (editId) {
+      const it = S.items.find(x => x.id === editId);
+      if (it) Object.assign(it, rec);
+      toast('수정했습니다');
+    } else {
+      rec.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      S.items.push(rec);
+      toast(catOf(rec.cat).name + ' ' + fmt(rec.amount, rec.cur) + ' 추가');
+    }
+    save(); resetForm(); renderAll();
+  });
+  $('cancelEdit').addEventListener('click', resetForm);
+  $('del').addEventListener('click', () => {
+    if (!editId || !confirm('이 지출을 삭제할까요?')) return;
+    S.items = S.items.filter(x => x.id !== editId);
+    save(); resetForm(); renderAll(); toast('삭제했습니다');
+  });
+
+  function startEdit(id) {
+    const it = S.items.find(x => x.id === id); if (!it) return;
+    editId = id;
+    form.cat = it.cat; form.cur = it.cur;
+    $('amt').value = it.amount.toLocaleString('ko-KR', { maximumFractionDigits: DEC[it.cur] });
+    $('date').value = it.date; $('pay').value = it.pay || '카드'; $('memo').value = it.memo || '';
+    $('formTitle').textContent = '지출 수정';
+    $('save').textContent = '수정 저장';
+    $('cancelEdit').hidden = false; $('del').hidden = false;
+    $('formCard').classList.add('editing');
+    renderPickers();
+    $('formCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── 요약/목록 ──
+  function renderAll() {
+    document.title = S.name.replace(/^\W+\s*/, '') + ' 경비';
+    $('tripTitle').textContent = S.name;
+    $('tripMeta').textContent = S.period + ' · ' + S.items.length + '건';
+
+    const totalKRW = S.items.reduce((s, it) => s + toKRW(it.amount, it.cur), 0);
+    $('totalBig').textContent = fmt(fromKRW(totalKRW, viewCur), viewCur);
+    $('totalAlt').textContent = CURS.filter(c => c !== viewCur).map(c => fmt(fromKRW(totalKRW, c), c)).join(' · ');
+
+    // 카테고리별
+    const byCat = CATS.map(c => {
+      const its = S.items.filter(it => it.cat === c.id);
+      return { c, n: its.length, krw: its.reduce((s, it) => s + toKRW(it.amount, it.cur), 0) };
+    });
+    const max = Math.max(1, ...byCat.map(x => x.krw));
+    $('catSummary').innerHTML = byCat.map(x => {
+      const pct = totalKRW ? Math.round(x.krw / totalKRW * 1000) / 10 : 0;
+      return `<div class="catrow ${filterCat === x.c.id ? 'sel' : ''}" data-c="${x.c.id}">
+        <span class="nm">${x.c.ic} ${x.c.name}</span>
+        <div class="bar"><i style="width:${x.krw / max * 100}%"></i></div>
+        <span class="v">${fmt(fromKRW(x.krw, viewCur), viewCur)}<small>${pct}% · ${x.n}건</small></span>
+      </div>`;
+    }).join('');
+
+    // 통화별 (실제 지출한 원래 통화 기준)
+    const head = '<tr><th>카테고리</th>' + CURS.map(c => `<th>${c}</th>`).join('') + '</tr>';
+    const sumCur = (cat, cur) => S.items.filter(it => (!cat || it.cat === cat) && it.cur === cur).reduce((s, it) => s + it.amount, 0);
+    const cell = (v, cur) => v ? fmt(v, cur) : '<span style="color:#d1d5db">-</span>';
+    const rows = CATS.map(c => `<tr><td>${c.ic} ${c.name}</td>` + CURS.map(u => `<td>${cell(sumCur(c.id, u), u)}</td>`).join('') + '</tr>').join('');
+    const foot = '<tr style="font-weight:600"><td>합계</td>' + CURS.map(u => `<td>${cell(sumCur(null, u), u)}</td>`).join('') + '</tr>';
+    $('curSummary').innerHTML = head + rows + foot;
+
+    // 목록 (날짜 내림차순, 날짜별 그룹)
+    const its = S.items.filter(it => !filterCat || it.cat === filterCat)
+      .slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id.localeCompare(a.id));
+    $('filterChip').hidden = !filterCat;
+    if (filterCat) $('filterChip').textContent = catOf(filterCat).name + '만 보기 ✕';
+    if (!its.length) {
+      $('list').innerHTML = `<div class="empty">${filterCat ? '이 카테고리 지출이 없습니다' : '아직 지출이 없습니다. 위에서 입력해 보세요.'}</div>`;
+      return;
+    }
+    let html = '', curDay = null;
+    const dayTotal = {};
+    its.forEach(it => { dayTotal[it.date] = (dayTotal[it.date] || 0) + toKRW(it.amount, it.cur); });
+    its.forEach(it => {
+      if (it.date !== curDay) {
+        curDay = it.date;
+        const d = new Date(it.date + 'T00:00');
+        const wd = isNaN(d) ? '' : ' (' + '일월화수목금토'[d.getDay()] + ')';
+        html += `<div class="day"><span>${esc(it.date)}${wd}</span><span>${fmt(fromKRW(dayTotal[it.date], viewCur), viewCur)}</span></div>`;
+      }
+      const c = catOf(it.cat);
+      const conv = it.cur === viewCur ? '' : '≈ ' + fmt(fromKRW(toKRW(it.amount, it.cur), viewCur), viewCur);
+      html += `<div class="item" data-id="${esc(it.id)}">
+        <span class="ic">${c.ic}</span>
+        <div class="body"><div class="t">${esc(it.memo || c.name)}</div><div class="s">${c.name} · ${esc(it.pay || '')}</div></div>
+        <div class="amt"><b>${fmt(it.amount, it.cur)}</b><small>${conv}</small></div>
+      </div>`;
+    });
+    $('list').innerHTML = html;
+  }
+
+  $('catSummary').addEventListener('click', e => {
+    const r = e.target.closest('.catrow'); if (!r) return;
+    filterCat = filterCat === r.dataset.c ? null : r.dataset.c; renderAll();
+  });
+  $('filterChip').addEventListener('click', () => { filterCat = null; renderAll(); });
+  $('list').addEventListener('click', e => {
+    const r = e.target.closest('.item'); if (r) startEdit(r.dataset.id);
+  });
+
+  // ── 설정 ──
+  function renderSettings() {
+    $('rAUD').value = S.rates.AUD; $('rUSD').value = S.rates.USD;
+    $('tName').value = S.name; $('tPeriod').value = S.period;
+    $('rateInfo').textContent = S.rateAt ? '환율 기준: ' + S.rateAt : '기본값 환율입니다. 여행 전에 갱신하세요.';
+  }
+  function onRate() {
+    const a = parseNum($('rAUD').value), u = parseNum($('rUSD').value);
+    if (a) S.rates.AUD = a; if (u) S.rates.USD = u;
+    S.rateAt = '직접 입력 (' + today() + ')';
+    save(); renderSettings(); renderAll(); updateConv();
+  }
+  $('rAUD').addEventListener('change', onRate);
+  $('rUSD').addEventListener('change', onRate);
+  $('tName').addEventListener('change', () => { S.name = $('tName').value.trim() || S.name; save(); renderAll(); });
+  $('tPeriod').addEventListener('change', () => { S.period = $('tPeriod').value.trim(); save(); renderAll(); });
+
+  $('fetchRate').addEventListener('click', async () => {
+    const b = $('fetchRate'); b.disabled = true; b.textContent = '가져오는 중…';
+    try {
+      const r = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
+      const j = await r.json();
+      const krw = j && j.rates && j.rates.KRW, aud = j && j.rates && j.rates.AUD;
+      if (!krw || !aud) throw new Error('bad');
+      S.rates.USD = Math.round(krw * 100) / 100;
+      S.rates.AUD = Math.round(krw / aud * 100) / 100;
+      S.rateAt = (j.time_last_update_utc || today()).replace(/ \+0000$/, ' UTC');
+      save(); renderSettings(); renderAll(); updateConv();
+      toast('환율 갱신: 1 AUD = ' + S.rates.AUD.toLocaleString() + '원');
+    } catch (_) {
+      toast('환율을 가져오지 못했습니다 — 직접 입력하세요');
+    } finally {
+      b.disabled = false; b.textContent = '최신 환율 가져오기';
+    }
+  });
+
+  function download(name, text, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  $('exportCsv').addEventListener('click', () => {
+    const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const lines = [['날짜', '카테고리', '내용', '결제', '통화', '금액', '원화환산'].map(q).join(',')];
+    S.items.slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(it => {
+      lines.push([it.date, catOf(it.cat).name, it.memo, it.pay, it.cur, it.amount, Math.round(toKRW(it.amount, it.cur))].map(q).join(','));
+    });
+    download('여행경비_' + today() + '.csv', '﻿' + lines.join('\r\n'), 'text/csv');
+  });
+  $('exportJson').addEventListener('click', () => {
+    download('여행경비_백업_' + today() + '.json', JSON.stringify(S, null, 2), 'application/json');
+  });
+  $('importJson').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (!d || !Array.isArray(d.items)) throw new Error('bad');
+      const merge = S.items.length && confirm('기존 내역과 합칠까요?\n[확인] 합치기 (같은 항목은 건너뜀)\n[취소] 백업으로 덮어쓰기');
+      if (merge) {
+        const ids = new Set(S.items.map(x => x.id));
+        const add = d.items.filter(x => x && x.id && !ids.has(x.id));
+        S.items.push(...add);
+        toast(add.length + '건 합쳤습니다');
+      } else {
+        S = Object.assign(load(), d);
+        toast('백업을 불러왔습니다');
+      }
+      save(); renderSettings(); renderPickers(); renderAll();
+    } catch (_) {
+      toast('백업 파일을 읽을 수 없습니다');
+    }
+  });
+
+  // ── 시작 ──
+  $('date').value = today();
+  renderPickers(); renderSettings(); renderAll();
+})();
+</script>
+</body>
+</html>
