@@ -20,6 +20,15 @@
 ## 현재 버전
 `v0.695` (MyPM / NonK / KDeal 공통)
 
+## 가족여행 앱(/trip) 버전 — MyPM 과 별도 관리
+- 여행앱은 MyPM 과 **완전히 별개 프로그램**. 버전도 따로 매긴다.
+- 현재 버전: `v0.001` — 기준값은 `server/src/trip.ts` 의 `TRIP_VERSION`
+- 여행앱 변경 시 `TRIP_VERSION` 만 +0.001 (`v0.001` → `v0.002`). 프론트(`server/private/trip/`, 비공개·미커밋)에
+  버전 표기가 있으면 같은 값으로 맞추도록 사용자에게 안내.
+- 여행앱만 바뀐 커밋에서는 **MyPM 버전(index/NonK/KDeal/sw.js)을 올리지 않는다.**
+  반대로 MyPM 파일(`sw.js` 등)을 건드리면 MyPM 버전 규칙을 따른다.
+- 커밋 메시지에 `(trip v0.xxx)` 로 표기하고, 완료 후 여행앱 버전을 사용자에게 알릴 것.
+
 ## 배포 구조 (중요)
 `mypm.growpension.com`은 **GitHub Pages가 아닌 집 Windows PC**에서 서빙된다.
 - 집 PC의 `C:\Users\강민구\mypm\` 저장소를 Node 서버(`server/`)가 정적 파일로 서빙

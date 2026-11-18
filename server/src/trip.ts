@@ -27,6 +27,10 @@ import { OAuth2Client } from 'google-auth-library';
 import { env } from './env.js';
 import { db, getTokenSecret } from './db.js';
 
+// 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
+// (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
+export const TRIP_VERSION = 'v0.001';
+
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30일
@@ -291,9 +295,10 @@ main{max-width:360px;margin:18vh auto 0;padding:0 16px;text-align:center}
 .card{background:var(--card);border-radius:16px;padding:28px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 h1{font-size:20px;margin:0 0 6px}p{color:var(--sub);font-size:14px;margin:0 0 20px}
 #btn{display:flex;justify-content:center;min-height:44px}#msg{color:var(--err);font-size:13px;margin-top:14px;min-height:18px}
+.ver{color:var(--sub);font-size:11px;margin-top:16px;opacity:.7}
 </style></head><body><main><div class="card">
 <h1>시드니 2027 가족여행</h1><p>가족 구글 계정으로 로그인하세요</p>
-<div id="btn"></div><div id="msg"></div></div></main>
+<div id="btn"></div><div id="msg"></div></div><div class="ver">${TRIP_VERSION}</div></main>
 <script src="https://accounts.google.com/gsi/client" async defer onload="init()"></script>
 <script>
 var CID=${cid};
@@ -331,6 +336,7 @@ export default async function tripRoutes(app: FastifyInstance) {
   app.addHook('onRequest', async (_req, reply) => {
     noStore(reply);
     securityHeaders(reply);
+    reply.header('X-Trip-Version', TRIP_VERSION);
   });
 
   // ── 인증 ──
@@ -384,7 +390,7 @@ export default async function tripRoutes(app: FastifyInstance) {
   app.get(`${api}/me`, { preHandler: requireTripAuth }, async (req) => {
     const u = tripUser(req);
     const admin = isAdminEmail(u.email);
-    return { id: String(u.id), displayName: u.name ?? undefined, isAdmin: admin, canWrite: true };
+    return { id: String(u.id), displayName: u.name ?? undefined, isAdmin: admin, canWrite: true, version: TRIP_VERSION };
   });
 
   // ── 메시지 ──

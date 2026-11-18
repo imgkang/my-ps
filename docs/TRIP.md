@@ -2,6 +2,11 @@
 
 `https://mypm.growpension.com/trip/` 에서 서비스. 서버 코드는 `server/src/trip.ts`.
 
+## 버전
+MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.001`).
+확인 방법: 로그인 화면 하단 표기, `GET /trip/api/me` 의 `version`, 모든 `/trip` 응답의 `X-Trip-Version` 헤더.
+여행앱만 바뀐 배포에서는 MyPM 버전(sw.js `CACHE_NAME` 등)을 올리지 않는다.
+
 ## 왜 앱 파일이 저장소에 없나
 `index.html`·`trip-data.js` 에 크루즈 예약번호·예약자명이 있고 이 저장소는 **공개**다.
 앱 파일은 집 PC의 `server/private/trip/` (`.gitignore` 처리)에만 두고, 서버가 **로그인 확인 후에만** 내려준다.
@@ -30,7 +35,7 @@ server/private/trip/
 - 로그인 성공 시 `trip_sess` 쿠키(HttpOnly·Secure·SameSite=Strict·Path=/trip, 30일 슬라이딩).
   MyPM Bearer 토큰과 별개의 서명키(용도별 파생)라 서로 재사용 불가.
 - 멤버 목록은 요청마다 대조 → `.env` 에서 빼고 재시작하면 즉시 차단.
-- POST/PUT 은 Origin 확인. MyPM 서비스워커는 `/trip/` 을 캐시하지 않는다(v0.695~).
+- POST/PUT 은 Origin 확인. MyPM 서비스워커는 `/trip/` 을 캐시하지 않는다(MyPM v0.695~).
 
 ## API (프론트 상대경로 `api/`)
 `GET me` · `GET messages?after=` · `POST messages` · `GET notice` · `PUT notice`(관리자) — 계약은 인계서(HANDOFF.md) 3장과 동일.
