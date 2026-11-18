@@ -27,10 +27,11 @@ import { OAuth2Client } from 'google-auth-library';
 import { env } from './env.js';
 import { db, getTokenSecret } from './db.js';
 import { isTripAdminEmail, isTripMemberEmail } from './trip-members.js';
+import { registerExpenseRoutes, isOwnerEmail } from './trip-expenses.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.005';
+export const TRIP_VERSION = 'v0.006';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -386,7 +387,7 @@ export default async function tripRoutes(app: FastifyInstance) {
   app.get(`${api}/me`, { preHandler: requireTripAuth }, async (req) => {
     const u = tripUser(req);
     const admin = isAdminEmail(u.email);
-    return { id: String(u.id), displayName: u.name ?? undefined, isAdmin: admin, canWrite: true, version: TRIP_VERSION };
+    return { id: String(u.id), displayName: u.name ?? undefined, isAdmin: admin, isOwner: isOwnerEmail(u.email), canWrite: true, version: TRIP_VERSION };
   });
 
   // ── 메시지 ──
@@ -463,6 +464,9 @@ export default async function tripRoutes(app: FastifyInstance) {
   );
 
   // 알 수 없는 API 경로는 정적 처리로 흘리지 않는다.
+  // ── 경비 (소유자 전용) ──
+  registerExpenseRoutes(app, api, { requireTripAuth, requireSameOrigin, email: (req) => tripUser(req).email });
+
   app.all(`${api}/*`, async (_req, reply) => {
     noStore(reply);
     return reply.code(404).send({ error: 'not found' });
