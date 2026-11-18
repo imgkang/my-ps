@@ -44,7 +44,9 @@ const UPLOAD_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'
 export type Place = { nm: string; q: string; ad: string };
 export type SItem = { id: string; tm: string; tx: string; place?: string; meet?: boolean; st?: 'ok' | 'tbd'; note?: string };
 export type Day = { date: string; w: string; ttl: string; sub: string; items: SItem[] };
-export type Schedule = { start: string; places: Record<string, Place>; days: Day[] };
+// 예약·준비할 일 체크리스트 — 일정과 같은 JSON 에 저장(소유자 편집). id 는 일정 항목과 같은 공간이라 영수증도 붙일 수 있다.
+export type Todo = { id: string; tx: string; due?: string; done?: boolean; note?: string };
+export type Schedule = { start: string; places: Record<string, Place>; days: Day[]; todos: Todo[] };
 
 const ctrl = (v: unknown, max: number, keepNl = false) => {
   let s = typeof v === 'string' ? v : v == null ? '' : String(v);
@@ -69,8 +71,11 @@ export function cleanSchedule(x: any): Schedule | string {
   if (!Array.isArray(x.days) || !x.days.length || x.days.length > 60) return 'days 가 없거나 너무 많습니다';
   const seen = new Set<string>();
   const days: Day[] = [];
+  const dates = new Set<string>();
   for (const d of x.days) {
     if (!d || typeof d.date !== 'string' || !DATE_RE.test(d.date)) return '날짜 형식 오류';
+    if (dates.has(d.date)) return `${d.date}: 같은 날짜가 두 번 있습니다`;
+    dates.add(d.date);
     const items: SItem[] = [];
     for (const it of Array.isArray(d.items) ? d.items.slice(0, 60) : []) {
       if (!it || typeof it !== 'object') continue;
@@ -93,8 +98,23 @@ export function cleanSchedule(x: any): Schedule | string {
     days.push({ date: d.date, w: ctrl(d.w, 3), ttl: ctrl(d.ttl, 80) || d.date, sub: ctrl(d.sub, 120), items });
   }
   days.sort((a, b) => a.date.localeCompare(b.date));
+  const todos: Todo[] = [];
+  for (const t of Array.isArray(x.todos) ? x.todos.slice(0, 200) : []) {
+    if (!t || typeof t !== 'object') continue;
+    let id = typeof t.id === 'string' && ID_RE.test(t.id) ? t.id : newId();
+    while (seen.has(id)) id = newId();
+    seen.add(id);
+    const tx = ctrl(t.tx, 200);
+    if (!tx) return '준비할 일: 내용이 빈 항목이 있습니다';
+    const o: Todo = { id, tx };
+    if (typeof t.due === 'string' && DATE_RE.test(t.due)) o.due = t.due;
+    if (t.done === true) o.done = true;
+    const note = ctrl(t.note, 400, true);
+    if (note) o.note = note;
+    todos.push(o);
+  }
   const start = typeof x.start === 'string' && DATE_RE.test(x.start) ? x.start : days[0].date;
-  return { start, places, days };
+  return { start, places, days, todos };
 }
 
 export function getSchedule(): { schedule: Schedule | null; rev: number } {
@@ -155,7 +175,7 @@ export function registerScheduleRoutes(
     if (typeof s === 'string') return reply.code(400).send({ error: s });
     const rev = cur.rev + 1;
     // 삭제된 항목에 붙어 있던 영수증 정리
-    const ids = new Set(s.days.flatMap((d) => d.items.map((i) => i.id)));
+    const ids = new Set([...s.days.flatMap((d) => d.items.map((i) => i.id)), ...s.todos.map((t) => t.id)]);
     const orphans = (db.prepare('SELECT id, item_id FROM trip_receipts').all() as { id: string; item_id: string }[]).filter((r) => !ids.has(r.item_id)).map((r) => r.id);
     db.transaction(() => {
       db.prepare(
@@ -173,7 +193,8 @@ export function registerScheduleRoutes(
     const item = (req.query as any)?.item;
     if (typeof item !== 'string' || !ID_RE.test(item)) return reply.code(400).send({ error: 'bad item' });
     const s = getSchedule().schedule;
-    if (!s || !s.days.some((d) => d.items.some((i) => i.id === item))) return reply.code(400).send({ error: '없는 일정 항목입니다' });
+    if (!s || !(s.days.some((d) => d.items.some((i) => i.id === item)) || (s.todos ?? []).some((t) => t.id === item)))
+      return reply.code(400).send({ error: '없는 일정 항목입니다' });
     const n = (db.prepare('SELECT COUNT(*) AS c FROM trip_receipts WHERE item_id = ?').get(item) as { c: number }).c;
     if (n >= MAX_RECEIPTS_PER_ITEM) return reply.code(400).send({ error: `한 항목에 최대 ${MAX_RECEIPTS_PER_ITEM}개까지 첨부할 수 있습니다` });
     const buf = req.body;
