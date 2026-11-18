@@ -55,10 +55,11 @@ server/private/trip/
 본문 8KB(413), 사용자당 분당 30건(429), 응답 `Cache-Control: no-store`, 제어문자 제거.
 
 ## 경비 탭 (소유자 전용)
-기존 `trip.html` 경비 페이지를 여행앱 「경비」 탭으로 옮김. 데이터는 서버 DB(`trip_expenses`, `trip_expense_settings`).
+기존 `trip.html` 경비 페이지를 여행앱 「경비」 탭으로 옮김(`trip.html` 은 MyPM v0.700 에서 삭제). 데이터는 서버 DB(`trip_expenses`, `trip_expense_settings`).
 - 소유자(`OWNER_EMAIL`)만: `/api/me` 의 `isOwner` 가 true 일 때만 탭 표시, 서버도 그 외 403
 - API (`/trip/api/expenses…`): `GET` 목록·환율 / `PUT items/:id` 추가·수정 / `DELETE items/:id` / `POST import` 합치기(같은 id 건너뜀, 덮어쓰기 없음) / `PUT rates`
 - 「이 기기의 기존 경비 가져오기」: 같은 사이트라 휴대폰 브라우저에 남은 `trip.html` 데이터(localStorage `trip-sydney-2027`)를 바로 읽어 서버로 합침. 기존 데이터는 지우지 않음
+  (페이지를 지워도 브라우저 저장 데이터는 남아 있어, 아직 안 옮긴 기기에서도 이 버튼으로 가져올 수 있음)
 - 화면 코드는 비공개 `index.html` 안에 있음(관리 페이지에서 업로드)
 
 ## 보관 (수동 결정)
