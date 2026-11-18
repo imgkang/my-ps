@@ -30,7 +30,7 @@ import { isTripAdminEmail, isTripMemberEmail } from './trip-members.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.004';
+export const TRIP_VERSION = 'v0.005';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -543,6 +543,6 @@ async function missingPage(rel: string): Promise<string> {
 <p>서버가 읽는 폴더 (<code>TRIP_STATIC_DIR</code>):<br><code>${esc(root)}</code> — ${rootOk ? '<span class="ok">폴더 있음</span>' : '<span class="no">폴더 없음</span>'}</p>
 <ul>${items}</ul>
 ${others.length ? `<p>폴더에 있는 다른 파일: ${others.map((n) => `<code>${esc(n)}</code>`).join(' ')}<br>파일 이름이 정확히 <code>index.html</code>·<code>trip-data.js</code> 인지 확인하세요 (예: <code>index.html.html</code>, 앞에 붙은 접두어).</p>` : ''}
-<p>위 폴더에 두 파일을 넣고 새로고침하면 됩니다. 서버 재시작은 필요 없어요.</p>`
+<p><b>관리 페이지(admin.html) → 「여행앱 파일」 카드</b>에서 올리거나, 위 폴더에 두 파일을 직접 넣고 새로고침하면 됩니다. 서버 재시작은 필요 없어요.</p>`
   );
 }
