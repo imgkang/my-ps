@@ -29,7 +29,7 @@ import { db, getTokenSecret } from './db.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.001';
+export const TRIP_VERSION = 'v0.002';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
