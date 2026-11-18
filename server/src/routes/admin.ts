@@ -9,6 +9,7 @@ import { db } from '../db.js';
 import { metrics } from '../metrics.js';
 import { restartSelf } from './webhook.js';
 import { listAllowedEmails, addAllowedEmail, removeAllowedEmail } from '../allowlist.js';
+import { listTripFiles, readTripFile, saveTripFile, validateTripFile, isTripFileName, MAX_TRIP_FILE_BYTES } from '../trip-files.js';
 import { listTripMembers, addTripMember, removeTripMember, isTripAdminEmail, tripSignedUpEmails } from '../trip-members.js';
 import { runBench, storeSnapshot, latestSnapshot, history, withDeltas, frontendCompare } from '../bench/index.js';
 import { computeScores, WINDOW_DAYS } from '../engagement.js';
@@ -350,5 +351,45 @@ export default async function adminRoutes(app: FastifyInstance) {
     }
     app.log.info(`[admin] 계정 권한 변경: ${e} mypm=${mypm ?? '-'} trip=${trip ?? '-'}`);
     return { ok: true };
+  });
+
+  // ── 여행앱 화면 파일 (index.html / trip-data.js) — git 을 거치지 않고 서버 폴더에 직접 ──
+  // GET /api/admin/trip-files            — 상태 목록
+  app.get('/api/admin/trip-files', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    reply.header('Cache-Control', 'no-store');
+    return listTripFiles();
+  });
+
+  // GET /api/admin/trip-files/:name      — 내용 다운로드(수정용)
+  app.get('/api/admin/trip-files/:name', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const name = (req.params as any).name;
+    if (!isTripFileName(name)) return reply.code(400).send({ error: 'unknown file' });
+    const content = await readTripFile(name);
+    if (content === null) return reply.code(404).send({ error: '파일 없음' });
+    reply.header('Cache-Control', 'no-store');
+    reply.header('Content-Disposition', `attachment; filename="${name}"`);
+    return reply.type(name.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/javascript; charset=utf-8').send(content);
+  });
+
+  // PUT /api/admin/trip-files/:name  body: { content: string }  — 업로드(기존 파일은 .backup 에 보관)
+  app.put('/api/admin/trip-files/:name', { bodyLimit: MAX_TRIP_FILE_BYTES * 2 }, async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    reply.header('Cache-Control', 'no-store');
+    const name = (req.params as any).name;
+    if (!isTripFileName(name)) return reply.code(400).send({ error: 'index.html 또는 trip-data.js 만 올릴 수 있습니다' });
+    const content = (req.body as any)?.content;
+    if (typeof content !== 'string') return reply.code(400).send({ error: 'missing content' });
+    const v = validateTripFile(name, content);
+    if (v.error) return reply.code(400).send({ error: v.error });
+    try {
+      const { backedUp } = await saveTripFile(name, content);
+      app.log.info(`[admin] 여행앱 파일 업로드: ${name} (${Buffer.byteLength(content, 'utf8')}B, 백업=${backedUp})`);
+      return { ok: true, backedUp, info: v.info };
+    } catch (e: any) {
+      app.log.error(`[admin] 여행앱 파일 저장 실패: ${name} ${e?.message}`);
+      return reply.code(500).send({ error: '저장 실패 — 서버 로그 확인' });
+    }
   });
 }

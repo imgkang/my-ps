@@ -95,6 +95,11 @@
   .acc-tg:disabled { cursor:default; opacity:.85; }
   .acc-tg small { font-size:.6rem; color:var(--muted); }
   .acc-del { flex:0 0 auto; background:none; border:1px solid var(--red); color:var(--red); border-radius:6px; padding:4px 8px; font-size:.7rem; cursor:pointer; }
+  .tf-row { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--border); }
+  .tf-row:last-of-type { border-bottom:0; }
+  .tf-btn { flex:0 0 auto; background:none; border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 10px; font-size:.75rem; cursor:pointer; }
+  .tf-btn.up { border-color:var(--accent); color:var(--accent); }
+  .tf-btn:disabled { opacity:.4; cursor:default; }
 </style>
 </head>
 <body>
@@ -274,6 +279,17 @@
     </div>
   </div>
 
+  <!-- 여행앱 화면 파일: git(공개 저장소)을 거치지 않고 서버 폴더에 직접 업로드 -->
+  <div class="card">
+    <div class="card-title">여행앱 파일 (index.html · trip-data.js)</div>
+    <div id="tripFiles"><div class="status-sub">불러오는 중...</div></div>
+    <input type="file" id="tripFileInput" accept=".html,.js,text/html,text/javascript" hidden>
+    <div class="section-note">
+      ※ 예약정보가 있어 저장소(GitHub)에 올리지 않고 서버 폴더에 바로 저장합니다. 올리면 즉시 반영 — 재시작 불필요.
+      덮어쓸 때 이전 파일은 서버에 최근 5개까지 백업됩니다. 일정 수정: <b>내려받기</b> → 편집 → <b>올리기</b>.
+    </div>
+  </div>
+
   <!-- Task Scheduler 상태 -->
   <div class="card">
     <div class="card-title">Task Scheduler</div>
@@ -395,7 +411,7 @@ function showToast(msg, duration = 2500) {
 
 async function loadStatus() {
   countdown = 30;
-  progressStart(4, '서버 상태 확인 중...');
+  progressStart(5, '서버 상태 확인 중...');
   try {
     const res = await fetch(`${getBase()}/api/admin/status?token=${encodeURIComponent(token)}`);
     if (res.status === 401 || res.status === 403) {
@@ -421,6 +437,7 @@ async function loadStatus() {
       loadDerived().then(() => progressTick('파생상태 ✓')).catch(() => progressTick('파생상태 실패')),
       loadEngagement().catch(() => {}),
       loadAllowlist().then(() => progressTick('계정 ✓')).catch(() => progressTick('계정 실패')),
+      loadTripFiles().then(() => progressTick('여행 파일 ✓')).catch(() => progressTick('여행 파일 실패')),
     ]);
     startAutoRefresh();
   } catch (e) {
@@ -588,6 +605,78 @@ async function addAccount() {
     showToast(e.message || '추가 실패 — 서버 상태 확인', 3000);
   }
 }
+
+// ── 여행앱 파일 (index.html / trip-data.js) ──
+let tripUploadTarget = null;
+function fmtBytes(n) { return n == null ? '' : n < 1024 ? `${n}B` : `${(n / 1024).toFixed(1)}KB`; }
+function fmtWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+async function loadTripFiles() {
+  const box = document.getElementById('tripFiles');
+  try {
+    const res = await fetch(`${getBase()}/api/admin/trip-files?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    if (!res.ok) {
+      box.innerHTML = res.status === 404
+        ? '<div class="status-sub">조회 실패 — 서버가 최신 빌드(/api/admin/trip-files 포함)인지 확인</div>'
+        : '<div class="status-sub">조회 실패</div>';
+      return;
+    }
+    const d = await res.json();
+    const DESC = { 'index.html': '화면', 'trip-data.js': '일정·장소 데이터' };
+    box.innerHTML = d.files.map(f => {
+      const st = f.exists
+        ? `<span style="color:var(--green)">있음</span> · ${fmtBytes(f.size)} · ${escHtml(fmtWhen(f.mtime))} 수정${f.backups ? ` · 백업 ${f.backups}개` : ''}`
+        : '<span style="color:var(--red)">없음 — 올려 주세요</span>';
+      return `<div class="tf-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.85rem"><code>${escHtml(f.name)}</code> <span style="font-size:.7rem;color:var(--muted)">${DESC[f.name] || ''}</span></div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${st}</div>
+        </div>
+        <button type="button" class="tf-btn" data-dl="${escHtml(f.name)}" ${f.exists ? '' : 'disabled'}>내려받기</button>
+        <button type="button" class="tf-btn up" data-up="${escHtml(f.name)}">올리기</button>
+      </div>`;
+    }).join('') + (d.dirExists ? '' : '<div class="status-sub" style="margin-top:6px">서버 폴더가 아직 없습니다 — 첫 업로드 때 자동으로 만들어집니다.</div>');
+  } catch {
+    box.innerHTML = '<div class="status-sub">조회 중 오류</div>';
+  }
+}
+document.getElementById('tripFiles').addEventListener('click', async ev => {
+  const dl = ev.target.closest('[data-dl]'), up = ev.target.closest('[data-up]');
+  if (dl && !dl.disabled) {
+    const name = dl.dataset.dl;
+    try {
+      const res = await fetch(`${getBase()}/api/admin/trip-files/${encodeURIComponent(name)}?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+      if (!res.ok) { showToast('내려받기 실패', 3000); return; }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch { showToast('내려받기 실패 — 서버 상태 확인', 3000); }
+  } else if (up) {
+    tripUploadTarget = up.dataset.up;
+    const inp = document.getElementById('tripFileInput');
+    inp.value = ''; inp.click();
+  }
+});
+document.getElementById('tripFileInput').addEventListener('change', async ev => {
+  const file = ev.target.files && ev.target.files[0];
+  const name = tripUploadTarget;
+  if (!file || !name) return;
+  if (file.name !== name && !confirm(`선택한 파일 이름은 "${file.name}" 입니다.\n서버의 ${name} 으로 저장할까요?`)) return;
+  if (file.size > 1024 * 1024) { showToast('파일이 너무 큽니다(최대 1MB)', 3000); return; }
+  try {
+    const content = await file.text();
+    const res = await fetch(`${getBase()}/api/admin/trip-files/${encodeURIComponent(name)}?token=${encodeURIComponent(token)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { showToast(d.error || '올리기 실패', 4000); return; }
+    showToast(`${name} 올림${d.info ? ` (${d.info})` : ''}${d.backedUp ? ' · 이전 파일 백업됨' : ''}`, 3500);
+    loadTripFiles();
+  } catch { showToast('올리기 실패 — 서버 상태 확인', 3000); }
+});
 
 let logErrorsOnly = true;
 

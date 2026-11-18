@@ -18,15 +18,16 @@
 - 작업 완료 후 커밋된 버전 번호를 사용자에게 알릴 것
 
 ## 현재 버전
-`v0.697` (MyPM / NonK / KDeal 공통)
+`v0.698` (MyPM / NonK / KDeal 공통)
 
 ## 가족여행 앱(/trip) 버전 — MyPM 과 별도 관리
 - 여행앱은 MyPM 과 **완전히 별개 프로그램**. 버전도 따로 매긴다.
-- 현재 버전: `v0.004` — 기준값은 `server/src/trip.ts` 의 `TRIP_VERSION`
+- 현재 버전: `v0.005` — 기준값은 `server/src/trip.ts` 의 `TRIP_VERSION`
 - 여행앱 변경 시 `TRIP_VERSION` 만 +0.001 (`v0.001` → `v0.002`). 프론트(`server/private/trip/`, 비공개·미커밋)에
   버전 표기가 있으면 같은 값으로 맞추도록 사용자에게 안내.
 - 여행앱만 바뀐 커밋에서는 **MyPM 버전(index/NonK/KDeal/sw.js)을 올리지 않는다.**
   반대로 MyPM 파일(`sw.js` 등)을 건드리면 MyPM 버전 규칙을 따른다.
+- 여행앱 화면 파일(index.html·trip-data.js)은 예약정보 때문에 **git 에 넣지 않는다.** 사용자가 `admin.html` "여행앱 파일" 카드에서 직접 업로드(서버 `private/trip/` 저장, 이전본 `.backup/` 5개). 프론트 수정본을 만들면 업로드하도록 안내.
 - 계정(MyPM 허용목록 + 여행 멤버)은 `admin.html` "계정 관리" 한 화면에서 관리. 소유자(`OWNER_EMAIL`)는 기본으로 둘 다 허용.
 - 커밋 메시지에 `(trip v0.xxx)` 로 표기하고, 완료 후 여행앱 버전을 사용자에게 알릴 것.
 

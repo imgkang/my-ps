@@ -3,14 +3,19 @@
 `https://mypm.growpension.com/trip/` 에서 서비스. 서버 코드는 `server/src/trip.ts`.
 
 ## 버전
-MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.004`).
+MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.005`).
 확인 방법: 로그인 화면 하단 표기, `GET /trip/api/me` 의 `version`, 모든 `/trip` 응답의 `X-Trip-Version` 헤더.
 여행앱만 바뀐 배포에서는 MyPM 버전(sw.js `CACHE_NAME` 등)을 올리지 않는다.
 
 ## 왜 앱 파일이 저장소에 없나
 `index.html`·`trip-data.js` 에 크루즈 예약번호·예약자명이 있고 이 저장소는 **공개**다.
 앱 파일은 집 PC의 `server/private/trip/` (`.gitignore` 처리)에만 두고, 서버가 **로그인 확인 후에만** 내려준다.
-웹훅 자동배포 대상이 아니므로 일정 수정 시 집 PC에서 파일을 직접 고친다(재시작 불필요, `no-cache` 라 바로 반영).
+웹훅 자동배포 대상이 아니다. **관리 페이지(admin.html) → 「여행앱 파일」 카드**에서 올린다(어디서든 가능, 재시작 불필요, `no-cache` 라 바로 반영).
+- 일정 수정: 「내려받기」 → 편집 → 「올리기」
+- 덮어쓸 때 이전 파일은 `server/private/trip/.backup/` 에 파일당 최근 5개 보관(dot 폴더라 /trip 으로 서빙 안 됨)
+- 올릴 때 형식 점검: index.html 은 `<html>`+`trip-data.js` 로드, trip-data.js 는 `window.TRIP =` + places 1개 이상. 최대 1MB
+- API: `GET /api/admin/trip-files`, `GET|PUT /api/admin/trip-files/{index.html|trip-data.js}` (UPDATE_TOKEN 보호, PUT body `{ content }`)
+- 집 PC에서 폴더에 직접 넣어도 된다.
 여행앱 **서버 코드**(`server/src/trip*.ts`)는 다른 서버 코드와 같이 main 머지 시 웹훅이 자동 빌드·재시작한다.
 
 ```
