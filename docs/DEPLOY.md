@@ -6,12 +6,14 @@
 git push origin main
     ↓ GitHub Webhook (즉시)
 집 Windows PC — POST /api/github-webhook 수신
-    ↓ git pull + Cloudflare 캐시 퍼지 자동 실행
+    ↓ git pull
+    ↓ (server/src 또는 server/package.json 변경 시) npm run build → MyPMBackend 재시작
+    ↓ Cloudflare 캐시 퍼지
 mypm.growpension.com (반영 완료)
 ```
 
 **핵심**: GitHub Pages가 아님. 집 PC 로컬 저장소 파일을 Node 서버가 직접 서빙.  
-push 후 Webhook이 자동으로 git pull + CF purge까지 처리. 수동 작업 불필요.
+push 후 Webhook이 자동으로 git pull + (서버 코드 변경 시) 빌드·재시작 + CF purge까지 처리. 수동 작업 불필요.
 
 ---
 
@@ -30,11 +32,20 @@ push 후 Webhook이 자동으로 git pull + CF purge까지 처리. 수동 작업
 push 후 Webhook이 자동으로 git pull + CF purge 실행.  
 브라우저에서 `Ctrl+Shift+R` 만 하면 됨.
 
-### B. server/src/ TypeScript 코드가 바뀐 경우만 수동 재시작 필요
+### B. server/src/ TypeScript 코드가 바뀐 경우 — 자동 (수동 작업 불필요)
+
+Webhook이 `git diff ORIG_HEAD HEAD` 로 `server/src/` 또는 `server/package.json` 변경을 감지하면
+`npm run build` 후 MyPMBackend 를 독립 프로세스로 재시작한다(약 3초 다운타임). 구현: `server/src/routes/webhook.ts`.
+
+자동으로 **안 되는** 경우만 수동 처리:
+- **새 npm 패키지 추가** — 자동 배포는 `npm install` 을 하지 않는다.
+- **`.env` 수정** — 값 반영에 재시작 필요 (admin.html "서버 제어" 재시작 버튼, 또는 아래 명령).
+- **빌드 실패** — 재시작을 생략하고 기존 서버가 계속 돈다. admin.html 서버 로그에서 `[deploy] 빌드 실패` 확인 후 수정.
 
 ```powershell
-# 관리자 PowerShell
+# 관리자 PowerShell — 위 경우에만
 cd C:\Users\강민구\mypm\server
+npm install        # 패키지 추가 시에만
 npm run build
 Stop-ScheduledTask MyPMBackend; Start-ScheduledTask MyPMBackend
 ```
@@ -106,8 +117,8 @@ Start-ScheduledTask MyPMBackend
 
 ## 집 밖에서 업데이트하는 방법
 
-Webhook이 자동으로 처리하므로 별도 원격 접속 불필요.  
-서버 재시작이 필요한 경우(TypeScript 변경)에만 아래 방법 사용:
+Webhook이 빌드·재시작까지 자동으로 처리하므로 별도 원격 접속 불필요.  
+Webhook 미동작·`npm install`·빌드 실패 복구 등 예외 상황에만 아래 방법 사용:
 
 ### 방법 1. 원격 데스크톱(RDP)
 
