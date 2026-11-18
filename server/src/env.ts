@@ -56,6 +56,8 @@ export const env = {
   // ── 가족여행 앱 (/trip) ──
   // 앱 정적 파일 폴더. 예약번호가 들어 있어 공개 저장소에 커밋하지 않는다(.gitignore).
   TRIP_STATIC_DIR: process.env.TRIP_STATIC_DIR ?? './private/trip',
+  // 예약 영수증 파일 폴더(로그인한 멤버만 열람, git 제외).
+  TRIP_RECEIPT_DIR: process.env.TRIP_RECEIPT_DIR ?? './private/trip-receipts',
   TRIP_BASE: (process.env.TRIP_BASE ?? '/trip').replace(/\/+$/, '') || '/trip',
   // 여행앱 로그인 허용 이메일 초기값(콤마 구분). 최초 1회 DB(trip_members)로 이관 후에는
   // 관리자 화면(admin.html 계정 관리)에서 관리한다. MyPM 허용목록과 별개.

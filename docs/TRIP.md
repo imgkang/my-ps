@@ -3,7 +3,7 @@
 `https://mypm.growpension.com/trip/` 에서 서비스. 서버 코드는 `server/src/trip.ts`.
 
 ## 버전
-MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.006`).
+MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.007`).
 확인 방법: 로그인 화면 하단 표기, `GET /trip/api/me` 의 `version`, 모든 `/trip` 응답의 `X-Trip-Version` 헤더.
 여행앱만 바뀐 배포에서는 MyPM 버전(sw.js `CACHE_NAME` 등)을 올리지 않는다.
 
@@ -53,6 +53,15 @@ server/private/trip/
 `GET me` · `GET messages?after=` · `POST messages` · `GET notice` · `PUT notice`(관리자) — 계약은 인계서(HANDOFF.md) 3장과 동일.
 검증: uid/ts/id 서버 생성, nick 1~12자, text 1~1000자(place 는 ≤200), kind 화이트리스트, place 형식+키 대조,
 본문 8KB(413), 사용자당 분당 30건(429), 응답 `Cache-Control: no-store`, 제어문자 제거.
+
+## 일정 편집 · 예약 영수증 (v0.007~)
+- 일정은 서버 DB(`trip_schedule`, 문서 1건 + rev)에 저장. 소유자가 일정 탭 「일정 편집」 → 항목 ✎ 수정 / + 항목 추가 / 날짜 제목 / ▲▼ 순서 / 새 장소 추가.
+  처음 켤 때 화면의 `trip-data.js` 내용을 서버로 옮김(서버는 JS 를 실행하지 않음). 이후 `trip-data.js` 는 DB 일정이 없을 때만 쓰임.
+- 동시 수정은 rev 로 막음(다른 기기에서 먼저 바뀌면 409 → 최신 일정 다시 불러옴). 가족 화면은 60초마다 갱신.
+- 예약 영수증: 항목 수정 화면 「📎 영수증 추가」(PDF·JPG·PNG·WEBP·HEIC, 15MB, 항목당 10개). 파일 내용으로 형식 판별(SVG·HTML 거부).
+  저장 위치 `TRIP_RECEIPT_DIR`(기본 `server/private/trip-receipts/`, git 제외). 로그인한 멤버 모두 열람, 추가·삭제는 소유자.
+  항목을 지우면 그 영수증도 삭제됨. ⚠️ 영수증 파일은 DB 백업에 포함되지 않으므로 폴더를 따로 백업할 것.
+- API: `GET|PUT /trip/api/schedule`, `POST /trip/api/receipts?item=`, `GET|DELETE /trip/api/receipts/:id`
 
 ## 경비 탭 (소유자 전용)
 기존 `trip.html` 경비 페이지를 여행앱 「경비」 탭으로 옮김(`trip.html` 은 MyPM v0.700 에서 삭제). 데이터는 서버 DB(`trip_expenses`, `trip_expense_settings`).
