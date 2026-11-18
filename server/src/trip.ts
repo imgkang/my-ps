@@ -28,10 +28,11 @@ import { env } from './env.js';
 import { db, getTokenSecret } from './db.js';
 import { isTripAdminEmail, isTripMemberEmail } from './trip-members.js';
 import { registerExpenseRoutes, isOwnerEmail } from './trip-expenses.js';
+import { registerScheduleRoutes, schedulePlaceKeys } from './trip-schedule.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.006';
+export const TRIP_VERSION = 'v0.007';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -179,6 +180,8 @@ const PLACE_RE = /^[a-z0-9_]{1,32}$/;
 let placeCache: { mtime: number; keys: Set<string> } | null = null;
 async function knownPlaces(): Promise<Set<string> | null> {
   if (env.TRIP_PLACE_KEYS.length) return new Set(env.TRIP_PLACE_KEYS);
+  const fromDb = schedulePlaceKeys(); // 일정이 DB 로 옮겨졌으면 그 장소 목록
+  if (fromDb) return fromDb.size ? fromDb : null;
   const file = resolve(env.TRIP_STATIC_DIR, 'trip-data.js');
   try {
     const st = await stat(file);
@@ -464,6 +467,9 @@ export default async function tripRoutes(app: FastifyInstance) {
   );
 
   // 알 수 없는 API 경로는 정적 처리로 흘리지 않는다.
+  // ── 일정·영수증 ──
+  registerScheduleRoutes(app, api, { requireTripAuth, requireSameOrigin, email: (req) => tripUser(req).email });
+
   // ── 경비 (소유자 전용) ──
   registerExpenseRoutes(app, api, { requireTripAuth, requireSameOrigin, email: (req) => tripUser(req).email });
 
