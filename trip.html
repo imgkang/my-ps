@@ -151,10 +151,25 @@
       <div id="list"></div>
     </section>
 
+    <!-- 백업 -->
+    <section class="card" id="backupCard">
+      <h2>백업 <span class="chip" id="backupChip"></span></h2>
+      <div class="hint" id="backupInfo" style="margin:-4px 0 10px"></div>
+      <div class="tools">
+        <button class="btn sm" id="exportJson">백업 파일 저장</button>
+        <button class="btn ghost sm" id="shareJson" hidden>공유로 보내기</button>
+        <button class="btn ghost sm" id="importJson">백업 불러오기</button>
+        <button class="btn ghost sm" id="exportCsv">CSV 내보내기</button>
+        <button class="btn ghost sm danger" id="undoImport" hidden>불러오기 되돌리기</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <div class="hint">데이터는 이 기기의 브라우저에만 저장됩니다. 기록한 뒤에는 백업 파일을 저장해 두세요(휴대폰: 「파일」 앱의 다운로드 폴더, 또는 「공유로 보내기」로 카톡·메일에 보관).</div>
+    </section>
+
     <!-- 설정 -->
     <section class="card">
       <details>
-        <summary>환율 · 여행 정보 · 백업</summary>
+        <summary>환율 · 여행 정보</summary>
         <div class="row r2">
           <div><label for="rAUD">1 AUD = ? 원</label><input id="rAUD" inputmode="decimal"></div>
           <div><label for="rUSD">1 USD = ? 원</label><input id="rUSD" inputmode="decimal"></div>
@@ -169,14 +184,6 @@
           <div><label for="tName">여행 이름</label><input id="tName"></div>
           <div><label for="tPeriod">기간</label><input id="tPeriod" placeholder="2027-02-10 ~ 02-17"></div>
         </div>
-        <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
-        <div class="tools">
-          <button class="btn ghost sm" id="exportCsv">CSV 내보내기</button>
-          <button class="btn ghost sm" id="exportJson">백업 파일 저장</button>
-          <button class="btn ghost sm" id="importJson">백업 불러오기</button>
-          <input type="file" id="importFile" accept="application/json,.json" hidden>
-        </div>
-        <div class="hint">데이터는 이 기기의 브라우저에만 저장됩니다. 기기를 바꾸거나 가족과 합칠 때는 백업 파일을 쓰세요.</div>
       </details>
     </section>
   </main>
@@ -215,6 +222,7 @@
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); }
     catch (_) { toast('저장 실패 — 브라우저 저장소를 확인하세요'); }
+    try { renderBackup(); } catch (_) {} // 건수·백업 경고 갱신
   }
 
   let form = { cat: 'food', cur: 'AUD' };
@@ -449,43 +457,109 @@
     a.download = name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
+  // ── 백업 ──
+  // 파일 이름은 영문만: 한글 이름은 일부 브라우저에서 'download'(확장자 없음)로 저장돼 다시 불러올 때 고를 수 없음.
+  const BK_META = KEY + '-lastBackup';   // { at, count } — 이 기기에서 마지막으로 백업한 시각
+  const BK_PREV = KEY + '-beforeImport'; // 덮어쓰기 직전 데이터(되돌리기용)
+  const fileName = ext => 'sydney-trip-expenses_' + today() + '.' + ext;
+  const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (_) { return null; } };
+  const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
+
+  function backupJson() { return JSON.stringify(Object.assign({ app: 'trip-expenses', exportedAt: new Date().toISOString() }, S), null, 2); }
+  function markBackedUp() { lsSet(BK_META, { at: new Date().toISOString(), count: S.items.length }); renderBackup(); }
+  function renderBackup() {
+    const m = lsGet(BK_META), n = S.items.length;
+    $('backupChip').textContent = n + '건';
+    let t;
+    if (!m) t = n ? '⚠️ 아직 백업한 적이 없어요.' : '기록이 생기면 백업 파일을 저장해 두세요.';
+    else {
+      const d = new Date(m.at), days = Math.floor((Date.now() - d) / 864e5);
+      t = '마지막 백업: ' + d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+        + (days ? ' (' + days + '일 전)' : ' (오늘)') + ' · ' + m.count + '건';
+      if (m.count !== n) t += ' → 지금 ' + n + '건, 다시 저장하세요';
+    }
+    $('backupInfo').textContent = t;
+    $('undoImport').hidden = !lsGet(BK_PREV);
+  }
+
+  function download(name, text, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
   $('exportCsv').addEventListener('click', () => {
     const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
     const lines = [['날짜', '카테고리', '내용', '결제', '통화', '금액', '원화환산'].map(q).join(',')];
     S.items.slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(it => {
       lines.push([it.date, catOf(it.cat).name, it.memo, it.pay, it.cur, it.amount, Math.round(toKRW(it.amount, it.cur))].map(q).join(','));
     });
-    download('여행경비_' + today() + '.csv', '﻿' + lines.join('\r\n'), 'text/csv');
+    download(fileName('csv'), '﻿' + lines.join('\r\n'), 'text/csv');
   });
   $('exportJson').addEventListener('click', () => {
-    download('여행경비_백업_' + today() + '.json', JSON.stringify(S, null, 2), 'application/json');
+    download(fileName('json'), backupJson(), 'application/json');
+    markBackedUp(); toast('백업 파일을 저장했습니다 (' + S.items.length + '건)');
   });
+  // 휴대폰 공유 시트(카톡·메일·「파일에 저장」) — 지원하는 브라우저에서만 버튼 표시
+  const shareFile = () => new File([backupJson()], fileName('json'), { type: 'application/json' });
+  try { $('shareJson').hidden = !(navigator.canShare && navigator.canShare({ files: [shareFile()] })); } catch (_) {}
+  $('shareJson').addEventListener('click', async () => {
+    try { await navigator.share({ files: [shareFile()], title: '여행경비 백업' }); markBackedUp(); toast('백업을 보냈습니다'); }
+    catch (e) { if (e && e.name !== 'AbortError') toast('공유하지 못했습니다 — 「백업 파일 저장」을 쓰세요'); }
+  });
+
+  // 불러온 항목 검증·정리 — 깨진 항목은 건너뜀
+  function cleanItems(arr) {
+    const out = [];
+    (Array.isArray(arr) ? arr : []).forEach(x => {
+      if (!x || typeof x !== 'object') return;
+      const amount = Number(x.amount);
+      if (!x.id || !Number.isFinite(amount) || !/^\d{4}-\d{2}-\d{2}$/.test(String(x.date || ''))) return;
+      out.push({ id: String(x.id), date: String(x.date), cat: CATS.some(c => c.id === x.cat) ? x.cat : 'etc',
+        memo: String(x.memo ?? '').slice(0, 200), pay: String(x.pay ?? '').slice(0, 40),
+        cur: CURS.includes(x.cur) ? x.cur : 'KRW', amount });
+    });
+    return out;
+  }
   $('importJson').addEventListener('click', () => $('importFile').click());
   $('importFile').addEventListener('change', async e => {
     const f = e.target.files[0]; e.target.value = '';
     if (!f) return;
+    let d, items;
     try {
-      const d = JSON.parse(await f.text());
+      d = JSON.parse(await f.text());
       if (!d || !Array.isArray(d.items)) throw new Error('bad');
-      const merge = S.items.length && confirm('기존 내역과 합칠까요?\n[확인] 합치기 (같은 항목은 건너뜀)\n[취소] 백업으로 덮어쓰기');
-      if (merge) {
-        const ids = new Set(S.items.map(x => x.id));
-        const add = d.items.filter(x => x && x.id && !ids.has(x.id));
-        S.items.push(...add);
-        toast(add.length + '건 합쳤습니다');
-      } else {
-        S = Object.assign(load(), d);
-        toast('백업을 불러왔습니다');
-      }
-      save(); renderSettings(); renderPickers(); renderAll();
-    } catch (_) {
-      toast('백업 파일을 읽을 수 없습니다');
-    }
+      items = cleanItems(d.items);
+    } catch (_) { toast('백업 파일을 읽을 수 없습니다'); return; }
+    const skipped = d.items.length - items.length;
+    const applyAll = () => {
+      const base = load();
+      S = { name: typeof d.name === 'string' ? d.name : base.name, period: typeof d.period === 'string' ? d.period : base.period,
+            rates: d.rates && Number(d.rates.AUD) > 0 && Number(d.rates.USD) > 0 ? { AUD: Number(d.rates.AUD), USD: Number(d.rates.USD) } : S.rates,
+            rateAt: typeof d.rateAt === 'string' ? d.rateAt : S.rateAt, items };
+    };
+    if (!S.items.length) {
+      applyAll(); toast(items.length + '건을 불러왔습니다' + (skipped ? ' (깨진 ' + skipped + '건 제외)' : ''));
+    } else if (confirm('백업 파일 ' + items.length + '건을 지금 내역(' + S.items.length + '건)에 합칠까요?\n같은 항목은 건너뜁니다.\n\n[확인] 합치기   [취소] 다른 방법 선택')) {
+      const ids = new Set(S.items.map(x => x.id));
+      const add = items.filter(x => !ids.has(x.id));
+      S.items.push(...add);
+      toast(add.length + '건 합쳤습니다');
+    } else if (confirm('지금 내역 ' + S.items.length + '건을 지우고 백업 파일 ' + items.length + '건으로 바꿀까요?\n(바꾼 뒤에도 「불러오기 되돌리기」로 되돌릴 수 있어요)\n\n[확인] 바꾸기   [취소] 아무것도 안 함')) {
+      lsSet(BK_PREV, S); applyAll(); toast('백업으로 바꿨습니다');
+    } else { toast('불러오기를 취소했습니다'); return; }
+    save(); renderSettings(); renderPickers(); renderAll(); renderBackup();
+  });
+  $('undoImport').addEventListener('click', () => {
+    const prev = lsGet(BK_PREV);
+    if (!prev || !Array.isArray(prev.items)) return;
+    if (!confirm('백업으로 바꾸기 전 내역(' + prev.items.length + '건)으로 되돌릴까요?')) return;
+    S = prev; lsSet(BK_PREV, null); save(); renderSettings(); renderPickers(); renderAll(); renderBackup(); toast('되돌렸습니다');
   });
 
   // ── 시작 ──
   $('date').value = today();
-  renderPickers(); renderSettings(); renderAll();
+  renderPickers(); renderSettings(); renderAll(); renderBackup();
 })();
 </script>
 </body>
