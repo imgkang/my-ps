@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.694';
+const CACHE_NAME = 'mypm-v0.695';
 
 const BASE = '/my-ps/';
 
@@ -14,8 +14,8 @@ const ASSETS = [
   BASE + 'js/ticker-search.js',
   BASE + 'js/api.js',
   BASE + 'js/input-ux.js',
-  BASE + 'js/market-core.js?v=0.694',
-  BASE + 'market.css?v=0.694',
+  BASE + 'js/market-core.js?v=0.695',
+  BASE + 'market.css?v=0.695',
   BASE + 'tickers.json',
   BASE + 'etf_distributions.json',
   BASE + 'manifest.json',
@@ -63,6 +63,8 @@ self.addEventListener('fetch', event => {
 
   // 백엔드 API(/api/*)는 캐시하지 않고 항상 네트워크 — 동적 데이터 + POST 로그인 등.
   try { if (new URL(event.request.url).pathname.startsWith('/api/')) return; } catch (_) {}
+  // 가족여행 앱(/trip/)은 별도 인증(쿠키) 뒤의 앱 — 예약정보를 SW 캐시에 남기지 않고, 채팅 폴링이 캐시에 막히지 않게 항상 네트워크.
+  try { const _tp = new URL(event.request.url).pathname; if (_tp === '/trip' || _tp.startsWith('/trip/')) return; } catch (_) {}
   // GET 외(POST/PUT/DELETE)는 캐시 대상이 아니므로 그대로 네트워크.
   if (event.request.method !== 'GET') return;
 

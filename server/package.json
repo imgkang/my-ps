@@ -13,7 +13,8 @@
     "migrate": "tsx src/scripts/migrate-multiuser.ts",
     "test:parity": "npm run build && node test/withdrawal-parity.mjs",
     "test:derived": "npm run build && node test/derived-parity.mjs",
-    "test:kdeal": "npm run build && node test/kdeal-parity.mjs"
+    "test:kdeal": "npm run build && node test/kdeal-parity.mjs",
+    "trip-admin": "tsx src/scripts/trip-admin.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

@@ -53,6 +53,22 @@ export const env = {
   // 기존(단일 사용자) 데이터를 이관할 소유자 이메일. 마이그레이션·import 에서 사용.
   OWNER_EMAIL: (process.env.OWNER_EMAIL ?? '').trim().toLowerCase(),
 
+  // ── 가족여행 앱 (/trip) ──
+  // 앱 정적 파일 폴더. 예약번호가 들어 있어 공개 저장소에 커밋하지 않는다(.gitignore).
+  TRIP_STATIC_DIR: process.env.TRIP_STATIC_DIR ?? './private/trip',
+  TRIP_BASE: (process.env.TRIP_BASE ?? '/trip').replace(/\/+$/, '') || '/trip',
+  // 여행앱 로그인 허용 이메일(콤마 구분). MyPM 허용목록과 별개.
+  TRIP_MEMBER_EMAILS: emailList(process.env.TRIP_MEMBER_EMAILS),
+  // 공지 수정 권한(콤마 구분). 비우면 OWNER_EMAIL. 관리자는 자동으로 멤버.
+  TRIP_ADMIN_EMAILS: emailList(process.env.TRIP_ADMIN_EMAILS || process.env.OWNER_EMAIL),
+  // POST/PUT 허용 Origin(콤마 구분, 예: https://mypm.growpension.com). 비우면 Host 헤더 기준.
+  TRIP_ALLOWED_ORIGINS: (process.env.TRIP_ALLOWED_ORIGINS ?? '')
+    .split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean),
+  // 집합장소 키 화이트리스트(콤마 구분). 비우면 trip-data.js 의 places 키를 자동 추출.
+  TRIP_PLACE_KEYS: (process.env.TRIP_PLACE_KEYS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+  // 로컬 http 테스트용 — 'true' 면 쿠키에 Secure 를 붙이지 않는다. 운영에서는 쓰지 말 것.
+  TRIP_COOKIE_INSECURE: process.env.TRIP_COOKIE_INSECURE === 'true',
+
   // GitHub Webhook + Cloudflare 자동 배포
   GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET ?? '',
   CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID ?? '',
