@@ -1,5 +1,5 @@
 // 가족여행 앱 일정 — 서버 DB 저장 + 소유자 앱 내 편집 + 예약 영수증 첨부.
-//   GET    /trip/api/schedule              → { schedule|null, rev, receipts }   (멤버 모두)
+//   GET    /trip/api/schedule              → { schedule|null, rev, receipts, geo }   (멤버 모두, geo = 장소 좌표 — trip-geo.ts)
 //   PUT    /trip/api/schedule              → { schedule, baseRev } 전체 저장     (소유자, rev 다르면 409)
 //   POST   /trip/api/receipts?item=<id>    → 영수증 업로드(본문 = 파일 그대로)    (소유자)
 //   GET    /trip/api/receipts/:id          → 영수증 보기                         (멤버 모두)
@@ -14,6 +14,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerHookHandl
 import { db } from './db.js';
 import { env } from './env.js';
 import { isOwnerEmail } from './trip-expenses.js';
+import { geoFor } from './trip-geo.js';
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS trip_schedule (
@@ -117,6 +118,9 @@ export function cleanSchedule(x: any): Schedule | string {
   return { start, places, days, todos };
 }
 
+// 일정의 장소 좌표(지도용) — 모르는 것은 백그라운드에서 찾아 다음 조회부터 포함된다.
+const geoOf = (s: Schedule | null) => (s ? geoFor(Object.values(s.places)) : {});
+
 export function getSchedule(): { schedule: Schedule | null; rev: number } {
   const r = db.prepare('SELECT json, rev FROM trip_schedule WHERE id = 1').get() as { json: string; rev: number } | undefined;
   return r ? { schedule: JSON.parse(r.json), rev: r.rev } : { schedule: null, rev: 0 };
@@ -165,7 +169,10 @@ export function registerScheduleRoutes(
   // 영수증 업로드 본문은 파일 그대로(Buffer) — 이 플러그인(/trip) 안에서만 적용
   app.addContentTypeParser(UPLOAD_TYPES, { parseAs: 'buffer', bodyLimit: MAX_RECEIPT }, (_req, body, done) => done(null, body));
 
-  app.get(`${api}/schedule`, { preHandler: h.requireTripAuth }, async () => ({ ...getSchedule(), receipts: receiptsByItem() }));
+  app.get(`${api}/schedule`, { preHandler: h.requireTripAuth }, async () => {
+    const cur = getSchedule();
+    return { ...cur, receipts: receiptsByItem(), geo: geoOf(cur.schedule) };
+  });
 
   app.put(`${api}/schedule`, { preHandler: write, bodyLimit: 512 * 1024 }, async (req, reply) => {
     const b = (req.body ?? {}) as any;
@@ -186,7 +193,7 @@ export function registerScheduleRoutes(
       for (const id of orphans) del.run(id);
     })();
     await deleteReceiptFiles(orphans);
-    return { schedule: s, rev, receipts: receiptsByItem() };
+    return { schedule: s, rev, receipts: receiptsByItem(), geo: geoOf(s) };
   });
 
   app.post(`${api}/receipts`, { preHandler: write, bodyLimit: MAX_RECEIPT }, async (req, reply) => {
