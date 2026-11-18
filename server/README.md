@@ -87,7 +87,7 @@ nssm start MyPMBackend
 > AppDirectory(작업 디렉터리)를 **반드시 `server/` 로** 지정해야 `.env`(APP_PIN/FINNHUB_KEY 등)가 로드된다.
 > 대안: 작업 스케줄러 "시스템 시작 시" 트리거 + 동작 `node dist\server.js`, "시작 위치"=server 폴더.
 
-빌드 갱신 시: `git pull && npm run build` 후 `nssm restart MyPMBackend`.
+빌드 갱신: main 머지 시 GitHub Webhook 이 `git pull` → (서버 코드 변경 시) `npm run build` → MyPMBackend 재시작까지 자동 수행. 상세·예외(`npm install`, `.env` 변경)는 `docs/DEPLOY.md`.
 
 ## 보안
 - `.env`, `*.p8`, `data/`, `*.db`, `config.yml`, 터널 자격증명 JSON 은 `.gitignore` 처리됨 — **커밋 금지**.

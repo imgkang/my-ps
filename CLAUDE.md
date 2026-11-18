@@ -18,11 +18,11 @@
 - 작업 완료 후 커밋된 버전 번호를 사용자에게 알릴 것
 
 ## 현재 버전
-`v0.696` (MyPM / NonK / KDeal 공통)
+`v0.697` (MyPM / NonK / KDeal 공통)
 
 ## 가족여행 앱(/trip) 버전 — MyPM 과 별도 관리
 - 여행앱은 MyPM 과 **완전히 별개 프로그램**. 버전도 따로 매긴다.
-- 현재 버전: `v0.003` — 기준값은 `server/src/trip.ts` 의 `TRIP_VERSION`
+- 현재 버전: `v0.004` — 기준값은 `server/src/trip.ts` 의 `TRIP_VERSION`
 - 여행앱 변경 시 `TRIP_VERSION` 만 +0.001 (`v0.001` → `v0.002`). 프론트(`server/private/trip/`, 비공개·미커밋)에
   버전 표기가 있으면 같은 값으로 맞추도록 사용자에게 안내.
 - 여행앱만 바뀐 커밋에서는 **MyPM 버전(index/NonK/KDeal/sw.js)을 올리지 않는다.**
@@ -47,5 +47,10 @@
 ## main 머지 후 사용자가 해야 할 것 (docs/DEPLOY.md 참고)
 - 거의 없음 — Webhook이 git pull + CF 퍼지까지 자동 처리.
   **브라우저에서 `Ctrl+Shift+R`** 만 하면 됨 (SW 캐시 갱신용)
+- `server/src/` 또는 `server/package.json` 이 바뀌면 Webhook이 **`npm run build` + MyPMBackend 재시작까지 자동** 수행
+  (구현: `server/src/routes/webhook.ts` `gitPullAndPurge`). **사용자에게 수동 빌드·재시작을 안내하지 말 것.**
+- 자동 배포가 하지 **않는** 것 (이때만 사용자 안내):
+  - `npm install` — 새 npm 패키지를 추가했다면 집 PC에서 `npm install` 후 재시작 필요
+  - `.env` 변경 반영 — `.env` 를 고친 뒤에는 재시작 필요(admin.html "서버 제어" 재시작 버튼)
+  - 빌드 실패 시 재시작 생략(기존 서버 유지) → admin.html 서버 로그의 `[deploy] 빌드 실패` 확인
 - Webhook 미동작 등 폴백 절차는 docs/DEPLOY.md 참고
-- ⚠️ `server/src/` TypeScript 변경 시에만 집 PC에서 수동 빌드·재시작 필요

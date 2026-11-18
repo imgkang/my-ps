@@ -20,7 +20,7 @@
 //    요청마다 현재 목록과 대조하므로 목록에서 빼고 재시작하면 즉시 차단된다.
 //  - 상태 변경(POST/PUT)은 Origin 헤더를 자기 출처와 대조(CSRF 방어, SameSite 와 이중).
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { readFile, stat } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { OAuth2Client } from 'google-auth-library';
@@ -30,7 +30,7 @@ import { isTripAdminEmail, isTripMemberEmail } from './trip-members.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.003';
+export const TRIP_VERSION = 'v0.004';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -474,27 +474,75 @@ export default async function tripRoutes(app: FastifyInstance) {
     securityHeaders(reply);
     const rel = (req.params as any)['*'] as string;
     const wantsPage = rel === '' || rel.endsWith('/') || rel.endsWith('.html') || !extname(rel);
-    if (!currentUser(req)) {
+    const cur = currentUser(req);
+    if (!cur) {
       noStore(reply);
       if (wantsPage) return reply.code(200).type('text/html; charset=utf-8').send(loginPage());
       return reply.code(401).type('text/plain; charset=utf-8').send('unauthorized');
     }
+    // 앱 페이지를 못 찾으면: 관리자에게는 진단 화면, 그 외에는 안내 문구(서버 경로 비노출)
+    const notFound = async () => {
+      noStore(reply);
+      if (!wantsPage) return reply.code(404).type('text/plain; charset=utf-8').send('not found');
+      const body = isAdminEmail(cur.user.email) ? await missingPage(rel) : missingPageMember();
+      return reply.code(404).type('text/html; charset=utf-8').send(body);
+    };
     let full = resolveStatic(rel === '' || rel.endsWith('/') ? `${rel}index.html` : rel);
-    if (!full) return reply.code(404).send('not found');
+    if (!full) return notFound();
     try {
       let st = await stat(full);
       if (st.isDirectory()) {
         full = resolve(full, 'index.html');
         st = await stat(full);
       }
-      if (!st.isFile()) return reply.code(404).send('not found');
+      if (!st.isFile()) return notFound();
       const type = MIME[extname(full).toLowerCase()];
-      if (!type) return reply.code(404).send('not found');
+      if (!type) return notFound();
       // private: Cloudflare 등 공유 캐시 저장 금지 / no-cache: 일정 수정 즉시 반영
       reply.header('Cache-Control', 'private, no-cache');
       return reply.type(type).send(await readFile(full));
     } catch {
-      return reply.code(404).send('not found');
+      return notFound();
     }
   });
+}
+
+// ── 앱 파일 누락 안내 ──
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+function simplePage(title: string, inner: string): string {
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)}</title>
+<style>:root{--bg:#f5f6f8;--card:#fff;--text:#111827;--sub:#6b7280;--ok:#15803d;--err:#dc2626;--code:#f1f5f9}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#111a2b;--text:#e5e7eb;--sub:#9ca3af;--ok:#4ade80;--err:#f87171;--code:#1e293b}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.55}
+main{max-width:560px;margin:8vh auto;padding:0 16px}.card{background:var(--card);border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+h1{font-size:18px;margin:0 0 8px}p{margin:8px 0;color:var(--sub)}code{background:var(--code);border-radius:6px;padding:2px 6px;word-break:break-all;font-size:13px}
+ul{padding-left:18px;margin:8px 0}.ok{color:var(--ok)}.no{color:var(--err)}.ver{color:var(--sub);font-size:11px;text-align:center;margin-top:14px}</style>
+</head><body><main><div class="card">${inner}</div><div class="ver">${TRIP_VERSION}</div></main></body></html>`;
+}
+function missingPageMember(): string {
+  return simplePage('준비 중', '<h1>여행앱을 준비 중이에요</h1><p>로그인은 됐어요. 관리자가 앱 파일을 올리면 바로 열립니다.</p>');
+}
+async function missingPage(rel: string): Promise<string> {
+  const root = resolve(env.TRIP_STATIC_DIR);
+  let rootOk = false;
+  let listing: string[] = [];
+  try {
+    rootOk = (await stat(root)).isDirectory();
+    if (rootOk) listing = (await readdir(root)).filter((n) => !n.startsWith('.')).slice(0, 30);
+  } catch { /* 폴더 없음 */ }
+  const need = ['index.html', 'trip-data.js'];
+  const items = need
+    .map((n) => `<li class="${listing.includes(n) ? 'ok' : 'no'}">${listing.includes(n) ? '✓' : '✗'} <code>${n}</code></li>`)
+    .join('');
+  const others = listing.filter((n) => !need.includes(n));
+  return simplePage(
+    '앱 파일 없음',
+    `<h1>앱 파일을 찾지 못했어요 (관리자에게만 보이는 화면)</h1>
+<p>로그인은 정상입니다. 요청 경로: <code>/trip/${esc(rel)}</code></p>
+<p>서버가 읽는 폴더 (<code>TRIP_STATIC_DIR</code>):<br><code>${esc(root)}</code> — ${rootOk ? '<span class="ok">폴더 있음</span>' : '<span class="no">폴더 없음</span>'}</p>
+<ul>${items}</ul>
+${others.length ? `<p>폴더에 있는 다른 파일: ${others.map((n) => `<code>${esc(n)}</code>`).join(' ')}<br>파일 이름이 정확히 <code>index.html</code>·<code>trip-data.js</code> 인지 확인하세요 (예: <code>index.html.html</code>, 앞에 붙은 접두어).</p>` : ''}
+<p>위 폴더에 두 파일을 넣고 새로고침하면 됩니다. 서버 재시작은 필요 없어요.</p>`
+  );
 }
