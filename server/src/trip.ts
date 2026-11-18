@@ -16,7 +16,7 @@
 //    server/private/trip, .gitignore 처리)에서만 읽는다.
 //  - 세션은 MyPM 의 Bearer 토큰과 분리된 HttpOnly·SameSite=Strict 쿠키(Path=/trip).
 //    서명키는 기존 token_secret 에서 용도별로 파생(HMAC) — 토큰 상호 재사용 불가.
-//  - 멤버/관리자 목록은 환경변수(TRIP_MEMBER_EMAILS / TRIP_ADMIN_EMAILS). 하드코딩 없음.
+//  - 멤버 목록은 DB(trip_members — admin.html 계정 관리), 관리자는 환경변수(TRIP_ADMIN_EMAILS). 하드코딩 없음.
 //    요청마다 현재 목록과 대조하므로 목록에서 빼고 재시작하면 즉시 차단된다.
 //  - 상태 변경(POST/PUT)은 Origin 헤더를 자기 출처와 대조(CSRF 방어, SameSite 와 이중).
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -26,10 +26,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { OAuth2Client } from 'google-auth-library';
 import { env } from './env.js';
 import { db, getTokenSecret } from './db.js';
+import { isTripAdminEmail, isTripMemberEmail } from './trip-members.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.002';
+export const TRIP_VERSION = 'v0.003';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -68,14 +69,9 @@ db.exec(`
 
 type TripUser = { id: number; google_sub: string; email: string; name: string | null };
 
-// ── 멤버/관리자 판별 (환경변수) ──
-function isAdminEmail(email: string): boolean {
-  return env.TRIP_ADMIN_EMAILS.includes(email.toLowerCase());
-}
-function isMemberEmail(email: string): boolean {
-  const e = email.toLowerCase();
-  return isAdminEmail(e) || env.TRIP_MEMBER_EMAILS.includes(e);
-}
+// ── 멤버/관리자 판별 — 멤버는 DB(trip_members, 관리자 화면에서 관리), 관리자는 환경변수 ──
+const isAdminEmail = isTripAdminEmail;
+const isMemberEmail = isTripMemberEmail;
 
 // ── 세션 쿠키 ──
 function sessionKey(): Buffer {
