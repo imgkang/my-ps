@@ -83,6 +83,18 @@
   /* 스켈레톤 애니메이션 */
   @keyframes shimmer { 0%{opacity:.4} 50%{opacity:.9} 100%{opacity:.4} }
   .skel { background: var(--border); border-radius: 4px; animation: shimmer 1.4s infinite; display: inline-block; }
+  .acc-input { min-width:0; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:.85rem; }
+  .acc-chk { display:inline-flex; align-items:center; gap:5px; font-size:.82rem; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; }
+  .acc-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .acc-row:last-child { border-bottom:0; }
+  .acc-apps { display:flex; gap:6px; flex:0 0 auto; }
+  .acc-tg { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:48px; border:1px solid var(--border); background:none; color:var(--muted); border-radius:8px; padding:5px 6px; font-size:.7rem; cursor:pointer; }
+  .acc-tg b { font-size:.75rem; }
+  .acc-tg.on { border-color:var(--green); color:var(--green); background:rgba(34,197,94,.12); }
+  .acc-tg.trip.on { border-color:var(--accent); color:var(--accent); background:rgba(56,189,248,.12); }
+  .acc-tg:disabled { cursor:default; opacity:.85; }
+  .acc-tg small { font-size:.6rem; color:var(--muted); }
+  .acc-del { flex:0 0 auto; background:none; border:1px solid var(--red); color:var(--red); border-radius:6px; padding:4px 8px; font-size:.7rem; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -243,20 +255,22 @@
     </div>
   </div>
 
-  <!-- 테스터 허용목록 (로그인 화이트리스트) -->
+  <!-- 계정 관리: MyPM 허용목록 + 가족여행 앱 멤버 -->
   <div class="card">
-    <div class="card-title">테스터 허용목록 (구글 로그인 허용)</div>
-    <form id="allowForm" onsubmit="addAllowed(); return false;" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      <input type="email" id="allowEmail" placeholder="example@gmail.com"
-             style="flex:1 1 160px;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.85rem">
-      <input type="text" id="allowNote" placeholder="메모(선택)"
-             style="flex:1 1 100px;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.85rem">
-      <button type="submit" style="flex:0 0 auto;background:var(--green);color:#0f172a;border:none;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer">추가</button>
+    <div class="card-title">계정 관리 (구글 로그인 허용 · MyPM / 여행)</div>
+    <form id="allowForm" onsubmit="addAccount(); return false;" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <input type="email" id="allowEmail" placeholder="example@gmail.com" class="acc-input" style="flex:1 1 160px">
+      <input type="text" id="allowNote" placeholder="메모(선택)" class="acc-input" style="flex:1 1 100px">
+      <div style="display:flex;gap:6px;align-items:center;flex:1 1 100%">
+        <label class="acc-chk"><input type="checkbox" id="allowMypm"> MyPM</label>
+        <label class="acc-chk"><input type="checkbox" id="allowTrip"> 여행</label>
+        <button type="submit" style="margin-left:auto;background:var(--green);color:#0f172a;border:none;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer">추가</button>
+      </div>
     </form>
     <div id="allowList"><div class="status-sub">불러오는 중...</div></div>
     <div class="section-note">
-      ※ 구글 계정(지메일/워크스페이스) 이메일만 가능. 추가 즉시 적용 — 서버 재시작 불필요.
-      <b>가입</b> = 해당 이메일로 실제 로그인한 적 있음.
+      ※ 구글 계정 이메일만 가능. 스위치를 켜고 끄면 즉시 적용 — 서버 재시작 불필요(끄면 여행앱은 다음 요청부터 차단).
+      <b>가입</b> = 해당 앱에 실제 로그인한 적 있음. 🔒 = 소유자(MyPM)·여행 관리자(공지 수정)라 끌 수 없음.
     </div>
   </div>
 
@@ -406,7 +420,7 @@ async function loadStatus() {
       loadLogs().then(() => progressTick('로그 ✓')).catch(() => progressTick('로그 실패')),
       loadDerived().then(() => progressTick('파생상태 ✓')).catch(() => progressTick('파생상태 실패')),
       loadEngagement().catch(() => {}),
-      loadAllowlist().then(() => progressTick('허용목록 ✓')).catch(() => progressTick('허용목록 실패')),
+      loadAllowlist().then(() => progressTick('계정 ✓')).catch(() => progressTick('계정 실패')),
     ]);
     startAutoRefresh();
   } catch (e) {
@@ -486,76 +500,92 @@ async function loadEngagement() {
   }
 }
 
-// ── 테스터 허용목록 ──
-let allowOwner = null;
+// ── 계정 관리 (MyPM 허용목록 + 여행앱 멤버) ──
+let accounts = [];
 
 function escHtml(s) {
-  return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  return String(s == null ? '' : s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function accountsApi(method, body) {
+  const res = await fetch(`${getBase()}/api/admin/accounts?token=${encodeURIComponent(token)}`, {
+    method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined,
+  });
+  let d = {}; try { d = await res.json(); } catch {}
+  if (!res.ok) { const e = new Error(d.error || `HTTP ${res.status}`); e.status = res.status; throw e; }
+  return d;
+}
+
+function toggleHtml(i, app, on, signed, locked) {
+  const label = app === 'mypm' ? 'MyPM' : '여행';
+  const sub = !on ? '꺼짐' : (signed ? '가입' : '미가입');
+  return `<button type="button" class="acc-tg ${app}${on ? ' on' : ''}" data-i="${i}" data-app="${app}"
+    ${locked ? 'disabled title="끌 수 없는 계정"' : ''} aria-pressed="${on}"><b>${locked ? '🔒 ' : ''}${label}</b><small>${sub}</small></button>`;
 }
 
 async function loadAllowlist() {
   const box = document.getElementById('allowList');
   try {
-    const res = await fetch(`${getBase()}/api/admin/allowlist?token=${encodeURIComponent(token)}`);
-    if (!res.ok) { box.innerHTML = '<div class="status-sub">조회 실패 — 서버가 최신 빌드(/api/admin/allowlist 포함)인지 확인</div>'; return; }
-    const d = await res.json();
-    allowOwner = d.owner || null;
-    const emails = d.emails || [];
-    if (!emails.length) { box.innerHTML = '<div class="status-sub">허용된 이메일이 없습니다</div>'; return; }
-    box.innerHTML = emails.map(e => {
-      const isOwner = allowOwner && e.email === allowOwner;
-      const badge = e.signed_up
-        ? '<span style="font-size:.65rem;color:var(--green);background:rgba(34,197,94,.15);border-radius:4px;padding:1px 6px">가입</span>'
-        : '<span style="font-size:.65rem;color:var(--muted);background:rgba(148,163,184,.15);border-radius:4px;padding:1px 6px">미가입</span>';
-      const ownerTag = isOwner ? ' <span style="font-size:.65rem;color:var(--accent)">(소유자)</span>' : '';
-      const noteHtml = e.note ? `<span style="font-size:.7rem;color:var(--muted)"> · ${escHtml(e.note)}</span>` : '';
-      const delBtn = isOwner ? ''
-        : `<button onclick="removeAllowed('${escHtml(e.email).replace(/'/g, "\\'")}')" style="flex:0 0 auto;background:none;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:4px 10px;font-size:.72rem;cursor:pointer">삭제</button>`;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+    const d = await accountsApi('GET');
+    accounts = d.accounts || [];
+    if (!accounts.length) { box.innerHTML = '<div class="status-sub">허용된 계정이 없습니다</div>'; return; }
+    box.innerHTML = accounts.map((a, i) => {
+      const tags = [a.isOwner ? '소유자' : '', a.isTripAdmin ? '여행 관리자' : ''].filter(Boolean).join(' · ');
+      const sub = [tags, a.note].filter(Boolean).map(escHtml).join(' · ');
+      const canDel = !a.isOwner && !a.isTripAdmin;
+      return `<div class="acc-row">
         <div style="flex:1;min-width:0">
-          <div style="font-size:.85rem;word-break:break-all">${escHtml(e.email)}${ownerTag}</div>
-          <div style="margin-top:2px">${badge}${noteHtml}</div>
+          <div style="font-size:.85rem;word-break:break-all">${escHtml(a.email)}</div>
+          ${sub ? `<div style="font-size:.7rem;color:var(--muted);margin-top:2px">${sub}</div>` : ''}
         </div>
-        ${delBtn}
+        <div class="acc-apps">
+          ${toggleHtml(i, 'mypm', a.mypm, a.mypmSignedUp, a.isOwner)}
+          ${toggleHtml(i, 'trip', a.trip, a.tripSignedUp, a.isTripAdmin)}
+        </div>
+        ${canDel ? `<button type="button" class="acc-del" data-i="${i}" aria-label="${escHtml(a.email)} 삭제">삭제</button>` : ''}
       </div>`;
     }).join('');
-  } catch {
-    box.innerHTML = '<div class="status-sub">조회 중 오류</div>';
+  } catch (e) {
+    box.innerHTML = e.status === 404
+      ? '<div class="status-sub">조회 실패 — 서버가 최신 빌드(/api/admin/accounts 포함)인지 확인</div>'
+      : '<div class="status-sub">조회 중 오류</div>';
   }
 }
 
-async function addAllowed() {
-  const emailEl = document.getElementById('allowEmail');
-  const noteEl = document.getElementById('allowNote');
-  const email = emailEl.value.trim();
-  const note = noteEl.value.trim();
+document.getElementById('allowList').addEventListener('click', async ev => {
+  const tg = ev.target.closest('.acc-tg'), del = ev.target.closest('.acc-del');
+  if (tg && !tg.disabled) {
+    const a = accounts[+tg.dataset.i], app = tg.dataset.app, on = !a[app];
+    const name = app === 'mypm' ? 'MyPM' : '가족여행 앱';
+    if (!on && !confirm(`${a.email} 의 ${name} 접근을 끕니다.\n이 사람은 더 이상 ${name}에 로그인할 수 없습니다. 계속할까요?`)) return;
+    try { await accountsApi('PUT', { email: a.email, [app]: on }); showToast(`${name} ${on ? '허용' : '차단'}: ${a.email}`); }
+    catch (e) { showToast(e.message || '변경 실패', 3000); }
+    loadAllowlist();
+  } else if (del) {
+    const a = accounts[+del.dataset.i];
+    if (!confirm(`${a.email} 을(를) MyPM·여행 모두에서 삭제합니다. 계속할까요?`)) return;
+    try { await accountsApi('PUT', { email: a.email, mypm: false, trip: false }); showToast(`삭제됨: ${a.email}`); }
+    catch (e) { showToast(e.message || '삭제 실패', 3000); }
+    loadAllowlist();
+  }
+});
+
+async function addAccount() {
+  const emailEl = document.getElementById('allowEmail'), noteEl = document.getElementById('allowNote');
+  const mypmEl = document.getElementById('allowMypm'), tripEl = document.getElementById('allowTrip');
+  const email = emailEl.value.trim(), note = noteEl.value.trim();
   if (!email) return;
+  if (!mypmEl.checked && !tripEl.checked) { showToast('MyPM 또는 여행 중 하나 이상 선택하세요', 3000); return; }
+  const body = { email, note };
+  if (mypmEl.checked) body.mypm = true;
+  if (tripEl.checked) body.trip = true;
   try {
-    const res = await fetch(`${getBase()}/api/admin/allowlist?token=${encodeURIComponent(token)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, note }),
-    });
-    const d = await res.json();
-    if (!res.ok) { showToast(d.error || '추가 실패', 3000); return; }
-    showToast(d.added ? `추가됨: ${email}` : `이미 목록에 있음: ${email}`, 2500);
-    emailEl.value = ''; noteEl.value = '';
+    await accountsApi('PUT', body);
+    showToast(`추가됨: ${email} (${[mypmEl.checked && 'MyPM', tripEl.checked && '여행'].filter(Boolean).join('·')})`);
+    emailEl.value = ''; noteEl.value = ''; mypmEl.checked = false; tripEl.checked = false;
     loadAllowlist();
-  } catch {
-    showToast('추가 요청 실패 — 서버 상태 확인', 3000);
-  }
-}
-
-async function removeAllowed(email) {
-  if (!confirm(`${email} 을(를) 허용목록에서 제거합니다.\n이 사람은 더 이상 로그인할 수 없습니다. 계속할까요?`)) return;
-  try {
-    const res = await fetch(`${getBase()}/api/admin/allowlist?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`, { method: 'DELETE' });
-    const d = await res.json();
-    if (!res.ok) { showToast(d.error || '삭제 실패', 3000); return; }
-    showToast(d.removed ? `삭제됨: ${email}` : `목록에 없음: ${email}`, 2500);
-    loadAllowlist();
-  } catch {
-    showToast('삭제 요청 실패 — 서버 상태 확인', 3000);
+  } catch (e) {
+    showToast(e.message || '추가 실패 — 서버 상태 확인', 3000);
   }
 }
 

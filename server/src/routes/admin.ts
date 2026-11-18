@@ -9,6 +9,7 @@ import { db } from '../db.js';
 import { metrics } from '../metrics.js';
 import { restartSelf } from './webhook.js';
 import { listAllowedEmails, addAllowedEmail, removeAllowedEmail } from '../allowlist.js';
+import { listTripMembers, addTripMember, removeTripMember, isTripAdminEmail, tripSignedUpEmails } from '../trip-members.js';
 import { runBench, storeSnapshot, latestSnapshot, history, withDeltas, frontendCompare } from '../bench/index.js';
 import { computeScores, WINDOW_DAYS } from '../engagement.js';
 
@@ -291,5 +292,63 @@ export default async function adminRoutes(app: FastifyInstance) {
     } catch (e: any) {
       return reply.code(400).send({ error: e?.message === 'cannot remove owner' ? '소유자 이메일은 삭제할 수 없습니다' : '삭제 실패' });
     }
+  });
+
+  // ── 계정 관리 (MyPM 허용목록 + 여행앱 멤버를 한 화면에서) ──
+  // GET /api/admin/accounts  — 두 목록의 합집합, 이메일별 접근 권한 표시
+  app.get('/api/admin/accounts', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const owner = env.OWNER_EMAIL || null;
+    const tripSigned = tripSignedUpEmails();
+    const map = new Map<string, any>();
+    const row = (email: string) => {
+      if (!map.has(email)) {
+        map.set(email, {
+          email, note: null, added_at: null,
+          mypm: false, mypmSignedUp: false, trip: false, tripSignedUp: tripSigned.has(email),
+          isOwner: !!owner && email === owner, isTripAdmin: isTripAdminEmail(email),
+        });
+      }
+      return map.get(email);
+    };
+    for (const a of listAllowedEmails()) {
+      const r = row(a.email);
+      Object.assign(r, { mypm: true, mypmSignedUp: a.signed_up, note: a.note, added_at: a.added_at });
+    }
+    for (const t of listTripMembers()) {
+      const r = row(t.email);
+      r.trip = true;
+      r.note ??= t.note;
+      if (!r.added_at || t.added_at < r.added_at) r.added_at = t.added_at;
+    }
+    for (const e of env.TRIP_ADMIN_EMAILS) row(e).trip = true; // 여행 관리자는 항상 여행앱 멤버
+    if (owner) Object.assign(row(owner), { mypm: true, trip: true }); // 소유자는 기본으로 MyPM·여행 모두 허용
+    const accounts = [...map.values()].sort((a, b) => String(a.added_at ?? '').localeCompare(String(b.added_at ?? '')));
+    return { accounts };
+  });
+
+  // PUT /api/admin/accounts  body: { email, note?, mypm?: bool, trip?: bool }  — 지정한 앱 권한만 켜고/끈다
+  app.put('/api/admin/accounts', async (req, reply) => {
+    if (!checkToken(req, reply)) return;
+    const { email, note, mypm, trip } = (req.body ?? {}) as { email?: string; note?: string; mypm?: unknown; trip?: unknown };
+    if (!email || !email.trim()) return reply.code(400).send({ error: 'missing email' });
+    if (mypm !== undefined && typeof mypm !== 'boolean') return reply.code(400).send({ error: 'mypm must be boolean' });
+    if (trip !== undefined && typeof trip !== 'boolean') return reply.code(400).send({ error: 'trip must be boolean' });
+    const e = email.trim().toLowerCase();
+    try {
+      if (mypm === true) addAllowedEmail(e, note);
+      if (mypm === false) removeAllowedEmail(e);
+      if (trip === true) addTripMember(e, note);
+      if (trip === false) removeTripMember(e);
+    } catch (err: any) {
+      const m = err?.message;
+      const msg = m === 'invalid email' ? '이메일 형식이 올바르지 않습니다'
+        : m === 'cannot remove owner' ? '소유자는 MyPM 접근을 끌 수 없습니다'
+        : m === 'cannot remove trip admin' ? '소유자·여행앱 관리자는 여행 접근을 끌 수 없습니다'
+        : '변경 실패';
+      return reply.code(400).send({ error: msg });
+    }
+    app.log.info(`[admin] 계정 권한 변경: ${e} mypm=${mypm ?? '-'} trip=${trip ?? '-'}`);
+    return { ok: true };
   });
 }

@@ -57,9 +57,10 @@ export const env = {
   // 앱 정적 파일 폴더. 예약번호가 들어 있어 공개 저장소에 커밋하지 않는다(.gitignore).
   TRIP_STATIC_DIR: process.env.TRIP_STATIC_DIR ?? './private/trip',
   TRIP_BASE: (process.env.TRIP_BASE ?? '/trip').replace(/\/+$/, '') || '/trip',
-  // 여행앱 로그인 허용 이메일(콤마 구분). MyPM 허용목록과 별개.
+  // 여행앱 로그인 허용 이메일 초기값(콤마 구분). 최초 1회 DB(trip_members)로 이관 후에는
+  // 관리자 화면(admin.html 계정 관리)에서 관리한다. MyPM 허용목록과 별개.
   TRIP_MEMBER_EMAILS: emailList(process.env.TRIP_MEMBER_EMAILS),
-  // 공지 수정 권한(콤마 구분). 비우면 OWNER_EMAIL. 관리자는 자동으로 멤버.
+  // 여행앱 관리자(공지 수정, 콤마 구분). OWNER_EMAIL 은 이 값과 무관하게 항상 관리자. 관리자는 자동으로 멤버.
   TRIP_ADMIN_EMAILS: emailList(process.env.TRIP_ADMIN_EMAILS || process.env.OWNER_EMAIL),
   // POST/PUT 허용 Origin(콤마 구분, 예: https://mypm.growpension.com). 비우면 Host 헤더 기준.
   TRIP_ALLOWED_ORIGINS: (process.env.TRIP_ALLOWED_ORIGINS ?? '')

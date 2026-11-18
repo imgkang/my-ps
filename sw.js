@@ -1,5 +1,5 @@
 // MyPM Service Worker
-const CACHE_NAME = 'mypm-v0.695';
+const CACHE_NAME = 'mypm-v0.696';
 
 const BASE = '/my-ps/';
 
@@ -14,8 +14,8 @@ const ASSETS = [
   BASE + 'js/ticker-search.js',
   BASE + 'js/api.js',
   BASE + 'js/input-ux.js',
-  BASE + 'js/market-core.js?v=0.695',
-  BASE + 'market.css?v=0.695',
+  BASE + 'js/market-core.js?v=0.696',
+  BASE + 'market.css?v=0.696',
   BASE + 'tickers.json',
   BASE + 'etf_distributions.json',
   BASE + 'manifest.json',
