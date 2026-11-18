@@ -3,7 +3,7 @@
 `https://mypm.growpension.com/trip/` 에서 서비스. 서버 코드는 `server/src/trip.ts`.
 
 ## 버전
-MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.005`).
+MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.006`).
 확인 방법: 로그인 화면 하단 표기, `GET /trip/api/me` 의 `version`, 모든 `/trip` 응답의 `X-Trip-Version` 헤더.
 여행앱만 바뀐 배포에서는 MyPM 버전(sw.js `CACHE_NAME` 등)을 올리지 않는다.
 
@@ -53,6 +53,13 @@ server/private/trip/
 `GET me` · `GET messages?after=` · `POST messages` · `GET notice` · `PUT notice`(관리자) — 계약은 인계서(HANDOFF.md) 3장과 동일.
 검증: uid/ts/id 서버 생성, nick 1~12자, text 1~1000자(place 는 ≤200), kind 화이트리스트, place 형식+키 대조,
 본문 8KB(413), 사용자당 분당 30건(429), 응답 `Cache-Control: no-store`, 제어문자 제거.
+
+## 경비 탭 (소유자 전용)
+기존 `trip.html` 경비 페이지를 여행앱 「경비」 탭으로 옮김. 데이터는 서버 DB(`trip_expenses`, `trip_expense_settings`).
+- 소유자(`OWNER_EMAIL`)만: `/api/me` 의 `isOwner` 가 true 일 때만 탭 표시, 서버도 그 외 403
+- API (`/trip/api/expenses…`): `GET` 목록·환율 / `PUT items/:id` 추가·수정 / `DELETE items/:id` / `POST import` 합치기(같은 id 건너뜀, 덮어쓰기 없음) / `PUT rates`
+- 「이 기기의 기존 경비 가져오기」: 같은 사이트라 휴대폰 브라우저에 남은 `trip.html` 데이터(localStorage `trip-sydney-2027`)를 바로 읽어 서버로 합침. 기존 데이터는 지우지 않음
+- 화면 코드는 비공개 `index.html` 안에 있음(관리 페이지에서 업로드)
 
 ## 보관 (수동 결정)
 자동 삭제 없음. 여행 후 집 PC에서:
