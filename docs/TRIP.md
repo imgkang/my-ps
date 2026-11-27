@@ -3,7 +3,7 @@
 `https://mypm.growpension.com/trip/` 에서 서비스. 서버 코드는 `server/src/trip.ts`.
 
 ## 버전
-MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.007`).
+MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.010`).
 확인 방법: 로그인 화면 하단 표기, `GET /trip/api/me` 의 `version`, 모든 `/trip` 응답의 `X-Trip-Version` 헤더.
 여행앱만 바뀐 배포에서는 MyPM 버전(sw.js `CACHE_NAME` 등)을 올리지 않는다.
 
@@ -44,7 +44,11 @@ server/private/trip/
 
 ## 인증
 - `/trip/` 비로그인 → 구글 로그인 화면. `/trip/*` 파일·`/trip/api/*` 는 401.
-- 로그인 성공 시 `trip_sess` 쿠키(HttpOnly·Secure·SameSite=Strict·Path=/trip, 30일 슬라이딩).
+- 로그인 성공 시 `trip_sess` 쿠키(HttpOnly·Secure·SameSite=Lax·Path=/trip, 30일). 앱 화면을 열 때마다 재발급(30일 연장).
+  - v0.010 에서 Strict → Lax: Strict 는 카톡·문자·메일 등 다른 앱 링크로 열면 쿠키가 안 가서 1~2일마다 로그인 화면이 떴음.
+    Lax 는 링크로 들어오는 GET 에만 쿠키를 보내고, POST/PUT/DELETE 는 Origin 검사로 계속 차단.
+  - 카톡 등 앱 안 브라우저는 쿠키를 따로 써서 로그인이 이어지지 않음 → 로그인 화면에 「Chrome/Safari에서 열기」 안내.
+  - ⚠️ 로그인 화면 HTML 은 서버 템플릿 문자열 안에 있어 정규식 역슬래시가 사라진다 — `[(]` `[/]` 처럼 문자 클래스로 쓸 것.
   MyPM Bearer 토큰과 별개의 서명키(용도별 파생)라 서로 재사용 불가.
 - 멤버 목록은 요청마다 DB(`trip_members`)와 대조 → 관리 페이지에서 끄면 즉시 차단.
 - POST/PUT 은 Origin 확인. MyPM 서비스워커는 `/trip/` 을 캐시하지 않는다(MyPM v0.695~).
