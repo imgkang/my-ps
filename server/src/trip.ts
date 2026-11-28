@@ -31,10 +31,11 @@ import { db, getTokenSecret } from './db.js';
 import { isTripAdminEmail, isTripMemberEmail } from './trip-members.js';
 import { registerExpenseRoutes, isOwnerEmail } from './trip-expenses.js';
 import { registerScheduleRoutes, schedulePlaceKeys } from './trip-schedule.js';
+import { registerRallyRoutes } from './trip-rally.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.012';
+export const TRIP_VERSION = 'v0.013';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -310,6 +311,8 @@ function injectPwa(html: string): string {
     out = out.replace(/(<header class="top">\s*)<h1([^>]*)>/i, `$1<h1$2><img class="ttl-ic" src="${BASE}/icon-192.png" alt="" width="36" height="36">`);
     if (out !== before) out = out.replace(/<\/head>/i, `<style>header.top h1{display:flex;align-items:center;gap:10px}header.top h1 .ttl-ic{width:36px;height:36px;border-radius:10px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}</style>\n</head>`);
   }
+  // 「여기로 집합」 스크립트(server/assets/trip/rally.js) — 앱 화면 끝에 붙임
+  if (!out.includes(`${BASE}/rally.js`)) out = out.replace(/<\/body>/i, `<script src="${BASE}/rally.js?v=${TRIP_VERSION}" defer></script>\n</body>`);
   return out;
 }
 const manifest = () => JSON.stringify({
@@ -550,6 +553,8 @@ export default async function tripRoutes(app: FastifyInstance) {
   // 알 수 없는 API 경로는 정적 처리로 흘리지 않는다.
   // ── 일정·영수증 ──
   registerScheduleRoutes(app, api, { requireTripAuth, requireSameOrigin, email: (req) => tripUser(req).email });
+  // ── 여기로 집합 ──
+  registerRallyRoutes(app, api, { requireTripAuth, requireSameOrigin, user: (req) => tripUser(req) });
 
   // ── 경비 (소유자 전용) ──
   registerExpenseRoutes(app, api, { requireTripAuth, requireSameOrigin, email: (req) => tripUser(req).email });
@@ -564,6 +569,14 @@ export default async function tripRoutes(app: FastifyInstance) {
   app.get(`${BASE}/manifest.webmanifest`, async (_req, reply) => {
     reply.header('Cache-Control', 'public, max-age=3600');
     return reply.type('application/manifest+json; charset=utf-8').send(manifest());
+  });
+  // 앱 화면에 끼워 넣는 기능 스크립트(개인정보 없음 — API 는 로그인 쿠키로만 동작)
+  app.get(`${BASE}/rally.js`, async (_req, reply) => {
+    try {
+      const buf = await readFile(resolve(ASSET_DIR, 'rally.js'));
+      reply.header('Cache-Control', 'no-cache');
+      return reply.type('text/javascript; charset=utf-8').send(buf);
+    } catch { return reply.code(404).send('not found'); }
   });
   app.get(`${BASE}/icon-:size.png`, async (req, reply) => {
     const size = (req.params as any).size;
