@@ -34,7 +34,7 @@ import { registerScheduleRoutes, schedulePlaceKeys } from './trip-schedule.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.010';
+export const TRIP_VERSION = 'v0.011';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -282,6 +282,59 @@ function resolveStatic(rel: string): string | null {
   return full;
 }
 
+// ── 홈 화면 앱(아이콘·이름) ──
+// 아이콘·manifest 는 브라우저가 쿠키 없이 가져가므로 로그인 없이 공개한다(개인정보 없음).
+const APP_NAME = '시드니 가족여행 2027', APP_SHORT = '시드니 여행', THEME = '#0f6b4f';
+const ASSET_DIR = resolve(process.cwd(), 'assets', 'trip');
+const ICON_SIZES = ['180', '192', '512'];
+export function pwaHead(): string {
+  return `<link rel="manifest" href="${BASE}/manifest.webmanifest">
+<link rel="apple-touch-icon" href="${BASE}/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="${BASE}/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="${APP_SHORT}">
+<meta name="application-name" content="${APP_SHORT}">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="${THEME}">`;
+}
+// 앱 화면(index.html)에 홈 화면 앱 설정을 끼워 넣는다 — 비공개 index.html 을 다시 올리지 않아도 되게.
+function injectPwa(html: string): string {
+  let out = html;
+  if (!/rel=["']manifest["']/i.test(out)) out = out.replace(/<\/head>/i, pwaHead() + '\n</head>');
+  out = out.replace(/<meta name="viewport" content="([^"]*)">/i, (m, c) => (/viewport-fit/.test(c) ? m : `<meta name="viewport" content="${c}, viewport-fit=cover">`));
+  return out;
+}
+const manifest = () => JSON.stringify({
+  name: APP_NAME, short_name: APP_SHORT, lang: 'ko', start_url: `${BASE}/`, scope: `${BASE}/`, display: 'standalone',
+  background_color: '#f3f6f6', theme_color: THEME,
+  icons: [
+    { src: `${BASE}/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+    { src: `${BASE}/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+  ],
+});
+
+// 홈 화면 앱(아이폰)에서 구글 '리다이렉트' 로그인으로 돌아왔을 때 — auth.ts 의 /api/auth/google-redirect 가 호출.
+// (홈 화면 앱은 브라우저와 쿠키를 따로 쓰고 팝업 로그인이 잘 안 되므로, 이미 등록된 리다이렉트 주소를 함께 쓴다)
+export function tripLoginRedirect(p: { sub: string; email: string; name?: string | null }, reply: FastifyReply) {
+  const clear = 'trip_login=; Path=/api/auth; Max-Age=0; SameSite=None; Secure';
+  const fail = (msg: string) => reply.header('Set-Cookie', clear).redirect(`${BASE}/?login_error=` + encodeURIComponent(msg));
+  const email = p.email.toLowerCase();
+  if (!isMemberEmail(email)) return fail('초대되지 않은 계정입니다. 관리자에게 문의하세요.');
+  const id = upsertTripUser(p.sub, email, p.name ?? null);
+  const attrs = [`${COOKIE}=${signSession(id)}`, `Path=${BASE}`, 'HttpOnly', 'SameSite=Lax', `Max-Age=${SESSION_TTL_MS / 1000}`];
+  if (!env.TRIP_COOKIE_INSECURE) attrs.push('Secure');
+  reply.header('Set-Cookie', [attrs.join('; '), clear]);
+  return reply.redirect(`${BASE}/`);
+}
+function upsertTripUser(sub: string, email: string, name: string | null): number {
+  db.prepare(
+    `INSERT INTO trip_users (google_sub, email, name, created_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(google_sub) DO UPDATE SET email = excluded.email, name = COALESCE(excluded.name, trip_users.name)`
+  ).run(sub, email, name, Date.now());
+  return (db.prepare('SELECT id FROM trip_users WHERE google_sub = ?').get(sub) as { id: number }).id;
+}
+
 function loginPage(): string {
   const cid = JSON.stringify(env.GOOGLE_CLIENT_ID).replace(/</g, '\\u003c');
   return `<!doctype html>
@@ -289,6 +342,7 @@ function loginPage(): string {
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>가족여행 로그인</title>
+${pwaHead()}
 <style>
 :root{--bg:#f5f6f8;--card:#fff;--text:#111827;--sub:#6b7280;--accent:#0f766e;--err:#dc2626}
 @media (prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#111a2b;--text:#e5e7eb;--sub:#9ca3af;--accent:#2dd4bf;--err:#f87171}}
@@ -319,9 +373,18 @@ function show(t){document.getElementById('msg').textContent=t}
   if(/iPhone|iPad/i.test(ua)) go.textContent='Safari에서 열기';
   document.getElementById('inapp').style.display='block';
 })();
+var STANDALONE=(window.navigator.standalone===true)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+(function(){ var e=new URLSearchParams(location.search).get('login_error'); if(e) show(e); })();
 function init(){
   if(!CID){show('서버 설정 오류(GOOGLE_CLIENT_ID)');return}
-  google.accounts.id.initialize({client_id:CID,callback:onCred,ux_mode:'popup'});
+  if(STANDALONE){
+    /* 홈 화면 앱: 팝업 대신 페이지 이동 로그인. 돌아오는 곳(/api/auth/google-redirect)이 이 표시를 보고 여행앱 로그인으로 처리 */
+    document.cookie='trip_login=1; Path=/api/auth; Max-Age=600; SameSite=None; Secure';
+    google.accounts.id.initialize({client_id:CID,ux_mode:'redirect',login_uri:location.origin+'/api/auth/google-redirect'});
+  } else {
+    document.cookie='trip_login=; Path=/api/auth; Max-Age=0; SameSite=None; Secure';
+    google.accounts.id.initialize({client_id:CID,callback:onCred,ux_mode:'popup'});
+  }
   google.accounts.id.renderButton(document.getElementById('btn'),{theme:'outline',size:'large',text:'signin_with',locale:'ko'});
 }
 function onCred(r){
@@ -387,12 +450,7 @@ export default async function tripRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: 'not a trip member' });
     }
     loginFails.delete(key);
-    db.prepare(
-      `INSERT INTO trip_users (google_sub, email, name, created_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT(google_sub) DO UPDATE SET email = excluded.email, name = COALESCE(excluded.name, trip_users.name)`
-    ).run(p.sub, email, p.name ?? null, now);
-    const u = db.prepare('SELECT id FROM trip_users WHERE google_sub = ?').get(p.sub) as { id: number };
-    setSessionCookie(reply, signSession(u.id), SESSION_TTL_MS / 1000);
+    setSessionCookie(reply, signSession(upsertTripUser(p.sub, email, p.name ?? null)), SESSION_TTL_MS / 1000);
     return { ok: true };
   });
 
@@ -496,6 +554,19 @@ export default async function tripRoutes(app: FastifyInstance) {
 
   // ── 정적 파일 (로그인 뒤) ──
   app.get(BASE, async (_req, reply) => reply.redirect(`${BASE}/`, 301));
+  app.get(`${BASE}/manifest.webmanifest`, async (_req, reply) => {
+    reply.header('Cache-Control', 'public, max-age=3600');
+    return reply.type('application/manifest+json; charset=utf-8').send(manifest());
+  });
+  app.get(`${BASE}/icon-:size.png`, async (req, reply) => {
+    const size = (req.params as any).size;
+    if (!ICON_SIZES.includes(size)) return reply.code(404).send('not found');
+    try {
+      const buf = await readFile(resolve(ASSET_DIR, `icon-${size}.png`));
+      reply.header('Cache-Control', 'public, max-age=86400');
+      return reply.type('image/png').send(buf);
+    } catch { return reply.code(404).send('not found'); }
+  });
   app.get(`${BASE}/*`, async (req, reply) => {
     securityHeaders(reply);
     const rel = (req.params as any)['*'] as string;
@@ -528,6 +599,7 @@ export default async function tripRoutes(app: FastifyInstance) {
       reply.header('Cache-Control', 'private, no-cache');
       // 앱 화면을 열 때마다 세션 쿠키를 새로 발급 — 30일 만료가 매번 연장되고, 예전(Strict) 쿠키도 Lax 로 바뀐다.
       if (type.startsWith('text/html')) setSessionCookie(reply, signSession(cur.user.id), SESSION_TTL_MS / 1000);
+      if (type.startsWith('text/html')) return reply.type(type).send(injectPwa((await readFile(full)).toString('utf8')));
       return reply.type(type).send(await readFile(full));
     } catch {
       return notFound();
