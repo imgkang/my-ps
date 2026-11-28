@@ -14,7 +14,9 @@
 // 보안 설계:
 //  - 앱 파일(예약번호 포함)은 공개 저장소에 두지 않는다. TRIP_STATIC_DIR(기본
 //    server/private/trip, .gitignore 처리)에서만 읽는다.
-//  - 세션은 MyPM 의 Bearer 토큰과 분리된 HttpOnly·SameSite=Strict 쿠키(Path=/trip).
+//  - 세션은 MyPM 의 Bearer 토큰과 분리된 HttpOnly·SameSite=Lax 쿠키(Path=/trip).
+//    (Strict 였을 때 카톡·문자·메일 등 다른 앱의 링크로 열면 쿠키가 안 가서 매번 로그인 화면이 떴음.
+//     Lax 는 링크로 들어오는 GET 에만 쿠키를 보내고, 상태 변경 요청은 아래 Origin 검사로 계속 막는다.)
 //    서명키는 기존 token_secret 에서 용도별로 파생(HMAC) — 토큰 상호 재사용 불가.
 //  - 멤버 목록은 DB(trip_members — admin.html 계정 관리), 관리자는 환경변수(TRIP_ADMIN_EMAILS). 하드코딩 없음.
 //    요청마다 현재 목록과 대조하므로 목록에서 빼고 재시작하면 즉시 차단된다.
@@ -32,7 +34,7 @@ import { registerScheduleRoutes, schedulePlaceKeys } from './trip-schedule.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.009';
+export const TRIP_VERSION = 'v0.010';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -110,7 +112,7 @@ function readCookie(req: FastifyRequest, name: string): string | null {
   return null;
 }
 function setSessionCookie(reply: FastifyReply, value: string, maxAgeSec: number) {
-  const attrs = [`${COOKIE}=${value}`, `Path=${BASE}`, 'HttpOnly', 'SameSite=Strict', `Max-Age=${maxAgeSec}`];
+  const attrs = [`${COOKIE}=${value}`, `Path=${BASE}`, 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAgeSec}`];
   if (!env.TRIP_COOKIE_INSECURE) attrs.push('Secure');
   reply.header('Set-Cookie', attrs.join('; '));
 }
@@ -296,13 +298,27 @@ main{max-width:360px;margin:18vh auto 0;padding:0 16px;text-align:center}
 h1{font-size:20px;margin:0 0 6px}p{color:var(--sub);font-size:14px;margin:0 0 20px}
 #btn{display:flex;justify-content:center;min-height:44px}#msg{color:var(--err);font-size:13px;margin-top:14px;min-height:18px}
 .ver{color:var(--sub);font-size:11px;margin-top:16px;opacity:.7}
+#inapp{display:none;background:#fef3c7;color:#92400e;border-radius:12px;padding:12px;margin:0 0 16px;font-size:13px;line-height:1.5;text-align:left}
+#inapp a{display:block;margin-top:8px;text-align:center;background:var(--accent);color:#fff;border-radius:8px;padding:9px;text-decoration:none;font-weight:600}
 </style></head><body><main><div class="card">
 <h1>시드니 2027 가족여행</h1><p>가족 구글 계정으로 로그인하세요</p>
+<div id="inapp">카카오톡 등 앱 안의 브라우저에서는 로그인이 유지되지 않거나 구글 로그인이 막힐 수 있어요. Chrome(아이폰은 Safari)에서 열어 주세요.<a id="inapp-go" href="#">Chrome에서 열기</a></div>
 <div id="btn"></div><div id="msg"></div></div><div class="ver">${TRIP_VERSION}</div></main>
 <script src="https://accounts.google.com/gsi/client" async defer onload="init()"></script>
 <script>
 var CID=${cid};
 function show(t){document.getElementById('msg').textContent=t}
+/* 앱 안 브라우저(카톡·네이버·인스타·페북·라인 등)는 쿠키를 따로 써서 Chrome 로그인이 이어지지 않음 → 바깥 브라우저로 안내 */
+(function(){
+  var ua=navigator.userAgent||'', inapp=/KAKAOTALK|NAVER[(]inapp|Instagram|FBAN|FBAV|Line[/]|DaumApps|everytimeApp|; wv[)]/i.test(ua); /* 서버 템플릿 문자열 안이라 역슬래시 대신 [ ] 사용 */
+  if(!inapp) return;
+  var url=location.href, go=document.getElementById('inapp-go');
+  if(/KAKAOTALK/i.test(ua)) go.href='kakaotalk://web/openExternal?url='+encodeURIComponent(url);
+  else if(/Android/i.test(ua)) go.href='intent://'+url.replace(/^https?:[/][/]/,'')+'#Intent;scheme=https;package=com.android.chrome;end';
+  else go.style.display='none';
+  if(/iPhone|iPad/i.test(ua)) go.textContent='Safari에서 열기';
+  document.getElementById('inapp').style.display='block';
+})();
 function init(){
   if(!CID){show('서버 설정 오류(GOOGLE_CLIENT_ID)');return}
   google.accounts.id.initialize({client_id:CID,callback:onCred,ux_mode:'popup'});
@@ -510,6 +526,8 @@ export default async function tripRoutes(app: FastifyInstance) {
       if (!type) return notFound();
       // private: Cloudflare 등 공유 캐시 저장 금지 / no-cache: 일정 수정 즉시 반영
       reply.header('Cache-Control', 'private, no-cache');
+      // 앱 화면을 열 때마다 세션 쿠키를 새로 발급 — 30일 만료가 매번 연장되고, 예전(Strict) 쿠키도 Lax 로 바뀐다.
+      if (type.startsWith('text/html')) setSessionCookie(reply, signSession(cur.user.id), SESSION_TTL_MS / 1000);
       return reply.type(type).send(await readFile(full));
     } catch {
       return notFound();
