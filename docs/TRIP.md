@@ -3,7 +3,7 @@
 `https://mypm.growpension.com/trip/` 에서 서비스. 서버 코드는 `server/src/trip.ts`.
 
 ## 버전
-MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.010`).
+MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.011`).
 확인 방법: 로그인 화면 하단 표기, `GET /trip/api/me` 의 `version`, 모든 `/trip` 응답의 `X-Trip-Version` 헤더.
 여행앱만 바뀐 배포에서는 MyPM 버전(sw.js `CACHE_NAME` 등)을 올리지 않는다.
 
@@ -41,6 +41,14 @@ server/private/trip/
 - 소유자(`OWNER_EMAIL`)는 기본으로 MyPM·여행 모두 허용 + 여행 관리자(🔒, 끌 수 없음)
 - 여행을 끄면 기존 로그인 세션도 다음 요청부터 401
 - API: `GET/PUT /api/admin/accounts?token=…` (body `{ email, note?, mypm?: bool, trip?: bool }`)
+
+## 홈 화면 앱 (v0.011~)
+- 이름 「시드니 여행」, 아이콘 `server/assets/trip/icon-{180,192,512}.png`(오페라하우스, 공개 저장소에 있어도 되는 그림). 아이콘 수정은 PNG 교체.
+- `/trip/manifest.webmanifest`, `/trip/icon-*.png` 는 **로그인 없이 공개**(브라우저가 쿠키 없이 가져감). 나머지 `/trip/*` 는 그대로 로그인 필요.
+- 비공개 `index.html` 을 다시 올리지 않도록 서버가 앱 화면 HTML 에 manifest·아이콘·`viewport-fit=cover` 를 끼워 넣는다(`injectPwa`).
+- 아이폰 홈 화면 앱은 브라우저와 쿠키를 따로 써서 한 번 로그인해야 하고, 그 안에서 구글 팝업 로그인이 잘 안 됨 →
+  홈 화면 앱일 때만 **리다이렉트 로그인**: 로그인 화면이 `trip_login=1`(Path=/api/auth) 표시를 남기고, 이미 등록된
+  `/api/auth/google-redirect`(MyPM 과 공용, auth.ts)가 이 표시를 보면 g_csrf_token 확인 후 `tripLoginRedirect` 로 여행앱 세션 발급.
 
 ## 인증
 - `/trip/` 비로그인 → 구글 로그인 화면. `/trip/*` 파일·`/trip/api/*` 는 401.

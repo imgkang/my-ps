@@ -14,6 +14,7 @@ import { db, getTokenSecret } from './db.js';
 import { upsertGoogleUser } from './users.js';
 import { isEmailAllowed } from './allowlist.js';
 import { bumpActivity } from './engagement.js';
+import { tripLoginRedirect } from './trip.js';
 
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30일
 
@@ -160,11 +161,13 @@ export default async function authRoutes(app: FastifyInstance) {
   );
 
   app.post('/api/auth/google-redirect', async (req, reply) => {
+    // 가족여행 앱(홈 화면 앱)에서 시작한 로그인 — 여행앱 로그인 화면이 남긴 trip_login 표시로 구분한다.
+    const ck = (n: string) => (req.headers.cookie ?? '').split(';').map((x) => x.trim()).find((x) => x.startsWith(n + '='))?.slice(n.length + 1);
+    const isTrip = ck('trip_login') === '1';
+    const back = (msg: string) => reply.redirect((isTrip ? '/trip/' : '/') + '?login_error=' + encodeURIComponent(msg));
     const credential = (req.body as Record<string, string>)?.credential;
-    if (!credential)
-      return reply.redirect('/?login_error=' + encodeURIComponent('credential 없음'));
-    if (!env.GOOGLE_CLIENT_ID)
-      return reply.redirect('/?login_error=' + encodeURIComponent('서버 설정 오류'));
+    if (!credential) return back('credential 없음');
+    if (!env.GOOGLE_CLIENT_ID) return back('서버 설정 오류');
     let payload;
     try {
       const ticket = await getGoogleClient().verifyIdToken({
@@ -172,10 +175,15 @@ export default async function authRoutes(app: FastifyInstance) {
       });
       payload = ticket.getPayload();
     } catch {
-      return reply.redirect('/?login_error=' + encodeURIComponent('Google 인증 실패'));
+      return back('Google 인증 실패');
     }
-    if (!payload?.email || !payload.email_verified || !payload.sub)
-      return reply.redirect('/?login_error=' + encodeURIComponent('이메일 미인증'));
+    if (!payload?.email || !payload.email_verified || !payload.sub) return back('이메일 미인증');
+    if (isTrip) {
+      // 구글 권장 CSRF 검사: g_csrf_token 쿠키 = 본문 값
+      const bodyCsrf = (req.body as Record<string, string>)?.g_csrf_token;
+      if (!bodyCsrf || bodyCsrf !== ck('g_csrf_token')) return back('로그인 확인 실패 — 다시 시도해 주세요');
+      return tripLoginRedirect({ sub: payload.sub, email: payload.email, name: payload.name ?? null }, reply);
+    }
     if (!isEmailAllowed(payload.email.toLowerCase()))
       return reply.redirect('/?login_error=' + encodeURIComponent('허용되지 않은 계정'));
     const user = upsertGoogleUser({ sub: payload.sub, email: payload.email.toLowerCase(), name: payload.name ?? null });
