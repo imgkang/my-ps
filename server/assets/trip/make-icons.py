@@ -45,10 +45,8 @@ d.rectangle([0, (BASE+100)*S, N*S, N*S], fill=GREEN)
 for i, (y, w) in enumerate([(BASE+140, 520), (BASE+190, 360)]):
     d.rounded_rectangle([(512-w//2)*S, y*S, (512+w//2)*S, (y+18)*S], radius=9*S, fill=GREEN_L)
 img = img.resize((N, N), Image.LANCZOS)
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))  # 실행 위치와 상관없이 이 파일 옆에 저장
 for size in (180, 192, 512):
     img.resize((size, size), Image.LANCZOS).save(f'icon-{size}.png', optimize=True)
-pv = Image.new('RGB', (1280, 560), (243,246,246)); m = img.resize((480, 480), Image.LANCZOS)
-r = Image.new('L', (480, 480), 0); ImageDraw.Draw(r).rounded_rectangle([0,0,479,479], radius=108, fill=255); pv.paste(m, (40, 40), r)
-c = Image.new('L', (480, 480), 0); ImageDraw.Draw(c).ellipse([0,0,479,479], fill=255); pv.paste(m, (600, 40), c)
-sm = img.resize((120, 120), Image.LANCZOS); r2 = Image.new('L', (120,120), 0); ImageDraw.Draw(r2).rounded_rectangle([0,0,119,119], radius=27, fill=255); pv.paste(sm, (1120, 220), r2)
-pv.save('/tmp/claude-0/-home-user-my-ps/ffc92f78-57b6-52af-bc71-be45a10e2bd6/scratchpad/icon-preview.png'); print('ok')
+print('icons written:', os.getcwd())
