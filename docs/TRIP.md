@@ -43,7 +43,7 @@ server/private/trip/
 - API: `GET/PUT /api/admin/accounts?token=…` (body `{ email, note?, mypm?: bool, trip?: bool }`)
 
 ## 홈 화면 앱 (v0.011~)
-- 이름 「시드니 여행」, 아이콘 `server/assets/trip/icon-{180,192,512}.png`(오페라하우스, 공개 저장소에 있어도 되는 그림). 아이콘 수정은 PNG 교체.
+- 이름 「시드니 여행」, 아이콘 `server/assets/trip/icon-{180,192,512}.png`(플랫 일러스트 오페라하우스, 직접 그린 그림). 다시 만들려면 `python3 server/assets/trip/make-icons.py`(Pillow).
 - `/trip/manifest.webmanifest`, `/trip/icon-*.png` 는 **로그인 없이 공개**(브라우저가 쿠키 없이 가져감). 나머지 `/trip/*` 는 그대로 로그인 필요.
 - 비공개 `index.html` 을 다시 올리지 않도록 서버가 앱 화면 HTML 에 manifest·아이콘·`viewport-fit=cover` 를 끼워 넣는다(`injectPwa`).
 - 아이폰 홈 화면 앱은 브라우저와 쿠키를 따로 써서 한 번 로그인해야 하고, 그 안에서 구글 팝업 로그인이 잘 안 됨 →
