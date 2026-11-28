@@ -34,7 +34,7 @@ import { registerScheduleRoutes, schedulePlaceKeys } from './trip-schedule.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.011';
+export const TRIP_VERSION = 'v0.012';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -303,6 +303,13 @@ function injectPwa(html: string): string {
   let out = html;
   if (!/rel=["']manifest["']/i.test(out)) out = out.replace(/<\/head>/i, pwaHead() + '\n</head>');
   out = out.replace(/<meta name="viewport" content="([^"]*)">/i, (m, c) => (/viewport-fit/.test(c) ? m : `<meta name="viewport" content="${c}, viewport-fit=cover">`));
+  // 상단 제목 왼쪽에 앱 아이콘 — 비공개 index.html 의 <header class="top"> 첫 <h1> 앞에 끼움(이미 있으면 건너뜀).
+  // 패턴이 없으면(화면 구조가 바뀌면) 아무것도 안 함.
+  if (!/class="ttl-ic"/.test(out)) {
+    const before = out;
+    out = out.replace(/(<header class="top">\s*)<h1([^>]*)>/i, `$1<h1$2><img class="ttl-ic" src="${BASE}/icon-192.png" alt="" width="36" height="36">`);
+    if (out !== before) out = out.replace(/<\/head>/i, `<style>header.top h1{display:flex;align-items:center;gap:10px}header.top h1 .ttl-ic{width:36px;height:36px;border-radius:10px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}</style>\n</head>`);
+  }
   return out;
 }
 const manifest = () => JSON.stringify({

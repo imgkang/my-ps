@@ -22,7 +22,7 @@
 
 ## 가족여행 앱(/trip) 버전 — MyPM 과 별도 관리
 - 여행앱은 MyPM 과 **완전히 별개 프로그램**. 버전도 따로 매긴다.
-- 현재 버전: `v0.011` — 기준값은 `server/src/trip.ts` 의 `TRIP_VERSION`
+- 현재 버전: `v0.012` — 기준값은 `server/src/trip.ts` 의 `TRIP_VERSION`
 - 여행앱 변경 시 `TRIP_VERSION` 만 +0.001 (`v0.001` → `v0.002`). 프론트(`server/private/trip/`, 비공개·미커밋)에
   버전 표기가 있으면 같은 값으로 맞추도록 사용자에게 안내.
 - 여행앱만 바뀐 커밋에서는 **MyPM 버전(index/NonK/KDeal/sw.js)을 올리지 않는다.**
