@@ -1,4 +1,6 @@
-/* 가족여행 앱 「여기로 집합」 — 서버가 앱 화면에 끼워 넣는 스크립트(비공개 index.html 수정 없이 동작).
+/* 가족여행 앱 덧붙임 기능 — 서버가 앱 화면 끝에 끼워 넣는 스크립트(비공개 index.html 수정 없이 동작).
+ * ① 「여기로 집합」 ② 새 버전 알림(아래 「새 버전 알림」 부분)
+ * ── ① 여기로 집합 ──
  * - 장소 탭 맨 위: 진행 중인 집합 요청을 강조 카드(지도·길찾기·완료/취소)로, 없으면 「지금 내 위치로 집합 요청」 버튼
  * - 진행 중이면 장소 탭 버튼에 빨간 점
  * - 서버 API: api/rally (조회 15초마다), POST api/rally, POST api/rally/:id/done|cancel
@@ -32,6 +34,10 @@
     '.rl-sheet h3{margin:0;font-family:var(--font-display,serif);font-size:18px}',
     '.rl-f{display:flex;flex-direction:column;gap:3px}.rl-f label{font-size:12px;color:var(--muted,#5b6f6b)}',
     '.rl-f input{border:1px solid var(--line,#d9e2e0);border-radius:8px;padding:9px 10px;background:var(--bg,#f3f6f6);color:var(--ink,#15302b);font:inherit}',
+    '.up-bar{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:60;display:flex;align-items:center;gap:10px;background:#111827;color:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:520px;margin:0 auto;font-size:14px}',
+    '.up-bar span{flex:1}.up-bar small{opacity:.7;margin-left:4px}',
+    '.up-bar button{border:0;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}',
+    '.up-bar .up-go{background:var(--gold,#e3a91b);color:#2a1d00}.up-bar .up-x{background:transparent;color:#fff;opacity:.75;padding:7px 8px}',
     '.rl-toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#111827;color:#fff;border-radius:20px;padding:9px 16px;z-index:50;max-width:90%;width:max-content;font-size:14px}'
   ].join('');
   document.head.appendChild(css);
@@ -146,7 +152,29 @@
     };
   }
 
-  req('/me').then(function (j) { me = j; }).catch(function () {}).then(function () { load(); loop(); });
+  /* ── ② 새 버전 알림 ──
+   * 화면을 받을 때 서버가 찍어 준 빌드 번호(window.__TRIP_BUILD)와 지금 서버의 빌드 번호(/api/me 의 build)를 비교.
+   * 다르면(서버 업데이트 또는 관리 페이지에서 index.html 등 새로 올림) 맨 위에 「새 버전이 있어요 · 새로고침」.
+   * 홈 화면 앱은 새로고침 버튼이 없고, 다른 앱에 다녀와도 예전 화면이 그대로라 필요. 확인: 앱으로 돌아올 때 + 1분마다. */
+  var built = window.__TRIP_BUILD || '', upState = '';   /* upState: '' | 'shown' | 'closed' */
+  function showUpdate(ver) {
+    if (upState) return; upState = 'shown';
+    var bar = el('div', 'up-bar'); bar.setAttribute('role', 'status');
+    var t = el('span', '', '새 버전이 있어요'); if (ver) t.appendChild(el('small', '', ver)); bar.appendChild(t);
+    var go = el('button', 'up-go', '새로고침'); go.type = 'button'; go.onclick = function () { go.disabled = true; go.textContent = '불러오는 중…'; location.reload(); };
+    var x = el('button', 'up-x', '✕'); x.type = 'button'; x.setAttribute('aria-label', '나중에'); x.onclick = function () { bar.remove(); upState = 'closed'; };
+    bar.appendChild(go); bar.appendChild(x); document.body.appendChild(bar);
+  }
+  function checkUpdate(j) {
+    if (j && j.build && built && j.build !== built) showUpdate(j.version);
+  }
+  function pollUpdate() { if (!document.hidden && upState !== 'shown') req('/me').then(function (j) { me = j; checkUpdate(j); }).catch(function () {}); }
+  document.addEventListener('visibilitychange', pollUpdate);
+  window.addEventListener('pageshow', function (e) { if (e.persisted) pollUpdate(); });   /* 뒤로가기 캐시로 되살아난 화면 */
+  setInterval(pollUpdate, 60000);
+  window.__tripCheckUpdate = pollUpdate;   /* 테스트·수동 확인용 */
+
+  req('/me').then(function (j) { me = j; checkUpdate(j); }).catch(function () {}).then(function () { load(); loop(); });
   // 장소 탭이 다시 그려져도 카드가 유지되게(앱이 장소 목록을 새로 그릴 때)
   var mo = new MutationObserver(function () { if (!document.getElementById('rl-box')) { lastSig = ''; render(); } });
   var v = document.getElementById('v-places') || document.getElementById('main'); if (v) mo.observe(v, { childList: true });

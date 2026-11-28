@@ -21,7 +21,7 @@
 //  - 멤버 목록은 DB(trip_members — admin.html 계정 관리), 관리자는 환경변수(TRIP_ADMIN_EMAILS). 하드코딩 없음.
 //    요청마다 현재 목록과 대조하므로 목록에서 빼고 재시작하면 즉시 차단된다.
 //  - 상태 변경(POST/PUT)은 Origin 헤더를 자기 출처와 대조(CSRF 방어, SameSite 와 이중).
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -35,7 +35,7 @@ import { registerRallyRoutes } from './trip-rally.js';
 
 // 여행앱 버전 — MyPM(v0.xxx)과 별개로 관리한다. 여행앱 서버 코드를 바꿀 때마다 +0.001.
 // (MyPM 버전·sw.js CACHE_NAME 은 MyPM 파일이 바뀔 때만 올린다)
-export const TRIP_VERSION = 'v0.013';
+export const TRIP_VERSION = 'v0.014';
 
 const BASE = env.TRIP_BASE;
 const COOKIE = 'trip_sess';
@@ -300,7 +300,15 @@ export function pwaHead(): string {
 <meta name="theme-color" content="${THEME}">`;
 }
 // 앱 화면(index.html)에 홈 화면 앱 설정을 끼워 넣는다 — 비공개 index.html 을 다시 올리지 않아도 되게.
-function injectPwa(html: string): string {
+// 화면 「빌드 번호」 — 서버 버전 + 앱 화면 파일·덧붙임 스크립트의 수정 시각. 하나라도 바뀌면 달라진다.
+// 앱이 열려 있는 동안 /api/me 의 build 와 화면에 찍힌 값을 비교해 「새 버전이 있어요」 알림을 띄운다(addons.js).
+export async function buildId(): Promise<string> {
+  const mt = async (f: string) => { try { return (await stat(f)).mtimeMs; } catch { return 0; } };
+  const parts = [TRIP_VERSION, await mt(resolve(env.TRIP_STATIC_DIR, 'index.html')), await mt(resolve(env.TRIP_STATIC_DIR, 'trip-data.js')), await mt(resolve(ASSET_DIR, 'addons.js'))];
+  return TRIP_VERSION + '-' + createHash('sha1').update(parts.join('|')).digest('hex').slice(0, 8);
+}
+
+function injectPwa(html: string, build = TRIP_VERSION): string {
   let out = html;
   if (!/rel=["']manifest["']/i.test(out)) out = out.replace(/<\/head>/i, pwaHead() + '\n</head>');
   out = out.replace(/<meta name="viewport" content="([^"]*)">/i, (m, c) => (/viewport-fit/.test(c) ? m : `<meta name="viewport" content="${c}, viewport-fit=cover">`));
@@ -311,8 +319,9 @@ function injectPwa(html: string): string {
     out = out.replace(/(<header class="top">\s*)<h1([^>]*)>/i, `$1<h1$2><img class="ttl-ic" src="${BASE}/icon-192.png" alt="" width="36" height="36">`);
     if (out !== before) out = out.replace(/<\/head>/i, `<style>header.top h1{display:flex;align-items:center;gap:10px}header.top h1 .ttl-ic{width:36px;height:36px;border-radius:10px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}</style>\n</head>`);
   }
-  // 「여기로 집합」 스크립트(server/assets/trip/rally.js) — 앱 화면 끝에 붙임
-  if (!out.includes(`${BASE}/rally.js`)) out = out.replace(/<\/body>/i, `<script src="${BASE}/rally.js?v=${TRIP_VERSION}" defer></script>\n</body>`);
+  // 덧붙임 스크립트(server/assets/trip/addons.js: 여기로 집합 + 새 버전 알림) — 앱 화면 끝에 붙임
+  if (!out.includes(`${BASE}/addons.js`))
+    out = out.replace(/<\/body>/i, `<script>window.__TRIP_BUILD=${JSON.stringify(build)};</script>\n<script src="${BASE}/addons.js?v=${encodeURIComponent(build)}" defer></script>\n</body>`);
   return out;
 }
 const manifest = () => JSON.stringify({
@@ -474,7 +483,7 @@ export default async function tripRoutes(app: FastifyInstance) {
   app.get(`${api}/me`, { preHandler: requireTripAuth }, async (req) => {
     const u = tripUser(req);
     const admin = isAdminEmail(u.email);
-    return { id: String(u.id), displayName: u.name ?? undefined, isAdmin: admin, isOwner: isOwnerEmail(u.email), canWrite: true, version: TRIP_VERSION };
+    return { id: String(u.id), displayName: u.name ?? undefined, isAdmin: admin, isOwner: isOwnerEmail(u.email), canWrite: true, version: TRIP_VERSION, build: await buildId() };
   });
 
   // ── 메시지 ──
@@ -571,13 +580,16 @@ export default async function tripRoutes(app: FastifyInstance) {
     return reply.type('application/manifest+json; charset=utf-8').send(manifest());
   });
   // 앱 화면에 끼워 넣는 기능 스크립트(개인정보 없음 — API 는 로그인 쿠키로만 동작)
-  app.get(`${BASE}/rally.js`, async (_req, reply) => {
+  // (rally.js 는 v0.013 에 열어 둔 화면용 예전 이름 — 같은 파일)
+  const addons = async (_req: FastifyRequest, reply: FastifyReply) => {
     try {
-      const buf = await readFile(resolve(ASSET_DIR, 'rally.js'));
+      const buf = await readFile(resolve(ASSET_DIR, 'addons.js'));
       reply.header('Cache-Control', 'no-cache');
       return reply.type('text/javascript; charset=utf-8').send(buf);
     } catch { return reply.code(404).send('not found'); }
-  });
+  };
+  app.get(`${BASE}/addons.js`, addons);
+  app.get(`${BASE}/rally.js`, addons);
   app.get(`${BASE}/icon-:size.png`, async (req, reply) => {
     const size = (req.params as any).size;
     if (!ICON_SIZES.includes(size)) return reply.code(404).send('not found');
@@ -619,7 +631,7 @@ export default async function tripRoutes(app: FastifyInstance) {
       reply.header('Cache-Control', 'private, no-cache');
       // 앱 화면을 열 때마다 세션 쿠키를 새로 발급 — 30일 만료가 매번 연장되고, 예전(Strict) 쿠키도 Lax 로 바뀐다.
       if (type.startsWith('text/html')) setSessionCookie(reply, signSession(cur.user.id), SESSION_TTL_MS / 1000);
-      if (type.startsWith('text/html')) return reply.type(type).send(injectPwa((await readFile(full)).toString('utf8')));
+      if (type.startsWith('text/html')) return reply.type(type).send(injectPwa((await readFile(full)).toString('utf8'), await buildId()));
       return reply.type(type).send(await readFile(full));
     } catch {
       return notFound();
