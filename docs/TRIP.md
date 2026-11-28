@@ -3,7 +3,7 @@
 `https://mypm.growpension.com/trip/` 에서 서비스. 서버 코드는 `server/src/trip.ts`.
 
 ## 버전
-MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.011`).
+MyPM 과 별도로 관리한다. 기준값: `server/src/trip.ts` 의 `TRIP_VERSION` (현재 `v0.013`).
 확인 방법: 로그인 화면 하단 표기, `GET /trip/api/me` 의 `version`, 모든 `/trip` 응답의 `X-Trip-Version` 헤더.
 여행앱만 바뀐 배포에서는 MyPM 버전(sw.js `CACHE_NAME` 등)을 올리지 않는다.
 
@@ -46,6 +46,7 @@ server/private/trip/
 - 이름 「시드니 여행」, 아이콘 `server/assets/trip/icon-{180,192,512}.png`(플랫 일러스트 오페라하우스, 직접 그린 그림). 다시 만들려면 `python3 server/assets/trip/make-icons.py`(Pillow).
 - `/trip/manifest.webmanifest`, `/trip/icon-*.png` 는 **로그인 없이 공개**(브라우저가 쿠키 없이 가져감). 나머지 `/trip/*` 는 그대로 로그인 필요.
 - 비공개 `index.html` 을 다시 올리지 않도록 서버가 앱 화면 HTML 에 manifest·아이콘·`viewport-fit=cover` 를 끼워 넣는다(`injectPwa`).
+  상단 제목 왼쪽 아이콘도 같은 방식(v0.012): `<header class="top">` 의 첫 `<h1>` 앞에 `<img class="ttl-ic">` + 스타일. 구조가 바뀌어 패턴이 없으면 건너뜀.
 - 아이폰 홈 화면 앱은 브라우저와 쿠키를 따로 써서 한 번 로그인해야 하고, 그 안에서 구글 팝업 로그인이 잘 안 됨 →
   홈 화면 앱일 때만 **리다이렉트 로그인**: 로그인 화면이 `trip_login=1`(Path=/api/auth) 표시를 남기고, 이미 등록된
   `/api/auth/google-redirect`(MyPM 과 공용, auth.ts)가 이 표시를 보면 g_csrf_token 확인 후 `tripLoginRedirect` 로 여행앱 세션 발급.
@@ -74,6 +75,17 @@ server/private/trip/
   저장 위치 `TRIP_RECEIPT_DIR`(기본 `server/private/trip-receipts/`, git 제외). 로그인한 멤버 모두 열람, 추가·삭제는 소유자.
   항목을 지우면 그 영수증도 삭제됨. ⚠️ 영수증 파일은 DB 백업에 포함되지 않으므로 폴더를 따로 백업할 것.
 - API: `GET|PUT /trip/api/schedule`, `POST /trip/api/receipts?item=`, `GET|DELETE /trip/api/receipts/:id`
+
+## 여기로 집합 (v0.013~)
+흩어진 일행을 지금 위치로 모으는 임시 공지. 서버 `server/src/trip-rally.ts`, 화면 `server/assets/trip/rally.js`(공개 — 개인정보 없음, API 는 로그인 필요).
+- 화면 스크립트는 서버가 앱 화면 HTML 끝에 `<script src="/trip/rally.js?v=버전">` 로 붙임 → 비공개 index.html 수정·재업로드 없음.
+  장소 탭(`#v-places`, 없으면 `#main`) 맨 위에 카드를 넣고, 진행 중이면 장소 탭 버튼에 빨간 점.
+- 요청: 누구나. 휴대폰 위치(GPS) + 집합 시각 + 메모 → 채팅에 「📍 여기로 집합」 메시지 자동 기록(안 읽음 배지로 알림).
+  진행 중인 요청이 있으면 새 요청으로 교체. 같은 사람 15초 안 연속 요청은 429.
+- 완료·취소: 요청한 사람 또는 소유자. 완료하면 카드가 사라지고, 요청한 날(시드니 날짜)의 일정에
+  「여기서 집합」 항목(시간 = 집합 시각 또는 완료 시각, 메모, 장소 = 좌표 검색어 `"위도, 경도"`)을 시간 순서 자리에 자동 추가.
+  그 날짜가 일정에 없거나 일정이 아직 DB 에 없으면 기록은 건너뛰고 이유를 알려 줌. 일정 rev 가 1 올라감.
+- API: `GET|POST /trip/api/rally`, `POST /trip/api/rally/:id/done|cancel`. 기록 테이블 `trip_rally`(상태 active/done/cancelled/replaced).
 
 ## 경비 탭 (소유자 전용)
 기존 `trip.html` 경비 페이지를 여행앱 「경비」 탭으로 옮김(`trip.html` 은 MyPM v0.700 에서 삭제). 데이터는 서버 DB(`trip_expenses`, `trip_expense_settings`).
